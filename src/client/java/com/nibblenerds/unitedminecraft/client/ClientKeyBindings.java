@@ -25,6 +25,12 @@ public final class ClientKeyBindings {
 	public static final KeyMapping NARRATE_COORDINATES = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.narrate_coordinates", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_C, CATEGORY));
 
+	public static final KeyMapping NARRATE_HEALTH = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+			"key.united_minecraft.narrate_health", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_H, CATEGORY));
+
+	public static final KeyMapping NARRATE_BEARING = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+			"key.united_minecraft.narrate_bearing", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_B, CATEGORY));
+
 	public static final KeyMapping LOOK_LEFT = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.look_left", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT, CATEGORY));
 	public static final KeyMapping LOOK_RIGHT = KeyMappingHelper.registerKeyMapping(new KeyMapping(

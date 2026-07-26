@@ -6,10 +6,11 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
 
 /**
- * Drives the "press C for coordinates", "narrate facing direction", and
- * "arrow keys look around" accessibility features every client tick.
+ * Drives United Minecraft's per-tick accessibility features: coordinate/health/bearing
+ * readouts on keypress, and facing-direction and hotbar-switch narration as they change.
  */
 public final class AccessibilityTickHandler {
 	// Degrees the camera turns per tick while a look key is held.
@@ -33,6 +34,7 @@ public final class AccessibilityTickHandler {
 	};
 
 	private static int lastOctant = -1;
+	private static int lastHotbarSlot = -1;
 
 	private AccessibilityTickHandler() {
 	}
@@ -44,8 +46,9 @@ public final class AccessibilityTickHandler {
 	private static void onEndTick(Minecraft client) {
 		LocalPlayer player = client.player;
 		if (player == null) {
-			// Reset so a fresh world/session starts without narrating a stale direction change.
+			// Reset so a fresh world/session starts without narrating stale changes.
 			lastOctant = -1;
+			lastHotbarSlot = -1;
 			return;
 		}
 
@@ -54,9 +57,16 @@ public final class AccessibilityTickHandler {
 		}
 
 		handleFacingNarration(client, player);
+		handleHotbarNarration(client, player);
 
 		if (ClientKeyBindings.NARRATE_COORDINATES.consumeClick()) {
 			narrateCoordinates(client, player);
+		}
+		if (ClientKeyBindings.NARRATE_HEALTH.consumeClick()) {
+			narrateHealth(client, player);
+		}
+		if (ClientKeyBindings.NARRATE_BEARING.consumeClick()) {
+			narrateBearing(client, player);
 		}
 	}
 
@@ -90,9 +100,44 @@ public final class AccessibilityTickHandler {
 		}
 	}
 
+	private static void handleHotbarNarration(Minecraft client, LocalPlayer player) {
+		int slot = player.getInventory().getSelectedSlot();
+		if (slot != lastHotbarSlot) {
+			if (lastHotbarSlot != -1) {
+				narrateHotbarSlot(client, player, slot);
+			}
+			lastHotbarSlot = slot;
+		}
+	}
+
+	private static void narrateHotbarSlot(Minecraft client, LocalPlayer player, int slot) {
+		ItemStack stack = player.getInventory().getItem(slot);
+		Component name = stack.isEmpty()
+				? Component.translatable("united_minecraft.narrate.hotbar_empty")
+				: stack.getHoverName();
+		client.getNarrator().saySystemNow(name);
+	}
+
 	private static void narrateCoordinates(Minecraft client, LocalPlayer player) {
 		BlockPos pos = player.blockPosition();
 		client.getNarrator().saySystemNow(
 				Component.translatable("united_minecraft.narrate.coordinates", pos.getX(), pos.getY(), pos.getZ()));
+	}
+
+	private static void narrateHealth(Minecraft client, LocalPlayer player) {
+		int health = Math.round(player.getHealth());
+		int maxHealth = Math.round(player.getMaxHealth());
+		int hunger = player.getFoodData().getFoodLevel();
+		client.getNarrator().saySystemNow(Component.translatable(
+				"united_minecraft.narrate.health", health, maxHealth, hunger));
+	}
+
+	private static void narrateBearing(Minecraft client, LocalPlayer player) {
+		// Minecraft's yaw is 0 at south, going towards west as it increases; shift it so
+		// the reported bearing instead follows the usual compass convention (0 = north).
+		int bearing = Math.floorMod(Math.round(player.getYRot()) + 180, 360);
+		int pitch = Math.round(player.getXRot());
+		client.getNarrator().saySystemNow(
+				Component.translatable("united_minecraft.narrate.bearing", bearing, pitch));
 	}
 }
