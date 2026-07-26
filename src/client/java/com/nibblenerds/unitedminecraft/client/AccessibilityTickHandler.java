@@ -68,6 +68,9 @@ public final class AccessibilityTickHandler {
 		if (ClientKeyBindings.NARRATE_BEARING.consumeClick()) {
 			narrateBearing(client, player);
 		}
+		if (ClientKeyBindings.SCAN_SURROUNDINGS.consumeClick()) {
+			SurroundingsScanner.narrateFront(client, player);
+		}
 	}
 
 	private static void handleCameraLook(LocalPlayer player) {
