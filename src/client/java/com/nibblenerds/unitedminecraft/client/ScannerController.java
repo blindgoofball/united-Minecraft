@@ -23,7 +23,9 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.animal.Animal;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Enemy;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.ButtonBlock;
@@ -240,12 +242,22 @@ public final class ScannerController {
 
 	private static Component describeItem(ScannerCategory category, ScannerItem item, Level level) {
 		int distance = (int) Math.round(item.distance());
-		Component name = item.entity() != null
-				? item.entity().getDisplayName()
-				: category == ScannerCategory.TREES
-						? describeTree(level, item.blockPos())
-						: level.getBlockState(item.blockPos()).getBlock().getName();
-		return Component.translatable("united_minecraft.narrate.front_single", name, distance);
+		return Component.translatable("united_minecraft.narrate.front_single", itemName(category, item, level), distance);
+	}
+
+	private static Component itemName(ScannerCategory category, ScannerItem item, Level level) {
+		if (item.entity() != null) {
+			if (category == ScannerCategory.ITEMS && item.entity() instanceof ItemEntity itemEntity) {
+				ItemStack stack = itemEntity.getItem();
+				return stack.getCount() > 1
+						? Component.literal(stack.getCount() + " ").append(stack.getHoverName())
+						: stack.getHoverName();
+			}
+			return item.entity().getDisplayName();
+		}
+		return category == ScannerCategory.TREES
+				? describeTree(level, item.blockPos())
+				: level.getBlockState(item.blockPos()).getBlock().getName();
 	}
 
 	private static Component describeTree(Level level, BlockPos pos) {
@@ -277,6 +289,7 @@ public final class ScannerController {
 		return switch (category) {
 			case INTERACTABLES -> scanBlocks(player, (pos, state) -> state.getMenuProvider(player.level(), pos) != null);
 			case MECHANISMS -> scanBlocks(player, (pos, state) -> isMechanism(state.getBlock()));
+			case ITEMS -> scanEntities(player, entity -> entity instanceof ItemEntity);
 			case TREES -> scanTrees(player);
 			case PASSIVE_MOBS -> scanEntities(player, entity -> entity instanceof Animal);
 			case HOSTILE_MOBS -> scanEntities(player, entity -> entity instanceof Enemy);

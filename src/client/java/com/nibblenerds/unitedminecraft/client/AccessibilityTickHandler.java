@@ -55,6 +55,7 @@ public final class AccessibilityTickHandler {
 			lastHotbarSlot = -1;
 			BuildModeController.reset();
 			ScannerController.reset();
+			TreeChoppingAssist.reset();
 			return;
 		}
 
@@ -69,10 +70,13 @@ public final class AccessibilityTickHandler {
 				ScannerController.tickLock(client, player);
 			} else if (BuildModeController.isActive()) {
 				BuildModeController.tick(client, player);
-			} else if (ClientKeyBindings.isShiftDown(client)) {
-				handleSnapTurn(client, player);
 			} else {
-				handleCameraLook(player);
+				if (ClientKeyBindings.isShiftDown(client)) {
+					handleSnapTurn(client, player);
+				} else {
+					handleCameraLook(player);
+				}
+				TreeChoppingAssist.tick(client, player);
 			}
 			ScannerController.tick(client, player);
 		}
