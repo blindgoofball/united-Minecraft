@@ -5,6 +5,7 @@ import com.nibblenerds.unitedminecraft.UnitedMinecraft;
 
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
 
 import org.lwjgl.glfw.GLFW;
 
@@ -40,9 +41,11 @@ public final class ClientKeyBindings {
 	/**
 	 * The arrow keys are dual-purpose: continuous camera turning normally (see
 	 * {@code handleCameraLook}), but discrete one-block cursor steps while build
-	 * mode is active (see {@link BuildModeController}). Page Up/Down (also unbound
-	 * by default) move the cursor's Y level, since there's no camera-turn axis to
-	 * reuse them from.
+	 * mode is active (see {@link BuildModeController}).
+	 *
+	 * <p>Page Up/Down are triple-purpose: build mode's cursor Y level, or the
+	 * scanner's item cycling (see {@link ScannerController}) when build mode
+	 * isn't active. Home/End cycle the scanner's category instead.
 	 */
 	public static final KeyMapping LOOK_LEFT = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.look_left", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT, CATEGORY));
@@ -53,15 +56,30 @@ public final class ClientKeyBindings {
 	public static final KeyMapping LOOK_DOWN = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.look_down", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_DOWN, CATEGORY));
 
-	public static final KeyMapping BUILD_CURSOR_RAISE = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.build_cursor_raise", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_PAGE_UP, CATEGORY));
-	public static final KeyMapping BUILD_CURSOR_LOWER = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.build_cursor_lower", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_PAGE_DOWN, CATEGORY));
+	public static final KeyMapping PAGE_UP = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+			"key.united_minecraft.page_up", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_PAGE_UP, CATEGORY));
+	public static final KeyMapping PAGE_DOWN = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+			"key.united_minecraft.page_down", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_PAGE_DOWN, CATEGORY));
+
+	public static final KeyMapping SCANNER_PREV_CATEGORY = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+			"key.united_minecraft.scanner_prev_category", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_HOME, CATEGORY));
+	public static final KeyMapping SCANNER_NEXT_CATEGORY = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+			"key.united_minecraft.scanner_next_category", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_END, CATEGORY));
+
+	public static final KeyMapping SCANNER_TARGET = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+			"key.united_minecraft.scanner_target", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_ENTER, CATEGORY));
+	public static final KeyMapping SCANNER_STOP_LOCK = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+			"key.united_minecraft.scanner_stop_lock", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_DELETE, CATEGORY));
 
 	private ClientKeyBindings() {
 	}
 
 	/** No-op call that forces the static initializers above to run. */
 	public static void register() {
+	}
+
+	public static boolean isShiftDown(Minecraft client) {
+		return InputConstants.isKeyDown(client.getWindow(), GLFW.GLFW_KEY_LEFT_SHIFT)
+				|| InputConstants.isKeyDown(client.getWindow(), GLFW.GLFW_KEY_RIGHT_SHIFT);
 	}
 }

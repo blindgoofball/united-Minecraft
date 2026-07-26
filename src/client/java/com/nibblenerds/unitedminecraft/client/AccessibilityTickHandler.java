@@ -1,7 +1,5 @@
 package com.nibblenerds.unitedminecraft.client;
 
-import com.mojang.blaze3d.platform.InputConstants;
-
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
 import net.minecraft.client.Minecraft;
@@ -9,8 +7,6 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
-
-import org.lwjgl.glfw.GLFW;
 
 /**
  * Drives United Minecraft's per-tick accessibility features: coordinate/health/bearing
@@ -58,26 +54,32 @@ public final class AccessibilityTickHandler {
 			lastOctant = -1;
 			lastHotbarSlot = -1;
 			BuildModeController.reset();
+			ScannerController.reset();
 			return;
 		}
 
-		if (ClientKeyBindings.TOGGLE_BUILD_MODE.consumeClick()) {
+		// Blocked while locked: lock-on owns rotation until Stop Lock is pressed, and
+		// combining it with the build cursor's own rotation-override would just fight it.
+		if (!ScannerController.isLocked() && ClientKeyBindings.TOGGLE_BUILD_MODE.consumeClick()) {
 			BuildModeController.toggle(client, player);
 		}
 
 		if (client.screen == null) {
-			if (BuildModeController.isActive()) {
+			if (ScannerController.isLocked()) {
+				ScannerController.tickLock(client, player);
+			} else if (BuildModeController.isActive()) {
 				BuildModeController.tick(client, player);
-			} else if (isShiftDown(client)) {
+			} else if (ClientKeyBindings.isShiftDown(client)) {
 				handleSnapTurn(client, player);
 			} else {
 				handleCameraLook(player);
 			}
+			ScannerController.tick(client, player);
 		}
 
-		if (!BuildModeController.isActive()) {
-			// Build mode drives yaw itself when aiming at the cursor; octant narration
-			// would just be noisy chatter racing the cursor's own narration.
+		if (!BuildModeController.isActive() && !ScannerController.isLocked()) {
+			// Build mode and scanner lock-on both drive yaw themselves; octant narration
+			// would just be noisy chatter racing their own narration.
 			handleFacingNarration(client, player);
 		}
 		handleHotbarNarration(client, player);
@@ -89,7 +91,7 @@ public final class AccessibilityTickHandler {
 			narrateHealth(client, player);
 		}
 		if (ClientKeyBindings.NARRATE_BEARING.consumeClick()) {
-			if (isShiftDown(client)) {
+			if (ClientKeyBindings.isShiftDown(client)) {
 				resetRotationToNorth(client, player);
 			} else {
 				narrateBearing(client, player);
@@ -223,10 +225,5 @@ public final class AccessibilityTickHandler {
 		player.setOldRot();
 		player.setYHeadRot(180.0f);
 		narrateBearing(client, player);
-	}
-
-	private static boolean isShiftDown(Minecraft client) {
-		return InputConstants.isKeyDown(client.getWindow(), GLFW.GLFW_KEY_LEFT_SHIFT)
-				|| InputConstants.isKeyDown(client.getWindow(), GLFW.GLFW_KEY_RIGHT_SHIFT);
 	}
 }

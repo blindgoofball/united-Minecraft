@@ -85,10 +85,10 @@ public final class BuildModeController {
 		if (ClientKeyBindings.LOOK_DOWN.consumeClick()) {
 			moved |= tryMove(client, player, cursor.south());
 		}
-		if (ClientKeyBindings.BUILD_CURSOR_RAISE.consumeClick()) {
+		if (ClientKeyBindings.PAGE_UP.consumeClick()) {
 			moved |= tryMove(client, player, cursor.above());
 		}
-		if (ClientKeyBindings.BUILD_CURSOR_LOWER.consumeClick()) {
+		if (ClientKeyBindings.PAGE_DOWN.consumeClick()) {
 			moved |= tryMove(client, player, cursor.below());
 		}
 
@@ -131,22 +131,8 @@ public final class BuildModeController {
 	}
 
 	private static void aimAtCursor(LocalPlayer player) {
-		Vec3 eye = player.getEyePosition();
-		Vec3 aimPoint = computeAimPoint(player.level(), eye);
-
-		double dx = aimPoint.x() - eye.x();
-		double dy = aimPoint.y() - eye.y();
-		double dz = aimPoint.z() - eye.z();
-		double horizontalDistance = Math.sqrt(dx * dx + dz * dz);
-
-		// Inverse of Entity.calculateViewVector: x = -sin(yaw)*cos(pitch), y = -sin(pitch), z = cos(yaw)*cos(pitch).
-		float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
-		float pitch = (float) Math.toDegrees(Math.atan2(-dy, horizontalDistance));
-
-		player.setYRot(yaw);
-		player.setXRot(pitch);
-		player.setOldRot();
-		player.setYHeadRot(yaw);
+		Vec3 aimPoint = computeAimPoint(player.level(), player.getEyePosition());
+		CameraUtil.aimAt(player, aimPoint);
 	}
 
 	private static Vec3 computeAimPoint(Level level, Vec3 eye) {
