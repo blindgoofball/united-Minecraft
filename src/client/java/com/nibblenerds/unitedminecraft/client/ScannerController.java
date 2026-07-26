@@ -167,8 +167,15 @@ public final class ScannerController {
 		}
 
 		boolean teleport = ClientKeyBindings.isShiftDown(client);
+		ScannerCategory category = CATEGORIES[categoryIndex];
 		if (item.entity() != null) {
-			targetEntity(client, player, item.entity(), teleport);
+			if (category == ScannerCategory.ITEMS) {
+				// Dropped items don't move on their own and aren't a threat to track - just
+				// look at them once, like a block, rather than starting a continuous lock-on.
+				targetEntityOnce(client, player, item.entity(), teleport);
+			} else {
+				targetEntity(client, player, item.entity(), teleport);
+			}
 		} else {
 			targetBlock(client, player, item.blockPos(), teleport);
 		}
@@ -188,6 +195,21 @@ public final class ScannerController {
 		CameraUtil.aimAt(player, center);
 		client.getNarrator().saySystemNow(
 				Component.translatable("united_minecraft.narrate.scanner_lock_started", entity.getDisplayName()));
+	}
+
+	private static void targetEntityOnce(Minecraft client, LocalPlayer player, Entity entity, boolean teleport) {
+		if (!entity.isAlive()) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.scanner_target_gone"));
+			return;
+		}
+		Vec3 center = entity.getBoundingBox().getCenter();
+		if (teleport) {
+			requestTeleportNear(client, player, center, entity.getY());
+			return;
+		}
+		CameraUtil.aimAt(player, center);
+		client.getNarrator().saySystemNow(
+				Component.translatable("united_minecraft.narrate.scanner_facing", entity.getDisplayName()));
 	}
 
 	private static void targetBlock(Minecraft client, LocalPlayer player, BlockPos pos, boolean teleport) {
