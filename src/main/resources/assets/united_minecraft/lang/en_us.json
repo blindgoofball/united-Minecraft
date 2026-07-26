@@ -1,0 +1,18 @@
+{
+	"key.category.united_minecraft.keys": "United Minecraft",
+	"key.united_minecraft.narrate_coordinates": "Narrate Coordinates",
+	"key.united_minecraft.look_left": "Look Left",
+	"key.united_minecraft.look_right": "Look Right",
+	"key.united_minecraft.look_up": "Look Up",
+	"key.united_minecraft.look_down": "Look Down",
+
+	"united_minecraft.narrate.coordinates": "%s, %s, %s",
+	"united_minecraft.direction.north": "North",
+	"united_minecraft.direction.northeast": "Northeast",
+	"united_minecraft.direction.east": "East",
+	"united_minecraft.direction.southeast": "Southeast",
+	"united_minecraft.direction.south": "South",
+	"united_minecraft.direction.southwest": "Southwest",
+	"united_minecraft.direction.west": "West",
+	"united_minecraft.direction.northwest": "Northwest"
+}
