@@ -6,6 +6,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.item.ItemStack;
 
 /**
@@ -193,9 +194,21 @@ public final class AccessibilityTickHandler {
 
 	private static void narrateHotbarSlot(Minecraft client, LocalPlayer player, int slot) {
 		ItemStack stack = player.getInventory().getItem(slot);
-		Component name = stack.isEmpty()
-				? Component.translatable("united_minecraft.narrate.hotbar_empty")
-				: stack.getHoverName();
+		if (stack.isEmpty()) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.hotbar_empty"));
+			return;
+		}
+
+		MutableComponent name = stack.getCount() > 1
+				? Component.literal(stack.getCount() + " ").append(stack.getHoverName())
+				: stack.getHoverName().copy();
+
+		if (stack.isDamageableItem()) {
+			int remaining = stack.getMaxDamage() - stack.getDamageValue();
+			name = name.append(Component.literal(", ")).append(Component.translatable(
+					"united_minecraft.narrate.hotbar_durability", remaining, stack.getMaxDamage()));
+		}
+
 		client.getNarrator().saySystemNow(name);
 	}
 
