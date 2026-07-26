@@ -112,7 +112,12 @@ public final class MenuAccessibilityController {
 		}
 
 		if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) {
-			click(screen, player, shiftHeld ? ContainerInput.QUICK_MOVE : ContainerInput.PICKUP);
+			boolean ctrlHeld = (event.modifiers() & GLFW.GLFW_MOD_CONTROL) != 0;
+			// Button 0 = left click, button 1 = right click - same distinction the real mouse
+			// buttons make on AbstractContainerMenu.clicked. Right-click-pickup is what splits
+			// a stack in half (or drops one item at a time back into a slot from the cursor).
+			int button = ctrlHeld ? 1 : 0;
+			click(screen, player, shiftHeld ? ContainerInput.QUICK_MOVE : ContainerInput.PICKUP, button);
 			return false;
 		}
 
@@ -151,7 +156,7 @@ public final class MenuAccessibilityController {
 		}
 	}
 
-	private static void click(AbstractContainerScreen<?> screen, LocalPlayer player, ContainerInput input) {
+	private static void click(AbstractContainerScreen<?> screen, LocalPlayer player, ContainerInput input, int button) {
 		Minecraft client = Minecraft.getInstance();
 		AbstractContainerMenu menu = screen.getMenu();
 		Slot slot = validSlotOrNull(menu, focusedIndex);
@@ -159,10 +164,10 @@ public final class MenuAccessibilityController {
 			return;
 		}
 
-		// Same pair of calls AbstractContainerScreen.slotClicked makes for a real mouse click:
-		// apply client-side prediction immediately, then tell the server what happened.
-		menu.clicked(slot.index, 0, input, player);
-		client.gameMode.handleContainerInput(menu.containerId, slot.index, 0, input, player);
+		// handleContainerInput already calls menu.clicked(...) internally (to diff slots for
+		// the outgoing packet) before sending it to the server, so calling menu.clicked()
+		// ourselves too would apply the click twice - e.g. splitting an already-split stack.
+		client.gameMode.handleContainerInput(menu.containerId, slot.index, button, input, player);
 
 		narrateFocusedSlot(screen, player, false);
 	}
