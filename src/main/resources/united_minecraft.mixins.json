@@ -1,0 +1,14 @@
+{
+	"required": true,
+	"package": "com.nibblenerds.unitedminecraft.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"mixins": [
+		"UnitedMinecraftMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"overwrites": {
+		"requireAnnotations": true
+	}
+}

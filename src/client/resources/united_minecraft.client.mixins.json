@@ -1,0 +1,14 @@
+{
+	"required": true,
+	"package": "com.nibblenerds.unitedminecraft.client.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"client": [
+		"GameNarratorMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"overwrites": {
+		"requireAnnotations": true
+	}
+}

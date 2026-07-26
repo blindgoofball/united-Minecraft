@@ -1,0 +1,36 @@
+{
+	"schemaVersion": 1,
+	"id": "united_minecraft",
+	"version": "${version}",
+	"name": "United Minecraft",
+	"description": "An accessibility mod for Minecraft.",
+	"authors": [
+		"NibbleNerds"
+	],
+	"contact": {
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/united_minecraft/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.nibblenerds.unitedminecraft.UnitedMinecraft"
+		],
+		"client": [
+			"com.nibblenerds.unitedminecraft.client.UnitedMinecraftClient"
+		]
+	},
+	"mixins": [
+		"united_minecraft.mixins.json",
+		{
+			"config": "united_minecraft.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~26.1.2",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}
