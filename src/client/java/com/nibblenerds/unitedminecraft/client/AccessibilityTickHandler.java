@@ -1,5 +1,7 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.mojang.blaze3d.platform.InputConstants;
+
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
 import net.minecraft.client.Minecraft;
@@ -7,6 +9,8 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
+
+import org.lwjgl.glfw.GLFW;
 
 /**
  * Drives United Minecraft's per-tick accessibility features: coordinate/health/bearing
@@ -19,6 +23,10 @@ public final class AccessibilityTickHandler {
 	// Entity.turn(xo, yo) scales its input by 0.15 to emulate mouse-delta sensitivity;
 	// undo that so ROTATION_SPEED_DEG_PER_TICK reads as an actual degrees-per-tick value.
 	private static final float TURN_INPUT_SCALE = 1.0f / 0.15f;
+
+	// Nudges snap-turn's floor/ceil so a press always moves at least one full 45-degree
+	// step, even when already sitting exactly on a marker.
+	private static final double SNAP_EPSILON = 1.0e-3;
 
 	// Ordered every 45 degrees starting at yaw 0 (south), matching Minecraft's yaw convention
 	// (0 = south, 90 = west, 180 = north, 270 = east).
@@ -60,6 +68,8 @@ public final class AccessibilityTickHandler {
 		if (client.screen == null) {
 			if (BuildModeController.isActive()) {
 				BuildModeController.tick(client, player);
+			} else if (isShiftDown(client)) {
+				handleSnapTurn(client, player);
 			} else {
 				handleCameraLook(player);
 			}
@@ -79,7 +89,11 @@ public final class AccessibilityTickHandler {
 			narrateHealth(client, player);
 		}
 		if (ClientKeyBindings.NARRATE_BEARING.consumeClick()) {
-			narrateBearing(client, player);
+			if (isShiftDown(client)) {
+				resetRotationToNorth(client, player);
+			} else {
+				narrateBearing(client, player);
+			}
 		}
 		if (ClientKeyBindings.SCAN_SURROUNDINGS.consumeClick()) {
 			SurroundingsScanner.narrateFront(client, player);
@@ -104,6 +118,51 @@ public final class AccessibilityTickHandler {
 		if (dYaw != 0.0f || dPitch != 0.0f) {
 			player.turn(dYaw * TURN_INPUT_SCALE, dPitch * TURN_INPUT_SCALE);
 		}
+	}
+
+	/**
+	 * Shift+arrows snap-turn to the nearest 45 degree marker instead of turning smoothly:
+	 * left/right step yaw to the previous/next compass octant (announced automatically by
+	 * {@link #handleFacingNarration}, since it lands exactly on an octant boundary), and
+	 * up/down step pitch through -90/-45/0/45/90 (announced here, since nothing else covers
+	 * pitch). The epsilon nudge before flooring/ceiling means a press always moves at least
+	 * one full step, even when already sitting exactly on a 45 degree marker.
+	 */
+	private static void handleSnapTurn(Minecraft client, LocalPlayer player) {
+		boolean yawChanged = false;
+		boolean pitchChanged = false;
+		if (ClientKeyBindings.LOOK_LEFT.consumeClick()) {
+			player.setYRot(snapDown45(player.getYRot()));
+			yawChanged = true;
+		}
+		if (ClientKeyBindings.LOOK_RIGHT.consumeClick()) {
+			player.setYRot(snapUp45(player.getYRot()));
+			yawChanged = true;
+		}
+		if (ClientKeyBindings.LOOK_UP.consumeClick()) {
+			player.setXRot(snapDown45(player.getXRot()));
+			pitchChanged = true;
+		}
+		if (ClientKeyBindings.LOOK_DOWN.consumeClick()) {
+			player.setXRot(snapUp45(player.getXRot()));
+			pitchChanged = true;
+		}
+
+		if (yawChanged || pitchChanged) {
+			player.setOldRot();
+			player.setYHeadRot(player.getYRot());
+		}
+		if (pitchChanged) {
+			narrateBearing(client, player);
+		}
+	}
+
+	private static float snapDown45(float degrees) {
+		return (float) (Math.floor(degrees / 45.0 - SNAP_EPSILON) * 45.0);
+	}
+
+	private static float snapUp45(float degrees) {
+		return (float) (Math.ceil(degrees / 45.0 + SNAP_EPSILON) * 45.0);
 	}
 
 	private static void handleFacingNarration(Minecraft client, LocalPlayer player) {
@@ -155,5 +214,19 @@ public final class AccessibilityTickHandler {
 		int pitch = Math.round(player.getXRot());
 		client.getNarrator().saySystemNow(
 				Component.translatable("united_minecraft.narrate.bearing", bearing, pitch));
+	}
+
+	private static void resetRotationToNorth(Minecraft client, LocalPlayer player) {
+		// Bearing 0 (north) is yaw 180 in Minecraft's own convention (0 = south).
+		player.setYRot(180.0f);
+		player.setXRot(0.0f);
+		player.setOldRot();
+		player.setYHeadRot(180.0f);
+		narrateBearing(client, player);
+	}
+
+	private static boolean isShiftDown(Minecraft client) {
+		return InputConstants.isKeyDown(client.getWindow(), GLFW.GLFW_KEY_LEFT_SHIFT)
+				|| InputConstants.isKeyDown(client.getWindow(), GLFW.GLFW_KEY_RIGHT_SHIFT);
 	}
 }

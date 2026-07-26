@@ -2,7 +2,7 @@
 	"key.category.united_minecraft.keys": "United Minecraft",
 	"key.united_minecraft.narrate_coordinates": "Narrate Coordinates",
 	"key.united_minecraft.narrate_health": "Narrate Health and Hunger",
-	"key.united_minecraft.narrate_bearing": "Narrate Facing Direction (Degrees)",
+	"key.united_minecraft.narrate_bearing": "Narrate Facing Direction (Degrees, Shift = Reset to North)",
 	"key.united_minecraft.scan_surroundings": "Read What's In Front of Me",
 	"key.united_minecraft.toggle_build_mode": "Toggle Build Mode",
 	"key.united_minecraft.look_left": "Look Left / Build Cursor West",
