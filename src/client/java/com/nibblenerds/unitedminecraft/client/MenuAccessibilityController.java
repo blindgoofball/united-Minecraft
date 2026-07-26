@@ -158,11 +158,29 @@ public final class MenuAccessibilityController {
 		return true;
 	}
 
-	/** Sections present for this menu type, in Tab-cycle order. Recipe Book only appears when supported. */
+	/** Sections present for this menu type, in Tab-cycle order. Recipe Book/Equipment only appear when supported. */
 	private static Section[] applicableSections(AbstractContainerMenu menu) {
-		return menu instanceof RecipeBookMenu
-				? new Section[] {Section.CONTAINER, Section.RECIPE_BOOK, Section.INVENTORY, Section.HOTBAR}
-				: new Section[] {Section.CONTAINER, Section.INVENTORY, Section.HOTBAR};
+		List<Section> sections = new ArrayList<>();
+		sections.add(Section.CONTAINER);
+		if (menu instanceof RecipeBookMenu) {
+			sections.add(Section.RECIPE_BOOK);
+		}
+		if (hasEquipmentSlots(menu)) {
+			sections.add(Section.EQUIPMENT);
+		}
+		sections.add(Section.INVENTORY);
+		sections.add(Section.HOTBAR);
+		return sections.toArray(new Section[0]);
+	}
+
+	/** True only for menus that expose the player's armor/offhand slots (the player's own inventory screen). */
+	private static boolean hasEquipmentSlots(AbstractContainerMenu menu) {
+		for (Slot slot : menu.slots) {
+			if (slot.container instanceof Inventory && slot.getContainerSlot() >= 36) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private static void switchSection(AbstractContainerScreen<?> screen, LocalPlayer player, int direction) {
@@ -207,7 +225,7 @@ public final class MenuAccessibilityController {
 		Slot next = switch (currentSection) {
 			case HOTBAR -> gridNeighbor(sectionSlots, current, direction, sectionSlots.size(), 1);
 			case INVENTORY -> gridNeighbor(sectionSlots, current, direction, 9, sectionSlots.size() / 9);
-			case CONTAINER -> nearestSpatialNeighbor(sectionSlots, current, direction);
+			case CONTAINER, EQUIPMENT -> nearestSpatialNeighbor(sectionSlots, current, direction);
 			case RECIPE_BOOK -> null; // moveFocus is never called while this section is active.
 		};
 		if (next != null) {
@@ -407,9 +425,14 @@ public final class MenuAccessibilityController {
 		List<Slot> result = new ArrayList<>();
 		for (Slot slot : menu.slots) {
 			boolean isPlayerInventory = slot.container == player.getInventory();
+			// Player-inventory container-local indices: 0-8 hotbar, 9-35 main inventory (a
+			// clean 27 = 9x3 grid), 36+ armor/offhand - a handful of slots InventoryMenu tacks
+			// on that don't fit any grid, so they get their own non-grid Equipment section.
 			boolean matches = switch (section) {
 				case HOTBAR -> isPlayerInventory && Inventory.isHotbarSlot(slot.getContainerSlot());
-				case INVENTORY -> isPlayerInventory && !Inventory.isHotbarSlot(slot.getContainerSlot());
+				case INVENTORY -> isPlayerInventory && !Inventory.isHotbarSlot(slot.getContainerSlot())
+						&& slot.getContainerSlot() < 36;
+				case EQUIPMENT -> isPlayerInventory && slot.getContainerSlot() >= 36;
 				case CONTAINER -> !isPlayerInventory;
 				case RECIPE_BOOK -> false; // not slot-based; sectionSlots is never called for it.
 			};
@@ -417,7 +440,7 @@ public final class MenuAccessibilityController {
 				result.add(slot);
 			}
 		}
-		if (section != Section.CONTAINER) {
+		if (section == Section.INVENTORY || section == Section.HOTBAR) {
 			result.sort(Comparator.comparingInt(Slot::getContainerSlot));
 		}
 		return result;
@@ -507,12 +530,21 @@ public final class MenuAccessibilityController {
 			case INVENTORY -> Component.translatable("united_minecraft.menu.slot.inventory");
 			case CONTAINER -> Component.translatable("united_minecraft.menu.section.container");
 			case RECIPE_BOOK -> Component.translatable("united_minecraft.menu.section.recipe_book");
+			case EQUIPMENT -> Component.translatable("united_minecraft.menu.section.equipment");
 		};
 	}
 
 	private static Component slotRole(AbstractContainerMenu menu, Slot slot, LocalPlayer player) {
 		if (slot.container == player.getInventory()) {
-			return Inventory.isHotbarSlot(slot.getContainerSlot())
+			int containerSlot = slot.getContainerSlot();
+			// Armor/offhand (36-40) belong to the player's own Inventory container just like the
+			// hotbar and main inventory do, so this generic check would otherwise catch them first
+			// and mislabel every one of them "Inventory" before the InventoryMenu-specific handling
+			// below ever runs.
+			if (containerSlot >= 36) {
+				return equipmentSlotRole(containerSlot);
+			}
+			return Inventory.isHotbarSlot(containerSlot)
 					? Component.translatable("united_minecraft.menu.slot.hotbar")
 					: Component.translatable("united_minecraft.menu.slot.inventory");
 		}
@@ -547,12 +579,8 @@ public final class MenuAccessibilityController {
 			if (slot.index >= 1 && slot.index <= 4) {
 				return Component.translatable("united_minecraft.menu.slot.crafting_grid");
 			}
-			if (slot.index >= 5 && slot.index <= 8) {
-				return Component.translatable("united_minecraft.menu.slot.armor");
-			}
-			if (slot.index == 45) {
-				return Component.translatable("united_minecraft.menu.slot.offhand");
-			}
+			// Armor/offhand slots are handled above (their container is the player's own
+			// Inventory), so nothing else in this menu falls through to here in practice.
 			return Component.translatable("united_minecraft.menu.slot.storage");
 		}
 		if (menu instanceof BrewingStandMenu) {
@@ -576,9 +604,21 @@ public final class MenuAccessibilityController {
 		return Component.translatable("united_minecraft.menu.slot.storage");
 	}
 
+	/** Container-local indices 36-40 in the player's Inventory: boots, leggings, chestplate, helmet, offhand. */
+	private static Component equipmentSlotRole(int containerSlot) {
+		return switch (containerSlot) {
+			case 36 -> Component.translatable("united_minecraft.menu.slot.boots");
+			case 37 -> Component.translatable("united_minecraft.menu.slot.leggings");
+			case 38 -> Component.translatable("united_minecraft.menu.slot.chestplate");
+			case 39 -> Component.translatable("united_minecraft.menu.slot.helmet");
+			case 40 -> Component.translatable("united_minecraft.menu.slot.offhand");
+			default -> Component.translatable("united_minecraft.menu.slot.storage");
+		};
+	}
+
 	/** Visual top-to-bottom order: the container's own slots, then the player's main inventory, then the hotbar. */
 	private enum Section {
-		CONTAINER, RECIPE_BOOK, INVENTORY, HOTBAR
+		CONTAINER, RECIPE_BOOK, EQUIPMENT, INVENTORY, HOTBAR
 	}
 
 	private enum Direction {

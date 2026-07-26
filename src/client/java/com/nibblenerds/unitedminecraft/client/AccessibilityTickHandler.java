@@ -39,6 +39,7 @@ public final class AccessibilityTickHandler {
 
 	private static int lastOctant = -1;
 	private static int lastHotbarSlot = -1;
+	private static ItemStack lastOffhand = null;
 
 	private AccessibilityTickHandler() {
 	}
@@ -53,6 +54,7 @@ public final class AccessibilityTickHandler {
 			// Reset so a fresh world/session starts without narrating stale changes.
 			lastOctant = -1;
 			lastHotbarSlot = -1;
+			lastOffhand = null;
 			BuildModeController.reset();
 			ScannerController.reset();
 			TreeChoppingAssist.reset();
@@ -87,6 +89,11 @@ public final class AccessibilityTickHandler {
 			handleFacingNarration(client, player);
 		}
 		handleHotbarNarration(client, player);
+		if (client.screen == null) {
+			// Only relevant in-world: the menu's own inventory-screen narration already covers
+			// the offhand slot there, and vanilla's swap-hands key does nothing over a screen.
+			handleOffhandNarration(client, player);
+		}
 
 		if (ClientKeyBindings.NARRATE_COORDINATES.consumeClick()) {
 			narrateCoordinates(client, player);
@@ -197,6 +204,21 @@ public final class AccessibilityTickHandler {
 				? Component.translatable("united_minecraft.narrate.hotbar_empty")
 				: ItemDescriptions.describe(stack);
 		client.getNarrator().saySystemNow(name);
+	}
+
+	private static void handleOffhandNarration(Minecraft client, LocalPlayer player) {
+		ItemStack offhand = player.getOffhandItem();
+		if (lastOffhand != null && !ItemStack.matches(offhand, lastOffhand)) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.hands_swapped",
+					describeHand(player.getMainHandItem()), describeHand(offhand)));
+		}
+		lastOffhand = offhand.copy();
+	}
+
+	private static Component describeHand(ItemStack stack) {
+		return stack.isEmpty()
+				? Component.translatable("united_minecraft.narrate.hotbar_empty")
+				: ItemDescriptions.describe(stack);
 	}
 
 	private static void narrateCoordinates(Minecraft client, LocalPlayer player) {
