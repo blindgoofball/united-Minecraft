@@ -34,6 +34,16 @@ public final class ClientKeyBindings {
 	public static final KeyMapping SCAN_SURROUNDINGS = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.scan_surroundings", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R, CATEGORY));
 
+	public static final KeyMapping TOGGLE_BUILD_MODE = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+			"key.united_minecraft.toggle_build_mode", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_I, CATEGORY));
+
+	/**
+	 * The arrow keys are dual-purpose: continuous camera turning normally (see
+	 * {@code handleCameraLook}), but discrete one-block cursor steps while build
+	 * mode is active (see {@link BuildModeController}). Page Up/Down (also unbound
+	 * by default) move the cursor's Y level, since there's no camera-turn axis to
+	 * reuse them from.
+	 */
 	public static final KeyMapping LOOK_LEFT = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.look_left", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT, CATEGORY));
 	public static final KeyMapping LOOK_RIGHT = KeyMappingHelper.registerKeyMapping(new KeyMapping(
@@ -42,6 +52,11 @@ public final class ClientKeyBindings {
 			"key.united_minecraft.look_up", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UP, CATEGORY));
 	public static final KeyMapping LOOK_DOWN = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.look_down", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_DOWN, CATEGORY));
+
+	public static final KeyMapping BUILD_CURSOR_RAISE = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+			"key.united_minecraft.build_cursor_raise", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_PAGE_UP, CATEGORY));
+	public static final KeyMapping BUILD_CURSOR_LOWER = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+			"key.united_minecraft.build_cursor_lower", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_PAGE_DOWN, CATEGORY));
 
 	private ClientKeyBindings() {
 	}

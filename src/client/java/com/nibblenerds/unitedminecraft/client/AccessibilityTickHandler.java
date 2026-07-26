@@ -49,14 +49,27 @@ public final class AccessibilityTickHandler {
 			// Reset so a fresh world/session starts without narrating stale changes.
 			lastOctant = -1;
 			lastHotbarSlot = -1;
+			BuildModeController.reset();
 			return;
 		}
 
-		if (client.screen == null) {
-			handleCameraLook(player);
+		if (ClientKeyBindings.TOGGLE_BUILD_MODE.consumeClick()) {
+			BuildModeController.toggle(client, player);
 		}
 
-		handleFacingNarration(client, player);
+		if (client.screen == null) {
+			if (BuildModeController.isActive()) {
+				BuildModeController.tick(client, player);
+			} else {
+				handleCameraLook(player);
+			}
+		}
+
+		if (!BuildModeController.isActive()) {
+			// Build mode drives yaw itself when aiming at the cursor; octant narration
+			// would just be noisy chatter racing the cursor's own narration.
+			handleFacingNarration(client, player);
+		}
 		handleHotbarNarration(client, player);
 
 		if (ClientKeyBindings.NARRATE_COORDINATES.consumeClick()) {
