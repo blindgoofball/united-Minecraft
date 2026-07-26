@@ -3,6 +3,7 @@ package com.nibblenerds.unitedminecraft.client;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Predicate;
 
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
@@ -10,11 +11,14 @@ import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.gui.screens.recipebook.RecipeCollection;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.StackedItemContents;
+import net.minecraft.world.inventory.AbstractCraftingMenu;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.AbstractFurnaceMenu;
 import net.minecraft.world.inventory.AnvilMenu;
@@ -23,8 +27,16 @@ import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.CraftingMenu;
 import net.minecraft.world.inventory.EnchantmentMenu;
 import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.world.inventory.RecipeBookMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.display.FurnaceRecipeDisplay;
+import net.minecraft.world.item.crafting.display.RecipeDisplay;
+import net.minecraft.world.item.crafting.display.RecipeDisplayEntry;
+import net.minecraft.world.item.crafting.display.RecipeDisplayId;
+import net.minecraft.world.item.crafting.display.ShapedCraftingRecipeDisplay;
+import net.minecraft.world.item.crafting.display.ShapelessCraftingRecipeDisplay;
+import net.minecraft.world.item.crafting.display.SlotDisplayContext;
 
 import org.lwjgl.glfw.GLFW;
 
@@ -50,10 +62,28 @@ import org.lwjgl.glfw.GLFW;
  * vanilla has no built-in concept of it - so they're identified via that menu type's own
  * public slot-index constants where they exist, or known fixed slot order where they
  * don't. Unrecognized menus/slots fall back to a generic "Storage" label.
+ *
+ * <p>Menus that implement {@link RecipeBookMenu} (crafting table, player inventory crafting,
+ * furnace, smoker, blast furnace) get an extra Recipe Book section. It bypasses vanilla's
+ * {@code RecipeBookComponent} widget entirely and works straight off public game state:
+ * {@code player.getRecipeBook()} for the known recipes, {@link RecipeCollection#selectRecipes}
+ * (using the exact same predicate the matching vanilla component uses, so it can't desync
+ * that component's own view of the same shared collection objects) to compute what's valid
+ * for this menu's grid shape, and {@code Minecraft.gameMode.handlePlaceRecipe} to fill the
+ * grid server-side - the same single call the vanilla button click makes, no coordinate
+ * simulation involved. Up/Down move between recipe groups, Left/Right move between variants
+ * within a group (vanilla bundles near-duplicate recipes, e.g. different colors, into one
+ * button), F toggles showing only currently-craftable recipes, and Enter/Shift+Enter place
+ * the focused recipe (Shift = fill to max stack size).
  */
 public final class MenuAccessibilityController {
 	private static Section currentSection = Section.CONTAINER;
 	private static int focusedIndex = -1;
+
+	private static List<RecipeCollection> recipeGroups = List.of();
+	private static int recipeGroupIndex = -1;
+	private static int recipeVariantIndex = 0;
+	private static boolean recipeCraftableOnlyFilter = false;
 
 	private MenuAccessibilityController() {
 	}
@@ -74,9 +104,9 @@ public final class MenuAccessibilityController {
 		if (player == null) {
 			return;
 		}
-		currentSection = Section.CONTAINER;
-		focusedIndex = firstSlotIndex(screen.getMenu(), player, currentSection);
-		narrateFocusedSlot(screen, player, true);
+		recipeCraftableOnlyFilter = false;
+		currentSection = applicableSections(screen.getMenu())[0];
+		enterSection(screen, player);
 	}
 
 	private static boolean handleKey(AbstractContainerScreen<?> screen, KeyEvent event) {
@@ -97,6 +127,10 @@ public final class MenuAccessibilityController {
 		if (key == GLFW.GLFW_KEY_TAB) {
 			switchSection(screen, player, shiftHeld ? -1 : 1);
 			return false;
+		}
+
+		if (currentSection == Section.RECIPE_BOOK) {
+			return handleRecipeBookKey(screen, player, key, shiftHeld);
 		}
 
 		Direction direction = switch (key) {
@@ -124,11 +158,36 @@ public final class MenuAccessibilityController {
 		return true;
 	}
 
+	/** Sections present for this menu type, in Tab-cycle order. Recipe Book only appears when supported. */
+	private static Section[] applicableSections(AbstractContainerMenu menu) {
+		return menu instanceof RecipeBookMenu
+				? new Section[] {Section.CONTAINER, Section.RECIPE_BOOK, Section.INVENTORY, Section.HOTBAR}
+				: new Section[] {Section.CONTAINER, Section.INVENTORY, Section.HOTBAR};
+	}
+
 	private static void switchSection(AbstractContainerScreen<?> screen, LocalPlayer player, int direction) {
-		Section[] sections = Section.values();
-		currentSection = sections[Math.floorMod(currentSection.ordinal() + direction, sections.length)];
-		focusedIndex = firstSlotIndex(screen.getMenu(), player, currentSection);
-		narrateFocusedSlot(screen, player, true);
+		Section[] sections = applicableSections(screen.getMenu());
+		int i = 0;
+		for (int j = 0; j < sections.length; j++) {
+			if (sections[j] == currentSection) {
+				i = j;
+				break;
+			}
+		}
+		currentSection = sections[Math.floorMod(i + direction, sections.length)];
+		enterSection(screen, player);
+	}
+
+	private static void enterSection(AbstractContainerScreen<?> screen, LocalPlayer player) {
+		if (currentSection == Section.RECIPE_BOOK) {
+			refreshRecipeGroups(screen.getMenu(), player);
+			recipeGroupIndex = visibleRecipeGroups().isEmpty() ? -1 : 0;
+			recipeVariantIndex = 0;
+			narrateRecipeFocus(player, true);
+		} else {
+			focusedIndex = firstSlotIndex(screen.getMenu(), player, currentSection);
+			narrateFocusedSlot(screen, player, true);
+		}
 	}
 
 	private static void moveFocus(AbstractContainerScreen<?> screen, LocalPlayer player, Direction direction) {
@@ -149,6 +208,7 @@ public final class MenuAccessibilityController {
 			case HOTBAR -> gridNeighbor(sectionSlots, current, direction, sectionSlots.size(), 1);
 			case INVENTORY -> gridNeighbor(sectionSlots, current, direction, 9, sectionSlots.size() / 9);
 			case CONTAINER -> nearestSpatialNeighbor(sectionSlots, current, direction);
+			case RECIPE_BOOK -> null; // moveFocus is never called while this section is active.
 		};
 		if (next != null) {
 			focusedIndex = next.index;
@@ -172,6 +232,167 @@ public final class MenuAccessibilityController {
 		narrateFocusedSlot(screen, player, false);
 	}
 
+	private static boolean handleRecipeBookKey(AbstractContainerScreen<?> screen, LocalPlayer player, int key, boolean shiftHeld) {
+		switch (key) {
+			case GLFW.GLFW_KEY_UP -> moveRecipeGroup(player, -1);
+			case GLFW.GLFW_KEY_DOWN -> moveRecipeGroup(player, 1);
+			case GLFW.GLFW_KEY_LEFT -> moveRecipeVariant(player, -1);
+			case GLFW.GLFW_KEY_RIGHT -> moveRecipeVariant(player, 1);
+			case GLFW.GLFW_KEY_F -> toggleCraftableFilter(player);
+			case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> placeFocusedRecipe(screen.getMenu(), player, shiftHeld);
+			default -> {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static void moveRecipeGroup(LocalPlayer player, int direction) {
+		List<RecipeCollection> groups = visibleRecipeGroups();
+		if (groups.isEmpty()) {
+			return;
+		}
+		if (recipeGroupIndex < 0) {
+			recipeGroupIndex = 0;
+		} else {
+			int next = recipeGroupIndex + direction;
+			if (next < 0 || next >= groups.size()) {
+				return;
+			}
+			recipeGroupIndex = next;
+		}
+		recipeVariantIndex = 0;
+		narrateRecipeFocus(player, false);
+	}
+
+	private static void moveRecipeVariant(LocalPlayer player, int direction) {
+		List<RecipeDisplayEntry> variants = currentRecipeVariants();
+		if (variants.isEmpty()) {
+			return;
+		}
+		int next = recipeVariantIndex + direction;
+		if (next < 0 || next >= variants.size()) {
+			return;
+		}
+		recipeVariantIndex = next;
+		narrateRecipeFocus(player, false);
+	}
+
+	private static void toggleCraftableFilter(LocalPlayer player) {
+		recipeCraftableOnlyFilter = !recipeCraftableOnlyFilter;
+		List<RecipeCollection> groups = visibleRecipeGroups();
+		recipeGroupIndex = groups.isEmpty() ? -1 : 0;
+		recipeVariantIndex = 0;
+		Component toggleMessage = Component.translatable(recipeCraftableOnlyFilter
+				? "united_minecraft.menu.recipe_book.filter_on"
+				: "united_minecraft.menu.recipe_book.filter_off");
+		Minecraft.getInstance().getNarrator().saySystemNow(toggleMessage);
+		narrateRecipeFocus(player, false);
+	}
+
+	private static void placeFocusedRecipe(AbstractContainerMenu menu, LocalPlayer player, boolean useMaxItems) {
+		List<RecipeDisplayEntry> variants = currentRecipeVariants();
+		if (variants.isEmpty()) {
+			return;
+		}
+		RecipeDisplayId recipeId = variants.get(recipeVariantIndex).id();
+		Minecraft.getInstance().gameMode.handlePlaceRecipe(menu.containerId, recipeId, useMaxItems);
+		refreshRecipeGroups(menu, player);
+		narrateRecipeFocus(player, false);
+	}
+
+	/** Recomputes which recipes are valid (and craftable) for this menu's current grid shape and inventory. */
+	private static void refreshRecipeGroups(AbstractContainerMenu menu, LocalPlayer player) {
+		recipeGroups = List.of();
+		if (!(menu instanceof RecipeBookMenu recipeBookMenu)) {
+			return;
+		}
+
+		StackedItemContents stackedContents = new StackedItemContents();
+		player.getInventory().fillStackedContents(stackedContents);
+		recipeBookMenu.fillCraftSlotsStackedContents(stackedContents);
+
+		Predicate<RecipeDisplay> predicate;
+		if (menu instanceof AbstractCraftingMenu craftingMenu) {
+			int gridWidth = craftingMenu.getGridWidth();
+			int gridHeight = craftingMenu.getGridHeight();
+			predicate = display -> fitsCraftingGrid(display, gridWidth, gridHeight);
+		} else if (menu instanceof AbstractFurnaceMenu) {
+			predicate = display -> display instanceof FurnaceRecipeDisplay;
+		} else {
+			return;
+		}
+
+		List<RecipeCollection> result = new ArrayList<>();
+		for (RecipeCollection collection : player.getRecipeBook().getCollections()) {
+			collection.selectRecipes(stackedContents, predicate);
+			if (collection.hasAnySelected()) {
+				result.add(collection);
+			}
+		}
+		recipeGroups = result;
+	}
+
+	/** Mirrors CraftingRecipeBookComponent's own private canDisplay check: does this recipe fit the grid? */
+	private static boolean fitsCraftingGrid(RecipeDisplay display, int gridWidth, int gridHeight) {
+		if (display instanceof ShapedCraftingRecipeDisplay shaped) {
+			return gridWidth >= shaped.width() && gridHeight >= shaped.height();
+		}
+		if (display instanceof ShapelessCraftingRecipeDisplay shapeless) {
+			return gridWidth * gridHeight >= shapeless.ingredients().size();
+		}
+		return false;
+	}
+
+	private static List<RecipeCollection> visibleRecipeGroups() {
+		if (!recipeCraftableOnlyFilter) {
+			return recipeGroups;
+		}
+		List<RecipeCollection> craftableOnly = new ArrayList<>();
+		for (RecipeCollection group : recipeGroups) {
+			if (group.hasCraftable()) {
+				craftableOnly.add(group);
+			}
+		}
+		return craftableOnly;
+	}
+
+	private static List<RecipeDisplayEntry> currentRecipeVariants() {
+		List<RecipeCollection> groups = visibleRecipeGroups();
+		if (recipeGroupIndex < 0 || recipeGroupIndex >= groups.size()) {
+			return List.of();
+		}
+		return groups.get(recipeGroupIndex).getSelectedRecipes(RecipeCollection.CraftableStatus.ANY);
+	}
+
+	private static void narrateRecipeFocus(LocalPlayer player, boolean announceSection) {
+		List<RecipeDisplayEntry> variants = currentRecipeVariants();
+		MutableComponent message;
+		if (variants.isEmpty()) {
+			message = Component.translatable("united_minecraft.menu.recipe_book.empty").copy();
+		} else {
+			RecipeCollection group = visibleRecipeGroups().get(recipeGroupIndex);
+			RecipeDisplayEntry entry = variants.get(Math.min(recipeVariantIndex, variants.size() - 1));
+			List<ItemStack> results = entry.resultItems(SlotDisplayContext.fromLevel(player.level()));
+			MutableComponent itemName = results.isEmpty()
+					? Component.translatable("united_minecraft.narrate.hotbar_empty")
+					: ItemDescriptions.describe(results.get(0));
+			Component status = Component.translatable(group.isCraftable(entry.id())
+					? "united_minecraft.menu.recipe_book.craftable"
+					: "united_minecraft.menu.recipe_book.not_craftable");
+			message = itemName.copy().append(Component.literal(", ")).append(status);
+			if (variants.size() > 1) {
+				message = message.append(Component.literal(", ")).append(Component.translatable(
+						"united_minecraft.menu.recipe_book.variant", recipeVariantIndex + 1, variants.size()));
+			}
+		}
+
+		if (announceSection) {
+			message = sectionLabel(Section.RECIPE_BOOK).copy().append(Component.literal(". ")).append(message);
+		}
+		Minecraft.getInstance().getNarrator().saySystemNow(message);
+	}
+
 	private static Slot validSlotOrNull(AbstractContainerMenu menu, int index) {
 		return index >= 0 && index < menu.slots.size() ? menu.slots.get(index) : null;
 	}
@@ -190,6 +411,7 @@ public final class MenuAccessibilityController {
 				case HOTBAR -> isPlayerInventory && Inventory.isHotbarSlot(slot.getContainerSlot());
 				case INVENTORY -> isPlayerInventory && !Inventory.isHotbarSlot(slot.getContainerSlot());
 				case CONTAINER -> !isPlayerInventory;
+				case RECIPE_BOOK -> false; // not slot-based; sectionSlots is never called for it.
 			};
 			if (matches) {
 				result.add(slot);
@@ -284,6 +506,7 @@ public final class MenuAccessibilityController {
 			case HOTBAR -> Component.translatable("united_minecraft.menu.slot.hotbar");
 			case INVENTORY -> Component.translatable("united_minecraft.menu.slot.inventory");
 			case CONTAINER -> Component.translatable("united_minecraft.menu.section.container");
+			case RECIPE_BOOK -> Component.translatable("united_minecraft.menu.section.recipe_book");
 		};
 	}
 
@@ -355,7 +578,7 @@ public final class MenuAccessibilityController {
 
 	/** Visual top-to-bottom order: the container's own slots, then the player's main inventory, then the hotbar. */
 	private enum Section {
-		CONTAINER, INVENTORY, HOTBAR
+		CONTAINER, RECIPE_BOOK, INVENTORY, HOTBAR
 	}
 
 	private enum Direction {
