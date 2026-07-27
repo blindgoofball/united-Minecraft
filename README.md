@@ -179,6 +179,7 @@ that particular screen.
 This section is for building the mod itself, not for playing with it - see
 Installation above for that. For IDE setup instructions, see the
 [Fabric Documentation page](https://docs.fabricmc.net/develop/getting-started/creating-a-project#setting-up).
+For cutting an actual release, see [RELEASING.md](RELEASING.md).
 
 ## License
 

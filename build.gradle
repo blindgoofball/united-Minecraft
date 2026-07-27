@@ -61,6 +61,11 @@ jar {
 	def projectName = project.name
 	inputs.property "projectName", projectName
 
+	// Every release targets exactly one Minecraft version and stops working after the next
+	// one - baking it into the filename (not just the version number) keeps a jar
+	// self-describing even with no other context, e.g. sitting alone in a downloads folder.
+	archiveFileName = "${projectName}-${project.version}+mc${project.minecraft_version}.jar"
+
 	from("LICENSE") {
 		rename { "${it}_$projectName"}
 	}
