@@ -8,5 +8,6 @@ public class UnitedMinecraftClient implements ClientModInitializer {
 		ClientKeyBindings.register();
 		AccessibilityTickHandler.register();
 		MenuAccessibilityController.register();
+		CreativeInventoryController.register();
 	}
 }

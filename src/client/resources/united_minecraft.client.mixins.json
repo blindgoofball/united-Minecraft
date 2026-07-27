@@ -5,7 +5,9 @@
 	"client": [
 		"GameNarratorMixin",
 		"ScreenNarratedWidgetMixin",
-		"ScreenNarrationDelayMixin"
+		"ScreenNarrationDelayMixin",
+		"CreativeModeInventoryScreenAccessorMixin",
+		"CreativeSlotWrapperAccessorMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

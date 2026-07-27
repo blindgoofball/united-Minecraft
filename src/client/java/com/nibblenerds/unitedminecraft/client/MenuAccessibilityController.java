@@ -8,9 +8,13 @@ import java.util.function.Predicate;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 
+import com.nibblenerds.unitedminecraft.client.access.CreativeModeInventoryScreenAccess;
+import com.nibblenerds.unitedminecraft.client.access.SlotWrapperAccess;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.gui.screens.recipebook.RecipeCollection;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.player.LocalPlayer;
@@ -29,6 +33,7 @@ import net.minecraft.world.inventory.EnchantmentMenu;
 import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.inventory.RecipeBookMenu;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.display.FurnaceRecipeDisplay;
 import net.minecraft.world.item.crafting.display.RecipeDisplay;
@@ -75,6 +80,13 @@ import org.lwjgl.glfw.GLFW;
  * within a group (vanilla bundles near-duplicate recipes, e.g. different colors, into one
  * button), F toggles showing only currently-craftable recipes, and Enter/Shift+Enter place
  * the focused recipe (Shift = fill to max stack size).
+ *
+ * <p>The Creative inventory's item-picker tabs are handled separately, by
+ * {@link CreativeInventoryController} - vanilla's item grid is always exactly 45 real slots
+ * (a scrolling window), which doesn't fit this class's "one slot per real item" model at all.
+ * This class only takes over there when the Inventory tab is selected, since that one really
+ * is just the player's ordinary inventory shown inside the screen - see
+ * {@link #isHandledByCreativeItemGrid}.
  */
 public final class MenuAccessibilityController {
 	private static Section currentSection = Section.CONTAINER;
@@ -99,7 +111,22 @@ public final class MenuAccessibilityController {
 		});
 	}
 
+	/** True while a Creative screen's item-picker tab (not its Inventory tab) is selected - see the class doc. */
+	private static boolean isHandledByCreativeItemGrid(AbstractContainerScreen<?> screen) {
+		return screen instanceof CreativeModeInventoryScreen creative
+				&& ((CreativeModeInventoryScreenAccess) creative).unitedMinecraft$getSelectedTab().getType()
+						!= CreativeModeTab.Type.INVENTORY;
+	}
+
+	/** Entry point {@link CreativeInventoryController} calls after switching back to the Inventory tab. */
+	static void reinitializeForScreen(AbstractContainerScreen<?> screen) {
+		onScreenOpened(screen);
+	}
+
 	private static void onScreenOpened(AbstractContainerScreen<?> screen) {
+		if (isHandledByCreativeItemGrid(screen)) {
+			return;
+		}
 		LocalPlayer player = Minecraft.getInstance().player;
 		if (player == null) {
 			return;
@@ -110,6 +137,10 @@ public final class MenuAccessibilityController {
 	}
 
 	private static boolean handleKey(AbstractContainerScreen<?> screen, KeyEvent event) {
+		if (isHandledByCreativeItemGrid(screen)) {
+			return true;
+		}
+
 		// Don't hijack arrow-key cursor movement or Enter-to-confirm in a focused text field
 		// (e.g. the anvil's rename box) - text input accessibility there is a separate concern.
 		if (screen.getFocused() instanceof EditBox) {
@@ -176,11 +207,25 @@ public final class MenuAccessibilityController {
 	/** True only for menus that expose the player's armor/offhand slots (the player's own inventory screen). */
 	private static boolean hasEquipmentSlots(AbstractContainerMenu menu) {
 		for (Slot slot : menu.slots) {
-			if (slot.container instanceof Inventory && slot.getContainerSlot() >= 36) {
+			if (slot.container instanceof Inventory && containerSlotOf(slot) >= 36) {
 				return true;
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * A slot's real container-local index - unwrapping {@code CreativeModeInventoryScreen$SlotWrapper}
+	 * first if needed, since that wrapper (used to show the real inventory inside Creative's
+	 * Inventory tab) reports its own position in the creative menu's slot list instead of the
+	 * wrapped slot's real position in the player's Inventory, which would otherwise silently
+	 * break hotbar/equipment detection for that screen.
+	 */
+	private static int containerSlotOf(Slot slot) {
+		if (slot instanceof SlotWrapperAccess wrapper) {
+			return wrapper.unitedMinecraft$getTarget().getContainerSlot();
+		}
+		return slot.getContainerSlot();
 	}
 
 	private static void switchSection(AbstractContainerScreen<?> screen, LocalPlayer player, int direction) {
@@ -424,15 +469,20 @@ public final class MenuAccessibilityController {
 	private static List<Slot> sectionSlots(AbstractContainerMenu menu, LocalPlayer player, Section section) {
 		List<Slot> result = new ArrayList<>();
 		for (Slot slot : menu.slots) {
+			if (slot.x < 0) {
+				// Creative's Inventory tab keeps the (here unused) crafting grid slots around,
+				// just parked off-screen instead of removed - skip anything not actually shown.
+				continue;
+			}
 			boolean isPlayerInventory = slot.container == player.getInventory();
 			// Player-inventory container-local indices: 0-8 hotbar, 9-35 main inventory (a
 			// clean 27 = 9x3 grid), 36+ armor/offhand - a handful of slots InventoryMenu tacks
 			// on that don't fit any grid, so they get their own non-grid Equipment section.
 			boolean matches = switch (section) {
-				case HOTBAR -> isPlayerInventory && Inventory.isHotbarSlot(slot.getContainerSlot());
-				case INVENTORY -> isPlayerInventory && !Inventory.isHotbarSlot(slot.getContainerSlot())
-						&& slot.getContainerSlot() < 36;
-				case EQUIPMENT -> isPlayerInventory && slot.getContainerSlot() >= 36;
+				case HOTBAR -> isPlayerInventory && Inventory.isHotbarSlot(containerSlotOf(slot));
+				case INVENTORY -> isPlayerInventory && !Inventory.isHotbarSlot(containerSlotOf(slot))
+						&& containerSlotOf(slot) < 36;
+				case EQUIPMENT -> isPlayerInventory && containerSlotOf(slot) >= 36;
 				case CONTAINER -> !isPlayerInventory;
 				case RECIPE_BOOK -> false; // not slot-based; sectionSlots is never called for it.
 			};
@@ -441,7 +491,7 @@ public final class MenuAccessibilityController {
 			}
 		}
 		if (section == Section.INVENTORY || section == Section.HOTBAR) {
-			result.sort(Comparator.comparingInt(Slot::getContainerSlot));
+			result.sort(Comparator.comparingInt(MenuAccessibilityController::containerSlotOf));
 		}
 		return result;
 	}
@@ -536,7 +586,7 @@ public final class MenuAccessibilityController {
 
 	private static Component slotRole(AbstractContainerMenu menu, Slot slot, LocalPlayer player) {
 		if (slot.container == player.getInventory()) {
-			int containerSlot = slot.getContainerSlot();
+			int containerSlot = containerSlotOf(slot);
 			// Armor/offhand (36-40) belong to the player's own Inventory container just like the
 			// hotbar and main inventory do, so this generic check would otherwise catch them first
 			// and mislabel every one of them "Inventory" before the InventoryMenu-specific handling
