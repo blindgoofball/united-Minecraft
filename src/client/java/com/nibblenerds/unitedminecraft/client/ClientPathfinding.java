@@ -5,7 +5,7 @@ import java.util.Set;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.PathNavigationRegion;
@@ -27,7 +27,7 @@ final class ClientPathfinding {
 
 	static Path computePath(LocalPlayer player, BlockPos target, float maxPathLength, int reachRange) {
 		Level level = player.level();
-		Mob ghost = EntityType.ZOMBIE.create(level, EntitySpawnReason.COMMAND);
+		Mob ghost = EntityTypes.ZOMBIE.create(level, EntitySpawnReason.COMMAND);
 		if (ghost == null) {
 			return null;
 		}

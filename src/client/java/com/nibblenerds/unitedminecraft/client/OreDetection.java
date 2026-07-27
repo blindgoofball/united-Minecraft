@@ -2,6 +2,7 @@ package com.nibblenerds.unitedminecraft.client;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.tags.BlockItemTags;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
@@ -20,14 +21,14 @@ final class OreDetection {
 	}
 
 	static boolean isValuableOre(BlockState state) {
-		return state.is(BlockTags.COAL_ORES)
+		return state.is(BlockItemTags.COAL_ORES.block())
 				|| state.is(BlockTags.IRON_ORES)
 				|| state.is(BlockTags.COPPER_ORES)
 				|| state.is(BlockTags.GOLD_ORES)
-				|| state.is(BlockTags.REDSTONE_ORES)
-				|| state.is(BlockTags.LAPIS_ORES)
-				|| state.is(BlockTags.DIAMOND_ORES)
-				|| state.is(BlockTags.EMERALD_ORES)
+				|| state.is(BlockItemTags.REDSTONE_ORES.block())
+				|| state.is(BlockItemTags.LAPIS_ORES.block())
+				|| state.is(BlockItemTags.DIAMOND_ORES.block())
+				|| state.is(BlockItemTags.EMERALD_ORES.block())
 				|| state.is(Blocks.NETHER_GOLD_ORE)
 				|| state.is(Blocks.NETHER_QUARTZ_ORE)
 				|| state.is(Blocks.ANCIENT_DEBRIS);

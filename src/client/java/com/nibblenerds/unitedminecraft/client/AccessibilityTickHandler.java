@@ -105,7 +105,7 @@ public final class AccessibilityTickHandler {
 			MiningRadarController.toggle(client);
 		}
 
-		if (client.screen != null && AutoWalkController.isActive()) {
+		if (client.gui.screen() != null && AutoWalkController.isActive()) {
 			// AutoWalkController.tick (and the cancel-key check inside it) only runs below,
 			// under the screen == null branch - without this, opening any screen mid-walk
 			// would leave the player's input permanently swapped to the auto-walk input and
@@ -113,7 +113,7 @@ public final class AccessibilityTickHandler {
 			AutoWalkController.cancel(client, player);
 		}
 
-		if (client.screen == null) {
+		if (client.gui.screen() == null) {
 			if (AutoWalkController.isActive()) {
 				// Owns rotation and movement input entirely until it finishes or is
 				// cancelled - skip everything else that would otherwise fight it (camera
@@ -148,7 +148,7 @@ public final class AccessibilityTickHandler {
 		}
 		handleHotbarNarration(client, player);
 		handleBiomeNarration(client, player);
-		if (client.screen == null) {
+		if (client.gui.screen() == null) {
 			// Only relevant in-world: the menu's own inventory-screen narration already covers
 			// the offhand slot there, and vanilla's swap-hands key does nothing over a screen.
 			handleOffhandNarration(client, player);
