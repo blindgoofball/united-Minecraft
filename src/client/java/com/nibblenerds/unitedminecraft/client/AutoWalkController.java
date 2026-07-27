@@ -1,19 +1,13 @@
 package com.nibblenerds.unitedminecraft.client;
 
-import java.util.Set;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.ClientInput;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
-import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Input;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.PathNavigationRegion;
 import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.level.pathfinder.PathFinder;
 import net.minecraft.world.level.pathfinder.WalkNodeEvaluator;
@@ -38,7 +32,6 @@ import net.minecraft.world.phys.Vec2;
  * work. The original input is restored when the walk ends or is cancelled.
  */
 public final class AutoWalkController {
-	private static final int SEARCH_MARGIN = 16;
 	private static final float MAX_PATH_LENGTH = 128.0f;
 	private static final int REACH_RANGE = 2;
 	private static final double NODE_ARRIVAL_DISTANCE_SQR = 0.5 * 0.5;
@@ -65,7 +58,7 @@ public final class AutoWalkController {
 			cancel(client, player);
 		}
 
-		Path path = computePath(player, target);
+		Path path = ClientPathfinding.computePath(player, target, MAX_PATH_LENGTH, REACH_RANGE);
 		if (path == null || path.getNodeCount() == 0) {
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.autowalk_unreachable"));
 			return;
@@ -125,29 +118,6 @@ public final class AutoWalkController {
 		client.getNarrator().saySystemNow(name != null
 				? Component.translatable(messageKey, name)
 				: Component.translatable(messageKey));
-	}
-
-	private static Path computePath(LocalPlayer player, BlockPos target) {
-		Level level = player.level();
-		Mob ghost = EntityType.ZOMBIE.create(level, EntitySpawnReason.COMMAND);
-		if (ghost == null) {
-			return null;
-		}
-		ghost.snapTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), 0.0f);
-
-		BlockPos playerPos = player.blockPosition();
-		BlockPos regionStart = new BlockPos(
-				Math.min(playerPos.getX(), target.getX()) - SEARCH_MARGIN,
-				Math.min(playerPos.getY(), target.getY()) - SEARCH_MARGIN,
-				Math.min(playerPos.getZ(), target.getZ()) - SEARCH_MARGIN);
-		BlockPos regionEnd = new BlockPos(
-				Math.max(playerPos.getX(), target.getX()) + SEARCH_MARGIN,
-				Math.max(playerPos.getY(), target.getY()) + SEARCH_MARGIN,
-				Math.max(playerPos.getZ(), target.getZ()) + SEARCH_MARGIN);
-		PathNavigationRegion region = new PathNavigationRegion(level, regionStart, regionEnd);
-
-		PathFinder finder = new PathFinder(new WalkNodeEvaluator(), 4096);
-		return finder.findPath(region, ghost, Set.of(target), MAX_PATH_LENGTH, REACH_RANGE, 1.0f);
 	}
 
 	/** Reports "forward" (and "jump" when stepping up) as held, exactly like real keyboard input would. */

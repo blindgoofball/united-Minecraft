@@ -5,8 +5,13 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.util.Util;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.biome.Biome;
 
 /**
  * Drives United Minecraft's per-tick accessibility features: coordinate/health/bearing
@@ -40,6 +45,7 @@ public final class AccessibilityTickHandler {
 	private static int lastOctant = -1;
 	private static int lastHotbarSlot = -1;
 	private static ItemStack lastOffhand = null;
+	private static Holder<Biome> lastBiome = null;
 
 	private AccessibilityTickHandler() {
 	}
@@ -55,9 +61,11 @@ public final class AccessibilityTickHandler {
 			lastOctant = -1;
 			lastHotbarSlot = -1;
 			lastOffhand = null;
+			lastBiome = null;
 			BuildModeController.reset();
 			ScannerController.reset();
 			AutoWalkController.reset();
+			MovementAssistController.reset();
 			TreeChoppingAssist.reset();
 			return;
 		}
@@ -66,6 +74,14 @@ public final class AccessibilityTickHandler {
 		// combining it with the build cursor's own rotation-override would just fight it.
 		if (!ScannerController.isLocked() && ClientKeyBindings.TOGGLE_BUILD_MODE.consumeClick()) {
 			BuildModeController.toggle(client, player);
+		}
+
+		if (client.screen != null && AutoWalkController.isActive()) {
+			// AutoWalkController.tick (and the cancel-key check inside it) only runs below,
+			// under the screen == null branch - without this, opening any screen mid-walk
+			// would leave the player's input permanently swapped to the auto-walk input and
+			// make it unreachable/uncancellable until that screen closed again.
+			AutoWalkController.cancel(client, player);
 		}
 
 		if (client.screen == null) {
@@ -89,6 +105,7 @@ public final class AccessibilityTickHandler {
 				}
 				TreeChoppingAssist.tick(client, player);
 				ScannerController.tick(client, player);
+				MovementAssistController.tick(client, player);
 			}
 		}
 
@@ -98,6 +115,7 @@ public final class AccessibilityTickHandler {
 			handleFacingNarration(client, player);
 		}
 		handleHotbarNarration(client, player);
+		handleBiomeNarration(client, player);
 		if (client.screen == null) {
 			// Only relevant in-world: the menu's own inventory-screen narration already covers
 			// the offhand slot there, and vanilla's swap-hands key does nothing over a screen.
@@ -230,10 +248,31 @@ public final class AccessibilityTickHandler {
 				: ItemDescriptions.describe(stack);
 	}
 
+	private static void handleBiomeNarration(Minecraft client, LocalPlayer player) {
+		Holder<Biome> biome = player.level().getBiome(player.blockPosition());
+		if (biome != lastBiome) {
+			if (lastBiome != null) {
+				client.getNarrator().saySystemNow(
+						Component.translatable("united_minecraft.narrate.biome_entered", biomeName(biome)));
+			}
+			lastBiome = biome;
+		}
+	}
+
+	private static Component biomeName(Holder<Biome> biome) {
+		Identifier id = biome.unwrapKey().map(ResourceKey::identifier).orElse(null);
+		return Component.translatable(Util.makeDescriptionId("biome", id));
+	}
+
 	private static void narrateCoordinates(Minecraft client, LocalPlayer player) {
 		BlockPos pos = player.blockPosition();
-		client.getNarrator().saySystemNow(
-				Component.translatable("united_minecraft.narrate.coordinates", pos.getX(), pos.getY(), pos.getZ()));
+		Component standingOn = player.level().getBlockState(pos.below()).getBlock().getName();
+		Component message = Component.translatable("united_minecraft.narrate.coordinates", pos.getX(), pos.getY(), pos.getZ())
+				.append(Component.literal(". "))
+				.append(Component.translatable("united_minecraft.narrate.standing_on", standingOn))
+				.append(Component.literal(". "))
+				.append(Component.translatable("united_minecraft.narrate.biome_label", biomeName(player.level().getBiome(pos))));
+		client.getNarrator().saySystemNow(message);
 	}
 
 	private static void narrateHealth(Minecraft client, LocalPlayer player) {
