@@ -57,6 +57,7 @@ public final class AccessibilityTickHandler {
 			lastOffhand = null;
 			BuildModeController.reset();
 			ScannerController.reset();
+			AutoWalkController.reset();
 			TreeChoppingAssist.reset();
 			return;
 		}
@@ -68,10 +69,18 @@ public final class AccessibilityTickHandler {
 		}
 
 		if (client.screen == null) {
-			if (ScannerController.isLocked()) {
+			if (AutoWalkController.isActive()) {
+				// Owns rotation and movement input entirely until it finishes or is
+				// cancelled - skip everything else that would otherwise fight it (camera
+				// look, build mode, and the scanner's own key handling, which would
+				// otherwise steal the Stop Lock/cancel keypress before this sees it).
+				AutoWalkController.tick(client, player);
+			} else if (ScannerController.isLocked()) {
 				ScannerController.tickLock(client, player);
+				ScannerController.tick(client, player);
 			} else if (BuildModeController.isActive()) {
 				BuildModeController.tick(client, player);
+				ScannerController.tick(client, player);
 			} else {
 				if (ClientKeyBindings.isShiftDown(client)) {
 					handleSnapTurn(client, player);
@@ -79,13 +88,13 @@ public final class AccessibilityTickHandler {
 					handleCameraLook(player);
 				}
 				TreeChoppingAssist.tick(client, player);
+				ScannerController.tick(client, player);
 			}
-			ScannerController.tick(client, player);
 		}
 
-		if (!BuildModeController.isActive() && !ScannerController.isLocked()) {
-			// Build mode and scanner lock-on both drive yaw themselves; octant narration
-			// would just be noisy chatter racing their own narration.
+		if (!BuildModeController.isActive() && !ScannerController.isLocked() && !AutoWalkController.isActive()) {
+			// Build mode, scanner lock-on, and auto-walk all drive yaw themselves; octant
+			// narration would just be noisy chatter racing their own narration.
 			handleFacingNarration(client, player);
 		}
 		handleHotbarNarration(client, player);

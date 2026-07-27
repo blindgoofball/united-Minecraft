@@ -10,10 +10,6 @@ import java.util.Set;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 
-import com.nibblenerds.unitedminecraft.network.TeleportRequestPayload;
-
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
@@ -45,14 +41,11 @@ import net.minecraft.world.phys.Vec3;
  * <p>Enter on a block just aims the player at it. Enter on a mob starts a continuous
  * lock-on that keeps facing it every tick until Delete (stop lock) is pressed - which
  * takes over rotation entirely while active, so build mode and normal camera turning are
- * blocked until it's released. Shift+Enter instead requests a teleport to just in front of
- * the target, via a server round-trip (see {@link TeleportRequestPayload}) rather than
- * moving the client's position directly, since the server would otherwise treat an
- * unannounced jump as implausible movement and correct it right back.
+ * blocked until it's released. Shift+Enter instead auto-walks there via
+ * {@link AutoWalkController} - fully client-side, no server cooperation needed.
  */
 public final class ScannerController {
-	private static final double SCAN_RANGE = 16.0;
-	private static final double TELEPORT_APPROACH_DISTANCE = 2.0;
+	private static final double SCAN_RANGE = 32.0;
 	private static final int LEAF_SEARCH_MARGIN = 2;
 
 	private static final ScannerCategory[] CATEGORIES = ScannerCategory.values();
@@ -147,7 +140,7 @@ public final class ScannerController {
 		Component message = category.label().append(Component.literal(": ")).append(
 				items.isEmpty()
 						? Component.translatable("united_minecraft.narrate.scanner_empty")
-						: describeItem(category, items.get(0), player.level()));
+						: describeItem(category, items.get(0), player));
 		client.getNarrator().saySystemNow(message);
 	}
 
@@ -156,7 +149,7 @@ public final class ScannerController {
 			return;
 		}
 		itemIndex = Math.floorMod(itemIndex + direction, items.size());
-		client.getNarrator().saySystemNow(describeItem(CATEGORIES[categoryIndex], items.get(itemIndex), player.level()));
+		client.getNarrator().saySystemNow(describeItem(CATEGORIES[categoryIndex], items.get(itemIndex), player));
 	}
 
 	private static void target(Minecraft client, LocalPlayer player) {
@@ -166,93 +159,58 @@ public final class ScannerController {
 			return;
 		}
 
-		boolean teleport = ClientKeyBindings.isShiftDown(client);
+		boolean walkThere = ClientKeyBindings.isShiftDown(client);
 		ScannerCategory category = CATEGORIES[categoryIndex];
 		if (item.entity() != null) {
 			if (category == ScannerCategory.ITEMS) {
 				// Dropped items don't move on their own and aren't a threat to track - just
 				// look at them once, like a block, rather than starting a continuous lock-on.
-				targetEntityOnce(client, player, item.entity(), teleport);
+				targetEntityOnce(client, player, item.entity(), walkThere);
 			} else {
-				targetEntity(client, player, item.entity(), teleport);
+				targetEntity(client, player, item.entity(), walkThere);
 			}
 		} else {
-			targetBlock(client, player, item.blockPos(), teleport);
+			targetBlock(client, player, item.blockPos(), walkThere);
 		}
 	}
 
-	private static void targetEntity(Minecraft client, LocalPlayer player, Entity entity, boolean teleport) {
+	private static void targetEntity(Minecraft client, LocalPlayer player, Entity entity, boolean walkThere) {
 		if (!entity.isAlive()) {
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.scanner_target_gone"));
 			return;
 		}
-		Vec3 center = entity.getBoundingBox().getCenter();
-		if (teleport) {
-			requestTeleportNear(client, player, center, entity.getY());
+		if (walkThere) {
+			AutoWalkController.start(client, player, entity.blockPosition(), entity.getDisplayName());
 			return;
 		}
 		lockedEntity = entity;
-		CameraUtil.aimAt(player, center);
+		CameraUtil.aimAt(player, entity.getBoundingBox().getCenter());
 		client.getNarrator().saySystemNow(
 				Component.translatable("united_minecraft.narrate.scanner_lock_started", entity.getDisplayName()));
 	}
 
-	private static void targetEntityOnce(Minecraft client, LocalPlayer player, Entity entity, boolean teleport) {
+	private static void targetEntityOnce(Minecraft client, LocalPlayer player, Entity entity, boolean walkThere) {
 		if (!entity.isAlive()) {
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.scanner_target_gone"));
 			return;
 		}
-		Vec3 center = entity.getBoundingBox().getCenter();
-		if (teleport) {
-			requestTeleportNear(client, player, center, entity.getY());
+		if (walkThere) {
+			AutoWalkController.start(client, player, entity.blockPosition(), entity.getDisplayName());
 			return;
 		}
-		CameraUtil.aimAt(player, center);
+		CameraUtil.aimAt(player, entity.getBoundingBox().getCenter());
 		client.getNarrator().saySystemNow(
 				Component.translatable("united_minecraft.narrate.scanner_facing", entity.getDisplayName()));
 	}
 
-	private static void targetBlock(Minecraft client, LocalPlayer player, BlockPos pos, boolean teleport) {
-		Vec3 center = Vec3.atCenterOf(pos);
-		if (teleport) {
-			requestTeleportNear(client, player, center, pos.getY());
+	private static void targetBlock(Minecraft client, LocalPlayer player, BlockPos pos, boolean walkThere) {
+		if (walkThere) {
+			AutoWalkController.start(client, player, pos, player.level().getBlockState(pos).getBlock().getName());
 			return;
 		}
-		CameraUtil.aimAt(player, center);
+		CameraUtil.aimAt(player, Vec3.atCenterOf(pos));
 		client.getNarrator().saySystemNow(Component.translatable(
 				"united_minecraft.narrate.scanner_facing", player.level().getBlockState(pos).getBlock().getName()));
-	}
-
-	/**
-	 * Approaches {@code aimTarget} from whichever horizontal side the player is currently
-	 * on, landing at {@code landingY} (the target's own ground level) roughly 2 blocks
-	 * away, then facing it. Pre-checks safety client-side (to skip a pointless round trip
-	 * and give immediate feedback), but the server re-checks before actually moving anyone.
-	 */
-	private static void requestTeleportNear(Minecraft client, LocalPlayer player, Vec3 aimTarget, double landingY) {
-		Vec3 fromPlayer = player.position().subtract(aimTarget);
-		Vec3 horizontal = new Vec3(fromPlayer.x(), 0, fromPlayer.z());
-		Vec3 approachDir = horizontal.lengthSqr() < 1.0e-4 ? new Vec3(0, 0, 1) : horizontal.normalize();
-
-		Vec3 feet = new Vec3(aimTarget.x(), landingY, aimTarget.z()).add(approachDir.scale(TELEPORT_APPROACH_DISTANCE));
-
-		Level level = player.level();
-		AABB candidateBox = player.getBoundingBox().move(feet.subtract(player.position()));
-		if (!level.noCollision(player, candidateBox) || level.containsAnyLiquid(candidateBox)) {
-			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.scanner_teleport_unsafe"));
-			return;
-		}
-
-		Vec3 eyeAfter = feet.add(0, player.getEyeHeight(), 0);
-		double dx = aimTarget.x() - eyeAfter.x();
-		double dy = aimTarget.y() - eyeAfter.y();
-		double dz = aimTarget.z() - eyeAfter.z();
-		double horizontalDistance = Math.sqrt(dx * dx + dz * dz);
-		float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
-		float pitch = (float) Math.toDegrees(Math.atan2(-dy, horizontalDistance));
-
-		ClientPlayNetworking.send(new TeleportRequestPayload(feet.x(), feet.y(), feet.z(), yaw, pitch));
-		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.scanner_teleported"));
 	}
 
 	private static ScannerItem currentItem() {
@@ -262,9 +220,15 @@ public final class ScannerController {
 		return items.get(itemIndex);
 	}
 
-	private static Component describeItem(ScannerCategory category, ScannerItem item, Level level) {
+	private static Component describeItem(ScannerCategory category, ScannerItem item, LocalPlayer player) {
 		int distance = (int) Math.round(item.distance());
-		return Component.translatable("united_minecraft.narrate.front_single", itemName(category, item, level), distance);
+		Component direction = CameraUtil.compassDirectionTo(player.position(), targetPosition(item));
+		return Component.translatable("united_minecraft.narrate.scanner_item",
+				itemName(category, item, player.level()), distance, direction);
+	}
+
+	private static Vec3 targetPosition(ScannerItem item) {
+		return item.entity() != null ? item.entity().getBoundingBox().getCenter() : Vec3.atCenterOf(item.blockPos());
 	}
 
 	private static Component itemName(ScannerCategory category, ScannerItem item, Level level) {

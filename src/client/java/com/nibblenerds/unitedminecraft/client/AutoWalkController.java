@@ -1,0 +1,160 @@
+package com.nibblenerds.unitedminecraft.client;
+
+import java.util.Set;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.ClientInput;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.PathNavigationRegion;
+import net.minecraft.world.level.pathfinder.Path;
+import net.minecraft.world.level.pathfinder.PathFinder;
+import net.minecraft.world.level.pathfinder.WalkNodeEvaluator;
+import net.minecraft.world.phys.Vec2;
+
+/**
+ * The scanner's "walk to it" automation: computes a path with vanilla's own pathfinding
+ * (the same {@link PathFinder}/{@link WalkNodeEvaluator} a mob uses), then simulates
+ * ordinary forward/turn/jump input each tick until the path finishes. This is the
+ * client-side replacement for the old server-teleport approach - since it only ever
+ * generates the same movement packets any real player already sends, it needs no server
+ * cooperation at all and works on any vanilla server.
+ *
+ * <p>Path computation needs a {@link Mob} purely as a parameter bag (bounding box, step
+ * height, fall tolerance) - it's never added to the world or ticked, just positioned at
+ * the player's feet and handed to the pathfinder, which only reads those parameters.
+ *
+ * <p>Once a path is found, the player's own {@link LocalPlayer#input} field (normally a
+ * {@code KeyboardInput} reading real keys) is swapped for {@link AutoWalkInput}, which
+ * reports "forward" (and "jump" when the next waypoint is a step up) as if held - the same
+ * mechanism real keyboard input uses, so movement, sprinting, and network sync all just
+ * work. The original input is restored when the walk ends or is cancelled.
+ */
+public final class AutoWalkController {
+	private static final int SEARCH_MARGIN = 16;
+	private static final float MAX_PATH_LENGTH = 128.0f;
+	private static final int REACH_RANGE = 2;
+	private static final double NODE_ARRIVAL_DISTANCE_SQR = 0.5 * 0.5;
+
+	private static Path currentPath;
+	private static ClientInput previousInput;
+	private static Component targetName;
+
+	private AutoWalkController() {
+	}
+
+	public static boolean isActive() {
+		return currentPath != null;
+	}
+
+	public static void reset() {
+		currentPath = null;
+		previousInput = null;
+		targetName = null;
+	}
+
+	public static void start(Minecraft client, LocalPlayer player, BlockPos target, Component name) {
+		if (isActive()) {
+			cancel(client, player);
+		}
+
+		Path path = computePath(player, target);
+		if (path == null || path.getNodeCount() == 0) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.autowalk_unreachable"));
+			return;
+		}
+
+		currentPath = path;
+		targetName = name;
+		previousInput = player.input;
+		player.input = new AutoWalkInput();
+		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.autowalk_started", name));
+	}
+
+	public static void cancel(Minecraft client, LocalPlayer player) {
+		if (!isActive()) {
+			return;
+		}
+		finish(client, player, "united_minecraft.narrate.autowalk_cancelled");
+	}
+
+	public static void tick(Minecraft client, LocalPlayer player) {
+		if (!isActive()) {
+			return;
+		}
+		if (ClientKeyBindings.SCANNER_STOP_LOCK.consumeClick()) {
+			cancel(client, player);
+			return;
+		}
+
+		BlockPos nextPos = currentPath.getNextNodePos();
+		double dx = nextPos.getX() + 0.5 - player.getX();
+		double dz = nextPos.getZ() + 0.5 - player.getZ();
+
+		if (dx * dx + dz * dz < NODE_ARRIVAL_DISTANCE_SQR) {
+			currentPath.advance();
+			if (currentPath.isDone()) {
+				finish(client, player, "united_minecraft.narrate.autowalk_arrived");
+			}
+			return;
+		}
+
+		// Same inverse-of-calculateViewVector formula CameraUtil.aimAt uses, but yaw only -
+		// we want the player's body (and thus their walk direction) turning to face the next
+		// waypoint, not their pitch changing while they walk.
+		float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
+		player.setYRot(yaw);
+		player.setYHeadRot(yaw);
+		player.setOldRot();
+
+		boolean needsJump = player.onGround() && nextPos.getY() > Mth.floor(player.getY() + 0.1);
+		((AutoWalkInput) player.input).setWalking(needsJump);
+	}
+
+	private static void finish(Minecraft client, LocalPlayer player, String messageKey) {
+		Component name = targetName;
+		player.input = previousInput;
+		reset();
+		client.getNarrator().saySystemNow(name != null
+				? Component.translatable(messageKey, name)
+				: Component.translatable(messageKey));
+	}
+
+	private static Path computePath(LocalPlayer player, BlockPos target) {
+		Level level = player.level();
+		Mob ghost = EntityType.ZOMBIE.create(level, EntitySpawnReason.COMMAND);
+		if (ghost == null) {
+			return null;
+		}
+		ghost.snapTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), 0.0f);
+
+		BlockPos playerPos = player.blockPosition();
+		BlockPos regionStart = new BlockPos(
+				Math.min(playerPos.getX(), target.getX()) - SEARCH_MARGIN,
+				Math.min(playerPos.getY(), target.getY()) - SEARCH_MARGIN,
+				Math.min(playerPos.getZ(), target.getZ()) - SEARCH_MARGIN);
+		BlockPos regionEnd = new BlockPos(
+				Math.max(playerPos.getX(), target.getX()) + SEARCH_MARGIN,
+				Math.max(playerPos.getY(), target.getY()) + SEARCH_MARGIN,
+				Math.max(playerPos.getZ(), target.getZ()) + SEARCH_MARGIN);
+		PathNavigationRegion region = new PathNavigationRegion(level, regionStart, regionEnd);
+
+		PathFinder finder = new PathFinder(new WalkNodeEvaluator(), 4096);
+		return finder.findPath(region, ghost, Set.of(target), MAX_PATH_LENGTH, REACH_RANGE, 1.0f);
+	}
+
+	/** Reports "forward" (and "jump" when stepping up) as held, exactly like real keyboard input would. */
+	private static final class AutoWalkInput extends ClientInput {
+		void setWalking(boolean jump) {
+			this.keyPresses = new Input(true, false, false, false, jump, false, false);
+			this.moveVector = new Vec2(0.0f, 1.0f);
+		}
+	}
+}
