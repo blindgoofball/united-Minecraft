@@ -46,6 +46,14 @@ navigation without needing to see or aim at them.
 - A dedicated key announces the currently focused item's exact coordinates, for
   actually finding your way to it.
 
+### Combat Mode
+
+Toggleable continuous lock-on: keeps you facing whichever hostile mob is
+nearest, switching target as a fight moves rather than sticking to one until
+it dies - built for fighting more than one attacker, where re-targeting by
+hand between hits isn't practical. Auto-disables Build Mode if it was on, and
+you can still walk, strafe, and jump freely while your aim stays locked.
+
 ### Auto-Walk
 
 Automatically walks you to anything the Scanner has found, or that Build Mode's
@@ -162,6 +170,7 @@ where noted.
 | G | Build Mode: walk to cursor |
 | N | Toggle Navigation Radar |
 | M | Toggle Mining Radar |
+| K | Toggle Combat Mode |
 | Left/Right/Up/Down arrows | Turn camera, or move the Build Mode cursor (Shift = snap-turn 45 degrees when not in Build Mode) |
 | Page Up/Down | Build Mode cursor up/down, or cycle the Scanner's nearest items |
 | Home/End | Cycle the Scanner's category |
