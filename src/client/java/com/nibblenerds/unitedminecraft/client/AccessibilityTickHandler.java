@@ -2,6 +2,7 @@ package com.nibblenerds.unitedminecraft.client;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
@@ -47,6 +48,16 @@ public final class AccessibilityTickHandler {
 	private static ItemStack lastOffhand = null;
 	private static Holder<Biome> lastBiome = null;
 
+	// Rising-edge state for snap-turn's arrow keys - see the note on pressedEdge() for why
+	// this replaces KeyMapping's own click-queue tracking. Updated every tick regardless of
+	// which mode is active (not just while snap-turn itself runs) so it stays accurate
+	// across mode switches - e.g. an arrow key held while build mode is active shouldn't
+	// misfire as a fresh press the moment build mode turns off.
+	private static boolean snapLeftHeld;
+	private static boolean snapRightHeld;
+	private static boolean snapUpHeld;
+	private static boolean snapDownHeld;
+
 	private AccessibilityTickHandler() {
 	}
 
@@ -62,6 +73,7 @@ public final class AccessibilityTickHandler {
 			lastHotbarSlot = -1;
 			lastOffhand = null;
 			lastBiome = null;
+			snapLeftHeld = snapRightHeld = snapUpHeld = snapDownHeld = false;
 			BuildModeController.reset();
 			ScannerController.reset();
 			AutoWalkController.reset();
@@ -70,6 +82,15 @@ public final class AccessibilityTickHandler {
 			TreeChoppingAssist.reset();
 			return;
 		}
+
+		boolean snapLeftPressed = pressedEdge(ClientKeyBindings.LOOK_LEFT, snapLeftHeld);
+		boolean snapRightPressed = pressedEdge(ClientKeyBindings.LOOK_RIGHT, snapRightHeld);
+		boolean snapUpPressed = pressedEdge(ClientKeyBindings.LOOK_UP, snapUpHeld);
+		boolean snapDownPressed = pressedEdge(ClientKeyBindings.LOOK_DOWN, snapDownHeld);
+		snapLeftHeld = ClientKeyBindings.LOOK_LEFT.isDown();
+		snapRightHeld = ClientKeyBindings.LOOK_RIGHT.isDown();
+		snapUpHeld = ClientKeyBindings.LOOK_UP.isDown();
+		snapDownHeld = ClientKeyBindings.LOOK_DOWN.isDown();
 
 		// Blocked while locked: lock-on owns rotation until Stop Lock is pressed, and
 		// combining it with the build cursor's own rotation-override would just fight it.
@@ -103,7 +124,7 @@ public final class AccessibilityTickHandler {
 				ScannerController.tick(client, player);
 			} else {
 				if (ClientKeyBindings.isShiftDown(client)) {
-					handleSnapTurn(client, player);
+					handleSnapTurn(client, player, snapLeftPressed, snapRightPressed, snapUpPressed, snapDownPressed);
 				} else {
 					handleCameraLook(player);
 				}
@@ -172,23 +193,27 @@ public final class AccessibilityTickHandler {
 	 * up/down step pitch through -90/-45/0/45/90 (announced here, since nothing else covers
 	 * pitch). The epsilon nudge before flooring/ceiling means a press always moves at least
 	 * one full step, even when already sitting exactly on a 45 degree marker.
+	 *
+	 * <p>Takes pre-computed rising-edge presses rather than reading the keys' click queues
+	 * itself - see {@link #pressedEdge} for why.
 	 */
-	private static void handleSnapTurn(Minecraft client, LocalPlayer player) {
+	private static void handleSnapTurn(Minecraft client, LocalPlayer player,
+			boolean leftPressed, boolean rightPressed, boolean upPressed, boolean downPressed) {
 		boolean yawChanged = false;
 		boolean pitchChanged = false;
-		if (ClientKeyBindings.LOOK_LEFT.consumeClick()) {
+		if (leftPressed) {
 			player.setYRot(snapDown45(player.getYRot()));
 			yawChanged = true;
 		}
-		if (ClientKeyBindings.LOOK_RIGHT.consumeClick()) {
+		if (rightPressed) {
 			player.setYRot(snapUp45(player.getYRot()));
 			yawChanged = true;
 		}
-		if (ClientKeyBindings.LOOK_UP.consumeClick()) {
+		if (upPressed) {
 			player.setXRot(snapDown45(player.getXRot()));
 			pitchChanged = true;
 		}
-		if (ClientKeyBindings.LOOK_DOWN.consumeClick()) {
+		if (downPressed) {
 			player.setXRot(snapUp45(player.getXRot()));
 			pitchChanged = true;
 		}
@@ -200,6 +225,22 @@ public final class AccessibilityTickHandler {
 		if (pitchChanged) {
 			narrateBearing(client, player);
 		}
+	}
+
+	/**
+	 * True only on the tick a key transitions from up to down.
+	 *
+	 * <p>GLFW fires repeated key events for a key that's simply being held (not just the
+	 * initial press), which keeps piling into {@link net.minecraft.client.KeyMapping}'s own
+	 * click queue for as long as nothing drains it. Snap-turn used to read the arrow keys via
+	 * {@code consumeClick()}, but ordinary camera-look (and build mode's cursor stepping) only
+	 * ever read them via {@code isDown()} - neither drains the queue - so pressing arrows while
+	 * either of those was active left a backlog that, the next time Shift was held, burned
+	 * through as a burst of unwanted snap-turns all at once. Polling {@code isDown()} and
+	 * tracking held-state ourselves sidesteps the click queue entirely.
+	 */
+	private static boolean pressedEdge(KeyMapping mapping, boolean wasHeld) {
+		return mapping.isDown() && !wasHeld;
 	}
 
 	private static float snapDown45(float degrees) {
