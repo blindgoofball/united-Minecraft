@@ -75,6 +75,7 @@ public final class AccessibilityTickHandler {
 			lastBiome = null;
 			snapLeftHeld = snapRightHeld = snapUpHeld = snapDownHeld = false;
 			BuildModeController.reset();
+			CombatModeController.reset();
 			ScannerController.reset();
 			AutoWalkController.reset();
 			MovementAssistController.reset();
@@ -95,7 +96,10 @@ public final class AccessibilityTickHandler {
 
 		// Blocked while locked: lock-on owns rotation until Stop Lock is pressed, and
 		// combining it with the build cursor's own rotation-override would just fight it.
-		if (!ScannerController.isLocked() && ClientKeyBindings.TOGGLE_BUILD_MODE.consumeClick()) {
+		// Combat Mode owns rotation the same way, so it blocks entering build mode too -
+		// toggling combat mode on already turns build mode off if it was running.
+		if (!ScannerController.isLocked() && !CombatModeController.isActive()
+				&& ClientKeyBindings.TOGGLE_BUILD_MODE.consumeClick()) {
 			BuildModeController.toggle(client, player);
 		}
 		if (ClientKeyBindings.TOGGLE_NAV_RADAR.consumeClick()) {
@@ -103,6 +107,9 @@ public final class AccessibilityTickHandler {
 		}
 		if (ClientKeyBindings.TOGGLE_MINING_RADAR.consumeClick()) {
 			MiningRadarController.toggle(client);
+		}
+		if (ClientKeyBindings.TOGGLE_COMBAT_MODE.consumeClick()) {
+			CombatModeController.toggle(client, player);
 		}
 
 		if (client.gui.screen() != null && AutoWalkController.isActive()) {
@@ -123,6 +130,10 @@ public final class AccessibilityTickHandler {
 			} else if (ScannerController.isLocked()) {
 				ScannerController.tickLock(client, player);
 				ScannerController.tick(client, player);
+			} else if (CombatModeController.isActive()) {
+				// Owns rotation entirely, the same as scanner lock-on above - deliberately not
+				// also running build mode/normal camera look/scanner key handling here.
+				CombatModeController.tick(client, player);
 			} else if (BuildModeController.isActive()) {
 				BuildModeController.tick(client, player);
 				ScannerController.tick(client, player);
@@ -141,9 +152,10 @@ public final class AccessibilityTickHandler {
 			}
 		}
 
-		if (!BuildModeController.isActive() && !ScannerController.isLocked() && !AutoWalkController.isActive()) {
-			// Build mode, scanner lock-on, and auto-walk all drive yaw themselves; octant
-			// narration would just be noisy chatter racing their own narration.
+		if (!BuildModeController.isActive() && !ScannerController.isLocked() && !AutoWalkController.isActive()
+				&& !CombatModeController.isActive()) {
+			// Build mode, scanner lock-on, combat mode, and auto-walk all drive yaw
+			// themselves; octant narration would just be noisy chatter racing their own.
 			handleFacingNarration(client, player);
 		}
 		handleHotbarNarration(client, player);

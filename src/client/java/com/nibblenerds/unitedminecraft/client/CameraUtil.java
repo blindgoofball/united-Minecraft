@@ -2,6 +2,8 @@ package com.nibblenerds.unitedminecraft.client;
 
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.item.BowItem;
 import net.minecraft.world.phys.Vec3;
 
 /** Shared "snap the player's look direction at a point" math, used by build mode and the scanner. */
@@ -69,6 +71,33 @@ public final class CameraUtil {
 		player.setXRot(pitch);
 		player.setOldRot();
 		player.setYHeadRot(yaw);
+	}
+
+	/**
+	 * Aims at an entity the way any lock-on feature (Scanner, Combat Mode) wants to: a flat
+	 * look normally, or - if a bow is currently being drawn - a real ballistic arc instead,
+	 * continuously matching however far the draw has progressed.
+	 */
+	public static void aimAtEntity(LocalPlayer player, Entity target) {
+		Vec3 center = target.getBoundingBox().getCenter();
+		float drawPower = drawingBowPower(player);
+		// Below BowItem's own 0.1 firing threshold there's not enough draw speed to solve a
+		// sane arc from yet - a barely-started draw would otherwise snap the pitch to a wild
+		// extreme. Plain aim is a fine placeholder until the draw is far enough along to mean
+		// something.
+		if (drawPower >= 0.1f) {
+			aimBallisticAt(player, center, drawPower * 3.0f);
+		} else {
+			aimAt(player, center);
+		}
+	}
+
+	/** Current bow draw power (0..1, matching {@link BowItem#getPowerForTime}), or 0 if not drawing a bow. */
+	private static float drawingBowPower(LocalPlayer player) {
+		if (!player.isUsingItem() || !(player.getUseItem().getItem() instanceof BowItem)) {
+			return 0.0f;
+		}
+		return BowItem.getPowerForTime(player.getTicksUsingItem());
 	}
 
 	/**

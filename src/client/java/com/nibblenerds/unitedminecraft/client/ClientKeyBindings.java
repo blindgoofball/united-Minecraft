@@ -52,6 +52,9 @@ public final class ClientKeyBindings {
 	public static final KeyMapping TOGGLE_MINING_RADAR = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.toggle_mining_radar", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_M, CATEGORY));
 
+	public static final KeyMapping TOGGLE_COMBAT_MODE = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+			"key.united_minecraft.toggle_combat_mode", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_K, CATEGORY));
+
 	/**
 	 * The arrow keys are dual-purpose: continuous camera turning normally (see
 	 * {@code handleCameraLook}), but discrete one-block cursor steps while build
