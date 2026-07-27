@@ -3,7 +3,9 @@
 	"package": "com.nibblenerds.unitedminecraft.client.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"client": [
-		"GameNarratorMixin"
+		"GameNarratorMixin",
+		"ScreenNarratedWidgetMixin",
+		"ScreenNarrationDelayMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
