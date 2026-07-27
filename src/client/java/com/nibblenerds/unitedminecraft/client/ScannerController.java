@@ -22,6 +22,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Enemy;
+import net.minecraft.world.item.BowItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -56,6 +57,10 @@ import net.minecraft.world.phys.Vec3;
  * always reports a generic reason, regardless of the real one, which stays server-only) -
  * while the Hostile Mobs category was the one locked from. The mob simply despawning or
  * wandering out of range still just drops the lock like normal.
+ *
+ * <p>Drawing a bow while locked on switches from {@link CameraUtil#aimAt} (a flat, straight-line
+ * look) to {@link CameraUtil#aimBallisticAt}, which accounts for arrow drop - flat aim only
+ * actually lands a hit at point-blank range, since gravity pulls a real arrow down in flight.
  */
 public final class ScannerController {
 	private static final double SCAN_RANGE = 32.0;
@@ -141,7 +146,17 @@ public final class ScannerController {
 			return;
 		}
 		if (lockedEntity.isAlive() && lockedEntity.level() == player.level()) {
-			CameraUtil.aimAt(player, lockedEntity.getBoundingBox().getCenter());
+			Vec3 target = lockedEntity.getBoundingBox().getCenter();
+			float drawPower = drawingBowPower(player);
+			// Below BowItem's own 0.1 firing threshold there's not enough draw speed to solve a
+			// sane arc from yet - a barely-started draw would otherwise snap the pitch to a wild
+			// extreme. Plain aim is a fine placeholder until the draw is far enough along to mean
+			// something.
+			if (drawPower >= 0.1f) {
+				CameraUtil.aimBallisticAt(player, target, drawPower * 3.0f);
+			} else {
+				CameraUtil.aimAt(player, target);
+			}
 			return;
 		}
 
@@ -168,6 +183,14 @@ public final class ScannerController {
 		}
 		targetEntity(client, player, items.get(0).entity(), false);
 		return true;
+	}
+
+	/** Current bow draw power (0..1, matching {@link BowItem#getPowerForTime}), or 0 if not drawing a bow. */
+	private static float drawingBowPower(LocalPlayer player) {
+		if (!player.isUsingItem() || !(player.getUseItem().getItem() instanceof BowItem)) {
+			return 0.0f;
+		}
+		return BowItem.getPowerForTime(player.getTicksUsingItem());
 	}
 
 	private static void stopLock(Minecraft client) {
