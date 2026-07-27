@@ -47,6 +47,12 @@ import net.minecraft.world.phys.Vec3;
  * <p>Backslash announces the focused item's coordinates - useful for actually finding your
  * way to something (an ore vein, say) once the scanner's found it, since distance/direction
  * alone can be hard to translate into a real destination. Works while locked on too.
+ *
+ * <p>Killing a locked-on hostile mob automatically re-locks onto whichever hostile mob is
+ * now nearest, so tracking a fight doesn't mean re-scanning after every kill. Only fires for
+ * an actual kill (checked via {@link net.minecraft.world.entity.Entity.RemovalReason#KILLED})
+ * while the Hostile Mobs category was the one locked from - the mob simply despawning or
+ * wandering out of range still just drops the lock like normal.
  */
 public final class ScannerController {
 	private static final double SCAN_RANGE = 32.0;
@@ -131,12 +137,29 @@ public final class ScannerController {
 		if (lockedEntity == null) {
 			return;
 		}
-		if (!lockedEntity.isAlive() || lockedEntity.level() != player.level()) {
-			lockedEntity = null;
-			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.scanner_lock_lost"));
+		if (lockedEntity.isAlive() && lockedEntity.level() == player.level()) {
+			CameraUtil.aimAt(player, lockedEntity.getBoundingBox().getCenter());
 			return;
 		}
-		CameraUtil.aimAt(player, lockedEntity.getBoundingBox().getCenter());
+
+		boolean killed = lockedEntity.getRemovalReason() == Entity.RemovalReason.KILLED;
+		lockedEntity = null;
+		if (killed && categoryIndex >= 0 && CATEGORIES[categoryIndex] == ScannerCategory.HOSTILE_MOBS
+				&& relockNearestHostile(client, player)) {
+			return;
+		}
+		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.scanner_lock_lost"));
+	}
+
+	/** Re-scans for hostile mobs and locks onto the nearest one, if any are left. */
+	private static boolean relockNearestHostile(Minecraft client, LocalPlayer player) {
+		items = scan(ScannerCategory.HOSTILE_MOBS, player);
+		itemIndex = 0;
+		if (items.isEmpty() || items.get(0).entity() == null) {
+			return false;
+		}
+		targetEntity(client, player, items.get(0).entity(), false);
+		return true;
 	}
 
 	private static void stopLock(Minecraft client) {
