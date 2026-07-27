@@ -18,6 +18,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Enemy;
@@ -50,8 +51,10 @@ import net.minecraft.world.phys.Vec3;
  *
  * <p>Killing a locked-on hostile mob automatically re-locks onto whichever hostile mob is
  * now nearest, so tracking a fight doesn't mean re-scanning after every kill. Only fires for
- * an actual kill (checked via {@link net.minecraft.world.entity.Entity.RemovalReason#KILLED})
- * while the Hostile Mobs category was the one locked from - the mob simply despawning or
+ * an actual kill - checked via the mob's last synced health reaching zero, since the client
+ * never actually learns *why* an entity was removed (vanilla's own removal-packet handling
+ * always reports a generic reason, regardless of the real one, which stays server-only) -
+ * while the Hostile Mobs category was the one locked from. The mob simply despawning or
  * wandering out of range still just drops the lock like normal.
  */
 public final class ScannerController {
@@ -142,7 +145,12 @@ public final class ScannerController {
 			return;
 		}
 
-		boolean killed = lockedEntity.getRemovalReason() == Entity.RemovalReason.KILLED;
+		// The client never actually learns *why* an entity was removed - vanilla's own
+		// entity-removal packet handling always reports RemovalReason.DISCARDED regardless of
+		// the real server-side reason, which is never sent over the network. The mob's last
+		// synced health is the closest thing to a reliable "it died" signal actually available
+		// client-side (the server syncs health to 0 at or before removal on death).
+		boolean killed = lockedEntity instanceof LivingEntity living && living.isDeadOrDying();
 		lockedEntity = null;
 		if (killed && categoryIndex >= 0 && CATEGORIES[categoryIndex] == ScannerCategory.HOSTILE_MOBS
 				&& relockNearestHostile(client, player)) {
