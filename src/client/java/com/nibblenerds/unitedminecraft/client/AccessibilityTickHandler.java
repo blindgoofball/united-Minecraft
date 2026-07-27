@@ -66,6 +66,7 @@ public final class AccessibilityTickHandler {
 			ScannerController.reset();
 			AutoWalkController.reset();
 			MovementAssistController.reset();
+			NavRadarController.reset();
 			TreeChoppingAssist.reset();
 			return;
 		}
@@ -74,6 +75,9 @@ public final class AccessibilityTickHandler {
 		// combining it with the build cursor's own rotation-override would just fight it.
 		if (!ScannerController.isLocked() && ClientKeyBindings.TOGGLE_BUILD_MODE.consumeClick()) {
 			BuildModeController.toggle(client, player);
+		}
+		if (ClientKeyBindings.TOGGLE_NAV_RADAR.consumeClick()) {
+			NavRadarController.toggle(client);
 		}
 
 		if (client.screen != null && AutoWalkController.isActive()) {
@@ -106,6 +110,7 @@ public final class AccessibilityTickHandler {
 				TreeChoppingAssist.tick(client, player);
 				ScannerController.tick(client, player);
 				MovementAssistController.tick(client, player);
+				NavRadarController.tick(client, player);
 			}
 		}
 

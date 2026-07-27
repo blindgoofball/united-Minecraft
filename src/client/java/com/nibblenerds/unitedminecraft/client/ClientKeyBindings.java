@@ -38,6 +38,9 @@ public final class ClientKeyBindings {
 	public static final KeyMapping TOGGLE_BUILD_MODE = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.toggle_build_mode", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_I, CATEGORY));
 
+	public static final KeyMapping TOGGLE_NAV_RADAR = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+			"key.united_minecraft.toggle_nav_radar", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_N, CATEGORY));
+
 	/**
 	 * The arrow keys are dual-purpose: continuous camera turning normally (see
 	 * {@code handleCameraLook}), but discrete one-block cursor steps while build
