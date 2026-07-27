@@ -9,7 +9,7 @@
 	],
 	"contact": {
 	},
-	"license": "CC0-1.0",
+	"license": "GPL-3.0-or-later",
 	"icon": "assets/united_minecraft/icon.png",
 	"environment": "*",
 	"entrypoints": {
