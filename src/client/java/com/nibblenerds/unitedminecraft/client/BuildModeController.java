@@ -42,12 +42,27 @@ import net.minecraft.world.phys.Vec3;
  * real, sturdy neighboring face to rest against - see {@link #findSupportFace}
  * for how that neighbor is chosen, and {@link #place} for why it's tried
  * against the real placement call rather than trusted outright.
+ *
+ * <p>The cursor can roam a 65x65 horizontal area (32 blocks either way from
+ * wherever build mode was toggled on - fixed for the session, not recentered
+ * as the player moves) with unrestricted height, well beyond the player's
+ * actual placement/mining reach - useful for surveying or laying out a build
+ * before walking into range of any particular part of it. Moving the cursor
+ * never requires being in reach; only {@link #place} and {@link #breakBlock}
+ * do, and both check for themselves and narrate plainly if not. {@link
+ * #walkToCursor} drives the player there automatically via the same
+ * client-side pathfinding {@link AutoWalkController} already uses elsewhere.
  */
 public final class BuildModeController {
 	private static final double FACE_EPSILON = 0.001;
 
+	// How far the cursor can roam from the anchor set in toggle(), in blocks.
+	private static final int GRID_RADIUS = 32;
+
 	private static boolean active;
 	private static BlockPos cursor;
+	private static int anchorX;
+	private static int anchorZ;
 
 	// Rising-edge state for the movement keys - see the note on movementPressed() for why
 	// this replaces KeyMapping's own click-queue tracking for these six keys.
@@ -92,6 +107,8 @@ public final class BuildModeController {
 			pageDownHeld = ClientKeyBindings.PAGE_DOWN.isDown();
 			breakHeld = ClientKeyBindings.BUILD_BREAK.isDown();
 			cursor = player.blockPosition();
+			anchorX = cursor.getX();
+			anchorZ = cursor.getZ();
 			Component message = Component.translatable("united_minecraft.narrate.build_mode_on")
 					.append(Component.literal(" "))
 					.append(describeCursor(player));
@@ -149,6 +166,19 @@ public final class BuildModeController {
 			client.gameMode.stopDestroyBlock();
 		}
 		breakHeld = breakDown;
+
+		if (ClientKeyBindings.BUILD_WALK_TO_CURSOR.consumeClick()) {
+			walkToCursor(client, player);
+		}
+	}
+
+	/** Walks the player to within reach of the cursor, if a path there exists. */
+	private static void walkToCursor(Minecraft client, LocalPlayer player) {
+		if (isInReach(player, cursor)) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_already_in_reach"));
+			return;
+		}
+		AutoWalkController.start(client, player, cursor, Component.translatable("united_minecraft.narrate.build_cursor_name"));
 	}
 
 	/**
@@ -186,6 +216,10 @@ public final class BuildModeController {
 	 * placement call can fully predict whether a given face will be accepted.
 	 */
 	private static void place(Minecraft client, LocalPlayer player) {
+		if (!isInReach(player, cursor)) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_out_of_reach"));
+			return;
+		}
 		Level level = player.level();
 		BlockState cursorState = level.getBlockState(cursor);
 		if (!cursorState.canBeReplaced() || player.getBoundingBox().intersects(cursor)) {
@@ -244,6 +278,16 @@ public final class BuildModeController {
 	 * startDestroyBlock} itself.
 	 */
 	private static void breakBlock(Minecraft client, LocalPlayer player, boolean justStarted) {
+		if (!isInReach(player, cursor)) {
+			if (justStarted) {
+				client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_out_of_reach"));
+			} else {
+				// Reach was lost mid-hold (e.g. the player moved away) - cancel cleanly rather
+				// than leaving mining state stuck on with nothing progressing it further.
+				client.gameMode.stopDestroyBlock();
+			}
+			return;
+		}
 		Level level = player.level();
 		if (level.getBlockState(cursor).isAir()) {
 			if (justStarted) {
@@ -272,15 +316,24 @@ public final class BuildModeController {
 	}
 
 	private static boolean tryMove(Minecraft client, LocalPlayer player, BlockPos candidate) {
-		// Use the player's real placement reach (varies by game mode/attributes) rather than
-		// a fixed guess - a cursor allowed further out than vanilla can actually place at
-		// would just silently fail to place once you acted on it.
-		if (player.getEyePosition().distanceTo(Vec3.atCenterOf(candidate)) > player.blockInteractionRange()) {
-			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_out_of_reach"));
+		// The cursor is free to roam the whole grid regardless of reach - place()/breakBlock()
+		// check reach for themselves at the point it actually matters. Only the grid's own
+		// horizontal bounds and the world's real height limits stop movement outright.
+		if (Math.abs(candidate.getX() - anchorX) > GRID_RADIUS || Math.abs(candidate.getZ() - anchorZ) > GRID_RADIUS) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_edge_of_area"));
+			return false;
+		}
+		Level level = player.level();
+		if (candidate.getY() < level.getMinY() || candidate.getY() > level.getMaxY()) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_edge_of_area"));
 			return false;
 		}
 		cursor = candidate;
 		return true;
+	}
+
+	private static boolean isInReach(LocalPlayer player, BlockPos pos) {
+		return player.getEyePosition().distanceTo(Vec3.atCenterOf(pos)) <= player.blockInteractionRange();
 	}
 
 	private static Component describeCursor(LocalPlayer player) {
@@ -288,7 +341,11 @@ public final class BuildModeController {
 		Component blockName = level.getBlockState(cursor).getBlock().getName();
 		MutableComponent message = Component.translatable(
 				"united_minecraft.narrate.build_cursor", blockName, cursor.getX(), cursor.getY(), cursor.getZ());
-		if (isPlaceable(level, player)) {
+		if (!isInReach(player, cursor)) {
+			// Not actionable yet either way, whatever the block - lead with that rather than
+			// also claiming "Placeable" for something you can't actually place at right now.
+			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_out_of_reach"));
+		} else if (isPlaceable(level, player)) {
 			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_placeable"));
 		}
 		return message;

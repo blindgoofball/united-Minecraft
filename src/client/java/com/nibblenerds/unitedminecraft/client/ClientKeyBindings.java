@@ -43,6 +43,9 @@ public final class ClientKeyBindings {
 	public static final KeyMapping BUILD_BREAK = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.build_break", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT, CATEGORY));
 
+	public static final KeyMapping BUILD_WALK_TO_CURSOR = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+			"key.united_minecraft.build_walk_to_cursor", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G, CATEGORY));
+
 	public static final KeyMapping TOGGLE_NAV_RADAR = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.toggle_nav_radar", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_N, CATEGORY));
 
