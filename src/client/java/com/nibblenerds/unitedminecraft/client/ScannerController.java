@@ -277,6 +277,10 @@ public final class ScannerController {
 			case MECHANISMS -> scanBlocks(player, (pos, state) -> isMechanism(state.getBlock()));
 			case ITEMS -> scanEntities(player, entity -> entity instanceof ItemEntity);
 			case TREES -> scanTrees(player);
+			// Deliberately not x-ray: OreDetection.isExposed only counts ore already
+			// bordering air or a fluid, i.e. actually visible through a gap, not buried.
+			case ORES -> scanBlocks(player, (pos, state) ->
+					OreDetection.isValuableOre(state) && OreDetection.isExposed(player.level(), pos));
 			case PASSIVE_MOBS -> scanEntities(player, entity -> entity instanceof Animal);
 			case HOSTILE_MOBS -> scanEntities(player, entity -> entity instanceof Enemy);
 		};

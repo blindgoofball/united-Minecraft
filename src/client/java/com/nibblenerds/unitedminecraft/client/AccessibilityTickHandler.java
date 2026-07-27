@@ -79,6 +79,7 @@ public final class AccessibilityTickHandler {
 			AutoWalkController.reset();
 			MovementAssistController.reset();
 			NavRadarController.reset();
+			MiningRadarController.reset();
 			TreeChoppingAssist.reset();
 			return;
 		}
@@ -99,6 +100,9 @@ public final class AccessibilityTickHandler {
 		}
 		if (ClientKeyBindings.TOGGLE_NAV_RADAR.consumeClick()) {
 			NavRadarController.toggle(client);
+		}
+		if (ClientKeyBindings.TOGGLE_MINING_RADAR.consumeClick()) {
+			MiningRadarController.toggle(client);
 		}
 
 		if (client.screen != null && AutoWalkController.isActive()) {
@@ -122,6 +126,7 @@ public final class AccessibilityTickHandler {
 			} else if (BuildModeController.isActive()) {
 				BuildModeController.tick(client, player);
 				ScannerController.tick(client, player);
+				MiningRadarController.tick(client, player);
 			} else {
 				if (ClientKeyBindings.isShiftDown(client)) {
 					handleSnapTurn(client, player, snapLeftPressed, snapRightPressed, snapUpPressed, snapDownPressed);
@@ -132,6 +137,7 @@ public final class AccessibilityTickHandler {
 				ScannerController.tick(client, player);
 				MovementAssistController.tick(client, player);
 				NavRadarController.tick(client, player);
+				MiningRadarController.tick(client, player);
 			}
 		}
 

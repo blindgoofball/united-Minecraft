@@ -9,7 +9,8 @@ public enum ScannerCategory {
 	ITEMS("united_minecraft.scanner.category.items"),
 	PASSIVE_MOBS("united_minecraft.scanner.category.passive_mobs"),
 	HOSTILE_MOBS("united_minecraft.scanner.category.hostile_mobs"),
-	TREES("united_minecraft.scanner.category.trees");
+	TREES("united_minecraft.scanner.category.trees"),
+	ORES("united_minecraft.scanner.category.ores");
 
 	private final String translationKey;
 
