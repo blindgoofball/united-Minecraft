@@ -95,6 +95,56 @@ just whatever happens to be scrolled into view - narrating name and position
 as you go. The ordinary Inventory tab works the same as your regular
 inventory screen.
 
+## Installation
+
+You'll need three things: the matching version of Minecraft Java Edition,
+Fabric Loader, and Fabric API. United Minecraft is a mod jar that goes
+alongside Fabric API in your mods folder - it doesn't need anything installed
+on the server you're playing on.
+
+1. **Download United Minecraft.**
+   Go to this repository's
+   [Releases page](https://github.com/blindgoofball/united-Minecraft/releases)
+   and download the latest `.jar` file. Note the Minecraft version listed in
+   that release's title or notes - you'll use that same version for both
+   steps below.
+
+2. **Install Fabric Loader.**
+   Go to the [Fabric installer page](https://fabricmc.net/use/installer/) and
+   download the installer for your operating system. Run it, set the
+   Minecraft version to the one from step 1, and click Install. This adds a
+   new "Fabric Loader" profile to the official Minecraft Launcher - you don't
+   need to touch anything else here.
+
+3. **Download Fabric API.**
+   Get the Fabric API release built for that same Minecraft version from
+   [Modrinth](https://modrinth.com/mod/fabric-api) or
+   [CurseForge](https://www.curseforge.com/minecraft/mc-mods/fabric-api).
+
+4. **Put both jars in your mods folder.**
+   That's a folder called `mods` inside your Minecraft folder:
+   - Windows: `%appdata%\.minecraft\mods`
+   - macOS: `~/Library/Application Support/minecraft/mods`
+   - Linux: `~/.minecraft/mods`
+
+   If it doesn't exist yet, launch the Fabric profile once (step 5) to have
+   it created automatically, then close the game and drop the two `.jar`
+   files straight into it - not inside any subfolder.
+
+5. **Launch the game.**
+   Open the official Minecraft Launcher, choose the Fabric profile from the
+   installations dropdown, and click Play.
+
+6. **Turn on Minecraft's narrator**, if it isn't already. Either press
+   Ctrl+B in-game to toggle it on, or go through Options > Accessibility
+   Settings > Narrator. This is what actually triggers speech; United
+   Minecraft narrates through it rather than replacing it.
+
+If [NVDA](https://www.nvaccess.org/) is running, United Minecraft speaks
+through it automatically for better screen-reader output - there's nothing
+to set up for that part. Without NVDA running, it falls back to Minecraft's
+normal narrator on its own.
+
 ## Default Key Bindings
 
 All of these are rebindable from Options > Controls > United Minecraft, except
@@ -124,9 +174,11 @@ keys/Tab/Enter/Home/End take on the screen-specific meanings described above -
 those are fixed, not part of the rebindable list, since they only apply within
 that particular screen.
 
-## Setup
+## Building From Source
 
-For IDE setup instructions, see the [Fabric Documentation page](https://docs.fabricmc.net/develop/getting-started/creating-a-project#setting-up).
+This section is for building the mod itself, not for playing with it - see
+Installation above for that. For IDE setup instructions, see the
+[Fabric Documentation page](https://docs.fabricmc.net/develop/getting-started/creating-a-project#setting-up).
 
 ## License
 
