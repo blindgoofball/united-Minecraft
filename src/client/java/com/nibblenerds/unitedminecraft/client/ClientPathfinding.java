@@ -5,6 +5,7 @@ import java.util.Set;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntitySpawnRequest;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.Level;
@@ -27,7 +28,10 @@ final class ClientPathfinding {
 
 	static Path computePath(LocalPlayer player, BlockPos target, float maxPathLength, int reachRange) {
 		Level level = player.level();
-		Mob ghost = EntityTypes.ZOMBIE.create(level, EntitySpawnReason.COMMAND);
+		// ignoreChecks=true - this ghost is never actually spawned into the world, just used as
+		// a parameter bag (bounding box, step height, fall tolerance) for the pathfinder below,
+		// so it shouldn't be subject to spawn-eligibility rules like "not allowed on Peaceful".
+		Mob ghost = EntityTypes.ZOMBIE.create(level, new EntitySpawnRequest(EntitySpawnReason.COMMAND, true));
 		if (ghost == null) {
 			return null;
 		}
