@@ -43,6 +43,10 @@ import net.minecraft.world.phys.Vec3;
  * takes over rotation entirely while active, so build mode and normal camera turning are
  * blocked until it's released. Shift+Enter instead auto-walks there via
  * {@link AutoWalkController} - fully client-side, no server cooperation needed.
+ *
+ * <p>Backslash announces the focused item's coordinates - useful for actually finding your
+ * way to something (an ore vein, say) once the scanner's found it, since distance/direction
+ * alone can be hard to translate into a real destination. Works while locked on too.
  */
 public final class ScannerController {
 	private static final double SCAN_RANGE = 32.0;
@@ -77,10 +81,14 @@ public final class ScannerController {
 		boolean pageUp = ClientKeyBindings.PAGE_UP.consumeClick();
 		boolean targetPressed = ClientKeyBindings.SCANNER_TARGET.consumeClick();
 		boolean stopPressed = ClientKeyBindings.SCANNER_STOP_LOCK.consumeClick();
+		boolean coordinatesPressed = ClientKeyBindings.SCANNER_COORDINATES.consumeClick();
 
 		if (isLocked()) {
 			if (stopPressed) {
 				stopLock(client);
+			}
+			if (coordinatesPressed) {
+				announceCoordinates(client, lockedEntity.blockPosition());
 			}
 			return;
 		}
@@ -103,6 +111,19 @@ public final class ScannerController {
 		if (targetPressed) {
 			target(client, player);
 		}
+		if (coordinatesPressed) {
+			ScannerItem item = currentItem();
+			if (item == null) {
+				client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.scanner_no_item"));
+			} else {
+				announceCoordinates(client, item.entity() != null ? item.entity().blockPosition() : item.blockPos());
+			}
+		}
+	}
+
+	private static void announceCoordinates(Minecraft client, BlockPos pos) {
+		client.getNarrator().saySystemNow(Component.translatable(
+				"united_minecraft.narrate.coordinates", pos.getX(), pos.getY(), pos.getZ()));
 	}
 
 	/** Continuously re-aims at the locked entity; called every tick instead of normal camera handling while locked. */
@@ -280,7 +301,7 @@ public final class ScannerController {
 			// Deliberately not x-ray: OreDetection.isExposed only counts ore already
 			// bordering air or a fluid, i.e. actually visible through a gap, not buried.
 			case ORES -> scanBlocks(player, (pos, state) ->
-					OreDetection.isValuableOre(state) && OreDetection.isExposed(player.level(), pos));
+					OreDetection.isValuableOre(state) && OreDetection.isExposed(player.level(), pos, player.getEyePosition()));
 			case PASSIVE_MOBS -> scanEntities(player, entity -> entity instanceof Animal);
 			case HOSTILE_MOBS -> scanEntities(player, entity -> entity instanceof Enemy);
 		};

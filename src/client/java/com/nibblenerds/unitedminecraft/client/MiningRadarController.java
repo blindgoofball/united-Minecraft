@@ -92,12 +92,13 @@ public final class MiningRadarController {
 	private static void scan(LocalPlayer player) {
 		Level level = player.level();
 		BlockPos center = player.blockPosition();
+		Vec3 eye = player.getEyePosition();
 		for (BlockPos pos : BlockPos.betweenClosed(center.offset(-RADIUS, -RADIUS, -RADIUS), center.offset(RADIUS, RADIUS, RADIUS))) {
 			if (alerted.contains(pos)) {
 				continue;
 			}
 			BlockState state = level.getBlockState(pos);
-			if (!OreDetection.isValuableOre(state) || !OreDetection.isExposed(level, pos)) {
+			if (!OreDetection.isValuableOre(state) || !OreDetection.isExposed(level, pos, eye)) {
 				continue;
 			}
 			BlockPos immutable = pos.immutable();

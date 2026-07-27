@@ -84,6 +84,8 @@ public final class ClientKeyBindings {
 			"key.united_minecraft.scanner_target", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_ENTER, CATEGORY));
 	public static final KeyMapping SCANNER_STOP_LOCK = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.scanner_stop_lock", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_DELETE, CATEGORY));
+	public static final KeyMapping SCANNER_COORDINATES = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+			"key.united_minecraft.scanner_coordinates", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_BACKSLASH, CATEGORY));
 
 	private ClientKeyBindings() {
 	}

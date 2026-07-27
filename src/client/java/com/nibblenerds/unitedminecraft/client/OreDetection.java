@@ -4,17 +4,23 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.tags.BlockItemTags;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.CollisionContext;
 
 /**
  * Shared "is this a valuable ore, and can you actually see it" logic for both the mining
- * radar and the scanner's Ores category - deliberately not full x-ray: a block only counts
- * once it borders air or a fluid on at least one face, i.e. it's been physically exposed by
- * mining (or was already exposed naturally, in a cave), the same way a sighted player would
- * only notice it once there's a gap to see it through. Ore still fully entombed in solid
- * rock on every side is invisible to both features, same as it would be to anyone else.
+ * radar and the scanner's Ores category - deliberately not full x-ray: a face bordering air
+ * or a fluid isn't enough on its own, since that air might be a sealed-off cave pocket on the
+ * far side of an unmined wall - it also has to be a face the player could actually see through
+ * a real raycast, the same way vanilla's own block-interaction raycast works. Ore that's
+ * either fully entombed or only exposed somewhere out of sight is invisible to both features,
+ * same as it would be to anyone else.
  */
 final class OreDetection {
 	private OreDetection() {
@@ -34,14 +40,27 @@ final class OreDetection {
 				|| state.is(Blocks.ANCIENT_DEBRIS);
 	}
 
-	static boolean isExposed(Level level, BlockPos pos) {
+	static boolean isExposed(Level level, BlockPos pos, Vec3 eye) {
+		Vec3 center = Vec3.atCenterOf(pos);
 		for (Direction direction : Direction.values()) {
 			BlockPos neighborPos = pos.relative(direction);
 			BlockState neighborState = level.getBlockState(neighborPos);
-			if (neighborState.isAir() || !neighborState.getFluidState().isEmpty()) {
+			if (!neighborState.isAir() && neighborState.getFluidState().isEmpty()) {
+				continue;
+			}
+			Vec3 facePoint = center.add(
+					direction.getStepX() * 0.5, direction.getStepY() * 0.5, direction.getStepZ() * 0.5);
+			if (hasLineOfSight(level, eye, facePoint, pos)) {
 				return true;
 			}
 		}
 		return false;
+	}
+
+	/** True if nothing solid sits between {@code from} and {@code to} before reaching {@code target} itself. */
+	private static boolean hasLineOfSight(Level level, Vec3 from, Vec3 to, BlockPos target) {
+		BlockHitResult hit = level.clip(new ClipContext(
+				from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, CollisionContext.empty()));
+		return hit.getType() == HitResult.Type.MISS || hit.getBlockPos().equals(target);
 	}
 }

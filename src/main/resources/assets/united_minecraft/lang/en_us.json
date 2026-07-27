@@ -20,6 +20,7 @@
 	"key.united_minecraft.scanner_next_category": "Scanner Next Category",
 	"key.united_minecraft.scanner_target": "Scanner Target Focused Item",
 	"key.united_minecraft.scanner_stop_lock": "Scanner Stop Lock-On / Cancel Auto-Walk",
+	"key.united_minecraft.scanner_coordinates": "Scanner: Announce Focused Item's Coordinates",
 
 	"united_minecraft.narrate.coordinates": "%s, %s, %s",
 	"united_minecraft.narrate.standing_on": "Standing on %s",
