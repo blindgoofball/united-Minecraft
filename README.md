@@ -37,7 +37,7 @@ Cycle through nearby things by category and get full narration, targeting, and
 navigation without needing to see or aim at them.
 
 - Categories: Interactables, Mechanisms, Items, Passive Mobs, Hostile Mobs, Trees,
-  and Ores.
+  Ores, and Markers (see Map Markers below).
 - Ore detection (here and in the Mining Radar) only flags ore you could actually
   see - not ore sealed behind an unmined wall.
 - Targeting a block aims at it. Targeting a mob starts a continuous lock-on that
@@ -48,6 +48,14 @@ navigation without needing to see or aim at them.
 - Shift+target instead walks there automatically (see Auto-Walk below).
 - A dedicated key announces the currently focused item's exact coordinates, for
   actually finding your way to it.
+
+### Map Markers
+
+Place a named waypoint at your current location, then reach it again any
+time - from across the map, since unlike every other Scanner category,
+Markers ignores distance entirely and always lists everything you've
+placed in your current dimension. Persists to disk per-world, so your
+markers are still there next time you load that world.
 
 ### Combat Mode
 
@@ -168,6 +176,7 @@ where noted.
 | B (Shift+B resets facing to north) | Narrate facing direction and pitch |
 | R | Read what's in front of me |
 | V | Narrate time of day |
+| U | Place a named map marker at your current location |
 | I | Toggle Build Mode |
 | Right Control | Build Mode: place block |
 | Right Shift (hold) | Build Mode: break block |
@@ -179,7 +188,7 @@ where noted.
 | Page Up/Down | Build Mode cursor up/down, or cycle the Scanner's nearest items |
 | Home/End | Cycle the Scanner's category |
 | Enter (Shift = walk there) | Target the Scanner's focused item |
-| Delete | Stop Scanner lock-on / cancel Auto-Walk |
+| Delete | Stop Scanner lock-on / cancel Auto-Walk, or remove the focused marker in the Markers category |
 | \ (backslash) | Announce the Scanner's focused item's coordinates |
 
 Inside container menus, the Creative inventory, and settings/list screens, arrow

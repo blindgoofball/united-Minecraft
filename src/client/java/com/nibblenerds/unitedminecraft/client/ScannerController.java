@@ -62,6 +62,11 @@ import net.minecraft.world.phys.Vec3;
  * wandering out of range still just drops the lock like normal. For tracking a fight against
  * more than one attacker, where sticking to a single target until it dies isn't what you
  * want, see {@link CombatModeController} instead.
+ *
+ * <p>The Markers category ({@link MapMarkerController}) is the one exception to almost
+ * everything above: it isn't range-limited or distance-sorted like every other category
+ * (oldest-placed first instead), and Delete removes the focused marker outright rather than
+ * meaning "stop lock" - which otherwise does nothing while nothing's locked.
  */
 public final class ScannerController {
 	private static final double SCAN_RANGE = 32.0;
@@ -126,6 +131,12 @@ public final class ScannerController {
 		if (targetPressed) {
 			target(client, player);
 		}
+		// Delete otherwise does nothing here (it only means "stop lock" while actually
+		// locked, handled above) - repurposed as "remove" specifically for the one category
+		// where deleting a mistaken entry is something you'd actually want.
+		if (stopPressed && categoryIndex >= 0 && CATEGORIES[categoryIndex] == ScannerCategory.MARKERS) {
+			removeCurrentMarker(client, player);
+		}
 		if (coordinatesPressed) {
 			ScannerItem item = currentItem();
 			if (item == null) {
@@ -134,6 +145,20 @@ public final class ScannerController {
 				announceCoordinates(client, item.entity() != null ? item.entity().blockPosition() : item.blockPos());
 			}
 		}
+	}
+
+	private static void removeCurrentMarker(Minecraft client, LocalPlayer player) {
+		ScannerItem item = currentItem();
+		if (item == null || item.label() == null) {
+			return;
+		}
+		MapMarkerController.MapMarker marker = MapMarkerController.findAt(player.level().dimension(), item.blockPos());
+		if (marker == null) {
+			return;
+		}
+		MapMarkerController.remove(client, marker);
+		items = scan(ScannerCategory.MARKERS, player);
+		itemIndex = items.isEmpty() ? 0 : Math.min(itemIndex, items.size() - 1);
 	}
 
 	private static void announceCoordinates(Minecraft client, BlockPos pos) {
@@ -233,7 +258,7 @@ public final class ScannerController {
 				targetEntity(client, player, item.entity(), walkThere);
 			}
 		} else {
-			targetBlock(client, player, item.blockPos(), walkThere);
+			targetBlock(client, player, item.blockPos(), itemName(category, item, player.level()), walkThere);
 		}
 	}
 
@@ -266,14 +291,13 @@ public final class ScannerController {
 				Component.translatable("united_minecraft.narrate.scanner_facing", entity.getDisplayName()));
 	}
 
-	private static void targetBlock(Minecraft client, LocalPlayer player, BlockPos pos, boolean walkThere) {
+	private static void targetBlock(Minecraft client, LocalPlayer player, BlockPos pos, Component name, boolean walkThere) {
 		if (walkThere) {
-			AutoWalkController.start(client, player, pos, player.level().getBlockState(pos).getBlock().getName());
+			AutoWalkController.start(client, player, pos, name);
 			return;
 		}
 		CameraUtil.aimAt(player, Vec3.atCenterOf(pos));
-		client.getNarrator().saySystemNow(Component.translatable(
-				"united_minecraft.narrate.scanner_facing", player.level().getBlockState(pos).getBlock().getName()));
+		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.scanner_facing", name));
 	}
 
 	private static ScannerItem currentItem() {
@@ -295,6 +319,9 @@ public final class ScannerController {
 	}
 
 	private static Component itemName(ScannerCategory category, ScannerItem item, Level level) {
+		if (item.label() != null) {
+			return Component.literal(item.label());
+		}
 		if (item.entity() != null) {
 			if (category == ScannerCategory.ITEMS && item.entity() instanceof ItemEntity itemEntity) {
 				ItemStack stack = itemEntity.getItem();
@@ -350,6 +377,7 @@ public final class ScannerController {
 					OreDetection.isValuableOre(state) && OreDetection.isExposed(player.level(), pos, player.getEyePosition()));
 			case PASSIVE_MOBS -> scanEntities(player, entity -> entity instanceof Animal);
 			case HOSTILE_MOBS -> scanEntities(player, entity -> entity instanceof Enemy);
+			case MARKERS -> scanMarkers(player);
 		};
 	}
 
@@ -375,7 +403,7 @@ public final class ScannerController {
 			}
 			double distance = eye.distanceTo(Vec3.atCenterOf(pos));
 			if (distance <= SCAN_RANGE) {
-				results.add(new ScannerItem(pos.immutable(), null, distance));
+				results.add(new ScannerItem(pos.immutable(), null, distance, null));
 			}
 		}
 		results.sort(Comparator.comparingDouble(ScannerItem::distance));
@@ -390,7 +418,7 @@ public final class ScannerController {
 		for (Entity entity : player.level().getEntities(player, box, e -> e.isAlive() && predicate.test(e))) {
 			double distance = eye.distanceTo(entity.getBoundingBox().getCenter());
 			if (distance <= SCAN_RANGE) {
-				results.add(new ScannerItem(null, entity, distance));
+				results.add(new ScannerItem(null, entity, distance, null));
 			}
 		}
 		results.sort(Comparator.comparingDouble(ScannerItem::distance));
@@ -425,10 +453,22 @@ public final class ScannerController {
 			}
 			double distance = eye.distanceTo(Vec3.atCenterOf(trunkBase));
 			if (distance <= SCAN_RANGE) {
-				results.add(new ScannerItem(trunkBase, null, distance));
+				results.add(new ScannerItem(trunkBase, null, distance, null));
 			}
 		}
 		results.sort(Comparator.comparingDouble(ScannerItem::distance));
+		return results;
+	}
+
+	/** Every marker in the player's current dimension, oldest first - not distance-filtered or sorted, unlike every other category. */
+	private static List<ScannerItem> scanMarkers(LocalPlayer player) {
+		Vec3 eye = player.getEyePosition();
+		List<ScannerItem> results = new ArrayList<>();
+		for (MapMarkerController.MapMarker marker : MapMarkerController.inDimension(player.level().dimension())) {
+			BlockPos pos = marker.pos();
+			double distance = eye.distanceTo(Vec3.atCenterOf(pos));
+			results.add(new ScannerItem(pos, null, distance, marker.name()));
+		}
 		return results;
 	}
 
@@ -493,6 +533,7 @@ public final class ScannerController {
 		return false;
 	}
 
-	private record ScannerItem(BlockPos blockPos, Entity entity, double distance) {
+	/** {@code label} is only ever set for Markers - everything else derives its narrated name from the block/entity itself. */
+	private record ScannerItem(BlockPos blockPos, Entity entity, double distance, String label) {
 	}
 }

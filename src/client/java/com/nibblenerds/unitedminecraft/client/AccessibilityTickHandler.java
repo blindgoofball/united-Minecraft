@@ -95,6 +95,7 @@ public final class AccessibilityTickHandler {
 			snapLeftHeld = snapRightHeld = snapUpHeld = snapDownHeld = false;
 			BuildModeController.reset();
 			CombatModeController.reset();
+			MapMarkerController.reset();
 			ScannerController.reset();
 			AutoWalkController.reset();
 			MovementAssistController.reset();
@@ -129,6 +130,10 @@ public final class AccessibilityTickHandler {
 		}
 		if (ClientKeyBindings.TOGGLE_COMBAT_MODE.consumeClick()) {
 			CombatModeController.toggle(client, player);
+		}
+		MapMarkerController.tick(client);
+		if (client.gui.screen() == null && ClientKeyBindings.PLACE_MARKER.consumeClick()) {
+			MapMarkerController.openNameScreen(client, player);
 		}
 
 		if (client.gui.screen() != null && AutoWalkController.isActive()) {
