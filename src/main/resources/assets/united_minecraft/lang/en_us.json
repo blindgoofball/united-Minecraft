@@ -66,7 +66,6 @@
 	"united_minecraft.narrate.build_cursor_name": "the cursor",
 	"united_minecraft.narrate.build_facing": "Facing %s",
 	"united_minecraft.narrate.build_powered": "Powered",
-	"united_minecraft.narrate.build_unpowered": "Not powered",
 	"united_minecraft.narrate.build_placement_facing": "Will place facing %s",
 	"united_minecraft.narrate.build_facing_auto": "Placement facing: automatic",
 	"united_minecraft.narrate.health": "Health %s of %s, Hunger %s of 20",

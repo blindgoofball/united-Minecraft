@@ -102,10 +102,12 @@ matter which way you're actually facing. If the cursor wanders out of reach, a
 dedicated key walks you to it automatically.
 
 If the block under the cursor has a meaningful facing (repeaters, comparators,
-dispensers, pistons, and the like) or a powered state, that's narrated too. A
-dedicated key cycles a placement facing - North, East, South, West, Up, Down,
-or back to automatic - so you can place a dispenser with its output facing a
-specific direction, or attach a torch, lever, or button to a specific side of
+dispensers, pistons, and the like), that's narrated too, and any block
+currently receiving redstone power speaks up about it - silent otherwise, so
+it doesn't get in the way. A dedicated key cycles a placement facing - North,
+East, South, West, Up, Down, or back to automatic - so you can place a
+dispenser with its output facing a specific direction, or attach a torch,
+lever, or button to a specific side of
 a block, without needing to physically turn to face that way first. There's a
 brief pause between pressing place and the block actually appearing whenever a
 facing is selected (getting the orientation right requires the choice to

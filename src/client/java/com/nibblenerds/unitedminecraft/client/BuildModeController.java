@@ -62,11 +62,13 @@ import net.minecraft.world.phys.Vec3;
  * <p>The cursor's own block gets its orientation narrated too, generically: any
  * {@code Direction}-valued property (covers both {@code FACING} and {@code
  * HORIZONTAL_FACING} - vanilla blocks share those two property instances rather
- * than each defining their own) and any boolean property literally named
- * "powered" (also a single shared instance across every block that has one),
- * found by scanning {@link BlockState#getProperties()} rather than
- * special-casing block types - see {@link #directionPropertyOf}/{@link
- * #poweredPropertyOf}.
+ * than each defining their own), found by scanning {@link BlockState#getProperties()}
+ * rather than special-casing block types - see {@link #directionPropertyOf}.
+ * Redstone power is checked generically too, via {@link Level#hasNeighborSignal}
+ * rather than a block-specific "powered" property (plenty of blocks respond to
+ * power without exposing one), and only narrated when actually powered - silence
+ * otherwise, since knowing a block isn't powered is rarely as actionable as
+ * knowing it is.
  *
  * <p>{@link #cyclePlacementFacing} lets a chosen direction override where the
  * next placed block's own {@code FACING} points, via a trick rather than any
@@ -402,16 +404,29 @@ public final class BuildModeController {
 		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_cannot_place"));
 	}
 
-	/** {@link #FACE_PRIORITY}, but with {@link #selectedFacing} (if set) moved to the front. */
+	/**
+	 * {@link #FACE_PRIORITY}, but with the neighbor that has {@link #selectedFacing} as its own
+	 * face (if set) moved to the front.
+	 *
+	 * <p>Each entry in this array is "which direction from the cursor to find the neighbor to
+	 * place against" - the opposite of the face of the neighbor you actually end up touching
+	 * (a neighbor to your west is the one whose <em>east</em> face you're placing against). That
+	 * indirection is fine for {@link #FACE_PRIORITY}'s own entries, which were never meant to
+	 * name a face at all, just an internal search order - but {@link #selectedFacing} is a face
+	 * the player explicitly asked to place against, so it needs converting: to attach to a
+	 * neighbor's west face, this has to look for that neighbor to the <em>east</em> of the
+	 * cursor, i.e. {@code selectedFacing.getOpposite()}.
+	 */
 	private static Direction[] faceTryOrder() {
 		if (selectedFacing == null) {
 			return FACE_PRIORITY;
 		}
+		Direction searchDirection = selectedFacing.getOpposite();
 		Direction[] order = new Direction[FACE_PRIORITY.length];
-		order[0] = selectedFacing;
+		order[0] = searchDirection;
 		int i = 1;
 		for (Direction face : FACE_PRIORITY) {
-			if (face != selectedFacing) {
+			if (face != searchDirection) {
 				order[i++] = face;
 			}
 		}
@@ -574,15 +589,8 @@ public final class BuildModeController {
 			message = message.append(Component.literal(" "))
 					.append(Component.translatable("united_minecraft.narrate.build_facing", directionName(facing)));
 		}
-		Boolean powered = poweredPropertyOf(state);
-		if (powered != null) {
-			message = message.append(Component.literal(" ")).append(Component.translatable(powered
-					? "united_minecraft.narrate.build_powered"
-					: "united_minecraft.narrate.build_unpowered"));
-		}
-		if (selectedFacing != null) {
-			message = message.append(Component.literal(" ")).append(Component.translatable(
-					"united_minecraft.narrate.build_placement_facing", directionName(selectedFacing)));
+		if (level.hasNeighborSignal(cursor)) {
+			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_powered"));
 		}
 		return message;
 	}
@@ -592,16 +600,6 @@ public final class BuildModeController {
 		for (Property<?> property : state.getProperties()) {
 			if (property.getValueClass() == Direction.class) {
 				return (Direction) getValue(state, property);
-			}
-		}
-		return null;
-	}
-
-	/** The block's own "powered" boolean value, if it has one - null if it doesn't. */
-	private static Boolean poweredPropertyOf(BlockState state) {
-		for (Property<?> property : state.getProperties()) {
-			if (property.getValueClass() == Boolean.class && property.getName().equals("powered")) {
-				return (Boolean) getValue(state, property);
 			}
 		}
 		return null;
