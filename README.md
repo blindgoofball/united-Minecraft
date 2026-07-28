@@ -101,6 +101,16 @@ centered on wherever you toggled it on. Place and break work reliably no
 matter which way you're actually facing. If the cursor wanders out of reach, a
 dedicated key walks you to it automatically.
 
+If the block under the cursor has a meaningful facing (repeaters, comparators,
+dispensers, pistons, and the like) or a powered state, that's narrated too. A
+dedicated key cycles a placement facing - North, East, South, West, Up, Down,
+or back to automatic - so you can place a dispenser with its output facing a
+specific direction, or attach a torch, lever, or button to a specific side of
+a block, without needing to physically turn to face that way first. There's a
+brief pause between pressing place and the block actually appearing whenever a
+facing is selected (getting the orientation right requires the choice to
+genuinely reach the server first) - expected, not lag.
+
 ### Tree Chopping Assist
 
 Whenever the log you're looking at gets broken, automatically re-aims at an
@@ -192,6 +202,7 @@ where noted.
 | Right Control | Build Mode: place block |
 | Right Shift (hold) | Build Mode: break block |
 | G | Build Mode: walk to cursor |
+| J (Shift+J reverses) | Build Mode: cycle placement facing |
 | N | Toggle Navigation Radar |
 | M | Toggle Mining Radar |
 | K | Toggle Combat Mode |

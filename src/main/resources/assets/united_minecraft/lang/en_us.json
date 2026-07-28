@@ -9,6 +9,7 @@
 	"key.united_minecraft.build_place": "Build Mode: Place Block",
 	"key.united_minecraft.build_break": "Build Mode: Break Block (hold)",
 	"key.united_minecraft.build_walk_to_cursor": "Build Mode: Walk to Cursor",
+	"key.united_minecraft.build_cycle_facing": "Build Mode: Cycle Placement Facing (Shift = reverse)",
 	"key.united_minecraft.toggle_nav_radar": "Toggle Navigation Radar",
 	"key.united_minecraft.toggle_mining_radar": "Toggle Mining Radar",
 	"key.united_minecraft.toggle_combat_mode": "Toggle Combat Mode",
@@ -63,6 +64,11 @@
 	"united_minecraft.narrate.build_edge_of_area": "Edge of build area",
 	"united_minecraft.narrate.build_already_in_reach": "Already in reach",
 	"united_minecraft.narrate.build_cursor_name": "the cursor",
+	"united_minecraft.narrate.build_facing": "Facing %s",
+	"united_minecraft.narrate.build_powered": "Powered",
+	"united_minecraft.narrate.build_unpowered": "Not powered",
+	"united_minecraft.narrate.build_placement_facing": "Will place facing %s",
+	"united_minecraft.narrate.build_facing_auto": "Placement facing: automatic",
 	"united_minecraft.narrate.health": "Health %s of %s, Hunger %s of 20",
 	"united_minecraft.narrate.bearing": "Heading %s degrees, Pitch %s degrees",
 	"united_minecraft.narrate.hotbar_empty": "Empty",
@@ -134,5 +140,7 @@
 	"united_minecraft.direction.south": "South",
 	"united_minecraft.direction.southwest": "Southwest",
 	"united_minecraft.direction.west": "West",
-	"united_minecraft.direction.northwest": "Northwest"
+	"united_minecraft.direction.northwest": "Northwest",
+	"united_minecraft.direction.up": "Up",
+	"united_minecraft.direction.down": "Down"
 }

@@ -9,8 +9,14 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.ObserverBlock;
+import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
@@ -52,6 +58,29 @@ import net.minecraft.world.phys.Vec3;
  * do, and both check for themselves and narrate plainly if not. {@link
  * #walkToCursor} drives the player there automatically via the same
  * client-side pathfinding {@link AutoWalkController} already uses elsewhere.
+ *
+ * <p>The cursor's own block gets its orientation narrated too, generically: any
+ * {@code Direction}-valued property (covers both {@code FACING} and {@code
+ * HORIZONTAL_FACING} - vanilla blocks share those two property instances rather
+ * than each defining their own) and any boolean property literally named
+ * "powered" (also a single shared instance across every block that has one),
+ * found by scanning {@link BlockState#getProperties()} rather than
+ * special-casing block types - see {@link #directionPropertyOf}/{@link
+ * #poweredPropertyOf}.
+ *
+ * <p>{@link #cyclePlacementFacing} lets a chosen direction override where the
+ * next placed block's own {@code FACING} points, via a trick rather than any
+ * new placement API: the block's real {@code getStateForPlacement} already
+ * derives that from the player's look direction (see {@link #facingMirrorsPlayerLook}
+ * for the one nuance in how), so {@link #startRotatedPlacement} rotates the
+ * player to face the direction that would produce the desired result - but
+ * placing can't happen in that same tick, or the server ends up computing the
+ * block's orientation from the player's real, not-yet-updated rotation and
+ * silently corrects it back; see that method's own doc for why. The same
+ * chosen direction also gets tried first as the face to place against
+ * (falling back to the normal search if that particular neighbor isn't sturdy),
+ * which is what makes placing directly onto a chosen side of an existing block
+ * possible at all - previously the neighbor was picked for you.
  */
 public final class BuildModeController {
 	private static final double FACE_EPSILON = 0.001;
@@ -59,10 +88,26 @@ public final class BuildModeController {
 	// How far the cursor can roam from the anchor set in toggle(), in blocks.
 	private static final int GRID_RADIUS = 32;
 
+	// Cycle order for the placement-facing override; null (not in this array) means "automatic".
+	private static final Direction[] FACING_CYCLE = {
+			Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST, Direction.UP, Direction.DOWN,
+	};
+
+	// How many ticks to hold a faked rotation before actually placing - see the class doc on
+	// #startRotatedPlacement for why this delay exists at all.
+	private static final int ROTATION_SYNC_DELAY_TICKS = 2;
+
 	private static boolean active;
 	private static BlockPos cursor;
 	private static int anchorX;
 	private static int anchorZ;
+	private static Direction selectedFacing;
+
+	// Set only while a rotated placement is waiting out its sync delay (see startRotatedPlacement) -
+	// pendingPlaceTicks counts down to 0, at which point the real placement fires.
+	private static int pendingPlaceTicks = -1;
+	private static float pendingSavedYaw;
+	private static float pendingSavedPitch;
 
 	// Rising-edge state for the movement keys - see the note on movementPressed() for why
 	// this replaces KeyMapping's own click-queue tracking for these six keys.
@@ -87,6 +132,8 @@ public final class BuildModeController {
 	public static void reset() {
 		active = false;
 		cursor = null;
+		selectedFacing = null;
+		pendingPlaceTicks = -1;
 		leftHeld = rightHeld = upHeld = downHeld = pageUpHeld = pageDownHeld = false;
 		breakHeld = false;
 	}
@@ -106,6 +153,7 @@ public final class BuildModeController {
 			pageUpHeld = ClientKeyBindings.PAGE_UP.isDown();
 			pageDownHeld = ClientKeyBindings.PAGE_DOWN.isDown();
 			breakHeld = ClientKeyBindings.BUILD_BREAK.isDown();
+			selectedFacing = null;
 			cursor = player.blockPosition();
 			anchorX = cursor.getX();
 			anchorZ = cursor.getZ();
@@ -155,8 +203,14 @@ public final class BuildModeController {
 			client.getNarrator().saySystemNow(describeCursor(player));
 		}
 
+		tickPendingPlacement(client, player);
+
 		if (ClientKeyBindings.BUILD_PLACE.consumeClick()) {
 			place(client, player);
+		}
+
+		if (ClientKeyBindings.BUILD_CYCLE_FACING.consumeClick()) {
+			cyclePlacementFacing(client, ClientKeyBindings.isShiftDown(client) ? -1 : 1);
 		}
 
 		boolean breakDown = ClientKeyBindings.BUILD_BREAK.isDown();
@@ -179,6 +233,44 @@ public final class BuildModeController {
 			return;
 		}
 		AutoWalkController.start(client, player, cursor, Component.translatable("united_minecraft.narrate.build_cursor_name"));
+	}
+
+	/** Steps {@link #selectedFacing} through null (automatic) and the six {@link Direction}s. */
+	private static void cyclePlacementFacing(Minecraft client, int step) {
+		int currentIndex = selectedFacing == null ? -1 : indexOf(FACING_CYCLE, selectedFacing);
+		int nextIndex = currentIndex + step;
+		if (nextIndex < -1) {
+			nextIndex = FACING_CYCLE.length - 1;
+		} else if (nextIndex >= FACING_CYCLE.length) {
+			nextIndex = -1;
+		}
+		selectedFacing = nextIndex == -1 ? null : FACING_CYCLE[nextIndex];
+
+		Component message = selectedFacing == null
+				? Component.translatable("united_minecraft.narrate.build_facing_auto")
+				: Component.translatable("united_minecraft.narrate.build_placement_facing", directionName(selectedFacing));
+		client.getNarrator().saySystemNow(message);
+	}
+
+	private static int indexOf(Direction[] values, Direction target) {
+		for (int i = 0; i < values.length; i++) {
+			if (values[i] == target) {
+				return i;
+			}
+		}
+		return -1;
+	}
+
+	private static Component directionName(Direction direction) {
+		String key = switch (direction) {
+			case NORTH -> "united_minecraft.direction.north";
+			case SOUTH -> "united_minecraft.direction.south";
+			case EAST -> "united_minecraft.direction.east";
+			case WEST -> "united_minecraft.direction.west";
+			case UP -> "united_minecraft.direction.up";
+			case DOWN -> "united_minecraft.direction.down";
+		};
+		return Component.translatable(key);
 	}
 
 	/**
@@ -214,6 +306,10 @@ public final class BuildModeController {
 	 * call and takes the first one vanilla actually accepts - the same "just try it and see"
 	 * approach other block-placement utility mods use, since nothing short of the genuine
 	 * placement call can fully predict whether a given face will be accepted.
+	 *
+	 * <p>With no {@link #selectedFacing} override, this fires immediately. With one set, it
+	 * defers to {@link #startRotatedPlacement} instead - see that method for why placing with a
+	 * forced rotation can't happen in the same tick the rotation is set.
 	 */
 	private static void place(Minecraft client, LocalPlayer player) {
 		if (!isInReach(player, cursor)) {
@@ -227,7 +323,67 @@ public final class BuildModeController {
 			return;
 		}
 
-		for (Direction face : FACE_PRIORITY) {
+		if (selectedFacing != null) {
+			startRotatedPlacement(player);
+			return;
+		}
+		attemptPlacementSequence(client, player);
+	}
+
+	/**
+	 * Fakes the player's rotation to produce {@link #selectedFacing}, then waits out {@link
+	 * #ROTATION_SYNC_DELAY_TICKS} before {@link #tick} actually fires the placement - rather
+	 * than placing immediately, the way an unrotated placement does.
+	 *
+	 * <p>The reason: {@code useItemOn}'s block orientation isn't decided client-side. It's
+	 * previewed locally right away, but the authoritative result comes from the server
+	 * recomputing it from whatever rotation <em>it</em> has on record for the player - which
+	 * only updates when {@link LocalPlayer}'s own per-tick netcode notices the rotation changed
+	 * and sends a packet, a step that happens earlier in the tick than this controller runs.
+	 * Faking the rotation and placing within the same tick sends the placement packet before
+	 * that rotation update packet even exists, so the server places using the <em>old</em>
+	 * rotation and immediately corrects the block back to it - indistinguishable from the
+	 * override doing nothing. Waiting a couple of ticks first lets that rotation packet actually
+	 * go out - and since packets on one connection are delivered in the order they're sent, the
+	 * placement packet sent afterward is guaranteed to arrive at the server after its rotation
+	 * update already has, and gets the answer we asked for.
+	 */
+	private static void startRotatedPlacement(LocalPlayer player) {
+		if (pendingPlaceTicks >= 0) {
+			// Already waiting on one - a second press before it fires would just desync the
+			// saved rotation to restore afterward.
+			return;
+		}
+		pendingSavedYaw = player.getYRot();
+		pendingSavedPitch = player.getXRot();
+		faceDirection(player, lookDirectionFor(selectedFacing, placingBlock(player)));
+		pendingPlaceTicks = ROTATION_SYNC_DELAY_TICKS;
+	}
+
+	/** Advances a placement started by {@link #startRotatedPlacement}, firing it once the sync delay elapses. */
+	private static void tickPendingPlacement(Minecraft client, LocalPlayer player) {
+		if (pendingPlaceTicks < 0) {
+			return;
+		}
+		if (pendingPlaceTicks > 0) {
+			pendingPlaceTicks--;
+			return;
+		}
+		pendingPlaceTicks = -1;
+		try {
+			attemptPlacementSequence(client, player);
+		} finally {
+			player.setYRot(pendingSavedYaw);
+			player.setXRot(pendingSavedPitch);
+			player.setOldRot();
+			player.setYHeadRot(pendingSavedYaw);
+		}
+	}
+
+	/** Tries every candidate face in {@link #faceTryOrder} against the real placement call. */
+	private static void attemptPlacementSequence(Minecraft client, LocalPlayer player) {
+		Level level = player.level();
+		for (Direction face : faceTryOrder()) {
 			BlockPos neighborPos = cursor.relative(face);
 			BlockState neighborState = level.getBlockState(neighborPos);
 			if (!neighborState.isFaceSturdy(level, neighborPos, face.getOpposite())) {
@@ -243,8 +399,71 @@ public final class BuildModeController {
 				return;
 			}
 		}
-
 		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_cannot_place"));
+	}
+
+	/** {@link #FACE_PRIORITY}, but with {@link #selectedFacing} (if set) moved to the front. */
+	private static Direction[] faceTryOrder() {
+		if (selectedFacing == null) {
+			return FACE_PRIORITY;
+		}
+		Direction[] order = new Direction[FACE_PRIORITY.length];
+		order[0] = selectedFacing;
+		int i = 1;
+		for (Direction face : FACE_PRIORITY) {
+			if (face != selectedFacing) {
+				order[i++] = face;
+			}
+		}
+		return order;
+	}
+
+	/** Whichever hand actually holds something placeable, main hand first - null if neither does. */
+	private static Block placingBlock(LocalPlayer player) {
+		for (InteractionHand hand : InteractionHand.values()) {
+			ItemStack stack = player.getItemInHand(hand);
+			if (stack.getItem() instanceof BlockItem blockItem) {
+				return blockItem.getBlock();
+			}
+		}
+		return null;
+	}
+
+	// Most directional blocks' getStateForPlacement stores FACING as the opposite of the
+	// player's look direction - their "front" ends up facing back toward whoever placed them
+	// (dispensers/droppers, pistons, repeaters, comparators, and more). Observer and stairs are
+	// the two notable vanilla exceptions: an observer's arrow points the way you were looking,
+	// and stairs ascend the way you were facing, matching how you'd naturally place either. This
+	// generic heuristic can't know every block's own convention, so if a specific block doesn't
+	// rotate as expected, it likely needs to join this exception list.
+	private static boolean facingMirrorsPlayerLook(Block block) {
+		return block instanceof ObserverBlock || block instanceof StairBlock;
+	}
+
+	/** The look direction that would make a block's real FACING placement logic land on {@code desired}. */
+	private static Direction lookDirectionFor(Direction desired, Block block) {
+		return block != null && facingMirrorsPlayerLook(block) ? desired : desired.getOpposite();
+	}
+
+	/** Points the player exactly at {@code direction} - yaw/pitch, no smoothing, for one placement call. */
+	private static void faceDirection(LocalPlayer player, Direction direction) {
+		float yaw = switch (direction) {
+			case SOUTH -> 0.0f;
+			case WEST -> 90.0f;
+			case NORTH -> 180.0f;
+			case EAST -> 270.0f;
+			// Yaw doesn't matter when looking straight up/down - keep whatever it already was.
+			case UP, DOWN -> player.getYRot();
+		};
+		float pitch = switch (direction) {
+			case UP -> -90.0f;
+			case DOWN -> 90.0f;
+			default -> 0.0f;
+		};
+		player.setYRot(yaw);
+		player.setXRot(pitch);
+		player.setOldRot();
+		player.setYHeadRot(yaw);
 	}
 
 	/**
@@ -338,7 +557,8 @@ public final class BuildModeController {
 
 	private static Component describeCursor(LocalPlayer player) {
 		Level level = player.level();
-		Component blockName = level.getBlockState(cursor).getBlock().getName();
+		BlockState state = level.getBlockState(cursor);
+		Component blockName = state.getBlock().getName();
 		MutableComponent message = Component.translatable(
 				"united_minecraft.narrate.build_cursor", blockName, cursor.getX(), cursor.getY(), cursor.getZ());
 		if (!isInReach(player, cursor)) {
@@ -348,7 +568,47 @@ public final class BuildModeController {
 		} else if (isPlaceable(level, player)) {
 			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_placeable"));
 		}
+
+		Direction facing = directionPropertyOf(state);
+		if (facing != null) {
+			message = message.append(Component.literal(" "))
+					.append(Component.translatable("united_minecraft.narrate.build_facing", directionName(facing)));
+		}
+		Boolean powered = poweredPropertyOf(state);
+		if (powered != null) {
+			message = message.append(Component.literal(" ")).append(Component.translatable(powered
+					? "united_minecraft.narrate.build_powered"
+					: "united_minecraft.narrate.build_unpowered"));
+		}
+		if (selectedFacing != null) {
+			message = message.append(Component.literal(" ")).append(Component.translatable(
+					"united_minecraft.narrate.build_placement_facing", directionName(selectedFacing)));
+		}
 		return message;
+	}
+
+	/** The block's own {@code FACING}/{@code HORIZONTAL_FACING} value, whichever it has - null if neither. */
+	private static Direction directionPropertyOf(BlockState state) {
+		for (Property<?> property : state.getProperties()) {
+			if (property.getValueClass() == Direction.class) {
+				return (Direction) getValue(state, property);
+			}
+		}
+		return null;
+	}
+
+	/** The block's own "powered" boolean value, if it has one - null if it doesn't. */
+	private static Boolean poweredPropertyOf(BlockState state) {
+		for (Property<?> property : state.getProperties()) {
+			if (property.getValueClass() == Boolean.class && property.getName().equals("powered")) {
+				return (Boolean) getValue(state, property);
+			}
+		}
+		return null;
+	}
+
+	private static <T extends Comparable<T>> T getValue(BlockState state, Property<T> property) {
+		return state.getValue(property);
 	}
 
 	/** Would placing right now actually put a block at the cursor? */
