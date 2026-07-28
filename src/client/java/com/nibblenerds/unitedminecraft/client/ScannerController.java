@@ -22,14 +22,20 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Enemy;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.ButtonBlock;
+import net.minecraft.world.level.block.CocoaBlock;
+import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.FenceGateBlock;
 import net.minecraft.world.level.block.LeverBlock;
+import net.minecraft.world.level.block.NetherWartBlock;
+import net.minecraft.world.level.block.StemBlock;
+import net.minecraft.world.level.block.SweetBerryBushBlock;
 import net.minecraft.world.level.block.TrapDoorBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
@@ -63,10 +69,18 @@ import net.minecraft.world.phys.Vec3;
  * more than one attacker, where sticking to a single target until it dies isn't what you
  * want, see {@link CombatModeController} instead.
  *
- * <p>The Markers category ({@link MapMarkerController}) is the one exception to almost
+ * <p>The Markers category ({@link MapMarkerController}) is one exception to almost
  * everything above: it isn't range-limited or distance-sorted like every other category
  * (oldest-placed first instead), and Delete removes the focused marker outright rather than
- * meaning "stop lock" - which otherwise does nothing while nothing's locked.
+ * meaning "stop lock" - which otherwise does nothing while nothing's locked. Players is a
+ * second exception to the range limit only (still distance-sorted like a normal category) -
+ * vanilla always syncs every other player in the dimension to the client regardless of
+ * distance, so there's no need to cap it at {@link #SCAN_RANGE} like every other entity scan.
+ *
+ * <p>Crops additionally narrates "Ripe" once a crop is actually ready to harvest - silent
+ * otherwise, same as Build Mode's powered-block narration - covering farmland crops, pumpkin
+ * and melon stems, nether wart, cocoa, and sweet berry bushes (see {@link #isCrop} and
+ * {@link #isRipe}).
  */
 public final class ScannerController {
 	private static final double SCAN_RANGE = 32.0;
@@ -319,8 +333,11 @@ public final class ScannerController {
 		if (vertical != null) {
 			direction = direction.copy().append(Component.literal(", ")).append(vertical);
 		}
-		return Component.translatable("united_minecraft.narrate.scanner_item",
-				itemName(category, item, player.level()), distance, direction);
+		Component name = itemName(category, item, player.level());
+		if (category == ScannerCategory.CROPS && isRipe(player.level().getBlockState(item.blockPos()))) {
+			name = name.copy().append(Component.literal(", ")).append(Component.translatable("united_minecraft.narrate.scanner_ripe"));
+		}
+		return Component.translatable("united_minecraft.narrate.scanner_item", name, distance, direction);
 	}
 
 	/** Null when {@code to} is within the normal vertical range for a plain compass heading. */
@@ -396,9 +413,11 @@ public final class ScannerController {
 			// bordering air or a fluid, i.e. actually visible through a gap, not buried.
 			case ORES -> scanBlocks(player, (pos, state) ->
 					OreDetection.isValuableOre(state) && OreDetection.isExposed(player.level(), pos, player.getEyePosition()));
+			case CROPS -> scanBlocks(player, (pos, state) -> isCrop(state.getBlock()));
 			case PASSIVE_MOBS -> scanEntities(player, entity -> entity instanceof Animal);
 			case HOSTILE_MOBS -> scanEntities(player, entity -> entity instanceof Enemy);
 			case MARKERS -> scanMarkers(player);
+			case PLAYERS -> scanPlayers(player);
 		};
 	}
 
@@ -408,6 +427,40 @@ public final class ScannerController {
 				|| block instanceof DoorBlock
 				|| block instanceof TrapDoorBlock
 				|| block instanceof FenceGateBlock;
+	}
+
+	/** Covers wheat/carrots/potatoes/beetroot/torchflower (all {@link CropBlock}), pumpkin/melon stems, nether wart, cocoa, and sweet berries. */
+	private static boolean isCrop(Block block) {
+		return block instanceof CropBlock
+				|| block instanceof StemBlock
+				|| block instanceof NetherWartBlock
+				|| block instanceof CocoaBlock
+				|| block instanceof SweetBerryBushBlock;
+	}
+
+	/**
+	 * Whether a crop block is ready to harvest. Most crops report this via their own age
+	 * property reaching its documented max; sweet berry bushes are the one exception - they're
+	 * pickable (with berries actually dropping) starting at age 2 of 3, not only at full growth.
+	 */
+	private static boolean isRipe(BlockState state) {
+		Block block = state.getBlock();
+		if (block instanceof CropBlock crop) {
+			return crop.isMaxAge(state);
+		}
+		if (block instanceof SweetBerryBushBlock) {
+			return state.getValue(SweetBerryBushBlock.AGE) >= 2;
+		}
+		if (block instanceof StemBlock) {
+			return state.getValue(StemBlock.AGE) >= StemBlock.MAX_AGE;
+		}
+		if (block instanceof NetherWartBlock) {
+			return state.getValue(NetherWartBlock.AGE) >= NetherWartBlock.MAX_AGE;
+		}
+		if (block instanceof CocoaBlock) {
+			return state.getValue(CocoaBlock.AGE) >= CocoaBlock.MAX_AGE;
+		}
+		return false;
 	}
 
 	private static List<ScannerItem> scanBlocks(LocalPlayer player, BiPredicate<BlockPos, BlockState> predicate) {
@@ -490,6 +543,21 @@ public final class ScannerController {
 			double distance = eye.distanceTo(Vec3.atCenterOf(pos));
 			results.add(new ScannerItem(pos, null, distance, marker.name()));
 		}
+		return results;
+	}
+
+	/** Every other player in the dimension, distance-sorted but never range-filtered - vanilla syncs them all regardless. */
+	private static List<ScannerItem> scanPlayers(LocalPlayer player) {
+		Vec3 eye = player.getEyePosition();
+		List<ScannerItem> results = new ArrayList<>();
+		for (Player other : player.level().players()) {
+			if (other == player || !other.isAlive()) {
+				continue;
+			}
+			double distance = eye.distanceTo(other.getBoundingBox().getCenter());
+			results.add(new ScannerItem(null, other, distance, null));
+		}
+		results.sort(Comparator.comparingDouble(ScannerItem::distance));
 		return results;
 	}
 

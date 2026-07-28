@@ -11,7 +11,9 @@ public enum ScannerCategory {
 	HOSTILE_MOBS("united_minecraft.scanner.category.hostile_mobs"),
 	TREES("united_minecraft.scanner.category.trees"),
 	ORES("united_minecraft.scanner.category.ores"),
-	MARKERS("united_minecraft.scanner.category.markers");
+	CROPS("united_minecraft.scanner.category.crops"),
+	MARKERS("united_minecraft.scanner.category.markers"),
+	PLAYERS("united_minecraft.scanner.category.players");
 
 	private final String translationKey;
 
