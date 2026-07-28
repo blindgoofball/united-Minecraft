@@ -54,6 +54,8 @@
 	"united_minecraft.narrate.movement_route_left": "Blocked ahead, clear path to the left",
 	"united_minecraft.narrate.movement_route_right": "Blocked ahead, clear path to the right",
 	"united_minecraft.narrate.movement_route_ahead": "Blocked ahead, but a way through continues nearby",
+	"united_minecraft.narrate.fall_warning_damaging": "Fall ahead, %s blocks, will hurt",
+	"united_minecraft.narrate.fall_warning_safe": "Fall ahead, %s blocks, safe landing",
 	"united_minecraft.narrate.build_mode_on": "Build mode on.",
 	"united_minecraft.narrate.build_mode_off": "Build mode off",
 	"united_minecraft.narrate.build_cursor": "%s, %s, %s, %s",

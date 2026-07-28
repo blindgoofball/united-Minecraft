@@ -89,6 +89,16 @@ cursor is pointing at. Works on any server, no special permissions needed.
 Hold your sprint key while it's walking to get there faster, same as walking
 there yourself would. Cancel any time with the stop-lock key.
 
+### Fall Warning
+
+Always-on warning for a drop of more than 3 blocks coming up in whatever
+direction you're actually walking (or sprint-strafing) - vanilla's own
+damage-free threshold, so you'll never hear about a harmless step down. An
+anvil-landing sound plus narration means it'll hurt; a lighter chime plus
+narration means it's safe (a cave lake below, say) - useful information
+either way, not just a hazard alert. No key or toggle - it just runs while
+you're walking normally.
+
 ### Navigation Radar
 
 Toggleable audio radar covering front, left, and right as you walk - a sound

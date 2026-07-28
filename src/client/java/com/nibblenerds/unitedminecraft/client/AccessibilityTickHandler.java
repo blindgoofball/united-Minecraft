@@ -102,6 +102,7 @@ public final class AccessibilityTickHandler {
 			NavRadarController.reset();
 			MiningRadarController.reset();
 			HostileRadarController.reset();
+			FallWarningController.reset();
 			TreeChoppingAssist.reset();
 			return;
 		}
@@ -174,6 +175,7 @@ public final class AccessibilityTickHandler {
 				MovementAssistController.tick(client, player);
 				NavRadarController.tick(client, player);
 				MiningRadarController.tick(client, player);
+				FallWarningController.tick(client, player);
 			}
 			// Runs no matter which mode owns rotation - a nearby, visible hostile mob is
 			// worth a warning regardless of what else you're doing.
