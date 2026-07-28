@@ -65,6 +65,13 @@ it dies - built for fighting more than one attacker, where re-targeting by
 hand between hits isn't practical. Auto-disables Build Mode if it was on, and
 you can still walk, strafe, and jump freely while your aim stays locked.
 
+### Hostile Radar
+
+Always-on warning for a hostile mob that's gotten close and has a clear line
+of sight to you - a bell chime plus narration (name, distance, direction) the
+moment one comes into range, so you know something's a threat before it's
+already on top of you. No key or toggle - it just runs.
+
 ### Auto-Walk
 
 Automatically walks you to anything the Scanner has found, or that Build Mode's
