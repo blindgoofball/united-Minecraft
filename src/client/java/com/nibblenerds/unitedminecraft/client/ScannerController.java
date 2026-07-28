@@ -24,6 +24,7 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.ButtonBlock;
 import net.minecraft.world.level.block.DoorBlock;
@@ -335,7 +336,11 @@ public final class ScannerController {
 
 	private static List<ScannerItem> scan(ScannerCategory category, LocalPlayer player) {
 		return switch (category) {
-			case INTERACTABLES -> scanBlocks(player, (pos, state) -> state.getMenuProvider(player.level(), pos) != null);
+			// Beds don't have a menu (sleeping/setting spawn isn't a GUI), but they're
+			// still something you right-click to do something with, not a lever/button/door
+			// style toggle - closer in spirit to this category than to Mechanisms.
+			case INTERACTABLES -> scanBlocks(player, (pos, state) ->
+					state.getMenuProvider(player.level(), pos) != null || state.getBlock() instanceof BedBlock);
 			case MECHANISMS -> scanBlocks(player, (pos, state) -> isMechanism(state.getBlock()));
 			case ITEMS -> scanEntities(player, entity -> entity instanceof ItemEntity);
 			case TREES -> scanTrees(player);
