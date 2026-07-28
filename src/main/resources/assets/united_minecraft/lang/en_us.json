@@ -72,6 +72,7 @@
 	"united_minecraft.narrate.health": "Health %s of %s, Hunger %s of 20",
 	"united_minecraft.narrate.bearing": "Heading %s degrees, Pitch %s degrees",
 	"united_minecraft.narrate.hotbar_empty": "Empty",
+	"united_minecraft.narrate.hotbar_full": "Hotbar full",
 	"united_minecraft.narrate.hotbar_durability": "Durability %s of %s",
 	"united_minecraft.narrate.hands_swapped": "Main hand: %s, Offhand: %s",
 	"united_minecraft.narrate.front_single": "%s, %s blocks",

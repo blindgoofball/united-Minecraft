@@ -201,12 +201,13 @@ public final class MenuAccessibilityController {
 
 	/**
 	 * Creative's own trash slot without having to navigate to it: discards whatever's
-	 * currently picked up on the cursor, exactly like dragging it onto that slot would
-	 * (gone for good, not dropped in the world - this is creative mode). Only meaningful on
-	 * Creative's Inventory tab, the only place a menu screen ever has a carried item without
-	 * an in-progress click already resolving it.
+	 * currently picked up on the cursor, exactly like dragging it onto that slot would (gone
+	 * for good, not dropped in the world - this is creative mode). {@code menu.getCarried()} is
+	 * shared across every tab of the same Creative screen, not just the Inventory tab this class
+	 * itself handles - {@link CreativeInventoryController} calls this too, for Delete while
+	 * carrying something picked up from an item-grid tab or its hotbar.
 	 */
-	private static boolean discardCarriedItem(AbstractContainerScreen<?> screen) {
+	static boolean discardCarriedItem(AbstractContainerScreen<?> screen) {
 		if (!(screen.getMenu() instanceof CreativeModeInventoryScreen.ItemPickerMenu menu) || menu.getCarried().isEmpty()) {
 			return false;
 		}

@@ -13,6 +13,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.entity.player.Inventory;
@@ -123,6 +124,13 @@ public final class CreativeInventoryController {
 		if (key == GLFW.GLFW_KEY_TAB) {
 			toggleSection(screen);
 			return false;
+		}
+
+		// Applies regardless of section - a carried item picked up from the grid or from the
+		// hotbar shares the same menu.getCarried(), so the trash-slot shortcut works from
+		// either. See MenuAccessibilityController#discardCarriedItem.
+		if (key == GLFW.GLFW_KEY_DELETE) {
+			return !MenuAccessibilityController.discardCarriedItem(screen);
 		}
 
 		if (section == Section.HOTBAR) {
@@ -250,6 +258,21 @@ public final class CreativeInventoryController {
 		narrateCurrent(screen, false);
 	}
 
+	/**
+	 * Enter picks the focused item up onto the cursor; Shift+Enter instead writes it straight
+	 * into the player's currently selected hotbar slot.
+	 *
+	 * <p>Neither goes through {@code handleContainerInput} (the generic container-click
+	 * networking path {@link MenuAccessibilityController} uses for real containers) - that
+	 * path's default pickup behavior removes the item from its slot, which is correct for a
+	 * real backing container but wrong here: the grid's 45 slots all share one scratch
+	 * container that's just a rendering window, repopulated by {@code scrollTo} - it isn't the
+	 * real source of the item, so emptying it doesn't do what it would for a real slot, it just
+	 * leaves that grid position looking empty until the next scroll. Vanilla's own mouse
+	 * handling for this exact tab ({@code CreativeModeInventoryScreen#slotClicked}) never calls
+	 * {@code AbstractContainerMenu#clicked} for these slots at all - it hands out a copy via
+	 * {@code ItemPickerMenu#setCarried} directly, which this mirrors instead.
+	 */
 	private static void pickUpOrPlace(CreativeModeInventoryScreen screen, KeyEvent event) {
 		syncItems(screen);
 		if (trackedItems.isEmpty()) {
@@ -262,17 +285,60 @@ public final class CreativeInventoryController {
 		if (slot == null) {
 			return;
 		}
+		ItemStack clicked = slot.getItem();
 
-		boolean shiftHeld = (event.modifiers() & GLFW.GLFW_MOD_SHIFT) != 0;
-		boolean ctrlHeld = (event.modifiers() & GLFW.GLFW_MOD_CONTROL) != 0;
-		// Button 0 = left click, button 1 = right click - matches MenuAccessibilityController's
-		// own Enter handling. Right-click-pickup takes a single item instead of the whole stack.
-		int button = ctrlHeld ? 1 : 0;
-		Minecraft client = Minecraft.getInstance();
-		client.gameMode.handleContainerInput(menu.containerId, slot.index, button,
-				shiftHeld ? ContainerInput.QUICK_MOVE : ContainerInput.PICKUP, client.player);
+		if ((event.modifiers() & GLFW.GLFW_MOD_SHIFT) != 0) {
+			if (writeToFirstEmptyHotbarSlot(clicked)) {
+				narrateCurrent(screen, false);
+			} else {
+				Minecraft.getInstance().getNarrator().saySystemNow(
+						Component.translatable("united_minecraft.narrate.hotbar_full"));
+			}
+			return;
+		}
 
+		menu.setCarried(clicked.copyWithCount(clicked.getCount()));
 		narrateCurrent(screen, false);
+	}
+
+	/** Writes into the first empty hotbar slot, left to right - never overwrites an occupied one. */
+	private static boolean writeToFirstEmptyHotbarSlot(ItemStack clicked) {
+		Minecraft client = Minecraft.getInstance();
+		Inventory inventory = client.player.getInventory();
+		int hotbarSlot = -1;
+		for (int i = 0; i < 9; i++) {
+			if (inventory.getItem(i).isEmpty()) {
+				hotbarSlot = i;
+				break;
+			}
+		}
+		if (hotbarSlot < 0) {
+			return false;
+		}
+
+		int inventoryMenuIndex = inventoryMenuIndexForHotbarSlot(client.player, hotbarSlot);
+		if (inventoryMenuIndex < 0) {
+			return false;
+		}
+		ItemStack stack = clicked.copyWithCount(clicked.getMaxStackSize());
+		inventory.setItem(hotbarSlot, stack);
+		client.gameMode.handleCreativeModeItemAdd(stack, inventoryMenuIndex);
+		return true;
+	}
+
+	/**
+	 * The real {@code player.inventoryMenu}'s own slot-list position for a given hotbar slot -
+	 * what {@code handleCreativeModeItemAdd} actually expects, which is not the same numbering
+	 * as {@link Slot#getContainerSlot()} (0-8 for hotbar there; a different, non-contiguous
+	 * range in the menu's own slot list).
+	 */
+	private static int inventoryMenuIndexForHotbarSlot(LocalPlayer player, int hotbarSlot) {
+		for (Slot slot : player.inventoryMenu.slots) {
+			if (slot.container == player.getInventory() && slot.getContainerSlot() == hotbarSlot) {
+				return slot.index;
+			}
+		}
+		return -1;
 	}
 
 	/** Scrolls the real 45-slot window so the item at {@code itemIndex} is showing somewhere in it. */

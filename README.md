@@ -129,11 +129,15 @@ keys move within a section in a proper 2D grid; Enter picks up/places
 The Creative inventory gets full navigation too: Home/End cycle through every
 creative tab, and arrow keys/Page Up/Down browse an entire tab's items - not
 just whatever happens to be scrolled into view - narrating name and position
-as you go. Tab still reaches your hotbar from any item-picker tab. The
-Inventory tab works the same as your regular inventory screen, with your
-full inventory and equipment included; pressing Delete while carrying an
+as you go. Enter picks an item up; Shift+Enter instead drops it straight into
+the first empty hotbar slot (narrating if the hotbar's already full, rather
+than overwriting anything), and Tab reaches your hotbar directly from any
+item-picker tab, no need to switch to the Inventory tab just for that. The
+Inventory tab itself works the same as your regular inventory screen, with
+your full inventory and equipment included. Pressing Delete while carrying an
 item discards it, the same as dragging it onto the trash slot would, without
-having to navigate there.
+having to navigate there - works from anywhere in the Creative screen, not
+just the Inventory tab.
 
 ## Installation
 
