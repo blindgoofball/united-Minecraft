@@ -119,7 +119,12 @@ public final class MapMarkerController {
 
 	private static String worldId(Minecraft client) {
 		if (client.isLocalServer() && client.getSingleplayerServer() != null) {
-			return "sp_" + client.getSingleplayerServer().getWorldPath(LevelResource.ROOT).getFileName();
+			// LevelResource.ROOT's id is literally "." - getWorldPath resolves to
+			// ".../saves/<world>/.", and Path#resolve doesn't normalize away that trailing
+			// segment, so getFileName() would return "." for every world without this.
+			// normalize() first so it actually returns the save folder name.
+			Path worldPath = client.getSingleplayerServer().getWorldPath(LevelResource.ROOT).normalize();
+			return "sp_" + worldPath.getFileName();
 		}
 		ServerData server = client.getCurrentServer();
 		return "mp_" + (server != null ? server.ip : "direct_connect");
