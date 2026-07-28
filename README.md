@@ -69,7 +69,8 @@ you can still walk, strafe, and jump freely while your aim stays locked.
 
 Automatically walks you to anything the Scanner has found, or that Build Mode's
 cursor is pointing at. Works on any server, no special permissions needed.
-Cancel any time with the stop-lock key.
+Hold your sprint key while it's walking to get there faster, same as walking
+there yourself would. Cancel any time with the stop-lock key.
 
 ### Navigation Radar
 

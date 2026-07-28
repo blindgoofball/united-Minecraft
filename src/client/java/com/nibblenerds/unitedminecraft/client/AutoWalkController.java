@@ -28,8 +28,11 @@ import net.minecraft.world.phys.Vec2;
  * <p>Once a path is found, the player's own {@link LocalPlayer#input} field (normally a
  * {@code KeyboardInput} reading real keys) is swapped for {@link AutoWalkInput}, which
  * reports "forward" (and "jump" when the next waypoint is a step up) as if held - the same
- * mechanism real keyboard input uses, so movement, sprinting, and network sync all just
- * work. The original input is restored when the walk ends or is cancelled.
+ * mechanism real keyboard input uses, so movement and network sync all just work. Sprinting
+ * still follows the real, actual sprint key each tick ({@code LocalPlayer} reads it straight
+ * off whatever {@code Input} is currently installed, same as it would for real keyboard
+ * input) - hold it down while auto-walking and you'll sprint there, exactly like walking
+ * there yourself would. The original input is restored when the walk ends or is cancelled.
  */
 public final class AutoWalkController {
 	private static final float MAX_PATH_LENGTH = 128.0f;
@@ -108,7 +111,7 @@ public final class AutoWalkController {
 		player.setOldRot();
 
 		boolean needsJump = player.onGround() && nextPos.getY() > Mth.floor(player.getY() + 0.1);
-		((AutoWalkInput) player.input).setWalking(needsJump);
+		((AutoWalkInput) player.input).setWalking(needsJump, client.options.keySprint.isDown());
 	}
 
 	private static void finish(Minecraft client, LocalPlayer player, String messageKey) {
@@ -120,10 +123,10 @@ public final class AutoWalkController {
 				: Component.translatable(messageKey));
 	}
 
-	/** Reports "forward" (and "jump" when stepping up) as held, exactly like real keyboard input would. */
+	/** Reports "forward" (and "jump"/"sprint" as needed) as held, exactly like real keyboard input would. */
 	private static final class AutoWalkInput extends ClientInput {
-		void setWalking(boolean jump) {
-			this.keyPresses = new Input(true, false, false, false, jump, false, false);
+		void setWalking(boolean jump, boolean sprint) {
+			this.keyPresses = new Input(true, false, false, false, jump, false, sprint);
 			this.moveVector = new Vec2(0.0f, 1.0f);
 		}
 	}
