@@ -1,5 +1,7 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
@@ -13,6 +15,7 @@ import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.CreativeModeTab;
@@ -42,11 +45,25 @@ import org.lwjgl.glfw.GLFW;
  * player's ordinary inventory, wrapped to display inside this screen - and lets
  * {@link MenuAccessibilityController} handle it the normal way instead. Home/End still work
  * there too, since tab-cycling matters regardless of which tab is currently active.
+ *
+ * <p>An item-picker tab's own {@code ItemPickerMenu} only ever has two kinds of real slot:
+ * the 45-slot item grid and the player's hotbar - vanilla itself doesn't show the main
+ * inventory or armor there at all, on any tab but Inventory, mouse or otherwise. So Tab here
+ * only ever toggles between those two ({@link Section}), not the full section list
+ * {@link MenuAccessibilityController} offers elsewhere; reaching the main inventory or
+ * equipment still means switching to the Inventory tab with Home/End, same as it would for
+ * anyone clicking around with a mouse.
  */
 public final class CreativeInventoryController {
 	private static int index;
 	private static int lastItemCount = -1;
 	private static List<ItemStack> trackedItems = List.of();
+	private static Section section = Section.ITEM_GRID;
+	private static int hotbarIndex;
+
+	private enum Section {
+		ITEM_GRID, HOTBAR
+	}
 
 	private CreativeInventoryController() {
 	}
@@ -72,6 +89,8 @@ public final class CreativeInventoryController {
 	private static void onScreenOpened(CreativeModeInventoryScreen screen) {
 		index = 0;
 		lastItemCount = -1;
+		section = Section.ITEM_GRID;
+		hotbarIndex = 0;
 		if (isItemGridTab(screen)) {
 			syncItems(screen);
 			narrateCurrent(screen, true);
@@ -101,6 +120,23 @@ public final class CreativeInventoryController {
 			return true; // Inventory tab: MenuAccessibilityController owns this instead.
 		}
 
+		if (key == GLFW.GLFW_KEY_TAB) {
+			toggleSection(screen);
+			return false;
+		}
+
+		if (section == Section.HOTBAR) {
+			switch (key) {
+				case GLFW.GLFW_KEY_LEFT -> moveHotbar(screen, -1);
+				case GLFW.GLFW_KEY_RIGHT -> moveHotbar(screen, 1);
+				case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> clickHotbarSlot(screen, event);
+				default -> {
+					return true;
+				}
+			}
+			return false;
+		}
+
 		switch (key) {
 			case GLFW.GLFW_KEY_LEFT -> move(screen, -1);
 			case GLFW.GLFW_KEY_RIGHT -> move(screen, 1);
@@ -116,6 +152,70 @@ public final class CreativeInventoryController {
 		return false;
 	}
 
+	private static void toggleSection(CreativeModeInventoryScreen screen) {
+		section = section == Section.ITEM_GRID ? Section.HOTBAR : Section.ITEM_GRID;
+		if (section == Section.HOTBAR) {
+			hotbarIndex = Math.min(hotbarIndex, 8);
+			narrateHotbarFocus(screen);
+		} else {
+			syncItems(screen);
+			narrateCurrent(screen, false);
+		}
+	}
+
+	private static void moveHotbar(CreativeModeInventoryScreen screen, int delta) {
+		int next = hotbarIndex + delta;
+		if (next < 0 || next >= 9) {
+			return;
+		}
+		hotbarIndex = next;
+		narrateHotbarFocus(screen);
+	}
+
+	private static void clickHotbarSlot(CreativeModeInventoryScreen screen, KeyEvent event) {
+		List<Slot> slots = hotbarSlots(screen);
+		if (hotbarIndex >= slots.size()) {
+			return;
+		}
+		Slot slot = slots.get(hotbarIndex);
+
+		boolean shiftHeld = (event.modifiers() & GLFW.GLFW_MOD_SHIFT) != 0;
+		boolean ctrlHeld = (event.modifiers() & GLFW.GLFW_MOD_CONTROL) != 0;
+		int button = ctrlHeld ? 1 : 0;
+		Minecraft client = Minecraft.getInstance();
+		client.gameMode.handleContainerInput(screen.getMenu().containerId, slot.index, button,
+				shiftHeld ? ContainerInput.QUICK_MOVE : ContainerInput.PICKUP, client.player);
+
+		narrateHotbarFocus(screen);
+	}
+
+	/** The item-picker menu's 9 real hotbar slots, in left-to-right order. */
+	private static List<Slot> hotbarSlots(CreativeModeInventoryScreen screen) {
+		Inventory inventory = Minecraft.getInstance().player.getInventory();
+		List<Slot> result = new ArrayList<>();
+		for (Slot slot : screen.getMenu().slots) {
+			if (slot.container == inventory && Inventory.isHotbarSlot(slot.getContainerSlot())) {
+				result.add(slot);
+			}
+		}
+		result.sort(Comparator.comparingInt(Slot::getContainerSlot));
+		return result;
+	}
+
+	private static void narrateHotbarFocus(CreativeModeInventoryScreen screen) {
+		List<Slot> slots = hotbarSlots(screen);
+		if (hotbarIndex >= slots.size()) {
+			return;
+		}
+		ItemStack stack = slots.get(hotbarIndex).getItem();
+		Component itemName = stack.isEmpty()
+				? Component.translatable("united_minecraft.narrate.hotbar_empty")
+				: ItemDescriptions.describe(stack);
+		Component message = Component.translatable("united_minecraft.menu.slot.hotbar").copy()
+				.append(Component.literal(": ")).append(itemName);
+		Minecraft.getInstance().getNarrator().saySystemNow(message);
+	}
+
 	private static void switchTab(CreativeModeInventoryScreen screen, int direction) {
 		List<CreativeModeTab> tabs = CreativeModeTabs.tabs().stream().filter(CreativeModeTab::shouldDisplay).toList();
 		if (tabs.isEmpty()) {
@@ -127,6 +227,7 @@ public final class CreativeInventoryController {
 		access(screen).unitedMinecraft$selectTab(next);
 		index = 0;
 		lastItemCount = -1;
+		section = Section.ITEM_GRID;
 
 		if (isItemGridTab(screen)) {
 			syncItems(screen);

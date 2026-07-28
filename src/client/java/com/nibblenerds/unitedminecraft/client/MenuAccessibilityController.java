@@ -90,7 +90,13 @@ import org.lwjgl.glfw.GLFW;
  */
 public final class MenuAccessibilityController {
 	private static Section currentSection = Section.CONTAINER;
-	private static int focusedIndex = -1;
+
+	// Tracked by direct reference, not Slot#index: Creative's Inventory tab rebuilds its slot
+	// list by mutating AbstractContainerMenu#slots directly instead of going through
+	// AbstractContainerMenu#addSlot, so index (only ever set by addSlot) silently stays 0 for
+	// every one of those wrapped slots - looking focus up by index there would always resolve
+	// to slot 0 regardless of what was actually focused.
+	private static Slot focusedSlot;
 
 	private static List<RecipeCollection> recipeGroups = List.of();
 	private static int recipeGroupIndex = -1;
@@ -186,13 +192,41 @@ public final class MenuAccessibilityController {
 			return false;
 		}
 
+		if (key == GLFW.GLFW_KEY_DELETE) {
+			return !discardCarriedItem(screen);
+		}
+
+		return true;
+	}
+
+	/**
+	 * Creative's own trash slot without having to navigate to it: discards whatever's
+	 * currently picked up on the cursor, exactly like dragging it onto that slot would
+	 * (gone for good, not dropped in the world - this is creative mode). Only meaningful on
+	 * Creative's Inventory tab, the only place a menu screen ever has a carried item without
+	 * an in-progress click already resolving it.
+	 */
+	private static boolean discardCarriedItem(AbstractContainerScreen<?> screen) {
+		if (!(screen.getMenu() instanceof CreativeModeInventoryScreen.ItemPickerMenu menu) || menu.getCarried().isEmpty()) {
+			return false;
+		}
+		Component itemName = ItemDescriptions.describe(menu.getCarried());
+		menu.setCarried(ItemStack.EMPTY);
+		Minecraft.getInstance().getNarrator().saySystemNow(
+				Component.translatable("united_minecraft.narrate.menu_item_discarded", itemName));
 		return true;
 	}
 
 	/** Sections present for this menu type, in Tab-cycle order. Recipe Book/Equipment only appear when supported. */
 	private static Section[] applicableSections(AbstractContainerMenu menu) {
 		List<Section> sections = new ArrayList<>();
-		sections.add(Section.CONTAINER);
+		// Creative's Inventory tab has no real "container" section of its own - its crafting
+		// slots are parked off-screen (filtered out by sectionSlots' x < 0 check already), and
+		// its one other non-player-inventory slot is just the "drag here to delete" trash icon,
+		// not something worth a whole section and a Tab stop for.
+		if (!(menu instanceof CreativeModeInventoryScreen.ItemPickerMenu)) {
+			sections.add(Section.CONTAINER);
+		}
 		if (menu instanceof RecipeBookMenu) {
 			sections.add(Section.RECIPE_BOOK);
 		}
@@ -248,7 +282,7 @@ public final class MenuAccessibilityController {
 			recipeVariantIndex = 0;
 			narrateRecipeFocus(player, true);
 		} else {
-			focusedIndex = firstSlotIndex(screen.getMenu(), player, currentSection);
+			focusedSlot = firstSlot(screen.getMenu(), player, currentSection);
 			narrateFocusedSlot(screen, player, true);
 		}
 	}
@@ -260,21 +294,20 @@ public final class MenuAccessibilityController {
 			return;
 		}
 
-		Slot current = validSlotOrNull(menu, focusedIndex);
-		if (current == null || !sectionSlots.contains(current)) {
-			focusedIndex = sectionSlots.get(0).index;
+		if (focusedSlot == null || !sectionSlots.contains(focusedSlot)) {
+			focusedSlot = sectionSlots.get(0);
 			narrateFocusedSlot(screen, player, false);
 			return;
 		}
 
 		Slot next = switch (currentSection) {
-			case HOTBAR -> gridNeighbor(sectionSlots, current, direction, sectionSlots.size(), 1);
-			case INVENTORY -> gridNeighbor(sectionSlots, current, direction, 9, sectionSlots.size() / 9);
-			case CONTAINER, EQUIPMENT -> nearestSpatialNeighbor(sectionSlots, current, direction);
+			case HOTBAR -> gridNeighbor(sectionSlots, focusedSlot, direction, sectionSlots.size(), 1);
+			case INVENTORY -> gridNeighbor(sectionSlots, focusedSlot, direction, 9, sectionSlots.size() / 9);
+			case CONTAINER, EQUIPMENT -> nearestSpatialNeighbor(sectionSlots, focusedSlot, direction);
 			case RECIPE_BOOK -> null; // moveFocus is never called while this section is active.
 		};
 		if (next != null) {
-			focusedIndex = next.index;
+			focusedSlot = next;
 			narrateFocusedSlot(screen, player, false);
 		}
 	}
@@ -282,8 +315,21 @@ public final class MenuAccessibilityController {
 	private static void click(AbstractContainerScreen<?> screen, LocalPlayer player, ContainerInput input, int button) {
 		Minecraft client = Minecraft.getInstance();
 		AbstractContainerMenu menu = screen.getMenu();
-		Slot slot = validSlotOrNull(menu, focusedIndex);
+		Slot slot = currentSlot(menu);
 		if (slot == null) {
+			return;
+		}
+
+		if (slot instanceof SlotWrapperAccess wrapper) {
+			// Creative's Inventory tab shows the player's real inventory through slots that
+			// wrap their true player.inventoryMenu counterparts. Vanilla's own mouse handling
+			// clicks through that real menu directly instead of the screen's own ItemPickerMenu
+			// for this tab (see CreativeModeInventoryScreen#slotClicked's Inventory-tab branch) -
+			// mirror that exactly rather than inventing a different networking path.
+			Slot target = wrapper.unitedMinecraft$getTarget();
+			player.inventoryMenu.clicked(target.index, button, input, player);
+			player.inventoryMenu.broadcastChanges();
+			narrateFocusedSlot(screen, player, false);
 			return;
 		}
 
@@ -456,13 +502,14 @@ public final class MenuAccessibilityController {
 		Minecraft.getInstance().getNarrator().saySystemNow(message);
 	}
 
-	private static Slot validSlotOrNull(AbstractContainerMenu menu, int index) {
-		return index >= 0 && index < menu.slots.size() ? menu.slots.get(index) : null;
+	/** {@link #focusedSlot} if it's still actually present in this menu, else null. */
+	private static Slot currentSlot(AbstractContainerMenu menu) {
+		return focusedSlot != null && menu.slots.contains(focusedSlot) ? focusedSlot : null;
 	}
 
-	private static int firstSlotIndex(AbstractContainerMenu menu, LocalPlayer player, Section section) {
+	private static Slot firstSlot(AbstractContainerMenu menu, LocalPlayer player, Section section) {
 		List<Slot> slots = sectionSlots(menu, player, section);
-		return slots.isEmpty() ? -1 : slots.get(0).index;
+		return slots.isEmpty() ? null : slots.get(0);
 	}
 
 	/** All slots belonging to a section, ordered row-major (by container-local index) for HOTBAR/INVENTORY. */
@@ -548,7 +595,7 @@ public final class MenuAccessibilityController {
 	private static void narrateFocusedSlot(AbstractContainerScreen<?> screen, LocalPlayer player, boolean announceSection) {
 		Minecraft client = Minecraft.getInstance();
 		AbstractContainerMenu menu = screen.getMenu();
-		Slot slot = validSlotOrNull(menu, focusedIndex);
+		Slot slot = currentSlot(menu);
 		if (slot == null) {
 			return;
 		}

@@ -119,8 +119,11 @@ keys move within a section in a proper 2D grid; Enter picks up/places
 The Creative inventory gets full navigation too: Home/End cycle through every
 creative tab, and arrow keys/Page Up/Down browse an entire tab's items - not
 just whatever happens to be scrolled into view - narrating name and position
-as you go. The ordinary Inventory tab works the same as your regular
-inventory screen.
+as you go. Tab still reaches your hotbar from any item-picker tab. The
+Inventory tab works the same as your regular inventory screen, with your
+full inventory and equipment included; pressing Delete while carrying an
+item discards it, the same as dragging it onto the trash slot would, without
+having to navigate there.
 
 ## Installation
 
@@ -200,9 +203,9 @@ where noted.
 | \ (backslash) | Announce the Scanner's focused item's coordinates |
 
 Inside container menus, the Creative inventory, and settings/list screens, arrow
-keys/Tab/Enter/Home/End take on the screen-specific meanings described above -
-those are fixed, not part of the rebindable list, since they only apply within
-that particular screen.
+keys/Tab/Enter/Home/End/Delete take on the screen-specific meanings described
+above - those are fixed, not part of the rebindable list, since they only
+apply within that particular screen.
 
 ## Building From Source
 

@@ -93,6 +93,7 @@
 	"united_minecraft.narrate.autowalk_unreachable": "Can't find a path there",
 	"united_minecraft.narrate.tree_chopping_done": "No more logs",
 	"united_minecraft.narrate.menu_carrying": "Carrying %s",
+	"united_minecraft.narrate.menu_item_discarded": "Discarded %s",
 	"united_minecraft.narrate.creative_item_position": "item %s of %s",
 	"united_minecraft.narrate.marker_placed": "Marker '%s' placed",
 	"united_minecraft.narrate.marker_removed": "Marker '%s' removed",
