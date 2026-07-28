@@ -307,11 +307,32 @@ public final class ScannerController {
 		return items.get(itemIndex);
 	}
 
+	/** Beyond this many blocks of vertical separation, above/below is narrated alongside the compass heading. */
+	private static final double VERTICAL_DIRECTION_THRESHOLD = 5.0;
+
 	private static Component describeItem(ScannerCategory category, ScannerItem item, LocalPlayer player) {
 		int distance = (int) Math.round(item.distance());
-		Component direction = CameraUtil.compassDirectionTo(player.position(), targetPosition(item));
+		Vec3 from = player.position();
+		Vec3 to = targetPosition(item);
+		Component direction = CameraUtil.compassDirectionTo(from, to);
+		Component vertical = verticalDirection(from, to);
+		if (vertical != null) {
+			direction = direction.copy().append(Component.literal(", ")).append(vertical);
+		}
 		return Component.translatable("united_minecraft.narrate.scanner_item",
 				itemName(category, item, player.level()), distance, direction);
+	}
+
+	/** Null when {@code to} is within the normal vertical range for a plain compass heading. */
+	private static Component verticalDirection(Vec3 from, Vec3 to) {
+		double dy = to.y() - from.y();
+		if (dy > VERTICAL_DIRECTION_THRESHOLD) {
+			return Component.translatable("united_minecraft.direction.above");
+		}
+		if (dy < -VERTICAL_DIRECTION_THRESHOLD) {
+			return Component.translatable("united_minecraft.direction.below");
+		}
+		return null;
 	}
 
 	private static Vec3 targetPosition(ScannerItem item) {

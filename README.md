@@ -48,6 +48,9 @@ navigation without needing to see or aim at them.
 - Shift+target instead walks there automatically (see Auto-Walk below).
 - A dedicated key announces the currently focused item's exact coordinates, for
   actually finding your way to it.
+- Direction is narrated as a compass heading plus "above" or "below" whenever an
+  item is more than 5 blocks above or below you, since a plain heading alone
+  doesn't tell you which way to look vertically.
 
 ### Map Markers
 

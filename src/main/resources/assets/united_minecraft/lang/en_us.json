@@ -142,5 +142,7 @@
 	"united_minecraft.direction.west": "West",
 	"united_minecraft.direction.northwest": "Northwest",
 	"united_minecraft.direction.up": "Up",
-	"united_minecraft.direction.down": "Down"
+	"united_minecraft.direction.down": "Down",
+	"united_minecraft.direction.above": "Above",
+	"united_minecraft.direction.below": "Below"
 }
