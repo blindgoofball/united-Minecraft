@@ -35,6 +35,9 @@ public final class ClientKeyBindings {
 	public static final KeyMapping SCAN_SURROUNDINGS = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.scan_surroundings", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R, CATEGORY));
 
+	public static final KeyMapping NARRATE_TIME = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+			"key.united_minecraft.narrate_time", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, CATEGORY));
+
 	public static final KeyMapping TOGGLE_BUILD_MODE = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.toggle_build_mode", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_I, CATEGORY));
 

@@ -18,7 +18,10 @@ no server-side install needed, and it works on any vanilla server.
 - On-demand readouts for coordinates/standing block/biome, health and hunger, and
   facing direction in compass degrees with pitch, each on their own key.
 - Automatic narration as things change: facing direction, hotbar slot,
-  offhand/main-hand swaps, and entering a new biome.
+  offhand/main-hand swaps, entering a new biome, and the time of day reaching
+  sunrise, noon, sunset, night (when mobs can start spawning in the dark), or
+  midnight. A dedicated key instead reads the full picture on demand - day
+  count, current period, and a clock-style time.
 - "Read what's in front of me": narrates the nearest block and/or entity ahead,
   with distance.
 - Reactive movement narration: if you're stuck walking into something, it tells
@@ -164,6 +167,7 @@ where noted.
 | H | Narrate health and hunger |
 | B (Shift+B resets facing to north) | Narrate facing direction and pitch |
 | R | Read what's in front of me |
+| V | Narrate time of day |
 | I | Toggle Build Mode |
 | Right Control | Build Mode: place block |
 | Right Shift (hold) | Build Mode: break block |

@@ -1,5 +1,7 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import java.util.Locale;
+
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
 import net.minecraft.client.KeyMapping;
@@ -15,8 +17,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.biome.Biome;
 
 /**
- * Drives United Minecraft's per-tick accessibility features: coordinate/health/bearing
- * readouts on keypress, and facing-direction and hotbar-switch narration as they change.
+ * Drives United Minecraft's per-tick accessibility features: coordinate/health/bearing/
+ * time-of-day readouts on keypress, and facing-direction, hotbar-switch, and time-of-day
+ * period narration as they change.
  */
 public final class AccessibilityTickHandler {
 	// Degrees the camera turns per tick while a look key is held.
@@ -43,8 +46,23 @@ public final class AccessibilityTickHandler {
 			"united_minecraft.direction.southeast",
 	};
 
+	// Vanilla's own named time-of-day ticks (matching /time set's presets, plus the point
+	// mobs can start spawning in darkness - distinct from the merely visual sunset a bit
+	// earlier, and the most actionable of these for knowing when it's gotten dangerous).
+	// Ordered ascending, each paired with the narration key for the period it starts.
+	private static final long[] TIME_PERIOD_TICKS = {0L, 6000L, 12000L, 13000L, 18000L};
+	private static final String[] TIME_PERIOD_KEYS = {
+			"united_minecraft.narrate.time_sunrise",
+			"united_minecraft.narrate.time_noon",
+			"united_minecraft.narrate.time_sunset",
+			"united_minecraft.narrate.time_night",
+			"united_minecraft.narrate.time_midnight",
+	};
+	private static final long TICKS_PER_DAY = 24000L;
+
 	private static int lastOctant = -1;
 	private static int lastHotbarSlot = -1;
+	private static int lastTimePeriod = -1;
 	private static ItemStack lastOffhand = null;
 	private static Holder<Biome> lastBiome = null;
 
@@ -71,6 +89,7 @@ public final class AccessibilityTickHandler {
 			// Reset so a fresh world/session starts without narrating stale changes.
 			lastOctant = -1;
 			lastHotbarSlot = -1;
+			lastTimePeriod = -1;
 			lastOffhand = null;
 			lastBiome = null;
 			snapLeftHeld = snapRightHeld = snapUpHeld = snapDownHeld = false;
@@ -160,6 +179,7 @@ public final class AccessibilityTickHandler {
 		}
 		handleHotbarNarration(client, player);
 		handleBiomeNarration(client, player);
+		handleTimeOfDayNarration(client, player);
 		if (client.gui.screen() == null) {
 			// Only relevant in-world: the menu's own inventory-screen narration already covers
 			// the offhand slot there, and vanilla's swap-hands key does nothing over a screen.
@@ -181,6 +201,9 @@ public final class AccessibilityTickHandler {
 		}
 		if (ClientKeyBindings.SCAN_SURROUNDINGS.consumeClick()) {
 			SurroundingsScanner.narrateFront(client, player);
+		}
+		if (ClientKeyBindings.NARRATE_TIME.consumeClick()) {
+			narrateTimeOfDay(client, player);
 		}
 	}
 
@@ -326,6 +349,58 @@ public final class AccessibilityTickHandler {
 	private static Component biomeName(Holder<Biome> biome) {
 		Identifier id = biome.unwrapKey().map(ResourceKey::identifier).orElse(null);
 		return Component.translatable(Util.makeDescriptionId("biome", id));
+	}
+
+	/**
+	 * Announces sunrise, noon, sunset, night (when mobs can start spawning in the dark -
+	 * distinct from the merely visual sunset a bit earlier), and midnight as each begins.
+	 * Wherever the player's current dimension has no day/night cycle at all (the Nether,
+	 * say), its clock just always reads 0 and this narrates "sunrise" once on arrival and
+	 * then never again, same as anywhere else that stops changing.
+	 */
+	private static void handleTimeOfDayNarration(Minecraft client, LocalPlayer player) {
+		int period = timePeriodIndex(player);
+		if (period != lastTimePeriod) {
+			if (lastTimePeriod != -1) {
+				client.getNarrator().saySystemNow(Component.translatable(TIME_PERIOD_KEYS[period]));
+			}
+			lastTimePeriod = period;
+		}
+	}
+
+	private static int timePeriodIndex(LocalPlayer player) {
+		long timeOfDay = Math.floorMod(player.level().getDefaultClockTime(), TICKS_PER_DAY);
+		int period = 0;
+		for (int i = TIME_PERIOD_TICKS.length - 1; i >= 0; i--) {
+			if (timeOfDay >= TIME_PERIOD_TICKS[i]) {
+				period = i;
+				break;
+			}
+		}
+		return period;
+	}
+
+	private static void narrateTimeOfDay(Minecraft client, LocalPlayer player) {
+		long clockTicks = player.level().getDefaultClockTime();
+		long timeOfDay = Math.floorMod(clockTicks, TICKS_PER_DAY);
+		long day = Math.floorDiv(clockTicks, TICKS_PER_DAY) + 1;
+
+		// Tick 0 is 6:00 AM (sunrise); the day/night cycle runs 24000 ticks = 24 in-game hours.
+		int minutesFrom6am = (int) (timeOfDay * 24 * 60 / TICKS_PER_DAY);
+		int hour24 = (6 + minutesFrom6am / 60) % 24;
+		int minute = minutesFrom6am % 60;
+		int hour12 = hour24 % 12 == 0 ? 12 : hour24 % 12;
+		Component amPm = Component.translatable(hour24 < 12
+				? "united_minecraft.narrate.time_am"
+				: "united_minecraft.narrate.time_pm");
+
+		Component message = Component.translatable("united_minecraft.narrate.time_day", day)
+				.append(Component.literal(". "))
+				.append(Component.translatable(TIME_PERIOD_KEYS[timePeriodIndex(player)]))
+				.append(Component.literal(". "))
+				.append(Component.translatable("united_minecraft.narrate.time_clock",
+						hour12, String.format(Locale.ROOT, "%02d", minute), amPm));
+		client.getNarrator().saySystemNow(message);
 	}
 
 	private static void narrateCoordinates(Minecraft client, LocalPlayer player) {
