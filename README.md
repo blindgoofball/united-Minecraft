@@ -16,7 +16,9 @@ no server-side install needed, and it works on any vanilla server.
   [`src/client/resources/nvda/README.md`](src/client/resources/nvda/README.md)
   for setup details.
 - On-demand readouts for coordinates/standing block/biome, health and hunger, and
-  facing direction in compass degrees with pitch, each on their own key.
+  facing direction in compass degrees with pitch, each on their own key. Shift on the
+  coordinates key instead reads the light level (combined, plus block/sky split) -
+  of the block under Build Mode's cursor if it's active, your own block otherwise.
 - Automatic narration as things change: facing direction, hotbar slot,
   offhand/main-hand swaps, entering a new biome, and the time of day reaching
   sunrise, noon, sunset, night (when mobs can start spawning in the dark), or
@@ -50,6 +52,9 @@ navigation without needing to see or aim at them.
 - Targeting a block aims at it. Targeting a mob starts a continuous lock-on that
   keeps facing it until released. Drawing a bow while locked on aims with a real
   ballistic arc, so shots land at real range instead of dropping short.
+- Any bow shot that actually connects - locked on or not - gets a confirmation cue
+  at full volume regardless of distance, since a hit at real range is easy to miss
+  both by eye and by ear.
 - Killing a locked-on hostile mob automatically re-locks onto the next nearest
   one, so tracking a fight doesn't mean re-scanning after every kill.
 - Shift+target instead walks there automatically (see Auto-Walk below).
@@ -218,7 +223,7 @@ where noted.
 
 | Key | Action |
 | --- | --- |
-| C | Narrate coordinates, standing block, and biome |
+| C (Shift = light level, of Build Mode's cursor if active) | Narrate coordinates, standing block, and biome |
 | H | Narrate health and hunger |
 | B (Shift+B resets facing to north) | Narrate facing direction and pitch |
 | R | Read what's in front of me |

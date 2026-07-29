@@ -131,6 +131,11 @@ public final class BuildModeController {
 		return active;
 	}
 
+	/** The cursor's current position. Only valid while {@link #isActive()}. */
+	public static BlockPos getCursor() {
+		return cursor;
+	}
+
 	public static void reset() {
 		active = false;
 		cursor = null;

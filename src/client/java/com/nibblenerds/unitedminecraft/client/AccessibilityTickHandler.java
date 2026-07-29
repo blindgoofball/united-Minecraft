@@ -14,6 +14,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.Util;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.biome.Biome;
 
 /**
@@ -102,6 +103,7 @@ public final class AccessibilityTickHandler {
 			NavRadarController.reset();
 			MiningRadarController.reset();
 			HostileRadarController.reset();
+			ArrowHitController.reset();
 			FallWarningController.reset();
 			TreeChoppingAssist.reset();
 			return;
@@ -180,6 +182,9 @@ public final class AccessibilityTickHandler {
 			// Runs no matter which mode owns rotation - a nearby, visible hostile mob is
 			// worth a warning regardless of what else you're doing.
 			HostileRadarController.tick(client, player);
+			// Same reasoning - a fired arrow keeps flying, and needs watching for a hit,
+			// regardless of what else the player is doing once it's loosed.
+			ArrowHitController.tick(client, player);
 		}
 
 		if (!BuildModeController.isActive() && !ScannerController.isLocked() && !AutoWalkController.isActive()
@@ -198,7 +203,11 @@ public final class AccessibilityTickHandler {
 		}
 
 		if (ClientKeyBindings.NARRATE_COORDINATES.consumeClick()) {
-			narrateCoordinates(client, player);
+			if (ClientKeyBindings.isShiftDown(client)) {
+				narrateLightLevel(client, player);
+			} else {
+				narrateCoordinates(client, player);
+			}
 		}
 		if (ClientKeyBindings.NARRATE_HEALTH.consumeClick()) {
 			narrateHealth(client, player);
@@ -423,6 +432,22 @@ public final class AccessibilityTickHandler {
 				.append(Component.literal(". "))
 				.append(Component.translatable("united_minecraft.narrate.biome_label", biomeName(player.level().getBiome(pos))));
 		client.getNarrator().saySystemNow(message);
+	}
+
+	/**
+	 * Shares the Narrate Coordinates key via Shift, the same layering {@link
+	 * ClientKeyBindings} already uses elsewhere - light level is the same kind of "what's
+	 * around me right now" fact as that key's normal readout. Reports the cursor's block
+	 * while Build Mode is active (matching what that mode already treats as "here"),
+	 * the player's own block otherwise.
+	 */
+	private static void narrateLightLevel(Minecraft client, LocalPlayer player) {
+		BlockPos pos = BuildModeController.isActive() ? BuildModeController.getCursor() : player.blockPosition();
+		int combined = player.level().getMaxLocalRawBrightness(pos);
+		int blockLight = player.level().getBrightness(LightLayer.BLOCK, pos);
+		int skyLight = player.level().getBrightness(LightLayer.SKY, pos);
+		client.getNarrator().saySystemNow(Component.translatable(
+				"united_minecraft.narrate.light_level", combined, blockLight, skyLight));
 	}
 
 	private static void narrateHealth(Minecraft client, LocalPlayer player) {
