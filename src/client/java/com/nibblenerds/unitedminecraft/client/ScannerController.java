@@ -75,7 +75,7 @@ import net.minecraft.world.phys.Vec3;
  * meaning "stop lock" - which otherwise does nothing while nothing's locked. Players is a
  * second exception to the range limit only (still distance-sorted like a normal category) -
  * vanilla always syncs every other player in the dimension to the client regardless of
- * distance, so there's no need to cap it at {@link #SCAN_RANGE} like every other entity scan.
+ * distance, so there's no need to cap it at {@link #scanRange()} like every other entity scan.
  *
  * <p>Crops additionally narrates "Ripe" once a crop is actually ready to harvest - silent
  * otherwise, same as Build Mode's powered-block narration - covering farmland crops, pumpkin
@@ -83,7 +83,6 @@ import net.minecraft.world.phys.Vec3;
  * {@link #isRipe}).
  */
 public final class ScannerController {
-	private static final double SCAN_RANGE = 32.0;
 	private static final int LEAF_SEARCH_MARGIN = 2;
 
 	private static final ScannerCategory[] CATEGORIES = ScannerCategory.values();
@@ -95,6 +94,10 @@ public final class ScannerController {
 	private static Entity lockedEntity;
 
 	private ScannerController() {
+	}
+
+	private static double scanRange() {
+		return UnitedMinecraftConfig.get().scannerRange;
 	}
 
 	public static boolean isLocked() {
@@ -467,7 +470,7 @@ public final class ScannerController {
 		Level level = player.level();
 		Vec3 eye = player.getEyePosition();
 		BlockPos center = player.blockPosition();
-		int r = (int) SCAN_RANGE;
+		int r = (int) scanRange();
 
 		List<ScannerItem> results = new ArrayList<>();
 		for (BlockPos pos : BlockPos.betweenClosed(center.offset(-r, -r, -r), center.offset(r, r, r))) {
@@ -476,7 +479,7 @@ public final class ScannerController {
 				continue;
 			}
 			double distance = eye.distanceTo(Vec3.atCenterOf(pos));
-			if (distance <= SCAN_RANGE) {
+			if (distance <= scanRange()) {
 				results.add(new ScannerItem(pos.immutable(), null, distance, null));
 			}
 		}
@@ -486,12 +489,12 @@ public final class ScannerController {
 
 	private static List<ScannerItem> scanEntities(LocalPlayer player, Predicate<Entity> predicate) {
 		Vec3 eye = player.getEyePosition();
-		AABB box = player.getBoundingBox().inflate(SCAN_RANGE);
+		AABB box = player.getBoundingBox().inflate(scanRange());
 
 		List<ScannerItem> results = new ArrayList<>();
 		for (Entity entity : player.level().getEntities(player, box, e -> e.isAlive() && predicate.test(e))) {
 			double distance = eye.distanceTo(entity.getBoundingBox().getCenter());
-			if (distance <= SCAN_RANGE) {
+			if (distance <= scanRange()) {
 				results.add(new ScannerItem(null, entity, distance, null));
 			}
 		}
@@ -503,7 +506,7 @@ public final class ScannerController {
 		Level level = player.level();
 		Vec3 eye = player.getEyePosition();
 		BlockPos center = player.blockPosition();
-		int r = (int) SCAN_RANGE;
+		int r = (int) scanRange();
 
 		Set<BlockPos> logPositions = new HashSet<>();
 		for (BlockPos pos : BlockPos.betweenClosed(center.offset(-r, -r, -r), center.offset(r, r, r))) {
@@ -526,7 +529,7 @@ public final class ScannerController {
 				continue;
 			}
 			double distance = eye.distanceTo(Vec3.atCenterOf(trunkBase));
-			if (distance <= SCAN_RANGE) {
+			if (distance <= scanRange()) {
 				results.add(new ScannerItem(trunkBase, null, distance, null));
 			}
 		}

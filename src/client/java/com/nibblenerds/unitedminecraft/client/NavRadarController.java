@@ -40,7 +40,6 @@ import net.minecraft.world.phys.Vec3;
  * across a classification boundary from cuing repeatedly.
  */
 public final class NavRadarController {
-	private static final int RADAR_RANGE = 8;
 	private static final int[] DIRECTION_OFFSETS = {0, 90, 270};
 	private static final double PROBE_HEIGHT = 0.1;
 	private static final double JUMP_HEIGHT = 1.25;
@@ -133,14 +132,15 @@ public final class NavRadarController {
 
 		// Just above the feet, not at eye height - a low fence or wall should still be
 		// found even though a person could see clean over the top of it.
+		int radarRange = UnitedMinecraftConfig.get().navRadarRange;
 		double rayY = player.getY() + PROBE_HEIGHT;
 		Vec3 from = new Vec3(player.getX(), rayY, player.getZ());
-		Vec3 to = new Vec3(player.getX() + dirX * RADAR_RANGE, rayY, player.getZ() + dirZ * RADAR_RANGE);
+		Vec3 to = new Vec3(player.getX() + dirX * radarRange, rayY, player.getZ() + dirZ * radarRange);
 
 		ClipContext context = new ClipContext(from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player);
 		BlockHitResult hit = level.clip(context);
 		if (hit.getType() == HitResult.Type.MISS) {
-			return new ScanResult(ObstacleState.OPEN, bearingDeg, RADAR_RANGE, null);
+			return new ScanResult(ObstacleState.OPEN, bearingDeg, radarRange, null);
 		}
 
 		BlockPos hitPos = hit.getBlockPos();
@@ -171,7 +171,7 @@ public final class NavRadarController {
 
 		SoundEvent sound = result.hitBlock().getSoundType().getPlaceSound();
 		float pitch = result.state() == ObstacleState.JUMPABLE ? JUMPABLE_PITCH : BLOCKED_PITCH;
-		double distance = Math.min(result.distance(), RADAR_RANGE);
+		double distance = Math.min(result.distance(), UnitedMinecraftConfig.get().navRadarRange);
 		double x = player.getX() + dirX * distance;
 		double z = player.getZ() + dirZ * distance;
 		client.getSoundManager().play(new SimpleSoundInstance(

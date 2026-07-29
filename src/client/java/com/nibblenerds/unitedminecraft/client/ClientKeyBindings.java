@@ -100,6 +100,9 @@ public final class ClientKeyBindings {
 	public static final KeyMapping SCANNER_COORDINATES = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.scanner_coordinates", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_BACKSLASH, CATEGORY));
 
+	public static final KeyMapping OPEN_SETTINGS = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+			"key.united_minecraft.open_settings", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_F6, CATEGORY));
+
 	private ClientKeyBindings() {
 	}
 

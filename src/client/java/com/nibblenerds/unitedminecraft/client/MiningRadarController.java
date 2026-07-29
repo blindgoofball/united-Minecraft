@@ -35,7 +35,6 @@ import net.minecraft.world.phys.Vec3;
  * queued and drained one at a time, spaced a few ticks apart, instead.
  */
 public final class MiningRadarController {
-	private static final int RADIUS = 8;
 	private static final int SCAN_INTERVAL_TICKS = 10;
 	private static final int ALERT_INTERVAL_TICKS = 5;
 
@@ -93,7 +92,8 @@ public final class MiningRadarController {
 		Level level = player.level();
 		BlockPos center = player.blockPosition();
 		Vec3 eye = player.getEyePosition();
-		for (BlockPos pos : BlockPos.betweenClosed(center.offset(-RADIUS, -RADIUS, -RADIUS), center.offset(RADIUS, RADIUS, RADIUS))) {
+		int radius = UnitedMinecraftConfig.get().miningRadarRange;
+		for (BlockPos pos : BlockPos.betweenClosed(center.offset(-radius, -radius, -radius), center.offset(radius, radius, radius))) {
 			if (alerted.contains(pos)) {
 				continue;
 			}

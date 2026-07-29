@@ -166,6 +166,17 @@ item discards it, the same as dragging it onto the trash slot would, without
 having to navigate there - works from anywhere in the Creative screen, not
 just the Inventory tab.
 
+### Settings
+
+A dedicated key opens a settings screen for the things worth tuning to
+taste: on/off switches for Hostile Radar and Fall Warning (both otherwise
+always-on with no toggle of their own), and range/threshold sliders for
+Hostile Radar, Fall Warning, Mining Radar, Navigation Radar, and the
+Scanner. Saved to a config file shared across every world and server, and
+built from the same vanilla screen widgets as the rest of Minecraft's
+Options menus rather than a third-party settings toolkit, so it narrates
+exactly as reliably.
+
 ## Installation
 
 You'll need three things: the matching version of Minecraft Java Edition,
@@ -243,6 +254,7 @@ where noted.
 | Enter (Shift = walk there) | Target the Scanner's focused item |
 | Delete | Stop Scanner lock-on / cancel Auto-Walk, or remove the focused marker in the Markers category |
 | \ (backslash) | Announce the Scanner's focused item's coordinates |
+| F6 | Open United Minecraft Settings |
 
 Inside container menus, the Creative inventory, and settings/list screens, arrow
 keys/Tab/Enter/Home/End/Delete take on the screen-specific meanings described

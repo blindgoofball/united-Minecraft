@@ -25,6 +25,7 @@
 	"key.united_minecraft.scanner_stop_lock": "Scanner Stop Lock-On / Cancel Auto-Walk",
 	"key.united_minecraft.scanner_coordinates": "Scanner: Announce Focused Item's Coordinates",
 	"key.united_minecraft.place_marker": "Place Map Marker Here",
+	"key.united_minecraft.open_settings": "Open United Minecraft Settings",
 
 	"united_minecraft.narrate.coordinates": "%s, %s, %s",
 	"united_minecraft.narrate.standing_on": "Standing on %s",
@@ -150,5 +151,15 @@
 	"united_minecraft.direction.up": "Up",
 	"united_minecraft.direction.down": "Down",
 	"united_minecraft.direction.above": "Above",
-	"united_minecraft.direction.below": "Below"
+	"united_minecraft.direction.below": "Below",
+	"united_minecraft.settings_screen.title": "United Minecraft Settings",
+	"united_minecraft.settings_screen.hostile_radar_enabled": "Hostile Radar",
+	"united_minecraft.settings_screen.hostile_radar_range": "Hostile Radar Range",
+	"united_minecraft.settings_screen.fall_warning_enabled": "Fall Warning",
+	"united_minecraft.settings_screen.fall_warning_threshold": "Fall Warning Threshold",
+	"united_minecraft.settings_screen.mining_radar_range": "Mining Radar Range",
+	"united_minecraft.settings_screen.nav_radar_range": "Navigation Radar Range",
+	"united_minecraft.settings_screen.scanner_range": "Scanner Range",
+	"united_minecraft.settings_screen.slider_format": "%s: %s blocks",
+	"united_minecraft.settings_screen.done": "Done"
 }

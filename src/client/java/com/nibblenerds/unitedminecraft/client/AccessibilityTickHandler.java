@@ -139,6 +139,9 @@ public final class AccessibilityTickHandler {
 		if (client.gui.screen() == null && ClientKeyBindings.PLACE_MARKER.consumeClick()) {
 			MapMarkerController.openNameScreen(client, player);
 		}
+		if (client.gui.screen() == null && ClientKeyBindings.OPEN_SETTINGS.consumeClick()) {
+			client.gui.setScreen(new SettingsScreen());
+		}
 
 		if (client.gui.screen() != null && AutoWalkController.isActive()) {
 			// AutoWalkController.tick (and the cancel-key check inside it) only runs below,

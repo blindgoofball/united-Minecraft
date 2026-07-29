@@ -21,10 +21,14 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Always-on warning for a fall of more than {@link #SAFE_FALL_DISTANCE} blocks - vanilla's own
- * damage-free threshold - coming up in the direction the player is actually moving (their
- * current horizontal velocity, not just where they're facing, since sprint-strafing can point
- * those two different ways). Every fall past that height gets a cue, not only damaging ones:
+ * Always-on warning for a fall of more than {@code UnitedMinecraftConfig.fallWarningThreshold}
+ * blocks (defaults to matching vanilla's own damage-free threshold, {@link
+ * #SAFE_FALL_DISTANCE}, but is a separate, user-configurable value - see {@link
+ * SettingsScreen} - since "worth a warning" and "will it actually hurt" are different
+ * questions once someone wants a heads-up on shorter drops too) coming up in the direction
+ * the player is actually moving (their current horizontal velocity, not just where they're
+ * facing, since sprint-strafing can point those two different ways). Every fall past that
+ * height gets a cue, not only damaging ones:
  * a distinct sound and narration for "this will hurt" versus "this won't" (e.g. a cave lake
  * below), so a safe drop into water is useful information rather than a false alarm.
  *
@@ -67,6 +71,10 @@ public final class FallWarningController {
 	}
 
 	public static void tick(Minecraft client, LocalPlayer player) {
+		if (!UnitedMinecraftConfig.get().fallWarningEnabled) {
+			return;
+		}
+
 		ticks++;
 
 		if (!player.onGround() || player.isSpectator() || player.getAbilities().invulnerable
@@ -103,7 +111,7 @@ public final class FallWarningController {
 		// No floor at all down to the bottom of the world - falling out of it entirely, which
 		// always kills. Still worth a (damaging) warning rather than staying silent.
 		double dropHeight = landing != null ? player.getY() - (landing.getY() + 1) : player.getY() - level.getMinY();
-		if (dropHeight <= SAFE_FALL_DISTANCE) {
+		if (dropHeight <= UnitedMinecraftConfig.get().fallWarningThreshold) {
 			return;
 		}
 

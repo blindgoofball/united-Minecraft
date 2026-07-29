@@ -35,7 +35,6 @@ import net.minecraft.world.phys.shapes.CollisionContext;
  * line-of-sight flicker (a passing leaf, a door swinging) shouldn't be able to spam it either.
  */
 public final class HostileRadarController {
-	private static final double RANGE = 16.0;
 	private static final int SCAN_INTERVAL_TICKS = 5;
 	private static final int ALERT_INTERVAL_TICKS = 5;
 	private static final int RE_ALERT_COOLDOWN_TICKS = 100;
@@ -58,6 +57,11 @@ public final class HostileRadarController {
 	}
 
 	public static void tick(Minecraft client, LocalPlayer player) {
+		if (!UnitedMinecraftConfig.get().hostileRadarEnabled) {
+			pending.clear();
+			return;
+		}
+
 		ticks++;
 
 		if (ticksUntilScan <= 0) {
@@ -76,14 +80,15 @@ public final class HostileRadarController {
 	}
 
 	private static void scan(LocalPlayer player) {
+		double range = UnitedMinecraftConfig.get().hostileRadarRange;
 		Vec3 eye = player.getEyePosition();
-		AABB box = player.getBoundingBox().inflate(RANGE);
+		AABB box = player.getBoundingBox().inflate(range);
 		for (Entity entity : player.level().getEntities(player, box, e -> e.isAlive() && e instanceof Enemy)) {
 			Integer alertedAt = lastAlertTick.get(entity.getId());
 			if (alertedAt != null && ticks - alertedAt < RE_ALERT_COOLDOWN_TICKS) {
 				continue;
 			}
-			if (eye.distanceToSqr(entity.getEyePosition()) > RANGE * RANGE || pending.contains(entity)) {
+			if (eye.distanceToSqr(entity.getEyePosition()) > range * range || pending.contains(entity)) {
 				continue;
 			}
 			if (hasLineOfSight(player.level(), eye, entity.getEyePosition())) {
