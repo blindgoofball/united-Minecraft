@@ -65,6 +65,7 @@
 	"united_minecraft.narrate.build_out_of_reach": "Out of reach",
 	"united_minecraft.narrate.build_cannot_place": "Can't place there",
 	"united_minecraft.narrate.build_cannot_break": "Nothing to break",
+	"united_minecraft.narrate.build_not_visible": "Can't see it",
 	"united_minecraft.narrate.build_edge_of_area": "Edge of build area",
 	"united_minecraft.narrate.build_already_in_reach": "Already in reach",
 	"united_minecraft.narrate.build_cursor_name": "the cursor",

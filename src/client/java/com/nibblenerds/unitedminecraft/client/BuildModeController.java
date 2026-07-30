@@ -591,6 +591,14 @@ public final class BuildModeController {
 	 * it. Held rather than a single click so survival's real mining time still applies;
 	 * creative mode still breaks instantly, since that's handled inside {@code
 	 * startDestroyBlock} itself.
+	 *
+	 * <p>Bypassing the raycast removes the "must be looking at it" restriction, but not the
+	 * "must actually be able to see it at all" one - unlike a real raycast, {@code
+	 * startDestroyBlock}/{@code continueDestroyBlock} don't check line of sight themselves,
+	 * so without an explicit {@link OreDetection#isExposed} check here the cursor could mine
+	 * straight through walls to something otherwise fully sealed off, the one thing every
+	 * other "don't x-ray" feature in this mod (Ores, Liquids, Mining Radar) deliberately rules
+	 * out.
 	 */
 	private static void breakBlock(Minecraft client, LocalPlayer player, boolean justStarted) {
 		if (!isInReach(player, cursor)) {
@@ -607,6 +615,16 @@ public final class BuildModeController {
 		if (level.getBlockState(cursor).isAir()) {
 			if (justStarted) {
 				client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_cannot_break"));
+			}
+			return;
+		}
+		if (!OreDetection.isExposed(level, cursor, player.getEyePosition())) {
+			if (justStarted) {
+				client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_not_visible"));
+			} else {
+				// Line of sight was lost mid-hold (e.g. another block was placed in the way) -
+				// cancel cleanly, same as losing reach above.
+				client.gameMode.stopDestroyBlock();
 			}
 			return;
 		}
