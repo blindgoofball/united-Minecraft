@@ -39,7 +39,7 @@ Cycle through nearby things by category and get full narration, targeting, and
 navigation without needing to see or aim at them.
 
 - Categories: Interactables, Mechanisms, Items, Passive Mobs, Hostile Mobs, Trees,
-  Ores, Crops, Markers (see Map Markers below), and Players.
+  Ores, Liquids, Crops, Markers (see Map Markers below), and Players.
 - Like Markers, Players ignores the Scanner's normal range - every other player in
   your current dimension shows up regardless of distance, since the game already
   tells your client about all of them no matter how far away they are.
@@ -47,6 +47,10 @@ navigation without needing to see or aim at them.
   pumpkin and melon stems, nether wart, cocoa pods, and sweet berry bushes, and
   narrates "Ripe" once one's actually ready to harvest - silent otherwise, so it
   doesn't get in the way while you're just checking what's growing.
+- Liquids covers water and lava, each clustered into whole connected bodies (a lake
+  or ocean is one entry, not one per block) and reported at the nearest visible
+  point - same "no x-ray" rule as Ores, so a lava pool sealed behind unmined stone
+  won't show up until there's an actual way to see it.
 - Ore detection (here and in the Mining Radar) only flags ore you could actually
   see - not ore sealed behind an unmined wall.
 - Targeting a block aims at it. Targeting a mob starts a continuous lock-on that

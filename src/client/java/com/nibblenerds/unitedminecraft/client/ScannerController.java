@@ -27,6 +27,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ButtonBlock;
 import net.minecraft.world.level.block.CocoaBlock;
 import net.minecraft.world.level.block.CropBlock;
@@ -416,6 +417,7 @@ public final class ScannerController {
 			// bordering air or a fluid, i.e. actually visible through a gap, not buried.
 			case ORES -> scanBlocks(player, (pos, state) ->
 					OreDetection.isValuableOre(state) && OreDetection.isExposed(player.level(), pos, player.getEyePosition()));
+			case LIQUIDS -> scanLiquids(player);
 			case CROPS -> scanBlocks(player, (pos, state) -> isCrop(state.getBlock()));
 			case PASSIVE_MOBS -> scanEntities(player, entity -> entity instanceof Animal);
 			case HOSTILE_MOBS -> scanEntities(player, entity -> entity instanceof Enemy);
@@ -541,6 +543,67 @@ public final class ScannerController {
 		return results;
 	}
 
+	/**
+	 * Water and lava, each clustered into connected bodies the same way {@link #scanTrees}
+	 * clusters logs into trees - a lake or ocean is one Scanner entry, not one per block.
+	 */
+	private static List<ScannerItem> scanLiquids(LocalPlayer player) {
+		Level level = player.level();
+		Vec3 eye = player.getEyePosition();
+		BlockPos center = player.blockPosition();
+		int r = (int) scanRange();
+
+		// Kept separate per fluid so a lava flow spilling into a lake doesn't cluster the two
+		// into one body with an ambiguous name.
+		Set<BlockPos> waterPositions = new HashSet<>();
+		Set<BlockPos> lavaPositions = new HashSet<>();
+		for (BlockPos pos : BlockPos.betweenClosed(center.offset(-r, -r, -r), center.offset(r, r, r))) {
+			BlockState state = level.getBlockState(pos);
+			if (state.is(Blocks.WATER)) {
+				waterPositions.add(pos.immutable());
+			} else if (state.is(Blocks.LAVA)) {
+				lavaPositions.add(pos.immutable());
+			}
+		}
+
+		List<ScannerItem> results = new ArrayList<>();
+		addLiquidClusters(level, eye, waterPositions, results);
+		addLiquidClusters(level, eye, lavaPositions, results);
+		results.sort(Comparator.comparingDouble(ScannerItem::distance));
+		return results;
+	}
+
+	/**
+	 * Floods {@code positions} (one fluid type at a time, already range-limited) into connected
+	 * bodies via {@link #floodFillCluster}, then reports each body once, at whichever of its
+	 * blocks is both nearest the player and actually {@link OreDetection#isExposed exposed} -
+	 * skipping a body entirely if none of it is, the same "don't x-ray" rule Ores follows (lava
+	 * sealed behind unmined stone shouldn't show up until there's actually a way to see it).
+	 */
+	private static void addLiquidClusters(Level level, Vec3 eye, Set<BlockPos> positions, List<ScannerItem> results) {
+		Set<BlockPos> visited = new HashSet<>();
+		for (BlockPos start : positions) {
+			if (visited.contains(start)) {
+				continue;
+			}
+			Set<BlockPos> cluster = new HashSet<>();
+			floodFillCluster(start, positions, visited, cluster);
+
+			List<BlockPos> byDistance = new ArrayList<>(cluster);
+			byDistance.sort(Comparator.comparingDouble(pos -> eye.distanceToSqr(Vec3.atCenterOf(pos))));
+			for (BlockPos pos : byDistance) {
+				double distance = eye.distanceTo(Vec3.atCenterOf(pos));
+				if (distance > scanRange()) {
+					break;
+				}
+				if (OreDetection.isExposed(level, pos, eye)) {
+					results.add(new ScannerItem(pos.immutable(), null, distance, null));
+					break;
+				}
+			}
+		}
+	}
+
 	/** Every marker in the player's current dimension, oldest first - not distance-filtered or sorted, unlike every other category. */
 	private static List<ScannerItem> scanMarkers(LocalPlayer player) {
 		Vec3 eye = player.getEyePosition();
@@ -569,10 +632,12 @@ public final class ScannerController {
 	}
 
 	/**
-	 * Floods out from {@code start} through 26-connected log blocks, collecting every
-	 * position into {@code cluster} and returning the lowest one as the trunk base.
+	 * Floods out from {@code start} through 26-connected members of {@code candidates},
+	 * collecting every position into {@code cluster} and returning the lowest one - the trunk
+	 * base for {@link #scanTrees}'s use; {@link #addLiquidClusters} ignores the return value and
+	 * just uses {@code cluster} itself.
 	 */
-	private static BlockPos floodFillCluster(BlockPos start, Set<BlockPos> logPositions, Set<BlockPos> visited, Set<BlockPos> cluster) {
+	private static BlockPos floodFillCluster(BlockPos start, Set<BlockPos> candidates, Set<BlockPos> visited, Set<BlockPos> cluster) {
 		Deque<BlockPos> queue = new ArrayDeque<>();
 		queue.add(start);
 		visited.add(start);
@@ -591,7 +656,7 @@ public final class ScannerController {
 							continue;
 						}
 						BlockPos neighbor = current.offset(dx, dy, dz);
-						if (logPositions.contains(neighbor) && visited.add(neighbor)) {
+						if (candidates.contains(neighbor) && visited.add(neighbor)) {
 							cluster.add(neighbor);
 							queue.add(neighbor);
 						}
