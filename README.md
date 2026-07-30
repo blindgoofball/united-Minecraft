@@ -87,6 +87,12 @@ of sight to you - a bell chime plus narration (name, distance, direction) the
 moment one comes into range, so you know something's a threat before it's
 already on top of you. No key or toggle - it just runs.
 
+On top of that, a separate melee-range alert plays a quick click sound -
+no narration, just the sound cue - every half-second while a hostile mob is
+within actual melee reach, so you always know whether something's currently
+close enough to hit (or be hit by) without another sentence competing with
+the fight. Toggleable independently from the settings screen.
+
 ### Auto-Walk
 
 Automatically walks you to anything the Scanner has found, or that Build Mode's
@@ -169,10 +175,11 @@ just the Inventory tab.
 ### Settings
 
 A dedicated key opens a settings screen for the things worth tuning to
-taste: on/off switches for Hostile Radar and Fall Warning (both otherwise
-always-on with no toggle of their own), and range/threshold sliders for
-Hostile Radar, Fall Warning, Mining Radar, Navigation Radar, and the
-Scanner. Saved to a config file shared across every world and server, and
+taste: on/off switches for Hostile Radar, its melee-range alert, and Fall
+Warning (all otherwise always-on with no toggle of their own), and
+range/threshold sliders for Hostile Radar, Fall Warning, Mining Radar,
+Navigation Radar, and the Scanner. Saved to a config file shared across
+every world and server, and
 built from the same vanilla screen widgets as the rest of Minecraft's
 Options menus rather than a third-party settings toolkit, so it narrates
 exactly as reliably.

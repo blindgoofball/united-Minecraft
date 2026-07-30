@@ -34,6 +34,7 @@ public final class UnitedMinecraftConfig {
 
 	public boolean hostileRadarEnabled = true;
 	public double hostileRadarRange = 16.0;
+	public boolean meleeRangeAlertEnabled = true;
 	public boolean fallWarningEnabled = true;
 	public double fallWarningThreshold = 3.0;
 	public int miningRadarRange = 8;

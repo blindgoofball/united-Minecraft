@@ -155,6 +155,7 @@
 	"united_minecraft.settings_screen.title": "United Minecraft Settings",
 	"united_minecraft.settings_screen.hostile_radar_enabled": "Hostile Radar",
 	"united_minecraft.settings_screen.hostile_radar_range": "Hostile Radar Range",
+	"united_minecraft.settings_screen.melee_range_alert_enabled": "Melee Range Alert",
 	"united_minecraft.settings_screen.fall_warning_enabled": "Fall Warning",
 	"united_minecraft.settings_screen.fall_warning_threshold": "Fall Warning Threshold",
 	"united_minecraft.settings_screen.mining_radar_range": "Mining Radar Range",

@@ -36,12 +36,14 @@ public final class SettingsScreen extends Screen {
 	protected void init() {
 		UnitedMinecraftConfig config = UnitedMinecraftConfig.get();
 		int x = this.width / 2 - ROW_WIDTH / 2;
-		int y = this.height / 2 - (ROW_HEIGHT + ROW_SPACING) * 4;
+		int y = this.height / 2 - (ROW_HEIGHT + ROW_SPACING) * 5;
 
 		y = addToggle(x, y, "united_minecraft.settings_screen.hostile_radar_enabled",
 				config.hostileRadarEnabled, value -> config.hostileRadarEnabled = value);
 		y = addSlider(x, y, 4.0, 32.0, 1.0, config.hostileRadarRange,
 				"united_minecraft.settings_screen.hostile_radar_range", value -> config.hostileRadarRange = value);
+		y = addToggle(x, y, "united_minecraft.settings_screen.melee_range_alert_enabled",
+				config.meleeRangeAlertEnabled, value -> config.meleeRangeAlertEnabled = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.fall_warning_enabled",
 				config.fallWarningEnabled, value -> config.fallWarningEnabled = value);
 		y = addSlider(x, y, 1.0, 10.0, 1.0, config.fallWarningThreshold,

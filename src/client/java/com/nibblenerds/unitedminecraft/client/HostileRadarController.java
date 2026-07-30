@@ -33,15 +33,24 @@ import net.minecraft.world.phys.shapes.CollisionContext;
  * (rather than the mining radar's "alert once ever" for ore) since a hostile mob sticking
  * around nearby is worth an occasional reminder, not just a one-shot notice - and simple
  * line-of-sight flicker (a passing leaf, a door swinging) shouldn't be able to spam it either.
+ *
+ * <p>Separately, while any visible hostile is within actual melee reach ({@link
+ * LocalPlayer#entityInteractionRange()}), a plain sound-only pulse repeats on {@link
+ * #MELEE_ALERT_INTERVAL_TICKS} - deliberately no narration, since at that range the player
+ * already knows roughly where the threat is and needs a fast, unobtrusive "still in range"
+ * cue rather than another spoken sentence competing with combat.
  */
 public final class HostileRadarController {
 	private static final int SCAN_INTERVAL_TICKS = 5;
 	private static final int ALERT_INTERVAL_TICKS = 5;
 	private static final int RE_ALERT_COOLDOWN_TICKS = 100;
+	private static final int MELEE_ALERT_INTERVAL_TICKS = 10;
 
 	private static int ticksUntilScan;
 	private static int ticksUntilNextAlert;
+	private static int ticksUntilMeleeAlert;
 	private static int ticks;
+	private static boolean meleeThreatPresent;
 	private static final Map<Integer, Integer> lastAlertTick = new HashMap<>();
 	private static final Deque<Entity> pending = new ArrayDeque<>();
 
@@ -51,7 +60,9 @@ public final class HostileRadarController {
 	public static void reset() {
 		ticksUntilScan = 0;
 		ticksUntilNextAlert = 0;
+		ticksUntilMeleeAlert = 0;
 		ticks = 0;
+		meleeThreatPresent = false;
 		lastAlertTick.clear();
 		pending.clear();
 	}
@@ -59,6 +70,7 @@ public final class HostileRadarController {
 	public static void tick(Minecraft client, LocalPlayer player) {
 		if (!UnitedMinecraftConfig.get().hostileRadarEnabled) {
 			pending.clear();
+			meleeThreatPresent = false;
 			return;
 		}
 
@@ -77,18 +89,37 @@ public final class HostileRadarController {
 		} else if (ticksUntilNextAlert > 0) {
 			ticksUntilNextAlert--;
 		}
+
+		if (UnitedMinecraftConfig.get().meleeRangeAlertEnabled && meleeThreatPresent) {
+			if (ticksUntilMeleeAlert <= 0) {
+				ticksUntilMeleeAlert = MELEE_ALERT_INTERVAL_TICKS;
+				playMeleeAlert(client, player);
+			} else {
+				ticksUntilMeleeAlert--;
+			}
+		} else {
+			ticksUntilMeleeAlert = 0;
+		}
 	}
 
 	private static void scan(LocalPlayer player) {
 		double range = UnitedMinecraftConfig.get().hostileRadarRange;
+		double meleeRange = player.entityInteractionRange();
 		Vec3 eye = player.getEyePosition();
 		AABB box = player.getBoundingBox().inflate(range);
+		meleeThreatPresent = false;
 		for (Entity entity : player.level().getEntities(player, box, e -> e.isAlive() && e instanceof Enemy)) {
+			double distSq = eye.distanceToSqr(entity.getEyePosition());
+
+			if (distSq <= meleeRange * meleeRange && hasLineOfSight(player.level(), eye, entity.getEyePosition())) {
+				meleeThreatPresent = true;
+			}
+
 			Integer alertedAt = lastAlertTick.get(entity.getId());
 			if (alertedAt != null && ticks - alertedAt < RE_ALERT_COOLDOWN_TICKS) {
 				continue;
 			}
-			if (eye.distanceToSqr(entity.getEyePosition()) > range * range || pending.contains(entity)) {
+			if (distSq > range * range || pending.contains(entity)) {
 				continue;
 			}
 			if (hasLineOfSight(player.level(), eye, entity.getEyePosition())) {
@@ -112,6 +143,13 @@ public final class HostileRadarController {
 		Component direction = CameraUtil.compassDirectionTo(player.position(), pos);
 		client.getNarrator().saySystemNow(Component.translatable(
 				"united_minecraft.narrate.scanner_item", entity.getDisplayName(), distance, direction));
+	}
+
+	private static void playMeleeAlert(Minecraft client, LocalPlayer player) {
+		RandomSource random = player.getRandom();
+		Vec3 pos = player.position();
+		client.getSoundManager().play(new SimpleSoundInstance(
+				SoundEvents.NOTE_BLOCK_HAT.value(), SoundSource.MASTER, 0.6f, 1.4f, random, pos.x(), pos.y(), pos.z()));
 	}
 
 	private static boolean hasLineOfSight(Level level, Vec3 from, Vec3 to) {
