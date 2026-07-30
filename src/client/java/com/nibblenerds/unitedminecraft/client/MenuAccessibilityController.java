@@ -3,6 +3,7 @@ package com.nibblenerds.unitedminecraft.client;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Predicate;
 
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
@@ -18,6 +19,9 @@ import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.gui.screens.recipebook.RecipeCollection;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.entity.player.Inventory;
@@ -42,6 +46,7 @@ import net.minecraft.world.item.crafting.display.RecipeDisplayId;
 import net.minecraft.world.item.crafting.display.ShapedCraftingRecipeDisplay;
 import net.minecraft.world.item.crafting.display.ShapelessCraftingRecipeDisplay;
 import net.minecraft.world.item.crafting.display.SlotDisplayContext;
+import net.minecraft.world.item.enchantment.Enchantment;
 
 import org.lwjgl.glfw.GLFW;
 
@@ -81,6 +86,18 @@ import org.lwjgl.glfw.GLFW;
  * button), F toggles showing only currently-craftable recipes, and Enter/Shift+Enter place
  * the focused recipe (Shift = fill to max stack size).
  *
+ * <p>{@link EnchantmentMenu} similarly gets an extra Enchant Options section, for the three
+ * enchantment buttons - not slots at all, so they'd otherwise be invisible to a keyboard/
+ * screen-reader user entirely. Up/Down move between the three options, narrating exactly what
+ * hovering with a mouse would ({@code costs}/{@code enchantClue}/{@code levelClue}, the same
+ * arrays {@code EnchantmentScreen}'s own tooltip reads): the enchantment's real name and level
+ * ({@link Enchantment#getFullname} - the in-game "clue" text isn't actually hidden information,
+ * just flavor styling), whether the player's experience level meets the requirement, and its
+ * fixed Lapis/XP cost. Enter picks the focused option via {@code EnchantmentMenu.clickMenuButton}
+ * then {@code MultiPlayerGameMode.handleInventoryButtonClick} - the same pair of calls vanilla's
+ * own mouse handler makes, mirroring how slot clicks elsewhere in this class reuse vanilla's own
+ * networking rather than inventing anything new.
+ *
  * <p>The Creative inventory's item-picker tabs are handled separately, by
  * {@link CreativeInventoryController} - vanilla's item grid is always exactly 45 real slots
  * (a scrolling window), which doesn't fit this class's "one slot per real item" model at all.
@@ -102,6 +119,8 @@ public final class MenuAccessibilityController {
 	private static int recipeGroupIndex = -1;
 	private static int recipeVariantIndex = 0;
 	private static boolean recipeCraftableOnlyFilter = false;
+
+	private static int enchantOptionIndex = 0;
 
 	private MenuAccessibilityController() {
 	}
@@ -169,6 +188,9 @@ public final class MenuAccessibilityController {
 		if (currentSection == Section.RECIPE_BOOK) {
 			return handleRecipeBookKey(screen, player, key, shiftHeld);
 		}
+		if (currentSection == Section.ENCHANT_OPTIONS) {
+			return handleEnchantOptionKey(screen, player, key);
+		}
 
 		Direction direction = switch (key) {
 			case GLFW.GLFW_KEY_LEFT -> Direction.LEFT;
@@ -218,7 +240,7 @@ public final class MenuAccessibilityController {
 		return true;
 	}
 
-	/** Sections present for this menu type, in Tab-cycle order. Recipe Book/Equipment only appear when supported. */
+	/** Sections present for this menu type, in Tab-cycle order. Recipe Book/Equipment/Enchant Options only appear when supported. */
 	private static Section[] applicableSections(AbstractContainerMenu menu) {
 		List<Section> sections = new ArrayList<>();
 		// Creative's Inventory tab has no real "container" section of its own - its crafting
@@ -230,6 +252,9 @@ public final class MenuAccessibilityController {
 		}
 		if (menu instanceof RecipeBookMenu) {
 			sections.add(Section.RECIPE_BOOK);
+		}
+		if (menu instanceof EnchantmentMenu) {
+			sections.add(Section.ENCHANT_OPTIONS);
 		}
 		if (hasEquipmentSlots(menu)) {
 			sections.add(Section.EQUIPMENT);
@@ -282,6 +307,9 @@ public final class MenuAccessibilityController {
 			recipeGroupIndex = visibleRecipeGroups().isEmpty() ? -1 : 0;
 			recipeVariantIndex = 0;
 			narrateRecipeFocus(player, true);
+		} else if (currentSection == Section.ENCHANT_OPTIONS) {
+			enchantOptionIndex = 0;
+			narrateEnchantOption(screen, player, true);
 		} else {
 			focusedSlot = firstSlot(screen.getMenu(), player, currentSection);
 			narrateFocusedSlot(screen, player, true);
@@ -305,7 +333,9 @@ public final class MenuAccessibilityController {
 			case HOTBAR -> gridNeighbor(sectionSlots, focusedSlot, direction, sectionSlots.size(), 1);
 			case INVENTORY -> gridNeighbor(sectionSlots, focusedSlot, direction, 9, sectionSlots.size() / 9);
 			case CONTAINER, EQUIPMENT -> nearestSpatialNeighbor(sectionSlots, focusedSlot, direction);
-			case RECIPE_BOOK -> null; // moveFocus is never called while this section is active.
+			// moveFocus is never called while either of these sections is active - both route
+			// their own keys to a dedicated handler before this method is ever reached.
+			case RECIPE_BOOK, ENCHANT_OPTIONS -> null;
 		};
 		if (next != null) {
 			focusedSlot = next;
@@ -503,6 +533,95 @@ public final class MenuAccessibilityController {
 		Minecraft.getInstance().getNarrator().saySystemNow(message);
 	}
 
+	private static boolean handleEnchantOptionKey(AbstractContainerScreen<?> screen, LocalPlayer player, int key) {
+		switch (key) {
+			case GLFW.GLFW_KEY_UP -> moveEnchantOption(screen, player, -1);
+			case GLFW.GLFW_KEY_DOWN -> moveEnchantOption(screen, player, 1);
+			case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> selectEnchantOption(screen, player);
+			default -> {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static void moveEnchantOption(AbstractContainerScreen<?> screen, LocalPlayer player, int direction) {
+		int next = enchantOptionIndex + direction;
+		if (next < 0 || next > 2) {
+			return;
+		}
+		enchantOptionIndex = next;
+		narrateEnchantOption(screen, player, false);
+	}
+
+	/**
+	 * Picks the focused option via the same two calls vanilla's own mouse handler makes:
+	 * {@code clickMenuButton} first for local prediction (and to check the click is actually
+	 * valid), then {@code handleInventoryButtonClick} to notify the server - mirroring how
+	 * {@link #click} reuses vanilla's own slot-click networking rather than inventing anything
+	 * new.
+	 */
+	private static void selectEnchantOption(AbstractContainerScreen<?> screen, LocalPlayer player) {
+		if (!(screen.getMenu() instanceof EnchantmentMenu menu)) {
+			return;
+		}
+		if (menu.clickMenuButton(player, enchantOptionIndex)) {
+			Minecraft.getInstance().gameMode.handleInventoryButtonClick(menu.containerId, enchantOptionIndex);
+		}
+		narrateEnchantOption(screen, player, false);
+	}
+
+	/**
+	 * Narrates exactly what hovering the focused option with a mouse would, reading the same
+	 * {@code costs}/{@code enchantClue}/{@code levelClue} arrays {@code EnchantmentScreen}'s own
+	 * tooltip does: the revealed enchantment (see {@link #enchantmentName}), whether the
+	 * player's experience level actually meets the requirement, and - only once it does, since
+	 * that's what vanilla's own tooltip conditions on too - its fixed Lapis/XP cost and whether
+	 * the player currently has enough Lapis for it.
+	 */
+	private static void narrateEnchantOption(AbstractContainerScreen<?> screen, LocalPlayer player, boolean announceSection) {
+		if (!(screen.getMenu() instanceof EnchantmentMenu menu)) {
+			return;
+		}
+		MutableComponent message = Component.translatable(
+				"united_minecraft.menu.enchant_option_number", enchantOptionIndex + 1).copy();
+
+		int levelRequirement = menu.costs[enchantOptionIndex];
+		if (levelRequirement <= 0) {
+			message = message.append(Component.literal(", ")).append(
+					Component.translatable("united_minecraft.menu.enchant_option_none"));
+		} else {
+			message = message.append(Component.literal(", ")).append(enchantmentName(player, menu));
+			if (player.experienceLevel < levelRequirement) {
+				message = message.append(Component.literal(", ")).append(Component.translatable(
+						"united_minecraft.menu.enchant_option_requires_level", levelRequirement));
+			} else {
+				// Fixed by row position, not levelRequirement - vanilla's own "discount" for
+				// paying the bookshelf-scaled level requirement to unlock a slot.
+				int lapisCost = enchantOptionIndex + 1;
+				message = message.append(Component.literal(", ")).append(Component.translatable(
+						"united_minecraft.menu.enchant_option_cost", lapisCost, lapisCost));
+				if (menu.getGoldCount() < lapisCost) {
+					message = message.append(Component.literal(", ")).append(
+							Component.translatable("united_minecraft.menu.enchant_option_not_enough_lapis"));
+				}
+			}
+		}
+
+		if (announceSection) {
+			message = sectionLabel(Section.ENCHANT_OPTIONS).copy().append(Component.literal(". ")).append(message);
+		}
+		Minecraft.getInstance().getNarrator().saySystemNow(message);
+	}
+
+	/** The enchantment {@link EnchantmentMenu#enchantClue} actually reveals for the focused option, name and level included. */
+	private static Component enchantmentName(LocalPlayer player, EnchantmentMenu menu) {
+		Registry<Enchantment> registry = player.level().registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
+		Optional<Holder.Reference<Enchantment>> holder = registry.get(menu.enchantClue[enchantOptionIndex]);
+		return holder.<Component>map(reference -> Enchantment.getFullname(reference, menu.levelClue[enchantOptionIndex]))
+				.orElse(Component.translatable("united_minecraft.menu.enchant_option_none"));
+	}
+
 	/** {@link #focusedSlot} if it's still actually present in this menu, else null. */
 	private static Slot currentSlot(AbstractContainerMenu menu) {
 		return focusedSlot != null && menu.slots.contains(focusedSlot) ? focusedSlot : null;
@@ -532,7 +651,8 @@ public final class MenuAccessibilityController {
 						&& containerSlotOf(slot) < 36;
 				case EQUIPMENT -> isPlayerInventory && containerSlotOf(slot) >= 36;
 				case CONTAINER -> !isPlayerInventory;
-				case RECIPE_BOOK -> false; // not slot-based; sectionSlots is never called for it.
+				// Neither is slot-based; sectionSlots is never called for either.
+				case RECIPE_BOOK, ENCHANT_OPTIONS -> false;
 			};
 			if (matches) {
 				result.add(slot);
@@ -629,6 +749,7 @@ public final class MenuAccessibilityController {
 			case CONTAINER -> Component.translatable("united_minecraft.menu.section.container");
 			case RECIPE_BOOK -> Component.translatable("united_minecraft.menu.section.recipe_book");
 			case EQUIPMENT -> Component.translatable("united_minecraft.menu.section.equipment");
+			case ENCHANT_OPTIONS -> Component.translatable("united_minecraft.menu.section.enchant_options");
 		};
 	}
 
@@ -716,7 +837,7 @@ public final class MenuAccessibilityController {
 
 	/** Visual top-to-bottom order: the container's own slots, then the player's main inventory, then the hotbar. */
 	private enum Section {
-		CONTAINER, RECIPE_BOOK, EQUIPMENT, INVENTORY, HOTBAR
+		CONTAINER, RECIPE_BOOK, ENCHANT_OPTIONS, EQUIPMENT, INVENTORY, HOTBAR
 	}
 
 	private enum Direction {

@@ -163,6 +163,12 @@ main inventory, hotbar, and a Recipe Book section where applicable); arrow
 keys move within a section in a proper 2D grid; Enter picks up/places
 (Shift+Enter quick-moves).
 
+The enchanting table's three enchantment options aren't slots at all, so they
+get their own Enchant Options section: Up/Down move between them, narrating
+exactly what hovering with a mouse would - the enchantment itself, whether
+your experience level meets the requirement, and its Lapis/XP cost - and
+Enter selects the focused one.
+
 The Creative inventory gets full navigation too: Home/End cycle through every
 creative tab, and arrow keys/Page Up/Down browse an entire tab's items - not
 just whatever happens to be scrolled into view - narrating name and position
