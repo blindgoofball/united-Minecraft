@@ -544,7 +544,7 @@ public final class ScannerController {
 				continue;
 			}
 			Set<BlockPos> cluster = new HashSet<>();
-			BlockPos trunkBase = floodFillCluster(start, logPositions, visited, cluster);
+			BlockPos trunkBase = lowestLog(level, floodFillCluster(start, logPositions, visited, cluster));
 			if (!hasNearbyLeaves(level, cluster)) {
 				// A log cluster with no leaves anywhere near it is more likely a player-built
 				// structure (cabin, bridge, etc.) than an actual tree.
@@ -738,6 +738,24 @@ public final class ScannerController {
 					}
 				}
 			}
+		}
+		return lowest;
+	}
+
+	/**
+	 * Walks straight down from {@code lowest} through the real world - not the range-limited
+	 * {@code logPositions} set {@link #floodFillCluster} searched - until the log column
+	 * actually ends. {@code floodFillCluster} only ever sees log blocks that were in scan range
+	 * to begin with, so its own "lowest" is really just "lowest block that happened to be in
+	 * range" - for a tall tree scanned from a distance or from slightly elevated ground, that
+	 * can sit a log or two above the trunk's true base, which is exactly the block {@link
+	 * #target} needs to face to actually connect when chopping it.
+	 */
+	private static BlockPos lowestLog(Level level, BlockPos lowest) {
+		BlockPos below = lowest.below();
+		while (level.getBlockState(below).is(BlockTags.LOGS)) {
+			lowest = below;
+			below = lowest.below();
 		}
 		return lowest;
 	}
