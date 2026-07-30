@@ -44,9 +44,12 @@ navigation without needing to see or aim at them.
   your current dimension shows up regardless of distance, since the game already
   tells your client about all of them no matter how far away they are.
 - Crops covers farmland crops (wheat, carrots, potatoes, beetroot, torchflower),
-  pumpkin and melon stems, nether wart, cocoa pods, and sweet berry bushes, and
-  narrates "Ripe" once one's actually ready to harvest - silent otherwise, so it
-  doesn't get in the way while you're just checking what's growing.
+  pumpkin and melon stems, nether wart, cocoa pods, sweet berry bushes, saplings
+  (including mangrove propagules and bamboo's own sapling stage), and cave vines
+  actually bearing glow berries, narrating "Ripe" once one's actually ready to
+  harvest - silent otherwise, so it doesn't get in the way while you're just
+  checking what's growing. Grown bamboo stalks are here too, but clustered into
+  whole clumps like Trees, not one entry per block.
 - Liquids covers water and lava, each clustered into whole connected bodies (a lake
   or ocean is one entry, not one per block) and reported at the nearest visible
   point - same "no x-ray" rule as Ores, so a lava pool sealed behind unmined stone

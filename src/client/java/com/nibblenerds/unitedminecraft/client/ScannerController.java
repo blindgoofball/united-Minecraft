@@ -25,16 +25,20 @@ import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.BambooSaplingBlock;
+import net.minecraft.world.level.block.BambooStalkBlock;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ButtonBlock;
+import net.minecraft.world.level.block.CaveVines;
 import net.minecraft.world.level.block.CocoaBlock;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.FenceGateBlock;
 import net.minecraft.world.level.block.LeverBlock;
 import net.minecraft.world.level.block.NetherWartBlock;
+import net.minecraft.world.level.block.SaplingBlock;
 import net.minecraft.world.level.block.StemBlock;
 import net.minecraft.world.level.block.SweetBerryBushBlock;
 import net.minecraft.world.level.block.TrapDoorBlock;
@@ -80,8 +84,10 @@ import net.minecraft.world.phys.Vec3;
  *
  * <p>Crops additionally narrates "Ripe" once a crop is actually ready to harvest - silent
  * otherwise, same as Build Mode's powered-block narration - covering farmland crops, pumpkin
- * and melon stems, nether wart, cocoa, and sweet berry bushes (see {@link #isCrop} and
- * {@link #isRipe}).
+ * and melon stems, nether wart, cocoa, sweet berry bushes, saplings (including bamboo's own
+ * sapling stage and mangrove propagules), and cave vine segments actually bearing glow berries
+ * (see {@link #isCrop} and {@link #isRipe}). Grown bamboo stalks are covered too, but clustered
+ * into whole clumps rather than one entry per block - see {@link #scanCrops}.
  */
 public final class ScannerController {
 	private static final int LEAF_SEARCH_MARGIN = 2;
@@ -416,7 +422,7 @@ public final class ScannerController {
 			case ORES -> scanBlocks(player, (pos, state) ->
 					OreDetection.isValuableOre(state) && OreDetection.isExposed(player.level(), pos, player.getEyePosition()));
 			case LIQUIDS -> scanLiquids(player);
-			case CROPS -> scanBlocks(player, (pos, state) -> isCrop(state.getBlock()));
+			case CROPS -> scanCrops(player);
 			case PASSIVE_MOBS -> scanEntities(player, entity -> entity instanceof Animal);
 			case HOSTILE_MOBS -> scanEntities(player, entity -> entity instanceof Enemy);
 			case MARKERS -> scanMarkers(player);
@@ -434,21 +440,30 @@ public final class ScannerController {
 
 	/**
 	 * Covers wheat/carrots/potatoes/beetroot/torchflower (all {@link CropBlock}), pumpkin/melon
-	 * stems, nether wart, cocoa, and sweet berries. Package-private - {@link BuildModeController}
-	 * reuses this (and {@link #isRipe}) so its cursor narrates "Ripe" the same way the Scanner does.
+	 * stems, nether wart, cocoa, sweet berries, saplings (including mangrove propagules - a
+	 * {@link SaplingBlock} subclass), bamboo's own single-block sapling stage, and cave vines
+	 * (any segment, head or body alike - {@link #isRipe} is what actually distinguishes a
+	 * glow-berry-bearing one). Grown bamboo stalks are deliberately not here - see {@link
+	 * #addBambooClusters} for why they need clustering instead of a flat per-block match like
+	 * everything else in this category. Package-private - {@link BuildModeController} reuses
+	 * this (and {@link #isRipe}) so its cursor narrates "Ripe" the same way the Scanner does.
 	 */
 	static boolean isCrop(Block block) {
 		return block instanceof CropBlock
 				|| block instanceof StemBlock
 				|| block instanceof NetherWartBlock
 				|| block instanceof CocoaBlock
-				|| block instanceof SweetBerryBushBlock;
+				|| block instanceof SweetBerryBushBlock
+				|| block instanceof SaplingBlock
+				|| block instanceof BambooSaplingBlock
+				|| block instanceof CaveVines;
 	}
 
 	/**
 	 * Whether a crop block is ready to harvest. Most crops report this via their own age
 	 * property reaching its documented max; sweet berry bushes are the one exception - they're
 	 * pickable (with berries actually dropping) starting at age 2 of 3, not only at full growth.
+	 * Saplings and bamboo's own sapling stage have no such concept and never report ripe.
 	 */
 	static boolean isRipe(BlockState state) {
 		Block block = state.getBlock();
@@ -466,6 +481,9 @@ public final class ScannerController {
 		}
 		if (block instanceof CocoaBlock) {
 			return state.getValue(CocoaBlock.AGE) >= CocoaBlock.MAX_AGE;
+		}
+		if (block instanceof CaveVines) {
+			return CaveVines.hasGlowBerries(state);
 		}
 		return false;
 	}
@@ -602,6 +620,64 @@ public final class ScannerController {
 		}
 	}
 
+	/**
+	 * Crops, saplings (including bamboo's own single-block sapling stage), and cave vine
+	 * segments actually bearing glow berries are all sparse single-block matches - one Scanner
+	 * entry per block, same as every other flat category. Grown bamboo stalks are the one
+	 * exception: they grow in dense clumps of many stacked, closely-packed blocks, so they're
+	 * clustered instead via {@link #addBambooClusters} - the same reason {@link #scanTrees}
+	 * clusters logs into whole trees rather than reporting one entry per log.
+	 */
+	private static List<ScannerItem> scanCrops(LocalPlayer player) {
+		Level level = player.level();
+		Vec3 eye = player.getEyePosition();
+		BlockPos center = player.blockPosition();
+		int r = (int) scanRange();
+
+		Set<BlockPos> bambooPositions = new HashSet<>();
+		List<ScannerItem> results = new ArrayList<>();
+		for (BlockPos pos : BlockPos.betweenClosed(center.offset(-r, -r, -r), center.offset(r, r, r))) {
+			BlockState state = level.getBlockState(pos);
+			Block block = state.getBlock();
+			if (block instanceof BambooStalkBlock) {
+				bambooPositions.add(pos.immutable());
+				continue;
+			}
+			if (!isCrop(block)) {
+				continue;
+			}
+			double distance = eye.distanceTo(Vec3.atCenterOf(pos));
+			if (distance <= scanRange()) {
+				results.add(new ScannerItem(pos.immutable(), null, distance, null));
+			}
+		}
+
+		addBambooClusters(eye, bambooPositions, results);
+		results.sort(Comparator.comparingDouble(ScannerItem::distance));
+		return results;
+	}
+
+	/**
+	 * Floods {@code positions} (already range-limited) into connected clumps via {@link
+	 * #floodFillCluster}, reporting each clump once at its lowest block - the base of the
+	 * stalk(s), the same anchor {@link #scanTrees} uses for a tree's trunk base rather than
+	 * wherever the flood fill happened to start.
+	 */
+	private static void addBambooClusters(Vec3 eye, Set<BlockPos> positions, List<ScannerItem> results) {
+		Set<BlockPos> visited = new HashSet<>();
+		for (BlockPos start : positions) {
+			if (visited.contains(start)) {
+				continue;
+			}
+			Set<BlockPos> cluster = new HashSet<>();
+			BlockPos base = floodFillCluster(start, positions, visited, cluster);
+			double distance = eye.distanceTo(Vec3.atCenterOf(base));
+			if (distance <= scanRange()) {
+				results.add(new ScannerItem(base, null, distance, null));
+			}
+		}
+	}
+
 	/** Every marker in the player's current dimension, oldest first - not distance-filtered or sorted, unlike every other category. */
 	private static List<ScannerItem> scanMarkers(LocalPlayer player) {
 		Vec3 eye = player.getEyePosition();
@@ -632,8 +708,9 @@ public final class ScannerController {
 	/**
 	 * Floods out from {@code start} through 26-connected members of {@code candidates},
 	 * collecting every position into {@code cluster} and returning the lowest one - the trunk
-	 * base for {@link #scanTrees}'s use; {@link #addLiquidClusters} ignores the return value and
-	 * just uses {@code cluster} itself.
+	 * base for {@link #scanTrees}'s use, and the base of the stalk(s) for {@link
+	 * #addBambooClusters}'s; {@link #addLiquidClusters} ignores the return value and just uses
+	 * {@code cluster} itself.
 	 */
 	private static BlockPos floodFillCluster(BlockPos start, Set<BlockPos> candidates, Set<BlockPos> visited, Set<BlockPos> cluster) {
 		Deque<BlockPos> queue = new ArrayDeque<>();
