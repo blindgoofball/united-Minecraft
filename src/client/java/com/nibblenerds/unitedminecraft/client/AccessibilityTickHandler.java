@@ -339,7 +339,7 @@ public final class AccessibilityTickHandler {
 		ItemStack stack = player.getInventory().getItem(slot);
 		Component name = stack.isEmpty()
 				? Component.translatable("united_minecraft.narrate.hotbar_empty")
-				: ItemDescriptions.describe(stack);
+				: ItemDescriptions.describe(stack, player);
 		client.getNarrator().saySystemNow(name);
 	}
 
@@ -347,15 +347,15 @@ public final class AccessibilityTickHandler {
 		ItemStack offhand = player.getOffhandItem();
 		if (lastOffhand != null && !ItemStack.matches(offhand, lastOffhand)) {
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.hands_swapped",
-					describeHand(player.getMainHandItem()), describeHand(offhand)));
+					describeHand(player.getMainHandItem(), player), describeHand(offhand, player)));
 		}
 		lastOffhand = offhand.copy();
 	}
 
-	private static Component describeHand(ItemStack stack) {
+	private static Component describeHand(ItemStack stack, LocalPlayer player) {
 		return stack.isEmpty()
 				? Component.translatable("united_minecraft.narrate.hotbar_empty")
-				: ItemDescriptions.describe(stack);
+				: ItemDescriptions.describe(stack, player);
 	}
 
 	private static void handleBiomeNarration(Minecraft client, LocalPlayer player) {

@@ -137,6 +137,7 @@
 	"united_minecraft.menu.section.recipe_book": "Recipe Book",
 	"united_minecraft.menu.section.equipment": "Equipment",
 	"united_minecraft.menu.section.enchant_options": "Enchant Options",
+	"united_minecraft.menu.section.rename": "Item Name",
 	"united_minecraft.menu.recipe_book.empty": "No recipes",
 	"united_minecraft.menu.recipe_book.craftable": "Craftable",
 	"united_minecraft.menu.recipe_book.not_craftable": "Not craftable",

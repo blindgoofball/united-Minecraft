@@ -276,7 +276,7 @@ public final class ScannerController {
 				targetEntity(client, player, item.entity(), walkThere);
 			}
 		} else {
-			targetBlock(client, player, item.blockPos(), itemName(category, item, player.level()), walkThere);
+			targetBlock(client, player, item.blockPos(), itemName(category, item, player), walkThere);
 		}
 	}
 
@@ -337,7 +337,7 @@ public final class ScannerController {
 		if (vertical != null) {
 			direction = direction.copy().append(Component.literal(", ")).append(vertical);
 		}
-		Component name = itemName(category, item, player.level());
+		Component name = itemName(category, item, player);
 		if (category == ScannerCategory.CROPS && isRipe(player.level().getBlockState(item.blockPos()))) {
 			name = name.copy().append(Component.literal(", ")).append(Component.translatable("united_minecraft.narrate.scanner_ripe"));
 		}
@@ -360,19 +360,17 @@ public final class ScannerController {
 		return item.entity() != null ? item.entity().getBoundingBox().getCenter() : Vec3.atCenterOf(item.blockPos());
 	}
 
-	private static Component itemName(ScannerCategory category, ScannerItem item, Level level) {
+	private static Component itemName(ScannerCategory category, ScannerItem item, LocalPlayer player) {
 		if (item.label() != null) {
 			return Component.literal(item.label());
 		}
 		if (item.entity() != null) {
 			if (category == ScannerCategory.ITEMS && item.entity() instanceof ItemEntity itemEntity) {
-				ItemStack stack = itemEntity.getItem();
-				return stack.getCount() > 1
-						? Component.literal(stack.getCount() + " ").append(stack.getHoverName())
-						: stack.getHoverName();
+				return ItemDescriptions.describe(itemEntity.getItem(), player);
 			}
 			return item.entity().getDisplayName();
 		}
+		Level level = player.level();
 		return category == ScannerCategory.TREES
 				? describeTree(level, item.blockPos())
 				: level.getBlockState(item.blockPos()).getBlock().getName();

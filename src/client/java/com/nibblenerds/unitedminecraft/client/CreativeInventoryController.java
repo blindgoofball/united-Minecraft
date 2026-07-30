@@ -218,9 +218,9 @@ public final class CreativeInventoryController {
 		ItemStack stack = slots.get(hotbarIndex).getItem();
 		Component itemName = stack.isEmpty()
 				? Component.translatable("united_minecraft.narrate.hotbar_empty")
-				: ItemDescriptions.describe(stack);
-		Component message = Component.translatable("united_minecraft.menu.slot.hotbar").copy()
-				.append(Component.literal(": ")).append(itemName);
+				: ItemDescriptions.describe(stack, Minecraft.getInstance().player);
+		Component message = itemName.copy()
+				.append(Component.literal(", ")).append(Component.translatable("united_minecraft.menu.slot.hotbar"));
 		Minecraft.getInstance().getNarrator().saySystemNow(message);
 	}
 
@@ -385,7 +385,7 @@ public final class CreativeInventoryController {
 			ItemStack stack = trackedItems.get(index);
 			Component itemName = stack.isEmpty()
 					? Component.translatable("united_minecraft.narrate.hotbar_empty")
-					: ItemDescriptions.describe(stack);
+					: ItemDescriptions.describe(stack, Minecraft.getInstance().player);
 			message = message.append(itemName).append(Component.literal(", ")).append(Component.translatable(
 					"united_minecraft.narrate.creative_item_position", index + 1, trackedItems.size()));
 		}

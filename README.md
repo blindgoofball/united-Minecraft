@@ -169,6 +169,10 @@ exactly what hovering with a mouse would - the enchantment itself, whether
 your experience level meets the requirement, and its Lapis/XP cost - and
 Enter selects the focused one.
 
+The anvil's rename box gets its own Rename section too, ahead of its slots -
+Tab reaches it and moves on from it like any other section, while every other
+key (typing, Backspace, arrow keys) reaches the text field itself normally.
+
 The Creative inventory gets full navigation too: Home/End cycle through every
 creative tab, and arrow keys/Page Up/Down browse an entire tab's items - not
 just whatever happens to be scrolled into view - narrating name and position

@@ -9,12 +9,14 @@ import java.util.function.Predicate;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 
+import com.nibblenerds.unitedminecraft.client.access.AnvilScreenAccess;
 import com.nibblenerds.unitedminecraft.client.access.CreativeModeInventoryScreenAccess;
 import com.nibblenerds.unitedminecraft.client.access.SlotWrapperAccess;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.gui.screens.inventory.AnvilScreen;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.gui.screens.recipebook.RecipeCollection;
 import net.minecraft.client.input.KeyEvent;
@@ -98,6 +100,19 @@ import org.lwjgl.glfw.GLFW;
  * own mouse handler makes, mirroring how slot clicks elsewhere in this class reuse vanilla's own
  * networking rather than inventing anything new.
  *
+ * <p>{@link AnvilMenu} gets its own Rename section for the same underlying reason: vanilla's
+ * rename box is a real {@code EditBox}, not a slot, and grabs real keyboard focus the moment the
+ * anvil screen opens ({@code AnvilScreen#setInitialFocus}) with no vanilla way to leave it again
+ * except a mouse click elsewhere - previously handled by unconditionally passing every key
+ * straight to vanilla whenever an {@code EditBox} had focus, which made the anvil screen
+ * unusable entirely once that happened, Tab included. Now Tab is still this class's own (so the
+ * player can always get back to Container/Inventory/Hotbar), while every other key reaches
+ * vanilla's own {@code EditBox} handling untouched for actual typing, via {@link
+ * AnvilScreenAccess} (there's no public accessor for the private field otherwise). Entering or
+ * leaving the section explicitly moves real focus onto or off of the box to match, since
+ * {@code currentSection} and vanilla's own focus tracking are otherwise entirely independent of
+ * each other.
+ *
  * <p>The Creative inventory's item-picker tabs are handled separately, by
  * {@link CreativeInventoryController} - vanilla's item grid is always exactly 45 real slots
  * (a scrolling window), which doesn't fit this class's "one slot per real item" model at all.
@@ -166,12 +181,6 @@ public final class MenuAccessibilityController {
 			return true;
 		}
 
-		// Don't hijack arrow-key cursor movement or Enter-to-confirm in a focused text field
-		// (e.g. the anvil's rename box) - text input accessibility there is a separate concern.
-		if (screen.getFocused() instanceof EditBox) {
-			return true;
-		}
-
 		LocalPlayer player = Minecraft.getInstance().player;
 		if (player == null) {
 			return true;
@@ -183,6 +192,13 @@ public final class MenuAccessibilityController {
 		if (key == GLFW.GLFW_KEY_TAB) {
 			switchSection(screen, player, shiftHeld ? -1 : 1);
 			return false;
+		}
+
+		// Everything else (typing, Backspace, arrow-key cursor movement within the text) goes
+		// straight to vanilla's own EditBox while the Rename section is focused - Tab above is
+		// the only key this class needs to own here, to actually be able to leave it again.
+		if (currentSection == Section.RENAME) {
+			return true;
 		}
 
 		if (currentSection == Section.RECIPE_BOOK) {
@@ -233,16 +249,21 @@ public final class MenuAccessibilityController {
 		if (!(screen.getMenu() instanceof CreativeModeInventoryScreen.ItemPickerMenu menu) || menu.getCarried().isEmpty()) {
 			return false;
 		}
-		Component itemName = ItemDescriptions.describe(menu.getCarried());
+		Component itemName = ItemDescriptions.describe(menu.getCarried(), Minecraft.getInstance().player);
 		menu.setCarried(ItemStack.EMPTY);
 		Minecraft.getInstance().getNarrator().saySystemNow(
 				Component.translatable("united_minecraft.narrate.menu_item_discarded", itemName));
 		return true;
 	}
 
-	/** Sections present for this menu type, in Tab-cycle order. Recipe Book/Equipment/Enchant Options only appear when supported. */
+	/** Sections present for this menu type, in Tab-cycle order. Recipe Book/Equipment/Enchant Options/Rename only appear when supported. */
 	private static Section[] applicableSections(AbstractContainerMenu menu) {
 		List<Section> sections = new ArrayList<>();
+		// The rename box sits above the anvil's own slots on screen, so it leads - matching
+		// both the visual layout and vanilla's own default initial focus there.
+		if (menu instanceof AnvilMenu) {
+			sections.add(Section.RENAME);
+		}
 		// Creative's Inventory tab has no real "container" section of its own - its crafting
 		// slots are parked off-screen (filtered out by sectionSlots' x < 0 check already), and
 		// its one other non-player-inventory slot is just the "drag here to delete" trash icon,
@@ -310,10 +331,36 @@ public final class MenuAccessibilityController {
 		} else if (currentSection == Section.ENCHANT_OPTIONS) {
 			enchantOptionIndex = 0;
 			narrateEnchantOption(screen, player, true);
+		} else if (currentSection == Section.RENAME) {
+			enterRenameSection(screen);
 		} else {
+			// Release the rename box's real focus, if it still has it from a previous visit to
+			// that section - otherwise handleKey's own Rename bypass would keep swallowing every
+			// key meant for slot navigation here, on the strength of currentSection alone, since
+			// nothing else ever clears vanilla's own focus tracking for us.
+			screen.setFocused(null);
 			focusedSlot = firstSlot(screen.getMenu(), player, currentSection);
 			narrateFocusedSlot(screen, player, true);
 		}
+	}
+
+	/**
+	 * Gives the rename box real keyboard focus (matching vanilla's own default on an anvil
+	 * screen, and restoring it if the player tabbed away and back) so typing actually reaches
+	 * it, then narrates its current contents - {@link #handleKey}'s own Rename bypass leaves
+	 * everything past Tab to vanilla's usual {@code EditBox} handling from here on.
+	 */
+	private static void enterRenameSection(AbstractContainerScreen<?> screen) {
+		if (!(screen instanceof AnvilScreenAccess access)) {
+			return;
+		}
+		EditBox nameBox = access.unitedMinecraft$getNameBox();
+		screen.setFocused(nameBox);
+
+		String text = nameBox.getValue();
+		Component message = sectionLabel(Section.RENAME).copy().append(Component.literal(". ")).append(
+				text.isEmpty() ? Component.translatable("united_minecraft.narrate.hotbar_empty") : Component.literal(text));
+		Minecraft.getInstance().getNarrator().saySystemNow(message);
 	}
 
 	private static void moveFocus(AbstractContainerScreen<?> screen, LocalPlayer player, Direction direction) {
@@ -333,9 +380,10 @@ public final class MenuAccessibilityController {
 			case HOTBAR -> gridNeighbor(sectionSlots, focusedSlot, direction, sectionSlots.size(), 1);
 			case INVENTORY -> gridNeighbor(sectionSlots, focusedSlot, direction, 9, sectionSlots.size() / 9);
 			case CONTAINER, EQUIPMENT -> nearestSpatialNeighbor(sectionSlots, focusedSlot, direction);
-			// moveFocus is never called while either of these sections is active - both route
-			// their own keys to a dedicated handler before this method is ever reached.
-			case RECIPE_BOOK, ENCHANT_OPTIONS -> null;
+			// moveFocus is never called while any of these sections is active - each routes its
+			// own keys to a dedicated handler (or straight to vanilla) before this method is
+			// ever reached.
+			case RECIPE_BOOK, ENCHANT_OPTIONS, RENAME -> null;
 		};
 		if (next != null) {
 			focusedSlot = next;
@@ -516,7 +564,7 @@ public final class MenuAccessibilityController {
 			List<ItemStack> results = entry.resultItems(SlotDisplayContext.fromLevel(player.level()));
 			MutableComponent itemName = results.isEmpty()
 					? Component.translatable("united_minecraft.narrate.hotbar_empty")
-					: ItemDescriptions.describe(results.get(0));
+					: ItemDescriptions.describe(results.get(0), player);
 			Component status = Component.translatable(group.isCraftable(entry.id())
 					? "united_minecraft.menu.recipe_book.craftable"
 					: "united_minecraft.menu.recipe_book.not_craftable");
@@ -651,8 +699,8 @@ public final class MenuAccessibilityController {
 						&& containerSlotOf(slot) < 36;
 				case EQUIPMENT -> isPlayerInventory && containerSlotOf(slot) >= 36;
 				case CONTAINER -> !isPlayerInventory;
-				// Neither is slot-based; sectionSlots is never called for either.
-				case RECIPE_BOOK, ENCHANT_OPTIONS -> false;
+				// None of these are slot-based; sectionSlots is never called for any of them.
+				case RECIPE_BOOK, ENCHANT_OPTIONS, RENAME -> false;
 			};
 			if (matches) {
 				result.add(slot);
@@ -723,11 +771,11 @@ public final class MenuAccessibilityController {
 
 		Component itemDescription = slot.getItem().isEmpty()
 				? Component.translatable("united_minecraft.narrate.hotbar_empty")
-				: ItemDescriptions.describe(slot.getItem());
+				: ItemDescriptions.describe(slot.getItem(), player);
 
-		MutableComponent message = slotRole(menu, slot, player).copy()
-				.append(Component.literal(": "))
-				.append(itemDescription);
+		MutableComponent message = itemDescription.copy()
+				.append(Component.literal(", "))
+				.append(slotRole(menu, slot, player));
 
 		if (announceSection) {
 			message = sectionLabel(currentSection).copy().append(Component.literal(". ")).append(message);
@@ -736,7 +784,7 @@ public final class MenuAccessibilityController {
 		ItemStack carried = menu.getCarried();
 		if (!carried.isEmpty()) {
 			message = message.append(Component.literal(", ")).append(
-					Component.translatable("united_minecraft.narrate.menu_carrying", ItemDescriptions.describe(carried)));
+					Component.translatable("united_minecraft.narrate.menu_carrying", ItemDescriptions.describe(carried, player)));
 		}
 
 		client.getNarrator().saySystemNow(message);
@@ -750,6 +798,7 @@ public final class MenuAccessibilityController {
 			case RECIPE_BOOK -> Component.translatable("united_minecraft.menu.section.recipe_book");
 			case EQUIPMENT -> Component.translatable("united_minecraft.menu.section.equipment");
 			case ENCHANT_OPTIONS -> Component.translatable("united_minecraft.menu.section.enchant_options");
+			case RENAME -> Component.translatable("united_minecraft.menu.section.rename");
 		};
 	}
 
@@ -835,9 +884,12 @@ public final class MenuAccessibilityController {
 		};
 	}
 
-	/** Visual top-to-bottom order: the container's own slots, then the player's main inventory, then the hotbar. */
+	/**
+	 * Visual top-to-bottom order: an anvil's rename box (above its own slots) where present,
+	 * then the container's own slots, then the player's main inventory, then the hotbar.
+	 */
 	private enum Section {
-		CONTAINER, RECIPE_BOOK, ENCHANT_OPTIONS, EQUIPMENT, INVENTORY, HOTBAR
+		RENAME, CONTAINER, RECIPE_BOOK, ENCHANT_OPTIONS, EQUIPMENT, INVENTORY, HOTBAR
 	}
 
 	private enum Direction {
