@@ -618,6 +618,9 @@ public final class BuildModeController {
 		if (level.hasNeighborSignal(cursor)) {
 			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_powered"));
 		}
+		if (ScannerController.isCrop(state.getBlock()) && ScannerController.isRipe(state)) {
+			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.scanner_ripe"));
+		}
 		return message;
 	}
 

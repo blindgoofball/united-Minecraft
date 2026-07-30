@@ -432,8 +432,12 @@ public final class ScannerController {
 				|| block instanceof FenceGateBlock;
 	}
 
-	/** Covers wheat/carrots/potatoes/beetroot/torchflower (all {@link CropBlock}), pumpkin/melon stems, nether wart, cocoa, and sweet berries. */
-	private static boolean isCrop(Block block) {
+	/**
+	 * Covers wheat/carrots/potatoes/beetroot/torchflower (all {@link CropBlock}), pumpkin/melon
+	 * stems, nether wart, cocoa, and sweet berries. Package-private - {@link BuildModeController}
+	 * reuses this (and {@link #isRipe}) so its cursor narrates "Ripe" the same way the Scanner does.
+	 */
+	static boolean isCrop(Block block) {
 		return block instanceof CropBlock
 				|| block instanceof StemBlock
 				|| block instanceof NetherWartBlock
@@ -446,7 +450,7 @@ public final class ScannerController {
 	 * property reaching its documented max; sweet berry bushes are the one exception - they're
 	 * pickable (with berries actually dropping) starting at age 2 of 3, not only at full growth.
 	 */
-	private static boolean isRipe(BlockState state) {
+	static boolean isRipe(BlockState state) {
 		Block block = state.getBlock();
 		if (block instanceof CropBlock crop) {
 			return crop.isMaxAge(state);
