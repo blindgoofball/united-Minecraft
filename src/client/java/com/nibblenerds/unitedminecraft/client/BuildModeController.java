@@ -15,9 +15,11 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.HopperBlock;
 import net.minecraft.world.level.block.ObserverBlock;
+import net.minecraft.world.level.block.SlabBlock;
 import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
+import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
@@ -46,9 +48,11 @@ import net.minecraft.world.phys.Vec3;
  * build mode no longer touches the camera at all.
  *
  * <p>Placing into a replaceable cell (air, tall grass, water, etc.) needs a
- * real, sturdy neighboring face to rest against - see {@link #findSupportFace}
- * for how that neighbor is chosen, and {@link #place} for why it's tried
- * against the real placement call rather than trusted outright.
+ * real, non-replaceable neighboring face to rest against - see {@link #findSupportFace}
+ * for how that neighbor is chosen (any solid face works, not just a full "sturdy" one -
+ * a slab's or stair's half-height side is a perfectly valid thing to place beside), and
+ * {@link #place} for why it's tried against the real placement call rather than trusted
+ * outright.
  *
  * <p>The cursor can roam a 65x65 horizontal area (32 blocks either way from
  * wherever build mode was toggled on - fixed for the session, not recentered
@@ -81,9 +85,10 @@ import net.minecraft.world.phys.Vec3;
  * block's orientation from the player's real, not-yet-updated rotation and
  * silently corrects it back; see that method's own doc for why. The same
  * chosen direction also gets tried first as the face to place against
- * (falling back to the normal search if that particular neighbor isn't sturdy),
- * which is what makes placing directly onto a chosen side of an existing block
- * possible at all - previously the neighbor was picked for you.
+ * (falling back to the normal search if that particular neighbor is itself
+ * replaceable, e.g. tall grass), which is what makes placing directly onto a
+ * chosen side of an existing block possible at all - previously the neighbor
+ * was picked for you.
  */
 public final class BuildModeController {
 	private static final double FACE_EPSILON = 0.001;
@@ -305,19 +310,28 @@ public final class BuildModeController {
 	 * raycast - see the class doc for why the raycast can't be trusted here.
 	 *
 	 * <p>{@link #isPlaceable} (used for the "Placeable" narration while moving) only checks
-	 * that the cursor is replaceable and has <em>some</em> sturdy neighbor - it doesn't, and
-	 * can't cheaply, replicate the actual item's own placement rules ({@code canSurvive},
+	 * that the cursor is replaceable and has <em>some</em> non-replaceable neighbor - it doesn't,
+	 * and can't cheaply, replicate the actual item's own placement rules ({@code canSurvive},
 	 * {@code isUnobstructed}, orientation via {@code getStateForPlacement}), which can still
 	 * reject a specific face those checks didn't rule out. Rather than commit to one
 	 * analytically "best" face and quietly give up if vanilla's real pipeline disagrees, this
-	 * tries every sturdy candidate face in priority order against the real {@code useItemOn}
-	 * call and takes the first one vanilla actually accepts - the same "just try it and see"
-	 * approach other block-placement utility mods use, since nothing short of the genuine
-	 * placement call can fully predict whether a given face will be accepted.
+	 * tries every non-replaceable candidate face in priority order against the real {@code
+	 * useItemOn} call and takes the first one vanilla actually accepts - the same "just try it
+	 * and see" approach other block-placement utility mods use, since nothing short of the
+	 * genuine placement call can fully predict whether a given face will be accepted. Requiring
+	 * only "not replaceable" rather than a full, flat {@code isFaceSturdy} face deliberately
+	 * allows attaching to things like a slab's or stair's half-height side - real vanilla
+	 * placement doesn't require a sturdy face either, only that clicking it wouldn't itself
+	 * replace something else (tall grass, snow layers, etc.) instead of the cursor.
 	 *
 	 * <p>With no {@link #selectedFacing} override, this fires immediately. With one set, it
 	 * defers to {@link #startRotatedPlacement} instead - see that method for why placing with a
 	 * forced rotation can't happen in the same tick the rotation is set.
+	 *
+	 * <p>A half slab already sitting at the cursor is a special case - see {@link
+	 * #isMatchingHalfSlab} - and short-circuits straight to {@link #attemptSlabMerge} instead of
+	 * the usual replace-and-search-for-a-neighbor flow below, since combining it into a double
+	 * isn't a "place at the cursor" operation in the usual sense at all.
 	 */
 	private static void place(Minecraft client, LocalPlayer player) {
 		if (!isInReach(player, cursor)) {
@@ -326,7 +340,16 @@ public final class BuildModeController {
 		}
 		Level level = player.level();
 		BlockState cursorState = level.getBlockState(cursor);
-		if (!cursorState.canBeReplaced() || player.getBoundingBox().intersects(cursor)) {
+		if (player.getBoundingBox().intersects(cursor)) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_cannot_place"));
+			return;
+		}
+
+		if (isMatchingHalfSlab(cursorState, player)) {
+			attemptSlabMerge(client, player, cursorState);
+			return;
+		}
+		if (!cursorState.canBeReplaced()) {
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_cannot_place"));
 			return;
 		}
@@ -336,6 +359,38 @@ public final class BuildModeController {
 			return;
 		}
 		attemptPlacementSequence(client, player);
+	}
+
+	/**
+	 * Whether the cursor already holds a non-double half slab matching whatever slab item the
+	 * player's holding. Vanilla's own {@code SlabBlock.canBeReplaced} only allows combining two
+	 * matching halves into a double slab via this exact combination - the plain, context-less
+	 * {@link BlockState#canBeReplaced()} check {@link #place} otherwise gates on has no idea
+	 * about item-specific replaceability like this and always reports false for an existing
+	 * slab, which would wrongly reject the merge before ever trying the real placement call.
+	 */
+	private static boolean isMatchingHalfSlab(BlockState cursorState, LocalPlayer player) {
+		return cursorState.getBlock() instanceof SlabBlock
+				&& cursorState.getValue(SlabBlock.TYPE) != SlabType.DOUBLE
+				&& cursorState.is(placingBlock(player));
+	}
+
+	/**
+	 * Combines the cursor's existing half slab into a double by clicking it directly - not a
+	 * neighbor, the slab itself - on whichever face vanilla's merge logic actually keys off:
+	 * the top face of a bottom half, or the bottom face of a top half (any other face, or a
+	 * side face outside its own half's Y range, fails the merge - see {@code
+	 * SlabBlock.canBeReplaced}, which this only needs to satisfy, not replicate).
+	 */
+	private static void attemptSlabMerge(Minecraft client, LocalPlayer player, BlockState cursorState) {
+		Direction face = cursorState.getValue(SlabBlock.TYPE) == SlabType.BOTTOM ? Direction.UP : Direction.DOWN;
+		Vec3 hitLocation = Vec3.atCenterOf(cursor).add(0, face.getStepY() * (0.5 - FACE_EPSILON), 0);
+		BlockHitResult hit = new BlockHitResult(hitLocation, face, cursor, false);
+		if (attemptPlace(client, player, hit)) {
+			client.getNarrator().saySystemNow(describeCursor(player));
+		} else {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_cannot_place"));
+		}
 	}
 
 	/**
@@ -394,7 +449,7 @@ public final class BuildModeController {
 		for (Direction face : faceTryOrder(placingBlock(player))) {
 			BlockPos neighborPos = cursor.relative(face);
 			BlockState neighborState = level.getBlockState(neighborPos);
-			if (!neighborState.isFaceSturdy(level, neighborPos, face.getOpposite())) {
+			if (neighborState.canBeReplaced()) {
 				continue;
 			}
 			Vec3 hitLocation = Vec3.atCenterOf(cursor).add(
@@ -650,10 +705,10 @@ public final class BuildModeController {
 		return findSupportFace(level, cursor) != null;
 	}
 
-	// Checked in this order when looking for a sturdy neighbor to place against: sideways
-	// neighbors first (attaching to whatever you just built next to the cursor is almost
-	// always the intent once one exists), then the ground below, then finally the block
-	// above as a last resort.
+	// Checked in this order when looking for a non-replaceable neighbor to place against:
+	// sideways neighbors first (attaching to whatever you just built next to the cursor is
+	// almost always the intent once one exists), then the ground below, then finally the
+	// block above as a last resort.
 	private static final Direction[] FACE_PRIORITY = {
 			Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST, Direction.DOWN, Direction.UP,
 	};
@@ -674,12 +729,18 @@ public final class BuildModeController {
 	 * Now that {@link #place} bypasses vanilla's raycast entirely (see the class doc), that
 	 * visibility-driven heuristic no longer serves any purpose - a fixed, deterministic
 	 * priority is both simpler and far more predictable.
+	 *
+	 * <p>Requires the neighbor to merely be non-replaceable, not a full {@code isFaceSturdy}
+	 * face - matching {@link #attemptPlacementSequence}'s own, less restrictive requirement
+	 * (see {@link #place}'s doc for why), so this narrates "Placeable" in exactly the cases
+	 * a real placement attempt would actually succeed - e.g. against a slab's or stair's
+	 * half-height side, not just a full cube.
 	 */
 	private static Direction findSupportFace(Level level, BlockPos pos) {
 		for (Direction face : FACE_PRIORITY) {
 			BlockPos neighborPos = pos.relative(face);
 			BlockState neighborState = level.getBlockState(neighborPos);
-			if (neighborState.isFaceSturdy(level, neighborPos, face.getOpposite())) {
+			if (!neighborState.canBeReplaced()) {
 				return face;
 			}
 		}
