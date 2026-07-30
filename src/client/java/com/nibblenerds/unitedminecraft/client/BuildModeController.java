@@ -13,6 +13,7 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.HopperBlock;
 import net.minecraft.world.level.block.ObserverBlock;
 import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -330,7 +331,7 @@ public final class BuildModeController {
 			return;
 		}
 
-		if (selectedFacing != null) {
+		if (selectedFacing != null && !facingIsOppositeOfClickedFace(placingBlock(player))) {
 			startRotatedPlacement(player);
 			return;
 		}
@@ -390,7 +391,7 @@ public final class BuildModeController {
 	/** Tries every candidate face in {@link #faceTryOrder} against the real placement call. */
 	private static void attemptPlacementSequence(Minecraft client, LocalPlayer player) {
 		Level level = player.level();
-		for (Direction face : faceTryOrder()) {
+		for (Direction face : faceTryOrder(placingBlock(player))) {
 			BlockPos neighborPos = cursor.relative(face);
 			BlockState neighborState = level.getBlockState(neighborPos);
 			if (!neighborState.isFaceSturdy(level, neighborPos, face.getOpposite())) {
@@ -417,16 +418,23 @@ public final class BuildModeController {
 	 * place against" - the opposite of the face of the neighbor you actually end up touching
 	 * (a neighbor to your west is the one whose <em>east</em> face you're placing against). That
 	 * indirection is fine for {@link #FACE_PRIORITY}'s own entries, which were never meant to
-	 * name a face at all, just an internal search order - but {@link #selectedFacing} is a face
-	 * the player explicitly asked to place against, so it needs converting: to attach to a
-	 * neighbor's west face, this has to look for that neighbor to the <em>east</em> of the
-	 * cursor, i.e. {@code selectedFacing.getOpposite()}.
+	 * name a face at all, just an internal search order - but {@link #selectedFacing} is the
+	 * direction the placed block should actually end up facing, so it needs converting.
+	 *
+	 * <p>For most directional blocks (attach-to-surface ones like torches/buttons/ladders, whose
+	 * {@code FACING} equals the clicked face directly, and rotation-based ones like
+	 * dispensers/pistons, where the clicked face doesn't affect the result at all) that means
+	 * looking for the neighbor to the <em>opposite</em> side of the cursor - to attach to a
+	 * neighbor's west face, look for that neighbor to the east. {@link
+	 * #facingIsOppositeOfClickedFace} blocks invert that: their own placement logic already
+	 * flips the clicked face once, so this has to search on the <em>same</em> side as {@link
+	 * #selectedFacing} instead, or the result comes out backwards.
 	 */
-	private static Direction[] faceTryOrder() {
+	private static Direction[] faceTryOrder(Block block) {
 		if (selectedFacing == null) {
 			return FACE_PRIORITY;
 		}
-		Direction searchDirection = selectedFacing.getOpposite();
+		Direction searchDirection = facingIsOppositeOfClickedFace(block) ? selectedFacing : selectedFacing.getOpposite();
 		Direction[] order = new Direction[FACE_PRIORITY.length];
 		order[0] = searchDirection;
 		int i = 1;
@@ -463,6 +471,19 @@ public final class BuildModeController {
 	/** The look direction that would make a block's real FACING placement logic land on {@code desired}. */
 	private static Direction lookDirectionFor(Direction desired, Block block) {
 		return block != null && facingMirrorsPlayerLook(block) ? desired : desired.getOpposite();
+	}
+
+	// Hopper is neither look-based nor a plain "FACING equals the clicked face" block: its own
+	// getStateForPlacement ignores player rotation entirely and instead sets FACING to the
+	// *opposite* of whichever face got clicked (forced to DOWN if that face is on the vertical
+	// axis, which is why a hopper placed on top of a floor - the only sturdy neighbor being
+	// straight down - always ends up facing down, matching vanilla). Faking rotation for it (as
+	// done for every other directional block) does nothing, and feeding its own FACING straight
+	// into faceTryOrder's usual "click the opposite side" search produces the exact opposite of
+	// the requested direction. Add any future block with the same clicked-face-opposite
+	// convention here.
+	private static boolean facingIsOppositeOfClickedFace(Block block) {
+		return block instanceof HopperBlock;
 	}
 
 	/** Points the player exactly at {@code direction} - yaw/pitch, no smoothing, for one placement call. */
