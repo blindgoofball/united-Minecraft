@@ -297,10 +297,13 @@ public final class ScannerController {
 		if (walkThere) {
 			// Once Auto-Walk actually arrives, lock on exactly as if Enter had been pressed
 			// there - re-checking aliveness, since the entity could've died or wandered off
-			// mid-walk.
+			// mid-walk. Also re-scans the category first, so Page Up/Down cycling afterward
+			// continues from wherever this entity now falls in the freshly re-sorted list,
+			// instead of a stale index computed before the player moved.
 			AutoWalkController.start(client, player, entity.blockPosition(), entity.getDisplayName(),
 					() -> {
 						if (entity.isAlive()) {
+							rescanAndRefocus(player, item -> item.entity() == entity);
 							lockOnto(client, player, entity);
 						}
 					});
@@ -325,6 +328,7 @@ public final class ScannerController {
 			AutoWalkController.start(client, player, entity.blockPosition(), entity.getDisplayName(),
 					() -> {
 						if (entity.isAlive()) {
+							rescanAndRefocus(player, item -> item.entity() == entity);
 							aimOnceAtEntity(client, player, entity);
 						}
 					});
@@ -341,7 +345,10 @@ public final class ScannerController {
 
 	private static void targetBlock(Minecraft client, LocalPlayer player, BlockPos pos, Component name, boolean walkThere) {
 		if (walkThere) {
-			AutoWalkController.start(client, player, pos, name, () -> aimOnceAtBlock(client, player, pos, name));
+			AutoWalkController.start(client, player, pos, name, () -> {
+				rescanAndRefocus(player, item -> pos.equals(item.blockPos()));
+				aimOnceAtBlock(client, player, pos, name);
+			});
 			return;
 		}
 		aimOnceAtBlock(client, player, pos, name);
@@ -350,6 +357,27 @@ public final class ScannerController {
 	private static void aimOnceAtBlock(Minecraft client, LocalPlayer player, BlockPos pos, Component name) {
 		CameraUtil.aimAt(player, interactionPoint(player.level(), pos));
 		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.scanner_facing", name));
+	}
+
+	/**
+	 * Re-runs the current category's scan and moves focus to whichever item now matches {@code
+	 * originalItem} - used once Auto-Walk arrives, since the walk itself can take long enough
+	 * that distances (and thus sort order) have shifted, or new items have appeared/disappeared,
+	 * leaving the pre-walk index stale. Falls back to clamping the existing index if the
+	 * original item can no longer be found (it was mined, picked up, etc).
+	 */
+	private static void rescanAndRefocus(LocalPlayer player, Predicate<ScannerItem> originalItem) {
+		if (categoryIndex == -1) {
+			return;
+		}
+		items = scan(CATEGORIES[categoryIndex], player);
+		for (int i = 0; i < items.size(); i++) {
+			if (originalItem.test(items.get(i))) {
+				itemIndex = i;
+				return;
+			}
+		}
+		itemIndex = items.isEmpty() ? 0 : Math.min(itemIndex, items.size() - 1);
 	}
 
 	/**

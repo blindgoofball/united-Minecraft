@@ -62,6 +62,9 @@ public final class AccessibilityTickHandler {
 	private static final long TICKS_PER_DAY = 24000L;
 
 	private static int lastOctant = -1;
+	// Whether a rotation-owning mode (Auto-Walk, Build Mode, Scanner lock-on, etc.) was active
+	// last tick - see the resync note where this is read, in onEndTick.
+	private static boolean rotationOwnedLastTick;
 	private static int lastHotbarSlot = -1;
 	private static int lastTimePeriod = -1;
 	private static ItemStack lastOffhand = null;
@@ -89,6 +92,7 @@ public final class AccessibilityTickHandler {
 		if (player == null) {
 			// Reset so a fresh world/session starts without narrating stale changes.
 			lastOctant = -1;
+			rotationOwnedLastTick = false;
 			lastHotbarSlot = -1;
 			lastTimePeriod = -1;
 			lastOffhand = null;
@@ -238,13 +242,22 @@ public final class AccessibilityTickHandler {
 			ArrowHitController.tick(client, player);
 		}
 
-		if (!BuildModeController.isActive() && !ScannerController.isLocked() && !AutoWalkController.isActive()
-				&& !CombatModeController.isActive() && !WaterExitController.isActive() && !TrailController.isActive()) {
-			// Build mode, scanner lock-on, combat mode, auto-walk, swimming to a water exit, and
-			// retracing the trail all drive yaw themselves; octant narration would just be noisy
-			// chatter racing their own.
-			handleFacingNarration(client, player);
+		boolean rotationOwned = BuildModeController.isActive() || ScannerController.isLocked() || AutoWalkController.isActive()
+				|| CombatModeController.isActive() || WaterExitController.isActive() || TrailController.isActive();
+		if (!rotationOwned) {
+			if (rotationOwnedLastTick) {
+				// One of those modes just handed rotation back this very tick - it may have
+				// turned the player through several octants while narration was suppressed
+				// (and can still re-aim the player once more on its way out, e.g. Auto-Walk
+				// facing its target on arrival), so silently resync instead of narrating
+				// whatever octant it happens to leave the player facing as if it were a
+				// deliberate turn.
+				lastOctant = Math.floorMod(Math.round(player.getYRot() / 45.0f), 8);
+			} else {
+				handleFacingNarration(client, player);
+			}
 		}
+		rotationOwnedLastTick = rotationOwned;
 		handleHotbarNarration(client, player);
 		handleBiomeNarration(client, player);
 		handleTimeOfDayNarration(client, player);

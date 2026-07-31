@@ -3,8 +3,11 @@ package com.nibblenerds.unitedminecraft.client;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.ClientInput;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Input;
@@ -113,7 +116,13 @@ public final class AutoWalkController {
 			currentPath.advance();
 			if (currentPath.isDone()) {
 				Runnable callback = onArrival;
-				finish(client, player, "united_minecraft.narrate.autowalk_arrived");
+				client.getSoundManager().play(new SimpleSoundInstance(SoundEvents.NOTE_BLOCK_CHIME.value(),
+						SoundSource.MASTER, 0.7f, 1.4f, player.getRandom(), player.getX(), player.getY(), player.getZ()));
+				// A caller with its own onArrival callback narrates something more specific
+				// ("Facing X", a lock-on) - saying "Arrived" first would just be immediately
+				// talked over. Only narrate it here when there's no callback to say anything
+				// else (Build Mode's walk-to-cursor, say).
+				finish(client, player, callback != null ? null : "united_minecraft.narrate.autowalk_arrived");
 				if (callback != null) {
 					callback.run();
 				}
@@ -133,10 +142,14 @@ public final class AutoWalkController {
 		((AutoWalkInput) player.input).setWalking(needsJump, client.options.keySprint.isDown());
 	}
 
+	/** {@code messageKey} may be null to restore input and reset state without narrating anything. */
 	private static void finish(Minecraft client, LocalPlayer player, String messageKey) {
 		Component name = targetName;
 		player.input = previousInput;
 		reset();
+		if (messageKey == null) {
+			return;
+		}
 		client.getNarrator().saySystemNow(name != null
 				? Component.translatable(messageKey, name)
 				: Component.translatable(messageKey));
