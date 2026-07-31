@@ -5,6 +5,7 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.monster.Enemy;
+import net.minecraft.world.entity.monster.EnderMan;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -69,7 +70,10 @@ public final class CombatModeController {
 	}
 
 	public static void tick(Minecraft client, LocalPlayer player) {
-		if (target != null && (!target.isAlive() || target.level() != player.level())) {
+		// Also releases an Enderman target that's calmed back down since being locked onto -
+		// no sense continuing to stare (and risk re-provoking it) once it's not actually mad
+		// anymore.
+		if (target != null && (!target.isAlive() || target.level() != player.level() || isCalmEnderman(target))) {
 			target = null;
 		}
 
@@ -98,7 +102,7 @@ public final class CombatModeController {
 		AABB box = player.getBoundingBox().inflate(SCAN_RANGE);
 		Entity nearest = null;
 		double nearestDistSq = SCAN_RANGE * SCAN_RANGE;
-		for (Entity entity : player.level().getEntities(player, box, e -> e.isAlive() && e instanceof Enemy)) {
+		for (Entity entity : player.level().getEntities(player, box, e -> e.isAlive() && e instanceof Enemy && !isCalmEnderman(e))) {
 			double distSq = distanceSq(eye, entity);
 			if (distSq <= nearestDistSq) {
 				nearest = entity;
@@ -106,6 +110,18 @@ public final class CombatModeController {
 			}
 		}
 		return nearest;
+	}
+
+	/**
+	 * True for an Enderman that hasn't actually turned hostile yet - {@code isCreepy()} is
+	 * vanilla's own synced "screaming/angry" flag, the same one that drives its eye-glow and
+	 * scream sound, so it's already available client-side with no server cooperation needed.
+	 * Locking onto (and thus staring at) a calm Enderman is exactly what provokes it in the
+	 * first place, so Combat Mode should never volunteer one as a target on its own - if it's
+	 * already angry at you for some other reason, though, there's no more provoking left to do.
+	 */
+	private static boolean isCalmEnderman(Entity entity) {
+		return entity instanceof EnderMan enderMan && !enderMan.isCreepy();
 	}
 
 	private static double distanceSq(Vec3 eye, Entity entity) {
