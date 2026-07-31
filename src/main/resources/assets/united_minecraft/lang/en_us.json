@@ -86,6 +86,7 @@
 	"united_minecraft.narrate.front_both": "%s, %s blocks. %s, %s blocks",
 	"united_minecraft.narrate.front_clear": "Clear",
 	"united_minecraft.narrate.scanner_item": "%s, %s blocks %s",
+	"united_minecraft.narrate.scanner_vertical": "%s %s",
 	"united_minecraft.scanner.category.interactables": "Interactables",
 	"united_minecraft.scanner.category.mechanisms": "Mechanisms",
 	"united_minecraft.scanner.category.items": "Items",

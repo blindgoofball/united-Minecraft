@@ -409,13 +409,14 @@ public final class ScannerController {
 	/** Null when {@code to} is within the normal vertical range for a plain compass heading. */
 	private static Component verticalDirection(Vec3 from, Vec3 to) {
 		double dy = to.y() - from.y();
-		if (dy > VERTICAL_DIRECTION_THRESHOLD) {
-			return Component.translatable("united_minecraft.direction.above");
+		if (Math.abs(dy) <= VERTICAL_DIRECTION_THRESHOLD) {
+			return null;
 		}
-		if (dy < -VERTICAL_DIRECTION_THRESHOLD) {
-			return Component.translatable("united_minecraft.direction.below");
-		}
-		return null;
+		int blocks = (int) Math.round(Math.abs(dy));
+		Component word = Component.translatable(dy > 0
+				? "united_minecraft.direction.above"
+				: "united_minecraft.direction.below");
+		return Component.translatable("united_minecraft.narrate.scanner_vertical", word, blocks);
 	}
 
 	private static Vec3 targetPosition(ScannerItem item) {
