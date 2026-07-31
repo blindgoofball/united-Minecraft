@@ -320,8 +320,30 @@ public final class ScannerController {
 			AutoWalkController.start(client, player, pos, name);
 			return;
 		}
-		CameraUtil.aimAt(player, Vec3.atCenterOf(pos));
+		CameraUtil.aimAt(player, interactionPoint(player.level(), pos));
 		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.scanner_facing", name));
+	}
+
+	/**
+	 * The point actually worth aiming at to interact with a block - the center of its real
+	 * outline shape, not the full-cube center {@link Vec3#atCenterOf} would give. For a full
+	 * block those are the same point, but a door, trapdoor, fence gate, button, or lever only
+	 * occupies a thin slice of its block space, and that slice moves as the block's state
+	 * changes (a door swings open, say) - aiming at the cube center can land outside the real
+	 * shape entirely, which is exactly why re-targeting an open door to close it used to need a
+	 * manual nudge left or right to actually land back on it.
+	 */
+	private static Vec3 interactionPoint(Level level, BlockPos pos) {
+		BlockState state = level.getBlockState(pos);
+		var shape = state.getShape(level, pos);
+		if (shape.isEmpty()) {
+			return Vec3.atCenterOf(pos);
+		}
+		AABB bounds = shape.bounds();
+		return new Vec3(
+				pos.getX() + (bounds.minX + bounds.maxX) / 2.0,
+				pos.getY() + (bounds.minY + bounds.maxY) / 2.0,
+				pos.getZ() + (bounds.minZ + bounds.maxZ) / 2.0);
 	}
 
 	private static ScannerItem currentItem() {
