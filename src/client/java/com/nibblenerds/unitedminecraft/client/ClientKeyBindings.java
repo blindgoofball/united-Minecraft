@@ -69,6 +69,14 @@ public final class ClientKeyBindings {
 	public static final KeyMapping WATER_ESCAPE = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.water_escape", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Y, CATEGORY));
 
+	/** Clears the recorded cave trail and starts recording fresh from the current position. */
+	public static final KeyMapping MARK_TRAIL = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+			"key.united_minecraft.mark_trail", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_X, CATEGORY));
+
+	/** Narrates the way back along the recorded trail; Shift instead walks it automatically. */
+	public static final KeyMapping RETRACE_TRAIL = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+			"key.united_minecraft.retrace_trail", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Z, CATEGORY));
+
 	/**
 	 * The arrow keys are dual-purpose: continuous camera turning normally (see
 	 * {@code handleCameraLook}), but discrete one-block cursor steps while build

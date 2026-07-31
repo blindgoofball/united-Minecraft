@@ -100,6 +100,7 @@ public final class AccessibilityTickHandler {
 			ScannerController.reset();
 			AutoWalkController.reset();
 			WaterExitController.reset();
+			TrailController.reset();
 			MovementAssistController.reset();
 			NavRadarController.reset();
 			MiningRadarController.reset();
@@ -148,6 +149,18 @@ public final class AccessibilityTickHandler {
 				WaterExitController.narrate(client, player);
 			}
 		}
+		if (ClientKeyBindings.MARK_TRAIL.consumeClick()) {
+			TrailController.markStart(client, player);
+		}
+		// Same rotation-owning modes WATER_ESCAPE is blocked against above, for the same reason.
+		if (!ScannerController.isLocked() && !CombatModeController.isActive() && !BuildModeController.isActive()
+				&& ClientKeyBindings.RETRACE_TRAIL.consumeClick()) {
+			if (ClientKeyBindings.isShiftDown(client)) {
+				TrailController.start(client, player);
+			} else {
+				TrailController.narrate(client, player);
+			}
+		}
 		MapMarkerController.tick(client);
 		if (client.gui.screen() == null && ClientKeyBindings.PLACE_MARKER.consumeClick()) {
 			MapMarkerController.openNameScreen(client, player);
@@ -168,6 +181,10 @@ public final class AccessibilityTickHandler {
 			// player.input the exact same way.
 			WaterExitController.cancel(client, player);
 		}
+		if (client.gui.screen() != null && TrailController.isActive()) {
+			// Same reasoning again - TrailController swaps player.input the exact same way.
+			TrailController.cancel(client, player);
+		}
 
 		if (client.gui.screen() == null) {
 			if (AutoWalkController.isActive()) {
@@ -179,6 +196,10 @@ public final class AccessibilityTickHandler {
 			} else if (WaterExitController.isActive()) {
 				// Owns rotation and movement the same way Auto-Walk does, for the same reason.
 				WaterExitController.tick(client, player);
+			} else if (TrailController.isActive()) {
+				// Owns rotation and movement the same way - mutually exclusive with the two
+				// auto-navigate modes just above, only one should ever be walking at once.
+				TrailController.tick(client, player);
 			} else if (ScannerController.isLocked()) {
 				ScannerController.tickLock(client, player);
 				ScannerController.tick(client, player);
@@ -203,6 +224,12 @@ public final class AccessibilityTickHandler {
 				MiningRadarController.tick(client, player);
 				FallWarningController.tick(client, player);
 			}
+			// Runs no matter which mode owns rotation - the trail should keep recording real
+			// movement regardless of what else is going on, except while it's driving that
+			// movement itself (retracing), which would just record its own synthetic route.
+			if (!TrailController.isActive()) {
+				TrailController.recordTick(client, player);
+			}
 			// Runs no matter which mode owns rotation - a nearby, visible hostile mob is
 			// worth a warning regardless of what else you're doing.
 			HostileRadarController.tick(client, player);
@@ -212,10 +239,10 @@ public final class AccessibilityTickHandler {
 		}
 
 		if (!BuildModeController.isActive() && !ScannerController.isLocked() && !AutoWalkController.isActive()
-				&& !CombatModeController.isActive() && !WaterExitController.isActive()) {
-			// Build mode, scanner lock-on, combat mode, auto-walk, and swimming to a water exit
-			// all drive yaw themselves; octant narration would just be noisy chatter racing
-			// their own.
+				&& !CombatModeController.isActive() && !WaterExitController.isActive() && !TrailController.isActive()) {
+			// Build mode, scanner lock-on, combat mode, auto-walk, swimming to a water exit, and
+			// retracing the trail all drive yaw themselves; octant narration would just be noisy
+			// chatter racing their own.
 			handleFacingNarration(client, player);
 		}
 		handleHotbarNarration(client, player);
