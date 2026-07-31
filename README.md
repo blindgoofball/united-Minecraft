@@ -107,6 +107,15 @@ cursor is pointing at. Works on any server, no special permissions needed.
 Hold your sprint key while it's walking to get there faster, same as walking
 there yourself would. Cancel any time with the stop-lock key.
 
+### Water Exit
+
+For when you've fallen into a lake or river and can't find your way out - a
+dedicated key reports the distance and direction to the nearest way out, and
+Shift instead swims you there directly, both computed by tracing a real,
+connected route through the water you're actually in (never through walls or
+across open air), so it never points you at a ledge you can't actually reach.
+Cancel a swim any time with the stop-lock key, same as Auto-Walk.
+
 ### Fall Warning
 
 Always-on warning for a drop of more than 3 blocks coming up in whatever
@@ -277,11 +286,12 @@ where noted.
 | N | Toggle Navigation Radar |
 | M | Toggle Mining Radar |
 | K | Toggle Combat Mode |
+| Y (Shift = swim there) | Find the nearest way out of water |
 | Left/Right/Up/Down arrows | Turn camera, or move the Build Mode cursor (Shift = snap-turn 45 degrees when not in Build Mode) |
 | Page Up/Down | Build Mode cursor up/down, or cycle the Scanner's nearest items |
 | Home/End | Cycle the Scanner's category |
 | Enter (Shift = walk there) | Target the Scanner's focused item |
-| Delete | Stop Scanner lock-on / cancel Auto-Walk, or remove the focused marker in the Markers category |
+| Delete | Stop Scanner lock-on / cancel Auto-Walk or swim, or remove the focused marker in the Markers category |
 | \ (backslash) | Announce the Scanner's focused item's coordinates |
 | F6 | Open United Minecraft Settings |
 

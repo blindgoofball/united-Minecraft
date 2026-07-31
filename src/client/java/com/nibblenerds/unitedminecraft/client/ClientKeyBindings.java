@@ -65,6 +65,10 @@ public final class ClientKeyBindings {
 	public static final KeyMapping TOGGLE_COMBAT_MODE = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.toggle_combat_mode", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_K, CATEGORY));
 
+	/** Narrates the nearest reachable way out of water; Shift instead swims there automatically. */
+	public static final KeyMapping WATER_ESCAPE = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+			"key.united_minecraft.water_escape", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Y, CATEGORY));
+
 	/**
 	 * The arrow keys are dual-purpose: continuous camera turning normally (see
 	 * {@code handleCameraLook}), but discrete one-block cursor steps while build

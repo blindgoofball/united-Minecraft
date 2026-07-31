@@ -99,6 +99,7 @@ public final class AccessibilityTickHandler {
 			MapMarkerController.reset();
 			ScannerController.reset();
 			AutoWalkController.reset();
+			WaterExitController.reset();
 			MovementAssistController.reset();
 			NavRadarController.reset();
 			MiningRadarController.reset();
@@ -135,6 +136,18 @@ public final class AccessibilityTickHandler {
 		if (ClientKeyBindings.TOGGLE_COMBAT_MODE.consumeClick()) {
 			CombatModeController.toggle(client, player);
 		}
+		// Same rotation-owning modes TOGGLE_BUILD_MODE is blocked against above - starting a
+		// swim while one of them already owns rotation would just fight it. Auto-Walk itself
+		// isn't in that list - starting a swim cancels it outright instead (see
+		// WaterExitController#start), since the two are never useful to run at once anyway.
+		if (!ScannerController.isLocked() && !CombatModeController.isActive() && !BuildModeController.isActive()
+				&& ClientKeyBindings.WATER_ESCAPE.consumeClick()) {
+			if (ClientKeyBindings.isShiftDown(client)) {
+				WaterExitController.start(client, player);
+			} else {
+				WaterExitController.narrate(client, player);
+			}
+		}
 		MapMarkerController.tick(client);
 		if (client.gui.screen() == null && ClientKeyBindings.PLACE_MARKER.consumeClick()) {
 			MapMarkerController.openNameScreen(client, player);
@@ -150,6 +163,11 @@ public final class AccessibilityTickHandler {
 			// make it unreachable/uncancellable until that screen closed again.
 			AutoWalkController.cancel(client, player);
 		}
+		if (client.gui.screen() != null && WaterExitController.isActive()) {
+			// Same reasoning as AutoWalkController just above - WaterExitController swaps
+			// player.input the exact same way.
+			WaterExitController.cancel(client, player);
+		}
 
 		if (client.gui.screen() == null) {
 			if (AutoWalkController.isActive()) {
@@ -158,6 +176,9 @@ public final class AccessibilityTickHandler {
 				// look, build mode, and the scanner's own key handling, which would
 				// otherwise steal the Stop Lock/cancel keypress before this sees it).
 				AutoWalkController.tick(client, player);
+			} else if (WaterExitController.isActive()) {
+				// Owns rotation and movement the same way Auto-Walk does, for the same reason.
+				WaterExitController.tick(client, player);
 			} else if (ScannerController.isLocked()) {
 				ScannerController.tickLock(client, player);
 				ScannerController.tick(client, player);
@@ -191,9 +212,10 @@ public final class AccessibilityTickHandler {
 		}
 
 		if (!BuildModeController.isActive() && !ScannerController.isLocked() && !AutoWalkController.isActive()
-				&& !CombatModeController.isActive()) {
-			// Build mode, scanner lock-on, combat mode, and auto-walk all drive yaw
-			// themselves; octant narration would just be noisy chatter racing their own.
+				&& !CombatModeController.isActive() && !WaterExitController.isActive()) {
+			// Build mode, scanner lock-on, combat mode, auto-walk, and swimming to a water exit
+			// all drive yaw themselves; octant narration would just be noisy chatter racing
+			// their own.
 			handleFacingNarration(client, player);
 		}
 		handleHotbarNarration(client, player);
