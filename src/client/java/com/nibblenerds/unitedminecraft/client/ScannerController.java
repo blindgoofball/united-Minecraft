@@ -295,9 +295,21 @@ public final class ScannerController {
 			return;
 		}
 		if (walkThere) {
-			AutoWalkController.start(client, player, entity.blockPosition(), entity.getDisplayName());
+			// Once Auto-Walk actually arrives, lock on exactly as if Enter had been pressed
+			// there - re-checking aliveness, since the entity could've died or wandered off
+			// mid-walk.
+			AutoWalkController.start(client, player, entity.blockPosition(), entity.getDisplayName(),
+					() -> {
+						if (entity.isAlive()) {
+							lockOnto(client, player, entity);
+						}
+					});
 			return;
 		}
+		lockOnto(client, player, entity);
+	}
+
+	private static void lockOnto(Minecraft client, LocalPlayer player, Entity entity) {
 		lockedEntity = entity;
 		CameraUtil.aimAt(player, entity.getBoundingBox().getCenter());
 		client.getNarrator().saySystemNow(
@@ -310,9 +322,18 @@ public final class ScannerController {
 			return;
 		}
 		if (walkThere) {
-			AutoWalkController.start(client, player, entity.blockPosition(), entity.getDisplayName());
+			AutoWalkController.start(client, player, entity.blockPosition(), entity.getDisplayName(),
+					() -> {
+						if (entity.isAlive()) {
+							aimOnceAtEntity(client, player, entity);
+						}
+					});
 			return;
 		}
+		aimOnceAtEntity(client, player, entity);
+	}
+
+	private static void aimOnceAtEntity(Minecraft client, LocalPlayer player, Entity entity) {
 		CameraUtil.aimAt(player, entity.getBoundingBox().getCenter());
 		client.getNarrator().saySystemNow(
 				Component.translatable("united_minecraft.narrate.scanner_facing", entity.getDisplayName()));
@@ -320,9 +341,13 @@ public final class ScannerController {
 
 	private static void targetBlock(Minecraft client, LocalPlayer player, BlockPos pos, Component name, boolean walkThere) {
 		if (walkThere) {
-			AutoWalkController.start(client, player, pos, name);
+			AutoWalkController.start(client, player, pos, name, () -> aimOnceAtBlock(client, player, pos, name));
 			return;
 		}
+		aimOnceAtBlock(client, player, pos, name);
+	}
+
+	private static void aimOnceAtBlock(Minecraft client, LocalPlayer player, BlockPos pos, Component name) {
 		CameraUtil.aimAt(player, interactionPoint(player.level(), pos));
 		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.scanner_facing", name));
 	}

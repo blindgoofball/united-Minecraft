@@ -42,6 +42,7 @@ public final class AutoWalkController {
 	private static Path currentPath;
 	private static ClientInput previousInput;
 	private static Component targetName;
+	private static Runnable onArrival;
 
 	private AutoWalkController() {
 	}
@@ -54,9 +55,22 @@ public final class AutoWalkController {
 		currentPath = null;
 		previousInput = null;
 		targetName = null;
+		onArrival = null;
 	}
 
 	public static void start(Minecraft client, LocalPlayer player, BlockPos target, Component name) {
+		start(client, player, target, name, null);
+	}
+
+	/**
+	 * Same as {@link #start(Minecraft, LocalPlayer, BlockPos, Component)}, but runs {@code
+	 * onArrival} once the walk actually finishes - not on cancellation - so a caller can re-run
+	 * whatever pressing the scanner's target key directly would have done (aiming at the block,
+	 * or locking onto the entity) now that the player is actually standing there. Runs after
+	 * the player's real input is restored, so it's free to change rotation as if it were the
+	 * player doing it themselves.
+	 */
+	public static void start(Minecraft client, LocalPlayer player, BlockPos target, Component name, Runnable onArrival) {
 		if (isActive()) {
 			cancel(client, player);
 		}
@@ -69,6 +83,7 @@ public final class AutoWalkController {
 
 		currentPath = path;
 		targetName = name;
+		AutoWalkController.onArrival = onArrival;
 		previousInput = player.input;
 		player.input = new AutoWalkInput();
 		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.autowalk_started", name));
@@ -97,7 +112,11 @@ public final class AutoWalkController {
 		if (dx * dx + dz * dz < NODE_ARRIVAL_DISTANCE_SQR) {
 			currentPath.advance();
 			if (currentPath.isDone()) {
+				Runnable callback = onArrival;
 				finish(client, player, "united_minecraft.narrate.autowalk_arrived");
+				if (callback != null) {
+					callback.run();
+				}
 			}
 			return;
 		}
