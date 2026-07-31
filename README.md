@@ -151,6 +151,11 @@ brief pause between pressing place and the block actually appearing whenever a
 facing is selected (getting the orientation right requires the choice to
 genuinely reach the server first) - expected, not lag.
 
+Water and lava buckets work too, including pouring into a spot with no
+directly clickable face - a narrow hole, say - the same way it works for a
+sighted player looking straight down into one, since vanilla gives bucket
+placement no other way in.
+
 ### Tree Chopping Assist
 
 Whenever the log you're looking at gets broken, automatically re-aims at an

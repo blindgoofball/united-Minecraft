@@ -10,6 +10,7 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.BucketItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -53,6 +54,13 @@ import net.minecraft.world.phys.Vec3;
  * a slab's or stair's half-height side is a perfectly valid thing to place beside), and
  * {@link #place} for why it's tried against the real placement call rather than trusted
  * outright.
+ *
+ * <p>Buckets are the one item this "bypass facing entirely" approach can't fully cover -
+ * vanilla gives water/lava placement no click-a-face alternative at all, only a real,
+ * rotation-based raycast - so {@link #startBucketUse} fakes the player's rotation to look
+ * exactly at the cursor and lets that raycast do the rest. See its doc for why that's still
+ * strictly no more restrictive than what a sighted player pouring into a hole from directly
+ * above already relies on.
  *
  * <p>The cursor can roam a 65x65 horizontal area (32 blocks either way from
  * wherever build mode was toggled on - fixed for the session, not recentered
@@ -111,9 +119,11 @@ public final class BuildModeController {
 	private static int anchorZ;
 	private static Direction selectedFacing;
 
-	// Set only while a rotated placement is waiting out its sync delay (see startRotatedPlacement) -
-	// pendingPlaceTicks counts down to 0, at which point the real placement fires.
+	// Set only while a rotated placement is waiting out its sync delay (see startRotatedPlacement
+	// and startBucketUse) - pendingPlaceTicks counts down to 0, at which point pendingAction fires.
 	private static int pendingPlaceTicks = -1;
+	private static PendingAction pendingAction;
+	private static InteractionHand pendingBucketHand;
 	private static float pendingSavedYaw;
 	private static float pendingSavedPitch;
 
@@ -338,6 +348,13 @@ public final class BuildModeController {
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_out_of_reach"));
 			return;
 		}
+
+		InteractionHand bucketHand = bucketHand(player);
+		if (bucketHand != null) {
+			startBucketUse(player, bucketHand);
+			return;
+		}
+
 		Level level = player.level();
 		BlockState cursorState = level.getBlockState(cursor);
 		if (player.getBoundingBox().intersects(cursor)) {
@@ -420,10 +437,35 @@ public final class BuildModeController {
 		pendingSavedYaw = player.getYRot();
 		pendingSavedPitch = player.getXRot();
 		faceDirection(player, lookDirectionFor(selectedFacing, placingBlock(player)));
+		pendingAction = PendingAction.PLACE;
 		pendingPlaceTicks = ROTATION_SYNC_DELAY_TICKS;
 	}
 
-	/** Advances a placement started by {@link #startRotatedPlacement}, firing it once the sync delay elapses. */
+	/**
+	 * Buckets (filling or emptying alike) don't implement vanilla's block-targeted {@code
+	 * useOn} at all - only the general, no-target {@code use()}, which does its own internal
+	 * raycast from the player's real eye position and rotation rather than accepting a
+	 * manufactured {@link BlockHitResult} the way every other item {@link #attemptPlacementSequence}
+	 * places does. There's no way around that: unlike solid blocks, water/lava placement has no
+	 * click-a-neighboring-face alternative in vanilla, so this fakes the player's rotation to
+	 * look exactly at the cursor - the same real, unobstructed line of sight a sighted player
+	 * pouring into a hole from directly above already needs, this just aims it for you - then
+	 * defers to {@link #attemptBucketUse} via the same rotation-sync delay {@link
+	 * #startRotatedPlacement} needs and for the same reason.
+	 */
+	private static void startBucketUse(LocalPlayer player, InteractionHand hand) {
+		if (pendingPlaceTicks >= 0) {
+			return;
+		}
+		pendingSavedYaw = player.getYRot();
+		pendingSavedPitch = player.getXRot();
+		CameraUtil.aimAt(player, Vec3.atCenterOf(cursor));
+		pendingAction = PendingAction.BUCKET;
+		pendingBucketHand = hand;
+		pendingPlaceTicks = ROTATION_SYNC_DELAY_TICKS;
+	}
+
+	/** Advances an action started by {@link #startRotatedPlacement} or {@link #startBucketUse}, firing it once the sync delay elapses. */
 	private static void tickPendingPlacement(Minecraft client, LocalPlayer player) {
 		if (pendingPlaceTicks < 0) {
 			return;
@@ -434,13 +476,43 @@ public final class BuildModeController {
 		}
 		pendingPlaceTicks = -1;
 		try {
-			attemptPlacementSequence(client, player);
+			switch (pendingAction) {
+				case PLACE -> attemptPlacementSequence(client, player);
+				case BUCKET -> attemptBucketUse(client, player);
+			}
 		} finally {
 			player.setYRot(pendingSavedYaw);
 			player.setXRot(pendingSavedPitch);
 			player.setOldRot();
 			player.setYHeadRot(pendingSavedYaw);
 		}
+	}
+
+	/**
+	 * Fires the real, general item-use call {@link #startBucketUse} rotated the player for -
+	 * the bucket's own raycast (now aimed exactly at the cursor) decides what actually happens,
+	 * same as {@link #attemptPlace} defers to {@code useItemOn} for every other item.
+	 */
+	private static void attemptBucketUse(Minecraft client, LocalPlayer player) {
+		InteractionResult result = client.gameMode.useItem(player, pendingBucketHand);
+		if (result instanceof InteractionResult.Success success) {
+			if (success.swingSource() == InteractionResult.SwingSource.CLIENT) {
+				player.swing(pendingBucketHand);
+			}
+			client.getNarrator().saySystemNow(describeCursor(player));
+		} else {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_cannot_place"));
+		}
+	}
+
+	/** Whichever hand holds a bucket (filling or emptying alike), main hand first - null if neither does. */
+	private static InteractionHand bucketHand(LocalPlayer player) {
+		for (InteractionHand hand : InteractionHand.values()) {
+			if (player.getItemInHand(hand).getItem() instanceof BucketItem) {
+				return hand;
+			}
+		}
+		return null;
 	}
 
 	/** Tries every candidate face in {@link #faceTryOrder} against the real placement call. */
@@ -763,5 +835,10 @@ public final class BuildModeController {
 			}
 		}
 		return null;
+	}
+
+	/** What to actually do once a rotation faked by {@link #startRotatedPlacement}/{@link #startBucketUse} has synced. */
+	private enum PendingAction {
+		PLACE, BUCKET
 	}
 }
