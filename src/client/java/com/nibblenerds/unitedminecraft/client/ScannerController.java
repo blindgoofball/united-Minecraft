@@ -32,6 +32,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ButtonBlock;
 import net.minecraft.world.level.block.CaveVines;
+import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.CocoaBlock;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.DoorBlock;
@@ -43,6 +44,8 @@ import net.minecraft.world.level.block.StemBlock;
 import net.minecraft.world.level.block.SweetBerryBushBlock;
 import net.minecraft.world.level.block.TrapDoorBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BedPart;
+import net.minecraft.world.level.block.state.properties.ChestType;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -369,6 +372,12 @@ public final class ScannerController {
 		if (category == ScannerCategory.CROPS && isRipe(player.level().getBlockState(item.blockPos()))) {
 			name = name.copy().append(Component.literal(", ")).append(Component.translatable("united_minecraft.narrate.scanner_ripe"));
 		}
+		if (category == ScannerCategory.INTERACTABLES) {
+			BlockState state = player.level().getBlockState(item.blockPos());
+			if (state.getBlock() instanceof BedBlock && state.getValue(BedBlock.OCCUPIED)) {
+				name = name.copy().append(Component.literal(", ")).append(Component.translatable("united_minecraft.narrate.scanner_occupied"));
+			}
+		}
 		return Component.translatable("united_minecraft.narrate.scanner_item", name, distance, direction);
 	}
 
@@ -433,9 +442,18 @@ public final class ScannerController {
 		return switch (category) {
 			// Beds don't have a menu (sleeping/setting spawn isn't a GUI), but they're
 			// still something you right-click to do something with, not a lever/button/door
-			// style toggle - closer in spirit to this category than to Mechanisms.
-			case INTERACTABLES -> scanBlocks(player, (pos, state) ->
-					state.getMenuProvider(player.level(), pos) != null || state.getBlock() instanceof BedBlock);
+			// style toggle - closer in spirit to this category than to Mechanisms. Both beds
+			// and double chests are two blocks sharing one real-world object - only match the
+			// head half of a bed and the non-right half of a chest, so each shows up once.
+			case INTERACTABLES -> scanBlocks(player, (pos, state) -> {
+				if (state.getBlock() instanceof BedBlock) {
+					return state.getValue(BedBlock.PART) == BedPart.HEAD;
+				}
+				if (state.hasProperty(ChestBlock.TYPE) && state.getValue(ChestBlock.TYPE) == ChestType.RIGHT) {
+					return false;
+				}
+				return state.getMenuProvider(player.level(), pos) != null;
+			});
 			case MECHANISMS -> scanBlocks(player, (pos, state) -> isMechanism(state.getBlock()));
 			case ITEMS -> scanEntities(player, entity -> entity instanceof ItemEntity);
 			case TREES -> scanTrees(player);

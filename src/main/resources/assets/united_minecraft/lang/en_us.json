@@ -101,6 +101,7 @@
 	"united_minecraft.narrate.scanner_no_item": "Nothing selected",
 	"united_minecraft.narrate.scanner_facing": "Facing %s",
 	"united_minecraft.narrate.scanner_ripe": "Ripe",
+	"united_minecraft.narrate.scanner_occupied": "Occupied",
 	"united_minecraft.narrate.scanner_lock_started": "Locked onto %s",
 	"united_minecraft.narrate.scanner_lock_stopped": "Lock released",
 	"united_minecraft.narrate.scanner_lock_lost": "Lost lock",
