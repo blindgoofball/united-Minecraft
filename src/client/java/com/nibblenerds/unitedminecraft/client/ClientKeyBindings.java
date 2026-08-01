@@ -77,6 +77,7 @@ public final class ClientKeyBindings {
 	public static final KeyMapping RETRACE_TRAIL = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.retrace_trail", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Z, CATEGORY));
 
+
 	/**
 	 * The arrow keys are dual-purpose: continuous camera turning normally (see
 	 * {@code handleCameraLook}), but discrete one-block cursor steps while build
@@ -105,6 +106,14 @@ public final class ClientKeyBindings {
 	public static final KeyMapping SCANNER_NEXT_CATEGORY = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.scanner_next_category", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_END, CATEGORY));
 
+	/**
+	 * Targets the Scanner's focused item normally - but while already locked onto a mob (where
+	 * targeting doesn't apply, so this would otherwise do nothing), interacts with the locked
+	 * entity directly instead, the same as right-clicking it but without needing an actual
+	 * crosshair hit. Meant for when another entity is physically in the way of the one actually
+	 * locked on (two chickens crowded together while trying to breed them, say), where camera
+	 * aim alone can't tell them apart.
+	 */
 	public static final KeyMapping SCANNER_TARGET = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.scanner_target", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_ENTER, CATEGORY));
 	public static final KeyMapping SCANNER_STOP_LOCK = KeyMappingHelper.registerKeyMapping(new KeyMapping(

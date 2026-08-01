@@ -20,6 +20,8 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.animal.Animal;
@@ -52,6 +54,7 @@ import net.minecraft.world.level.block.state.properties.BedPart;
 import net.minecraft.world.level.block.state.properties.ChestType;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -150,6 +153,9 @@ public final class ScannerController {
 			if (coordinatesPressed) {
 				announceCoordinates(client, lockedEntity.blockPosition());
 			}
+			if (targetPressed) {
+				interactWithLocked(client, player);
+			}
 			return;
 		}
 		if (BuildModeController.isActive() || CombatModeController.isActive()) {
@@ -246,6 +252,43 @@ public final class ScannerController {
 		lockedEntity = null;
 	}
 
+	/**
+	 * Interacts with the locked entity directly - the same real, server-authoritative
+	 * interaction a right-click sends, but targeting the exact locked entity by identity
+	 * instead of whatever the crosshair's raycast happens to hit. Meant for when another entity
+	 * is physically in the way of the one actually locked on (two chickens crowded together
+	 * trying to breed them, say) - camera aim alone can't distinguish which one gets hit in that
+	 * case, but the Scanner already knows exactly which one is locked.
+	 *
+	 * <p>Mirrors vanilla's own main-hand-then-offhand fallback (see {@code Minecraft.startUseItem}
+	 * and {@link BuildModeController#attemptPlace}, which does the same for block placement):
+	 * stop on a hand that actually consumes the interaction, or on an explicit failure.
+	 *
+	 * <p>Going straight to {@code gameMode.interact} like this skips {@code Minecraft}'s own
+	 * mouse-click handling entirely - including the hook {@link AnimalFeedingController}
+	 * normally relies on for its feed-confirmation sound - so that's triggered explicitly here
+	 * too, same as a real click would.
+	 */
+	private static void interactWithLocked(Minecraft client, LocalPlayer player) {
+		if (lockedEntity == null || !lockedEntity.isAlive()) {
+			return;
+		}
+		EntityHitResult hitResult = new EntityHitResult(lockedEntity, lockedEntity.getBoundingBox().getCenter());
+		for (InteractionHand hand : InteractionHand.values()) {
+			AnimalFeedingController.playFeedSoundIfSuccessful(lockedEntity, player.getItemInHand(hand));
+			InteractionResult result = client.gameMode.interact(player, lockedEntity, hitResult, hand);
+			if (result instanceof InteractionResult.Success success) {
+				if (success.swingSource() == InteractionResult.SwingSource.CLIENT) {
+					player.swing(hand);
+				}
+				return;
+			}
+			if (result instanceof InteractionResult.Fail) {
+				return;
+			}
+		}
+	}
+
 	private static void stopLock(Minecraft client) {
 		if (lockedEntity == null) {
 			return;
@@ -313,7 +356,7 @@ public final class ScannerController {
 			// mid-walk. Also re-scans the category first, so Page Up/Down cycling afterward
 			// continues from wherever this entity now falls in the freshly re-sorted list,
 			// instead of a stale index computed before the player moved.
-			AutoWalkController.start(client, player, entity.blockPosition(), entity.getDisplayName(),
+			AutoWalkController.start(client, player, entity.blockPosition(), mobDisplayName(entity),
 					() -> {
 						if (entity.isAlive()) {
 							rescanAndRefocus(player, item -> item.entity() == entity);
@@ -329,7 +372,7 @@ public final class ScannerController {
 		lockedEntity = entity;
 		CameraUtil.aimAt(player, entity.getBoundingBox().getCenter());
 		client.getNarrator().saySystemNow(
-				Component.translatable("united_minecraft.narrate.scanner_lock_started", entity.getDisplayName()));
+				Component.translatable("united_minecraft.narrate.scanner_lock_started", mobDisplayName(entity)));
 	}
 
 	private static void targetEntityOnce(Minecraft client, LocalPlayer player, Entity entity, boolean walkThere) {
@@ -338,7 +381,7 @@ public final class ScannerController {
 			return;
 		}
 		if (walkThere) {
-			AutoWalkController.start(client, player, entity.blockPosition(), entity.getDisplayName(),
+			AutoWalkController.start(client, player, entity.blockPosition(), mobDisplayName(entity),
 					() -> {
 						if (entity.isAlive()) {
 							rescanAndRefocus(player, item -> item.entity() == entity);
@@ -353,7 +396,20 @@ public final class ScannerController {
 	private static void aimOnceAtEntity(Minecraft client, LocalPlayer player, Entity entity) {
 		CameraUtil.aimAt(player, entity.getBoundingBox().getCenter());
 		client.getNarrator().saySystemNow(
-				Component.translatable("united_minecraft.narrate.scanner_facing", entity.getDisplayName()));
+				Component.translatable("united_minecraft.narrate.scanner_facing", mobDisplayName(entity)));
+	}
+
+	/**
+	 * {@code LivingEntity.isBaby()} covers both breedable animals ({@link
+	 * net.minecraft.world.entity.AgeableMob}) and baby-capable hostiles like zombies, each with
+	 * their own separate synced flag underneath - checking it on the base class here picks up
+	 * both without needing to special-case either.
+	 */
+	private static Component mobDisplayName(Entity entity) {
+		if (entity instanceof LivingEntity living && living.isBaby()) {
+			return Component.translatable("united_minecraft.narrate.baby_mob", entity.getDisplayName());
+		}
+		return entity.getDisplayName();
 	}
 
 	private static void targetBlock(Minecraft client, LocalPlayer player, BlockPos pos, Component name, boolean walkThere) {
@@ -472,7 +528,7 @@ public final class ScannerController {
 			if (category == ScannerCategory.ITEMS && item.entity() instanceof ItemEntity itemEntity) {
 				return ItemDescriptions.describe(itemEntity.getItem(), player);
 			}
-			return item.entity().getDisplayName();
+			return mobDisplayName(item.entity());
 		}
 		Level level = player.level();
 		if (category == ScannerCategory.TREES) {

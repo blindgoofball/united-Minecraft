@@ -64,6 +64,14 @@ navigation without needing to see or aim at them.
 - Targeting a block aims at it. Targeting a mob starts a continuous lock-on that
   keeps facing it until released. Drawing a bow while locked on aims with a real
   ballistic arc, so shots land at real range instead of dropping short.
+- While locked onto a mob, the target key (Enter) doesn't target - there's
+  nothing to target while already locked - so it interacts with the locked
+  entity directly instead (feeding, trading, saddling, etc.), the same real
+  interaction a right-click sends but targeting the locked entity by identity
+  instead of whatever the crosshair's raycast happens to hit. Useful when
+  another entity is physically in the way of the one you're locked onto (two
+  chickens crowded together while trying to breed them, say), where camera aim
+  alone can't tell them apart.
 - Any bow shot that actually connects - locked on or not - gets a confirmation cue
   at full volume regardless of distance, since a hit at real range is easy to miss
   both by eye and by ear.
@@ -312,7 +320,7 @@ where noted.
 | Left/Right/Up/Down arrows | Turn camera, or move the Build Mode cursor (Shift = snap-turn 45 degrees when not in Build Mode) |
 | Page Up/Down | Build Mode cursor up/down, or cycle the Scanner's nearest items |
 | Home/End | Cycle the Scanner's category |
-| Enter (Shift = walk there) | Target the Scanner's focused item |
+| Enter (Shift = walk there) | Target the Scanner's focused item, or interact with it directly while locked on |
 | Delete | Stop Scanner lock-on / cancel Auto-Walk, swim, or trail retrace, or remove the focused marker in the Markers category |
 | \ (backslash) | Announce the Scanner's focused item's coordinates |
 | F6 | Open United Minecraft Settings |
