@@ -177,10 +177,8 @@ public final class ScannerController {
 		if (targetPressed) {
 			target(client, player);
 		}
-		// Delete otherwise does nothing here (it only means "stop lock" while actually
-		// locked, handled above) - repurposed as "remove" specifically for the one category
-		// where deleting a mistaken entry is something you'd actually want.
-		if (stopPressed && categoryIndex >= 0 && CATEGORIES[categoryIndex] == ScannerCategory.MARKERS) {
+		if (ClientKeyBindings.SCANNER_REMOVE_MARKER.consumeClick()
+				&& categoryIndex >= 0 && CATEGORIES[categoryIndex] == ScannerCategory.MARKERS) {
 			removeCurrentMarker(client, player);
 		}
 		if (coordinatesPressed) {

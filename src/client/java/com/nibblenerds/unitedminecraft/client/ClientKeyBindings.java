@@ -116,8 +116,12 @@ public final class ClientKeyBindings {
 	 */
 	public static final KeyMapping SCANNER_TARGET = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.scanner_target", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_ENTER, CATEGORY));
+	/** Stops Scanner lock-on, or cancels Auto-Walk/a swim/a trail retrace - kept off Delete so it can't be hit by accident while reaching for Remove Marker. */
 	public static final KeyMapping SCANNER_STOP_LOCK = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.scanner_stop_lock", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_DELETE, CATEGORY));
+			"key.united_minecraft.scanner_stop_lock", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_BACKSPACE, CATEGORY));
+	/** Removes the focused marker, Markers category only - deliberately a separate key from SCANNER_STOP_LOCK. */
+	public static final KeyMapping SCANNER_REMOVE_MARKER = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+			"key.united_minecraft.scanner_remove_marker", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_DELETE, CATEGORY));
 	public static final KeyMapping SCANNER_COORDINATES = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.scanner_coordinates", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_BACKSLASH, CATEGORY));
 

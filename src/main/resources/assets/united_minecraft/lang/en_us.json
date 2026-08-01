@@ -26,6 +26,7 @@
 	"key.united_minecraft.scanner_next_category": "Scanner Next Category",
 	"key.united_minecraft.scanner_target": "Scanner Target Focused Item (or Interact, while locked on)",
 	"key.united_minecraft.scanner_stop_lock": "Scanner Stop Lock-On / Cancel Auto-Walk / Cancel Swim / Cancel Retrace",
+	"key.united_minecraft.scanner_remove_marker": "Scanner: Remove Focused Marker",
 	"key.united_minecraft.scanner_coordinates": "Scanner: Announce Focused Item's Coordinates",
 	"key.united_minecraft.place_marker": "Place Map Marker Here",
 	"key.united_minecraft.open_settings": "Open United Minecraft Settings",

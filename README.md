@@ -321,7 +321,8 @@ where noted.
 | Page Up/Down | Build Mode cursor up/down, or cycle the Scanner's nearest items |
 | Home/End | Cycle the Scanner's category |
 | Enter (Shift = walk there) | Target the Scanner's focused item, or interact with it directly while locked on |
-| Delete | Stop Scanner lock-on / cancel Auto-Walk, swim, or trail retrace, or remove the focused marker in the Markers category |
+| Backspace | Stop Scanner lock-on / cancel Auto-Walk, swim, or trail retrace |
+| Delete | Remove the focused marker in the Markers category |
 | \ (backslash) | Announce the Scanner's focused item's coordinates |
 | F6 | Open United Minecraft Settings |
 
