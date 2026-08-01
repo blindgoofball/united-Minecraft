@@ -4,8 +4,10 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
@@ -13,6 +15,7 @@ import java.util.function.Predicate;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -25,6 +28,7 @@ import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.BambooSaplingBlock;
 import net.minecraft.world.level.block.BambooStalkBlock;
 import net.minecraft.world.level.block.BedBlock;
@@ -46,6 +50,7 @@ import net.minecraft.world.level.block.TrapDoorBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BedPart;
 import net.minecraft.world.level.block.state.properties.ChestType;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -94,6 +99,14 @@ import net.minecraft.world.phys.Vec3;
  */
 public final class ScannerController {
 	private static final int LEAF_SEARCH_MARGIN = 2;
+
+	// Biomes are a much coarser, exploration-scale thing than everything else the Scanner
+	// finds - a fixed, longer range independent of the user's configurable scannerRange, and
+	// sampled instead of scanned block-by-block (see scanBiomes).
+	private static final double BIOME_SCAN_RANGE = 64.0;
+	// Matches vanilla's own biome storage granularity (one biome value per 4x4x4 cell) - finer
+	// sampling would just repeat the same answer.
+	private static final int BIOME_SAMPLE_STEP = 4;
 
 	private static final ScannerCategory[] CATEGORIES = ScannerCategory.values();
 
@@ -462,9 +475,13 @@ public final class ScannerController {
 			return item.entity().getDisplayName();
 		}
 		Level level = player.level();
-		return category == ScannerCategory.TREES
-				? describeTree(level, item.blockPos())
-				: level.getBlockState(item.blockPos()).getBlock().getName();
+		if (category == ScannerCategory.TREES) {
+			return describeTree(level, item.blockPos());
+		}
+		if (category == ScannerCategory.BIOMES) {
+			return AccessibilityTickHandler.biomeName(level.getBiome(item.blockPos()));
+		}
+		return level.getBlockState(item.blockPos()).getBlock().getName();
 	}
 
 	private static Component describeTree(Level level, BlockPos pos) {
@@ -517,6 +534,7 @@ public final class ScannerController {
 					OreDetection.isValuableOre(state) && OreDetection.isExposed(player.level(), pos, player.getEyePosition()));
 			case LIQUIDS -> scanLiquids(player);
 			case CROPS -> scanCrops(player);
+			case BIOMES -> scanBiomes(player);
 			case PASSIVE_MOBS -> scanEntities(player, entity -> entity instanceof Animal);
 			case HOSTILE_MOBS -> scanEntities(player, entity -> entity instanceof Enemy);
 			case MARKERS -> scanMarkers(player);
@@ -770,6 +788,60 @@ public final class ScannerController {
 				results.add(new ScannerItem(base, null, distance, null));
 			}
 		}
+	}
+
+	/**
+	 * Nearby distinct biomes, one entry per biome type at whichever sampled point of it is
+	 * nearest - meant for deciding which direction to explore, not for finding an exact border.
+	 * Sampled on a {@link #BIOME_SAMPLE_STEP}-block grid (matching vanilla's own biome storage
+	 * granularity) at each column's world surface height rather than scanned block-by-block like
+	 * every other category - a full 3D scan out to {@link #BIOME_SCAN_RANGE} would be millions of
+	 * positions for something that barely varies vertically above ground. That surface-height
+	 * sampling does mean a biome that only exists underground (dripstone caves, the deep dark)
+	 * won't show up here - this category is about surface exploration, not cave prospecting.
+	 * The biome the player is already standing in is skipped, since it's not "nearby" in any
+	 * useful sense.
+	 */
+	private static List<ScannerItem> scanBiomes(LocalPlayer player) {
+		Level level = player.level();
+		Vec3 eye = player.getEyePosition();
+		BlockPos center = player.blockPosition();
+		Holder<Biome> currentBiome = level.getBiome(center);
+		int r = (int) BIOME_SCAN_RANGE;
+
+		Map<Holder<Biome>, BlockPos> nearestPos = new HashMap<>();
+		Map<Holder<Biome>, Double> nearestDist = new HashMap<>();
+		for (int dx = -r; dx <= r; dx += BIOME_SAMPLE_STEP) {
+			for (int dz = -r; dz <= r; dz += BIOME_SAMPLE_STEP) {
+				if (dx * dx + dz * dz > r * r) {
+					continue;
+				}
+				int x = center.getX() + dx;
+				int z = center.getZ() + dz;
+				int y = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z);
+				BlockPos pos = new BlockPos(x, y, z);
+				Holder<Biome> biome = level.getBiome(pos);
+				if (biome.equals(currentBiome)) {
+					continue;
+				}
+				double distance = eye.distanceTo(Vec3.atCenterOf(pos));
+				if (distance > BIOME_SCAN_RANGE) {
+					continue;
+				}
+				Double best = nearestDist.get(biome);
+				if (best == null || distance < best) {
+					nearestDist.put(biome, distance);
+					nearestPos.put(biome, pos);
+				}
+			}
+		}
+
+		List<ScannerItem> results = new ArrayList<>();
+		for (Map.Entry<Holder<Biome>, BlockPos> entry : nearestPos.entrySet()) {
+			results.add(new ScannerItem(entry.getValue(), null, nearestDist.get(entry.getKey()), null));
+		}
+		results.sort(Comparator.comparingDouble(ScannerItem::distance));
+		return results;
 	}
 
 	/** Every marker in the player's current dimension, oldest first - not distance-filtered or sorted, unlike every other category. */

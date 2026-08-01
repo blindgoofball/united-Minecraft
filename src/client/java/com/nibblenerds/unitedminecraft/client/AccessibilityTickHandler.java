@@ -431,7 +431,8 @@ public final class AccessibilityTickHandler {
 		}
 	}
 
-	private static Component biomeName(Holder<Biome> biome) {
+	/** Package-private - {@link ScannerController} reuses this for its Biomes category. */
+	static Component biomeName(Holder<Biome> biome) {
 		Identifier id = biome.unwrapKey().map(ResourceKey::identifier).orElse(null);
 		return Component.translatable(Util.makeDescriptionId("biome", id));
 	}
