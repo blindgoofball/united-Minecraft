@@ -763,6 +763,9 @@ public final class BuildModeController {
 		if (level.hasNeighborSignal(cursor)) {
 			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_powered"));
 		}
+		if (state.getBlock() instanceof SlabBlock && state.getValue(SlabBlock.TYPE) == SlabType.DOUBLE) {
+			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_double_slab"));
+		}
 		if (ScannerController.isCrop(state.getBlock()) && ScannerController.isRipe(state)) {
 			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.scanner_ripe"));
 		}

@@ -38,6 +38,7 @@ public final class ClientKeyBindings {
 	public static final KeyMapping NARRATE_TIME = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.narrate_time", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, CATEGORY));
 
+	/** Shift instead opens a name prompt for the Scanner's currently focused block item (see {@link ScannerController#nameFocusedItem}). */
 	public static final KeyMapping PLACE_MARKER = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.place_marker", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_U, CATEGORY));
 

@@ -10,19 +10,33 @@ import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * A minimal name-entry prompt for placing a map marker: one text field, Enter confirms
- * (a blank name falls back to an auto-numbered one, handled by {@link MapMarkerController}),
- * Escape cancels without placing anything. Reuses vanilla's own {@link EditBox} rather than
- * hand-rolling text editing, and gets reliable narration of it "for free" from
- * {@code ScreenNarratedWidgetMixin} - the same generic fix that already covers every other
- * vanilla-style screen in the mod.
+ * A minimal name-entry prompt: one text field, Enter confirms, Escape cancels. Reuses
+ * vanilla's own {@link EditBox} rather than hand-rolling text editing, and gets reliable
+ * narration of it "for free" from {@code ScreenNarratedWidgetMixin} - the same generic fix
+ * that already covers every other vanilla-style screen in the mod.
+ *
+ * <p>Shared by {@link MapMarkerController} (placing a marker; a blank name falls back to an
+ * auto-numbered one) and {@link NamedBlockController} (naming/renaming a Scanner block).
  */
 final class MarkerNameScreen extends Screen {
 	private final Consumer<String> onConfirm;
+	private final Component prompt;
+	private final Component cancelled;
+	private final String initialValue;
 	private EditBox nameBox;
 
 	MarkerNameScreen(Consumer<String> onConfirm) {
-		super(Component.translatable("united_minecraft.marker_screen.title"));
+		this(Component.translatable("united_minecraft.marker_screen.title"),
+				Component.translatable("united_minecraft.narrate.marker_prompt"),
+				Component.translatable("united_minecraft.narrate.marker_cancelled"),
+				"", onConfirm);
+	}
+
+	MarkerNameScreen(Component title, Component prompt, Component cancelled, String initialValue, Consumer<String> onConfirm) {
+		super(title);
+		this.prompt = prompt;
+		this.cancelled = cancelled;
+		this.initialValue = initialValue;
 		this.onConfirm = onConfirm;
 	}
 
@@ -31,6 +45,7 @@ final class MarkerNameScreen extends Screen {
 		nameBox = new EditBox(this.font, this.width / 2 - 100, this.height / 2 - 10, 200, 20,
 				Component.translatable("united_minecraft.marker_screen.name"));
 		nameBox.setMaxLength(64);
+		nameBox.setValue(initialValue);
 		addRenderableWidget(nameBox);
 		setInitialFocus(nameBox);
 	}
@@ -38,7 +53,7 @@ final class MarkerNameScreen extends Screen {
 	@Override
 	public void added() {
 		super.added();
-		this.minecraft.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.marker_prompt"));
+		this.minecraft.getNarrator().saySystemNow(prompt);
 	}
 
 	@Override
@@ -53,7 +68,7 @@ final class MarkerNameScreen extends Screen {
 
 	@Override
 	public void onClose() {
-		this.minecraft.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.marker_cancelled"));
+		this.minecraft.getNarrator().saySystemNow(cancelled);
 		super.onClose();
 	}
 }

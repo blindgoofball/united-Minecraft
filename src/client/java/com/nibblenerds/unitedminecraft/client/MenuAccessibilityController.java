@@ -777,6 +777,12 @@ public final class MenuAccessibilityController {
 				.append(Component.literal(", "))
 				.append(slotRole(menu, slot, player));
 
+		if (menu instanceof AnvilMenu anvilMenu && slot.index == AnvilMenu.RESULT_SLOT
+				&& !slot.getItem().isEmpty() && anvilMenu.getCost() > 0) {
+			message = message.append(Component.literal(", "))
+					.append(Component.translatable("united_minecraft.menu.anvil_cost", anvilMenu.getCost()));
+		}
+
 		if (announceSection) {
 			message = sectionLabel(currentSection).copy().append(Component.literal(". ")).append(message);
 		}

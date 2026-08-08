@@ -101,6 +101,7 @@ public final class AccessibilityTickHandler {
 			BuildModeController.reset();
 			CombatModeController.reset();
 			MapMarkerController.reset();
+			NamedBlockController.reset();
 			ScannerController.reset();
 			AutoWalkController.reset();
 			WaterExitController.reset();
@@ -166,8 +167,13 @@ public final class AccessibilityTickHandler {
 			}
 		}
 		MapMarkerController.tick(client);
+		NamedBlockController.tick(client);
 		if (client.gui.screen() == null && ClientKeyBindings.PLACE_MARKER.consumeClick()) {
-			MapMarkerController.openNameScreen(client, player);
+			if (ClientKeyBindings.isShiftDown(client)) {
+				ScannerController.nameFocusedItem(client, player);
+			} else {
+				MapMarkerController.openNameScreen(client, player);
+			}
 		}
 		if (client.gui.screen() == null && ClientKeyBindings.OPEN_SETTINGS.consumeClick()) {
 			client.gui.setScreen(new SettingsScreen());
@@ -275,7 +281,11 @@ public final class AccessibilityTickHandler {
 			}
 		}
 		if (ClientKeyBindings.NARRATE_HEALTH.consumeClick()) {
-			narrateHealth(client, player);
+			if (ClientKeyBindings.isShiftDown(client)) {
+				narrateExperienceLevel(client, player);
+			} else {
+				narrateHealth(client, player);
+			}
 		}
 		if (ClientKeyBindings.NARRATE_BEARING.consumeClick()) {
 			if (ClientKeyBindings.isShiftDown(client)) {
@@ -522,6 +532,14 @@ public final class AccessibilityTickHandler {
 		int hunger = player.getFoodData().getFoodLevel();
 		client.getNarrator().saySystemNow(Component.translatable(
 				"united_minecraft.narrate.health", health, maxHealth, hunger));
+	}
+
+	/** Shares the Narrate Health key via Shift, same layering as Narrate Coordinates' light-level readout. */
+	private static void narrateExperienceLevel(Minecraft client, LocalPlayer player) {
+		int level = player.experienceLevel;
+		int progress = Math.round(player.experienceProgress * 100);
+		client.getNarrator().saySystemNow(Component.translatable(
+				"united_minecraft.narrate.experience_level", level, progress));
 	}
 
 	private static void narrateBearing(Minecraft client, LocalPlayer player) {

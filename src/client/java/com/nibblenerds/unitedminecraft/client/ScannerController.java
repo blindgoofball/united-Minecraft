@@ -18,16 +18,21 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.animal.Animal;
+import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.vehicle.boat.Boat;
+import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
@@ -46,12 +51,16 @@ import net.minecraft.world.level.block.FenceGateBlock;
 import net.minecraft.world.level.block.LeverBlock;
 import net.minecraft.world.level.block.NetherWartBlock;
 import net.minecraft.world.level.block.SaplingBlock;
+import net.minecraft.world.level.block.SignBlock;
 import net.minecraft.world.level.block.StemBlock;
 import net.minecraft.world.level.block.SweetBerryBushBlock;
 import net.minecraft.world.level.block.TrapDoorBlock;
+import net.minecraft.world.level.block.entity.SignBlockEntity;
+import net.minecraft.world.level.block.entity.SignText;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BedPart;
 import net.minecraft.world.level.block.state.properties.ChestType;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
@@ -203,6 +212,33 @@ public final class ScannerController {
 		MapMarkerController.remove(client, marker);
 		items = scan(ScannerCategory.MARKERS, player);
 		itemIndex = items.isEmpty() ? 0 : Math.min(itemIndex, items.size() - 1);
+	}
+
+	/**
+	 * Opens a name prompt for the focused item's block, sharing {@link
+	 * ClientKeyBindings#PLACE_MARKER} via Shift the same way several other keys layer a
+	 * second action - Markers already have their own naming flow (plain U places one) so
+	 * this is for every other block-based category, most usefully doors and chests. Once
+	 * named, that name replaces the block's ordinary derived name everywhere the Scanner
+	 * narrates it (cycling with Page Up/Down, targeting, etc.), the same way a Map Marker's
+	 * name does - see {@link #itemName}. Entities have no fixed position to key a saved name
+	 * off of, so this narrates a no-op message while one is focused instead of doing nothing
+	 * silently.
+	 */
+	public static void nameFocusedItem(Minecraft client, LocalPlayer player) {
+		if (categoryIndex == -1 || CATEGORIES[categoryIndex] == ScannerCategory.MARKERS) {
+			return;
+		}
+		ScannerItem item = currentItem();
+		if (item == null || item.entity() != null) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.scanner_no_item"));
+			return;
+		}
+		ResourceKey<Level> dimension = player.level().dimension();
+		BlockPos pos = item.blockPos();
+		String currentName = NamedBlockController.findAt(dimension, pos);
+		NamedBlockController.openNameScreen(client, dimension, pos, currentName,
+				() -> rescanAndRefocus(player, refreshed -> pos.equals(refreshed.blockPos())));
 	}
 
 	private static void announceCoordinates(Minecraft client, BlockPos pos) {
@@ -497,6 +533,12 @@ public final class ScannerController {
 			if (state.getBlock() instanceof BedBlock && state.getValue(BedBlock.OCCUPIED)) {
 				name = name.copy().append(Component.literal(", ")).append(Component.translatable("united_minecraft.narrate.scanner_occupied"));
 			}
+			if (state.getBlock() instanceof SignBlock) {
+				Component signText = describeSignText(player.level(), item.blockPos());
+				name = signText != null
+						? name.copy().append(Component.literal(", ")).append(signText)
+						: name.copy().append(Component.literal(", ")).append(Component.translatable("united_minecraft.narrate.scanner_sign_blank"));
+			}
 		}
 		return Component.translatable("united_minecraft.narrate.scanner_item", name, distance, direction);
 	}
@@ -563,6 +605,27 @@ public final class ScannerController {
 		return Component.literal(name.toString());
 	}
 
+	/** Joins a sign's non-blank lines (front first, falling back to back if the front is empty) - null if both sides are blank. */
+	private static Component describeSignText(Level level, BlockPos pos) {
+		if (!(level.getBlockEntity(pos) instanceof SignBlockEntity sign)) {
+			return null;
+		}
+		Component front = joinSignLines(sign.getText(true));
+		return front != null ? front : joinSignLines(sign.getText(false));
+	}
+
+	private static Component joinSignLines(SignText text) {
+		MutableComponent result = null;
+		for (Component line : text.getMessages(false)) {
+			String plain = line.getString();
+			if (plain.isBlank()) {
+				continue;
+			}
+			result = result == null ? Component.literal(plain) : result.append(Component.literal(" ")).append(Component.literal(plain));
+		}
+		return result;
+	}
+
 	private static List<ScannerItem> scan(ScannerCategory category, LocalPlayer player) {
 		return switch (category) {
 			// Beds don't have a menu (sleeping/setting spawn isn't a GUI), but they're
@@ -570,6 +633,8 @@ public final class ScannerController {
 			// style toggle - closer in spirit to this category than to Mechanisms. Both beds
 			// and double chests are two blocks sharing one real-world object - only match the
 			// head half of a bed and the non-right half of a chest, so each shows up once.
+			// Signs have no menu either, but reading one is the same kind of "approach and get
+			// information from it" action as everything else here.
 			case INTERACTABLES -> scanBlocks(player, (pos, state) -> {
 				if (state.getBlock() instanceof BedBlock) {
 					return state.getValue(BedBlock.PART) == BedPart.HEAD;
@@ -577,9 +642,20 @@ public final class ScannerController {
 				if (state.hasProperty(ChestBlock.TYPE) && state.getValue(ChestBlock.TYPE) == ChestType.RIGHT) {
 					return false;
 				}
+				if (state.getBlock() instanceof SignBlock) {
+					return true;
+				}
 				return state.getMenuProvider(player.level(), pos) != null;
 			});
-			case MECHANISMS -> scanBlocks(player, (pos, state) -> isMechanism(state.getBlock()));
+			// A door is two block positions (HALF=LOWER/UPPER) sharing one real-world object -
+			// only match the lower half so each door shows up once, the same fix already applied
+			// to beds and double chests above.
+			case MECHANISMS -> scanBlocks(player, (pos, state) -> {
+				if (state.getBlock() instanceof DoorBlock) {
+					return state.getValue(DoorBlock.HALF) == DoubleBlockHalf.LOWER;
+				}
+				return isMechanism(state.getBlock());
+			});
 			case ITEMS -> scanEntities(player, entity -> entity instanceof ItemEntity);
 			case TREES -> scanTrees(player);
 			// Deliberately not x-ray: OreDetection.isExposed only counts ore already
@@ -593,6 +669,8 @@ public final class ScannerController {
 			case HOSTILE_MOBS -> scanEntities(player, entity -> entity instanceof Enemy);
 			case MARKERS -> scanMarkers(player);
 			case PLAYERS -> scanPlayers(player);
+			case VEHICLES -> scanEntities(player, entity ->
+					entity instanceof AbstractMinecart || entity instanceof Boat || entity instanceof ArmorStand);
 		};
 	}
 
@@ -668,7 +746,9 @@ public final class ScannerController {
 			}
 			double distance = eye.distanceTo(Vec3.atCenterOf(pos));
 			if (distance <= scanRange()) {
-				results.add(new ScannerItem(pos.immutable(), null, distance, null));
+				BlockPos immutable = pos.immutable();
+				String label = NamedBlockController.findAt(level.dimension(), immutable);
+				results.add(new ScannerItem(immutable, null, distance, label));
 			}
 		}
 		results.sort(Comparator.comparingDouble(ScannerItem::distance));
