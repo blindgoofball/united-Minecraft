@@ -193,7 +193,7 @@ public final class TrailController {
 
 		// A climb steeper than a normal step means this leg of the trail was a drop on the way
 		// in - retracing it needs a placed block, not more walking. Route and trail are both
-		// left intact so a fresh Alt+Z after building resumes right where this left off.
+		// left intact so a fresh Shift+Z after building resumes right where this left off.
 		if (next.y() - player.getY() > MAX_CLIMBABLE_STEP) {
 			finish(client, player, "united_minecraft.narrate.trail_blocked");
 			return;

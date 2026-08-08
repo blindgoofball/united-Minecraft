@@ -81,7 +81,7 @@ import net.minecraft.world.phys.Vec3;
  * lock-on that keeps facing it every tick (via {@link CameraUtil#aimAtEntity}, which also
  * handles aiming a drawn bow with a real ballistic arc) until Delete (stop lock) is
  * pressed - which takes over rotation entirely while active, so build mode and normal
- * camera turning are blocked until it's released. Alt+Enter instead auto-walks there via
+ * camera turning are blocked until it's released. Shift+Enter instead auto-walks there via
  * {@link AutoWalkController} - fully client-side, no server cooperation needed.
  *
  * <p>Backslash announces the focused item's coordinates - useful for actually finding your
@@ -223,7 +223,7 @@ public final class ScannerController {
 
 	/**
 	 * Opens a name prompt for the focused item's block, sharing {@link
-	 * ClientKeyBindings#PLACE_MARKER} via Alt the same way several other keys layer a
+	 * ClientKeyBindings#PLACE_MARKER} via Shift the same way several other keys layer a
 	 * second action - Markers already have their own naming flow (plain U places one) so
 	 * this is for every other block-based category, most usefully doors and chests. Once
 	 * named, that name replaces the block's ordinary derived name everywhere the Scanner
@@ -371,7 +371,7 @@ public final class ScannerController {
 			return;
 		}
 
-		boolean walkThere = ClientKeyBindings.isModifierDown(client);
+		boolean walkThere = ClientKeyBindings.isShiftDown(client);
 		ScannerCategory category = CATEGORIES[categoryIndex];
 		if (item.entity() != null) {
 			if (category == ScannerCategory.ITEMS) {

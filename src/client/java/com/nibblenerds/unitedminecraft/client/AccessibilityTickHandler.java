@@ -137,7 +137,7 @@ public final class AccessibilityTickHandler {
 		// WaterExitController#start), since the two are never useful to run at once anyway.
 		if (!ScannerController.isLocked() && !CombatModeController.isActive() && !BuildModeController.isActive()
 				&& ClientKeyBindings.pressed(ClientKeyBindings.WATER_ESCAPE)) {
-			if (ClientKeyBindings.isModifierDown(client)) {
+			if (ClientKeyBindings.isShiftDown(client)) {
 				WaterExitController.start(client, player);
 			} else {
 				WaterExitController.narrate(client, player);
@@ -149,7 +149,7 @@ public final class AccessibilityTickHandler {
 		// Same rotation-owning modes WATER_ESCAPE is blocked against above, for the same reason.
 		if (!ScannerController.isLocked() && !CombatModeController.isActive() && !BuildModeController.isActive()
 				&& ClientKeyBindings.pressed(ClientKeyBindings.RETRACE_TRAIL)) {
-			if (ClientKeyBindings.isModifierDown(client)) {
+			if (ClientKeyBindings.isShiftDown(client)) {
 				TrailController.start(client, player);
 			} else {
 				TrailController.narrate(client, player);
@@ -158,7 +158,7 @@ public final class AccessibilityTickHandler {
 		MapMarkerController.tick(client);
 		NamedBlockController.tick(client);
 		if (client.gui.screen() == null && ClientKeyBindings.pressed(ClientKeyBindings.PLACE_MARKER)) {
-			if (ClientKeyBindings.isModifierDown(client)) {
+			if (ClientKeyBindings.isShiftDown(client)) {
 				ScannerController.nameFocusedItem(client, player);
 			} else {
 				MapMarkerController.openNameScreen(client, player);
@@ -263,21 +263,21 @@ public final class AccessibilityTickHandler {
 		}
 
 		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_COORDINATES)) {
-			if (ClientKeyBindings.isModifierDown(client)) {
+			if (ClientKeyBindings.isShiftDown(client)) {
 				narrateLightLevel(client, player);
 			} else {
 				narrateCoordinates(client, player);
 			}
 		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_HEALTH)) {
-			if (ClientKeyBindings.isModifierDown(client)) {
+			if (ClientKeyBindings.isShiftDown(client)) {
 				narrateExperienceLevel(client, player);
 			} else {
 				narrateHealth(client, player);
 			}
 		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_BEARING)) {
-			if (ClientKeyBindings.isModifierDown(client)) {
+			if (ClientKeyBindings.isShiftDown(client)) {
 				resetRotationToNorth(client, player);
 			} else {
 				narrateBearing(client, player);
@@ -484,7 +484,7 @@ public final class AccessibilityTickHandler {
 	}
 
 	/**
-	 * Shares the Narrate Coordinates key via Alt, the same layering {@link
+	 * Shares the Narrate Coordinates key via Shift, the same layering {@link
 	 * ClientKeyBindings} already uses elsewhere - light level is the same kind of "what's
 	 * around me right now" fact as that key's normal readout. Reports the cursor's block
 	 * while Build Mode is active (matching what that mode already treats as "here"),
@@ -507,7 +507,7 @@ public final class AccessibilityTickHandler {
 				"united_minecraft.narrate.health", health, maxHealth, hunger));
 	}
 
-	/** Shares the Narrate Health key via Alt, same layering as Narrate Coordinates' light-level readout. */
+	/** Shares the Narrate Health key via Shift, same layering as Narrate Coordinates' light-level readout. */
 	private static void narrateExperienceLevel(Minecraft client, LocalPlayer player) {
 		int level = player.experienceLevel;
 		int progress = Math.round(player.experienceProgress * 100);
