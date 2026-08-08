@@ -260,7 +260,7 @@ public final class BuildModeController {
 		}
 
 		if (ClientKeyBindings.BUILD_CYCLE_FACING.consumeClick()) {
-			cyclePlacementFacing(client, ClientKeyBindings.isShiftDown(client) ? -1 : 1);
+			cyclePlacementFacing(client, ClientKeyBindings.isModifierDown(client) ? -1 : 1);
 		}
 
 		boolean breakDown = ClientKeyBindings.BUILD_BREAK.isDown();

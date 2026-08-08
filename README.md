@@ -16,7 +16,7 @@ no server-side install needed, and it works on any vanilla server.
   [`src/client/resources/nvda/README.md`](src/client/resources/nvda/README.md)
   for setup details.
 - On-demand readouts for coordinates/standing block/biome, health and hunger, and
-  facing direction in compass degrees with pitch, each on their own key. Shift on the
+  facing direction in compass degrees with pitch, each on their own key. Alt on the
   coordinates key instead reads the light level (combined, plus block/sky split) -
   of the block under Build Mode's cursor if it's active, your own block otherwise.
 - Automatic narration as things change: facing direction, hotbar slot,
@@ -77,7 +77,7 @@ navigation without needing to see or aim at them.
   both by eye and by ear.
 - Killing a locked-on hostile mob automatically re-locks onto the next nearest
   one, so tracking a fight doesn't mean re-scanning after every kill.
-- Shift+target instead walks there automatically (see Auto-Walk below).
+- Alt+target instead walks there automatically (see Auto-Walk below).
 - A dedicated key announces the currently focused item's exact coordinates, for
   actually finding your way to it.
 - Direction is narrated as a compass heading plus "above" or "below" whenever an
@@ -124,7 +124,7 @@ there yourself would. Cancel any time with the stop-lock key.
 
 For when you've fallen into a lake or river and can't find your way out - a
 dedicated key reports the distance and direction to the nearest way out, and
-Shift instead swims you there directly, both computed by tracing a real,
+Alt instead swims you there directly, both computed by tracing a real,
 connected route through the water you're actually in (never through walls or
 across open air), so it never points you at a ledge you can't actually reach.
 Cancel a swim any time with the stop-lock key, same as Auto-Walk.
@@ -134,7 +134,7 @@ Cancel a swim any time with the stop-lock key, same as Auto-Walk.
 Solves the other half of "I'm lost underground": as you walk, your actual
 positions are continuously recorded as a breadcrumb trail (no toggle needed -
 it's always running). A dedicated key reports the distance and direction back
-to the start of that trail, and Shift instead walks you back along it, one
+to the start of that trail, and Alt instead walks you back along it, one
 recorded step at a time, retracing the exact route you actually took rather
 than beelining through a wall. Since it's a literal reverse of ground you've
 already covered, it's always reachable. If retracing hits a spot where you
@@ -300,27 +300,27 @@ where noted.
 
 | Key | Action |
 | --- | --- |
-| C (Shift = light level, of Build Mode's cursor if active) | Narrate coordinates, standing block, and biome |
-| H | Narrate health and hunger |
-| B (Shift+B resets facing to north) | Narrate facing direction and pitch |
+| C (Alt = light level, of Build Mode's cursor if active) | Narrate coordinates, standing block, and biome |
+| H (Alt = experience level) | Narrate health and hunger |
+| B (Alt+B resets facing to north) | Narrate facing direction and pitch |
 | R | Read what's in front of me |
 | V | Narrate time of day |
-| U | Place a named map marker at your current location |
+| U (Alt = name the Scanner's focused item) | Place a named map marker at your current location |
 | I | Toggle Build Mode |
-| Right Control | Build Mode: place block |
+| Right Control | Build Mode: place block, or interact with it if it's something clickable (chest, door, lever, repeater, etc.) |
 | Right Shift (hold) | Build Mode: break block |
 | G | Build Mode: walk to cursor |
-| J (Shift+J reverses) | Build Mode: cycle placement facing |
+| J (Alt+J reverses) | Build Mode: cycle placement facing |
 | N | Toggle Navigation Radar |
 | M | Toggle Mining Radar |
 | K | Toggle Combat Mode |
-| Y (Shift = swim there) | Find the nearest way out of water |
+| Y (Alt = swim there) | Find the nearest way out of water |
 | X | Mark cave trail start (clears and restarts the recorded trail here) |
-| Z (Shift = walk there) | Find the way back along the recorded cave trail |
-| Left/Right/Up/Down arrows | Turn camera, or move the Build Mode cursor (Shift = snap-turn 45 degrees when not in Build Mode) |
+| Z (Alt = walk there) | Find the way back along the recorded cave trail |
+| Left/Right/Up/Down arrows | Turn camera, or move the Build Mode cursor (Alt = snap-turn 45 degrees when not in Build Mode) |
 | Page Up/Down | Build Mode cursor up/down, or cycle the Scanner's nearest items |
 | Home/End | Cycle the Scanner's category |
-| Enter (Shift = walk there) | Target the Scanner's focused item, or interact with it directly while locked on |
+| Enter (Alt = walk there) | Target the Scanner's focused item, or interact with it directly while locked on |
 | Backspace | Stop Scanner lock-on / cancel Auto-Walk, swim, or trail retrace |
 | Delete | Remove the focused marker in the Markers category |
 | \ (backslash) | Announce the Scanner's focused item's coordinates |

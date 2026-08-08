@@ -38,7 +38,7 @@ public final class ClientKeyBindings {
 	public static final KeyMapping NARRATE_TIME = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.narrate_time", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, CATEGORY));
 
-	/** Shift instead opens a name prompt for the Scanner's currently focused block item (see {@link ScannerController#nameFocusedItem}). */
+	/** Alt instead opens a name prompt for the Scanner's currently focused block item (see {@link ScannerController#nameFocusedItem}). */
 	public static final KeyMapping PLACE_MARKER = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.place_marker", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_U, CATEGORY));
 
@@ -53,7 +53,7 @@ public final class ClientKeyBindings {
 	public static final KeyMapping BUILD_WALK_TO_CURSOR = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.build_walk_to_cursor", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G, CATEGORY));
 
-	/** Cycles Build Mode's placement facing forward; Shift reverses it. */
+	/** Cycles Build Mode's placement facing forward; Alt reverses it. */
 	public static final KeyMapping BUILD_CYCLE_FACING = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.build_cycle_facing", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_J, CATEGORY));
 
@@ -66,7 +66,7 @@ public final class ClientKeyBindings {
 	public static final KeyMapping TOGGLE_COMBAT_MODE = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.toggle_combat_mode", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_K, CATEGORY));
 
-	/** Narrates the nearest reachable way out of water; Shift instead swims there automatically. */
+	/** Narrates the nearest reachable way out of water; Alt instead swims there automatically. */
 	public static final KeyMapping WATER_ESCAPE = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.water_escape", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Y, CATEGORY));
 
@@ -74,7 +74,7 @@ public final class ClientKeyBindings {
 	public static final KeyMapping MARK_TRAIL = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.mark_trail", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_X, CATEGORY));
 
-	/** Narrates the way back along the recorded trail; Shift instead walks it automatically. */
+	/** Narrates the way back along the recorded trail; Alt instead walks it automatically. */
 	public static final KeyMapping RETRACE_TRAIL = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.retrace_trail", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Z, CATEGORY));
 
@@ -136,8 +136,18 @@ public final class ClientKeyBindings {
 	public static void register() {
 	}
 
-	public static boolean isShiftDown(Minecraft client) {
-		return InputConstants.isKeyDown(client.getWindow(), GLFW.GLFW_KEY_LEFT_SHIFT)
-				|| InputConstants.isKeyDown(client.getWindow(), GLFW.GLFW_KEY_RIGHT_SHIFT);
+	/**
+	 * Whether the mod's own secondary-action modifier is held - Alt, not Shift, deliberately:
+	 * Shift is vanilla's sneak key, so using it here meant every dual-purpose press (Alt+arrows
+	 * to snap-turn, say) also crouched the player as a side effect. Alt has no vanilla movement
+	 * binding of its own, so it layers cleanly on top of everything this mod uses it for -
+	 * narration keys ({@link #NARRATE_COORDINATES}, {@link #NARRATE_HEALTH}, {@link
+	 * #NARRATE_BEARING}), Water Exit and Cave Trail's walk-there keys, Build Mode's facing cycle
+	 * and snap-turn, the Scanner's walk-there and name-item actions, and Map Marker placement's
+	 * own name-item layering - see each key's own doc for its specific Alt behavior.
+	 */
+	public static boolean isModifierDown(Minecraft client) {
+		return InputConstants.isKeyDown(client.getWindow(), GLFW.GLFW_KEY_LEFT_ALT)
+				|| InputConstants.isKeyDown(client.getWindow(), GLFW.GLFW_KEY_RIGHT_ALT);
 	}
 }

@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
  * current position, then the Scanner's Markers category cycles through every marker in
  * your current dimension - distance doesn't gate which ones show up there, unlike every
  * other category, since the whole point is reaching something you already know is far
- * away. Targeting one just reuses the Scanner's usual "aim at it" / "Shift = walk there".
+ * away. Targeting one just reuses the Scanner's usual "aim at it" / "Alt = walk there".
  *
  * <p>Saved to disk per-world, entirely client-side - nothing here needs the server's
  * cooperation or even a compatible mod on the other end. A world is identified by its

@@ -148,7 +148,7 @@ public final class AccessibilityTickHandler {
 		// WaterExitController#start), since the two are never useful to run at once anyway.
 		if (!ScannerController.isLocked() && !CombatModeController.isActive() && !BuildModeController.isActive()
 				&& ClientKeyBindings.WATER_ESCAPE.consumeClick()) {
-			if (ClientKeyBindings.isShiftDown(client)) {
+			if (ClientKeyBindings.isModifierDown(client)) {
 				WaterExitController.start(client, player);
 			} else {
 				WaterExitController.narrate(client, player);
@@ -160,7 +160,7 @@ public final class AccessibilityTickHandler {
 		// Same rotation-owning modes WATER_ESCAPE is blocked against above, for the same reason.
 		if (!ScannerController.isLocked() && !CombatModeController.isActive() && !BuildModeController.isActive()
 				&& ClientKeyBindings.RETRACE_TRAIL.consumeClick()) {
-			if (ClientKeyBindings.isShiftDown(client)) {
+			if (ClientKeyBindings.isModifierDown(client)) {
 				TrailController.start(client, player);
 			} else {
 				TrailController.narrate(client, player);
@@ -169,7 +169,7 @@ public final class AccessibilityTickHandler {
 		MapMarkerController.tick(client);
 		NamedBlockController.tick(client);
 		if (client.gui.screen() == null && ClientKeyBindings.PLACE_MARKER.consumeClick()) {
-			if (ClientKeyBindings.isShiftDown(client)) {
+			if (ClientKeyBindings.isModifierDown(client)) {
 				ScannerController.nameFocusedItem(client, player);
 			} else {
 				MapMarkerController.openNameScreen(client, player);
@@ -222,7 +222,7 @@ public final class AccessibilityTickHandler {
 				ScannerController.tick(client, player);
 				MiningRadarController.tick(client, player);
 			} else {
-				if (ClientKeyBindings.isShiftDown(client)) {
+				if (ClientKeyBindings.isModifierDown(client)) {
 					handleSnapTurn(client, player, snapLeftPressed, snapRightPressed, snapUpPressed, snapDownPressed);
 				} else {
 					handleCameraLook(player);
@@ -274,21 +274,21 @@ public final class AccessibilityTickHandler {
 		}
 
 		if (ClientKeyBindings.NARRATE_COORDINATES.consumeClick()) {
-			if (ClientKeyBindings.isShiftDown(client)) {
+			if (ClientKeyBindings.isModifierDown(client)) {
 				narrateLightLevel(client, player);
 			} else {
 				narrateCoordinates(client, player);
 			}
 		}
 		if (ClientKeyBindings.NARRATE_HEALTH.consumeClick()) {
-			if (ClientKeyBindings.isShiftDown(client)) {
+			if (ClientKeyBindings.isModifierDown(client)) {
 				narrateExperienceLevel(client, player);
 			} else {
 				narrateHealth(client, player);
 			}
 		}
 		if (ClientKeyBindings.NARRATE_BEARING.consumeClick()) {
-			if (ClientKeyBindings.isShiftDown(client)) {
+			if (ClientKeyBindings.isModifierDown(client)) {
 				resetRotationToNorth(client, player);
 			} else {
 				narrateBearing(client, player);
@@ -323,7 +323,7 @@ public final class AccessibilityTickHandler {
 	}
 
 	/**
-	 * Shift+arrows snap-turn to the nearest 45 degree marker instead of turning smoothly:
+	 * Alt+arrows snap-turn to the nearest 45 degree marker instead of turning smoothly:
 	 * left/right step yaw to the previous/next compass octant (announced automatically by
 	 * {@link #handleFacingNarration}, since it lands exactly on an octant boundary), and
 	 * up/down step pitch through -90/-45/0/45/90 (announced here, since nothing else covers
@@ -371,7 +371,7 @@ public final class AccessibilityTickHandler {
 	 * click queue for as long as nothing drains it. Snap-turn used to read the arrow keys via
 	 * {@code consumeClick()}, but ordinary camera-look (and build mode's cursor stepping) only
 	 * ever read them via {@code isDown()} - neither drains the queue - so pressing arrows while
-	 * either of those was active left a backlog that, the next time Shift was held, burned
+	 * either of those was active left a backlog that, the next time Alt was held, burned
 	 * through as a burst of unwanted snap-turns all at once. Polling {@code isDown()} and
 	 * tracking held-state ourselves sidesteps the click queue entirely.
 	 */
@@ -511,7 +511,7 @@ public final class AccessibilityTickHandler {
 	}
 
 	/**
-	 * Shares the Narrate Coordinates key via Shift, the same layering {@link
+	 * Shares the Narrate Coordinates key via Alt, the same layering {@link
 	 * ClientKeyBindings} already uses elsewhere - light level is the same kind of "what's
 	 * around me right now" fact as that key's normal readout. Reports the cursor's block
 	 * while Build Mode is active (matching what that mode already treats as "here"),
@@ -534,7 +534,7 @@ public final class AccessibilityTickHandler {
 				"united_minecraft.narrate.health", health, maxHealth, hunger));
 	}
 
-	/** Shares the Narrate Health key via Shift, same layering as Narrate Coordinates' light-level readout. */
+	/** Shares the Narrate Health key via Alt, same layering as Narrate Coordinates' light-level readout. */
 	private static void narrateExperienceLevel(Minecraft client, LocalPlayer player) {
 		int level = player.experienceLevel;
 		int progress = Math.round(player.experienceProgress * 100);
