@@ -36,7 +36,7 @@ public final class SettingsScreen extends Screen {
 	protected void init() {
 		UnitedMinecraftConfig config = UnitedMinecraftConfig.get();
 		int x = this.width / 2 - ROW_WIDTH / 2;
-		int y = this.height / 2 - (ROW_HEIGHT + ROW_SPACING) * 5;
+		int y = this.height / 2 - (ROW_HEIGHT + ROW_SPACING) * 5 - ROW_HEIGHT / 2;
 
 		y = addToggle(x, y, "united_minecraft.settings_screen.hostile_radar_enabled",
 				config.hostileRadarEnabled, value -> config.hostileRadarEnabled = value);
@@ -56,6 +56,8 @@ public final class SettingsScreen extends Screen {
 				value -> config.navRadarRange = (int) Math.round(value));
 		y = addSlider(x, y, 8.0, 64.0, 4.0, config.scannerRange,
 				"united_minecraft.settings_screen.scanner_range", value -> config.scannerRange = value);
+		y = addToggle(x, y, "united_minecraft.settings_screen.build_mode_action_narration_enabled",
+				config.buildModeActionNarrationEnabled, value -> config.buildModeActionNarrationEnabled = value);
 
 		addRenderableWidget(Button.builder(Component.translatable("united_minecraft.settings_screen.done"),
 				button -> onClose())

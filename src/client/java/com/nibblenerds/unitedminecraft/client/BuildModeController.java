@@ -1,5 +1,8 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -9,16 +12,22 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.BucketItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.ComparatorBlock;
+import net.minecraft.world.level.block.DaylightDetectorBlock;
 import net.minecraft.world.level.block.HopperBlock;
 import net.minecraft.world.level.block.ObserverBlock;
+import net.minecraft.world.level.block.RepeaterBlock;
 import net.minecraft.world.level.block.SlabBlock;
 import net.minecraft.world.level.block.StairBlock;
+import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.ComparatorMode;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.phys.BlockHitResult;
@@ -81,7 +90,21 @@ import net.minecraft.world.phys.Vec3;
  * rather than a block-specific "powered" property (plenty of blocks respond to
  * power without exposing one), and only narrated when actually powered - silence
  * otherwise, since knowing a block isn't powered is rarely as actionable as
- * knowing it is.
+ * knowing it is. A few redstone components carry state that generic property
+ * scanning can't surface (a repeater's delay and a comparator's mode are both
+ * plain {@code IntegerProperty}/{@code EnumProperty} values indistinguishable
+ * from any other block's without knowing what they mean), so those, plus a
+ * daylight sensor's inverted flag, are narrated with dedicated checks in {@link
+ * #describeCursor} instead.
+ *
+ * <p>Pressing Place while the cursor holds an existing block that reacts to a
+ * click - a door, chest, lever, repeater, and so on, see {@link #isInteractable} -
+ * interacts with it instead of failing outright, the same priority a real
+ * right-click gives its own block over whatever's in hand; see {@link
+ * #interactWithCursor}. Pressing Place while holding nothing placeable (empty
+ * hand, or an item that isn't a block at all) narrates that specifically rather
+ * than the generic "Can't place there", which is reserved for a placeable item
+ * that got rejected by the destination itself.
  *
  * <p>{@link #cyclePlacementFacing} lets a chosen direction override where the
  * next placed block's own {@code FACING} points, via a trick rather than any
@@ -112,6 +135,10 @@ public final class BuildModeController {
 	// How many ticks to hold a faked rotation before actually placing - see the class doc on
 	// #startRotatedPlacement for why this delay exists at all.
 	private static final int ROTATION_SYNC_DELAY_TICKS = 2;
+
+	// Per-Block memoization for #declaresUseWithoutItem - a block's class never changes at
+	// runtime, so the reflective hierarchy walk only ever needs to happen once per distinct block.
+	private static final Map<Block, Boolean> INTERACTABLE_CACHE = new HashMap<>();
 
 	private static boolean active;
 	private static BlockPos cursor;
@@ -367,15 +394,74 @@ public final class BuildModeController {
 			return;
 		}
 		if (!cursorState.canBeReplaced()) {
-			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_cannot_place"));
+			if (isInteractable(cursorState.getBlock()) && interactWithCursor(client, player)) {
+				narrateAfterAction(client, player);
+			} else {
+				client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_cannot_place"));
+			}
 			return;
 		}
 
-		if (selectedFacing != null && !facingIsOppositeOfClickedFace(placingBlock(player))) {
+		Block placing = placingBlock(player);
+		if (placing == null) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_not_a_block"));
+			return;
+		}
+
+		if (selectedFacing != null && !facingIsOppositeOfClickedFace(placing)) {
 			startRotatedPlacement(player);
 			return;
 		}
 		attemptPlacementSequence(client, player);
+	}
+
+	/**
+	 * Whether pressing Place should interact with the cursor's own block (open a chest,
+	 * flip a lever, cycle a repeater's delay, etc.) instead of failing outright just because
+	 * the cell isn't empty. Mirrors a real right-click's own block-before-item priority - see
+	 * {@link #interactWithCursor} - but only actually attempted for blocks that define click
+	 * behavior in the first place (see {@link #declaresUseWithoutItem}), so an ordinary solid
+	 * block (stone, dirt) with a placeable item in hand still narrates "Can't place there"
+	 * instead of silently placing on top of it, which a real click's item-placement fallback
+	 * would otherwise do for a block with no click behavior of its own.
+	 */
+	private static boolean isInteractable(Block block) {
+		return INTERACTABLE_CACHE.computeIfAbsent(block, BuildModeController::declaresUseWithoutItem);
+	}
+
+	/**
+	 * Whether {@code block}'s own class (or one of its superclasses, short of {@link
+	 * BlockBehaviour} itself) overrides {@code useWithoutItem} - the exact same method vanilla's
+	 * client dispatches to on a real right-click once it's decided the block, not the held item,
+	 * owns the interaction. A plain block like stone or dirt never overrides it and just inherits
+	 * {@link BlockBehaviour}'s no-op default, so checking for an override is a generic stand-in
+	 * for "does right-clicking this empty-handed actually do something" - without hand-maintaining
+	 * a list of which vanilla (or modded) blocks that's true for. {@code getDeclaredMethod} only
+	 * needs to see the method exists, not call it, so the fact that it's {@code protected}
+	 * doesn't matter here.
+	 */
+	private static boolean declaresUseWithoutItem(Block block) {
+		for (Class<?> type = block.getClass(); type != null && type != BlockBehaviour.class; type = type.getSuperclass()) {
+			try {
+				type.getDeclaredMethod("useWithoutItem", BlockState.class, Level.class, BlockPos.class, Player.class, BlockHitResult.class);
+				return true;
+			} catch (NoSuchMethodException ignored) {
+				// Not declared at this level - keep walking up toward BlockBehaviour.
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Interacts with the cursor's own block exactly as a real right-click would - through the
+	 * same real placement call {@link #attemptPlace} (and thus {@link #place}'s other callers)
+	 * already use, just aimed at the cursor's own position instead of a neighbor's. Which face
+	 * gets passed barely matters here: none of {@link #isInteractable}'s block types change
+	 * behavior by clicked face, unlike actual placement.
+	 */
+	private static boolean interactWithCursor(Minecraft client, LocalPlayer player) {
+		BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(cursor), Direction.UP, cursor, false);
+		return attemptPlace(client, player, hit);
 	}
 
 	/**
@@ -404,7 +490,7 @@ public final class BuildModeController {
 		Vec3 hitLocation = Vec3.atCenterOf(cursor).add(0, face.getStepY() * (0.5 - FACE_EPSILON), 0);
 		BlockHitResult hit = new BlockHitResult(hitLocation, face, cursor, false);
 		if (attemptPlace(client, player, hit)) {
-			client.getNarrator().saySystemNow(describeCursor(player));
+			narrateAfterAction(client, player);
 		} else {
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_cannot_place"));
 		}
@@ -499,7 +585,7 @@ public final class BuildModeController {
 			if (success.swingSource() == InteractionResult.SwingSource.CLIENT) {
 				player.swing(pendingBucketHand);
 			}
-			client.getNarrator().saySystemNow(describeCursor(player));
+			narrateAfterAction(client, player);
 		} else {
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_cannot_place"));
 		}
@@ -530,7 +616,7 @@ public final class BuildModeController {
 					face.getStepZ() * (0.5 - FACE_EPSILON));
 			BlockHitResult hit = new BlockHitResult(hitLocation, face.getOpposite(), neighborPos, false);
 			if (attemptPlace(client, player, hit)) {
-				client.getNarrator().saySystemNow(describeCursor(player));
+				narrateAfterAction(client, player);
 				return;
 			}
 		}
@@ -708,7 +794,7 @@ public final class BuildModeController {
 		}
 
 		if (level.getBlockState(cursor).isAir()) {
-			client.getNarrator().saySystemNow(describeCursor(player));
+			narrateAfterAction(client, player);
 		}
 	}
 
@@ -741,6 +827,19 @@ public final class BuildModeController {
 		return player.getEyePosition().distanceTo(Vec3.atCenterOf(pos)) <= player.blockInteractionRange();
 	}
 
+	/**
+	 * Re-narrates the cursor after a successful place/break/interact, gated behind {@link
+	 * UnitedMinecraftConfig#buildModeActionNarrationEnabled} - unlike the movement narration
+	 * in {@link #tick}, which always fires (that's the only way to hear where the cursor is at
+	 * all), this one just confirms an action's own result, which some players already know from
+	 * the sound/visual feedback and would rather not hear repeated on every single action.
+	 */
+	private static void narrateAfterAction(Minecraft client, LocalPlayer player) {
+		if (UnitedMinecraftConfig.get().buildModeActionNarrationEnabled) {
+			client.getNarrator().saySystemNow(describeCursor(player));
+		}
+	}
+
 	private static Component describeCursor(LocalPlayer player) {
 		Level level = player.level();
 		BlockState state = level.getBlockState(cursor);
@@ -768,6 +867,19 @@ public final class BuildModeController {
 		}
 		if (ScannerController.isCrop(state.getBlock()) && ScannerController.isRipe(state)) {
 			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.scanner_ripe"));
+		}
+		if (state.getBlock() instanceof RepeaterBlock) {
+			message = message.append(Component.literal(" ")).append(
+					Component.translatable("united_minecraft.narrate.build_repeater_delay", state.getValue(RepeaterBlock.DELAY)));
+		}
+		if (state.getBlock() instanceof ComparatorBlock) {
+			Component mode = state.getValue(ComparatorBlock.MODE) == ComparatorMode.SUBTRACT
+					? Component.translatable("united_minecraft.narrate.build_comparator_subtract")
+					: Component.translatable("united_minecraft.narrate.build_comparator_compare");
+			message = message.append(Component.literal(" ")).append(mode);
+		}
+		if (state.getBlock() instanceof DaylightDetectorBlock && state.getValue(DaylightDetectorBlock.INVERTED)) {
+			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_daylight_inverted"));
 		}
 		return message;
 	}

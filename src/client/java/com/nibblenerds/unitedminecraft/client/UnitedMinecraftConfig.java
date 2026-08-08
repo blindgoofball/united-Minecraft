@@ -40,6 +40,7 @@ public final class UnitedMinecraftConfig {
 	public int miningRadarRange = 8;
 	public int navRadarRange = 8;
 	public double scannerRange = 32.0;
+	public boolean buildModeActionNarrationEnabled = true;
 
 	private UnitedMinecraftConfig() {
 	}
