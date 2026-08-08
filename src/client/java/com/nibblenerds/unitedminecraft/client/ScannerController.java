@@ -36,6 +36,7 @@ import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.block.AttachedStemBlock;
 import net.minecraft.world.level.block.BambooSaplingBlock;
 import net.minecraft.world.level.block.BambooStalkBlock;
 import net.minecraft.world.level.block.BedBlock;
@@ -48,11 +49,14 @@ import net.minecraft.world.level.block.CocoaBlock;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.FenceGateBlock;
+import net.minecraft.world.level.block.KelpBlock;
+import net.minecraft.world.level.block.KelpPlantBlock;
 import net.minecraft.world.level.block.LeverBlock;
 import net.minecraft.world.level.block.NetherWartBlock;
 import net.minecraft.world.level.block.SaplingBlock;
 import net.minecraft.world.level.block.SignBlock;
 import net.minecraft.world.level.block.StemBlock;
+import net.minecraft.world.level.block.SugarCaneBlock;
 import net.minecraft.world.level.block.SweetBerryBushBlock;
 import net.minecraft.world.level.block.TrapDoorBlock;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
@@ -104,10 +108,13 @@ import net.minecraft.world.phys.Vec3;
  *
  * <p>Crops additionally narrates "Ripe" once a crop is actually ready to harvest - silent
  * otherwise, same as Build Mode's powered-block narration - covering farmland crops, pumpkin
- * and melon stems, nether wart, cocoa, sweet berry bushes, saplings (including bamboo's own
- * sapling stage and mangrove propagules), and cave vine segments actually bearing glow berries
- * (see {@link #isCrop} and {@link #isRipe}). Grown bamboo stalks are covered too, but clustered
- * into whole clumps rather than one entry per block - see {@link #scanCrops}.
+ * and melon stems (and the pumpkin/melon fruit itself, once one has actually grown), nether
+ * wart, cocoa, sweet berry bushes, saplings (including bamboo's own sapling stage and mangrove
+ * propagules), and cave vine segments actually bearing glow berries (see {@link #isCrop} and
+ * {@link #isRipe}). Grown bamboo, sugar cane, and kelp are covered too, each narrating its
+ * height instead of "Ripe" - one Scanner entry per stalk rather than per block, or per
+ * horizontally-connected clump - see {@link #scanCrops}, {@link #addStalkClusters}, and {@link
+ * #stalkHeight}.
  */
 public final class ScannerController {
 	private static final int LEAF_SEARCH_MARGIN = 2;
@@ -525,8 +532,15 @@ public final class ScannerController {
 			direction = direction.copy().append(Component.literal(", ")).append(vertical);
 		}
 		Component name = itemName(category, item, player);
-		if (category == ScannerCategory.CROPS && isRipe(player.level().getBlockState(item.blockPos()))) {
-			name = name.copy().append(Component.literal(", ")).append(Component.translatable("united_minecraft.narrate.scanner_ripe"));
+		if (category == ScannerCategory.CROPS) {
+			BlockState state = player.level().getBlockState(item.blockPos());
+			if (isRipe(state)) {
+				name = name.copy().append(Component.literal(", ")).append(Component.translatable("united_minecraft.narrate.scanner_ripe"));
+			}
+			Component height = stalkHeight(player.level(), item.blockPos());
+			if (height != null) {
+				name = name.copy().append(Component.literal(", ")).append(height);
+			}
 		}
 		if (category == ScannerCategory.INTERACTABLES) {
 			BlockState state = player.level().getBlockState(item.blockPos());
@@ -684,23 +698,29 @@ public final class ScannerController {
 
 	/**
 	 * Covers wheat/carrots/potatoes/beetroot/torchflower (all {@link CropBlock}), pumpkin/melon
-	 * stems, nether wart, cocoa, sweet berries, saplings (including mangrove propagules - a
-	 * {@link SaplingBlock} subclass), bamboo's own single-block sapling stage, and cave vines
-	 * (any segment, head or body alike - {@link #isRipe} is what actually distinguishes a
-	 * glow-berry-bearing one). Grown bamboo stalks are deliberately not here - see {@link
-	 * #addBambooClusters} for why they need clustering instead of a flat per-block match like
-	 * everything else in this category. Package-private - {@link BuildModeController} reuses
-	 * this (and {@link #isRipe}) so its cursor narrates "Ripe" the same way the Scanner does.
+	 * stems (both the growing {@link StemBlock} stage and the {@link AttachedStemBlock} stage
+	 * once a fruit has actually formed), the fruit itself (plain {@code Blocks.PUMPKIN}/{@code
+	 * Blocks.MELON} - neither has its own dedicated block class), nether wart, cocoa, sweet
+	 * berries, saplings (including mangrove propagules - a {@link SaplingBlock} subclass),
+	 * bamboo's own single-block sapling stage, and cave vines (any segment, head or body alike -
+	 * {@link #isRipe} is what actually distinguishes a glow-berry-bearing one). Grown bamboo
+	 * stalks, sugar cane, and kelp are deliberately not here - see {@link #addStalkClusters} for
+	 * why they need clustering instead of a flat per-block match like everything else in this
+	 * category. Package-private - {@link BuildModeController} reuses this (and {@link #isRipe})
+	 * so its cursor narrates "Ripe" the same way the Scanner does.
 	 */
 	static boolean isCrop(Block block) {
 		return block instanceof CropBlock
 				|| block instanceof StemBlock
+				|| block instanceof AttachedStemBlock
 				|| block instanceof NetherWartBlock
 				|| block instanceof CocoaBlock
 				|| block instanceof SweetBerryBushBlock
 				|| block instanceof SaplingBlock
 				|| block instanceof BambooSaplingBlock
-				|| block instanceof CaveVines;
+				|| block instanceof CaveVines
+				|| block == Blocks.PUMPKIN
+				|| block == Blocks.MELON;
 	}
 
 	/**
@@ -730,6 +750,36 @@ public final class ScannerController {
 			return CaveVines.hasGlowBerries(state);
 		}
 		return false;
+	}
+
+	/**
+	 * How tall the vertical stack of identical blocks starting at {@code base} actually is right
+	 * now - bamboo, sugar cane, and kelp all grow straight up as a stack of otherwise-identical
+	 * blocks with no single property that records the whole stalk's height, so this counts by
+	 * walking upward through matching blocks live rather than relying on anything cached from
+	 * scan time (the same reasoning {@link #isRipe} and the bed-occupied check above it use).
+	 * Null for anything else in the Crops category, which is always a single block already.
+	 */
+	private static Component stalkHeight(Level level, BlockPos base) {
+		Block block = level.getBlockState(base).getBlock();
+		Predicate<Block> partOfStalk;
+		if (block instanceof BambooStalkBlock) {
+			partOfStalk = candidate -> candidate instanceof BambooStalkBlock;
+		} else if (block instanceof SugarCaneBlock) {
+			partOfStalk = candidate -> candidate instanceof SugarCaneBlock;
+		} else if (block instanceof KelpBlock || block instanceof KelpPlantBlock) {
+			partOfStalk = candidate -> candidate instanceof KelpBlock || candidate instanceof KelpPlantBlock;
+		} else {
+			return null;
+		}
+
+		int height = 1;
+		BlockPos pos = base.above();
+		while (partOfStalk.test(level.getBlockState(pos).getBlock())) {
+			height++;
+			pos = pos.above();
+		}
+		return Component.translatable("united_minecraft.narrate.scanner_height", height);
 	}
 
 	private static List<ScannerItem> scanBlocks(LocalPlayer player, BiPredicate<BlockPos, BlockState> predicate) {
@@ -867,12 +917,13 @@ public final class ScannerController {
 	}
 
 	/**
-	 * Crops, saplings (including bamboo's own single-block sapling stage), and cave vine
-	 * segments actually bearing glow berries are all sparse single-block matches - one Scanner
-	 * entry per block, same as every other flat category. Grown bamboo stalks are the one
-	 * exception: they grow in dense clumps of many stacked, closely-packed blocks, so they're
-	 * clustered instead via {@link #addBambooClusters} - the same reason {@link #scanTrees}
-	 * clusters logs into whole trees rather than reporting one entry per log.
+	 * Crops, saplings (including bamboo's own single-block sapling stage), pumpkins/melons and
+	 * their stems, and cave vine segments actually bearing glow berries are all sparse
+	 * single-block matches - one Scanner entry per block, same as every other flat category.
+	 * Grown bamboo, sugar cane, and kelp are the exception: each grows as a vertical stack of
+	 * otherwise-identical blocks, so a flat per-block match would narrate the same stalk over
+	 * and over while cycling up it. Each stack instead gets exactly one entry, at its base, via
+	 * {@link #addStalkClusters} - see {@link #stalkHeight} for the height that goes with it.
 	 */
 	private static List<ScannerItem> scanCrops(LocalPlayer player) {
 		Level level = player.level();
@@ -881,12 +932,22 @@ public final class ScannerController {
 		int r = (int) scanRange();
 
 		Set<BlockPos> bambooPositions = new HashSet<>();
+		Set<BlockPos> canePositions = new HashSet<>();
+		Set<BlockPos> kelpPositions = new HashSet<>();
 		List<ScannerItem> results = new ArrayList<>();
 		for (BlockPos pos : BlockPos.betweenClosed(center.offset(-r, -r, -r), center.offset(r, r, r))) {
 			BlockState state = level.getBlockState(pos);
 			Block block = state.getBlock();
 			if (block instanceof BambooStalkBlock) {
 				bambooPositions.add(pos.immutable());
+				continue;
+			}
+			if (block instanceof SugarCaneBlock) {
+				canePositions.add(pos.immutable());
+				continue;
+			}
+			if (block instanceof KelpBlock || block instanceof KelpPlantBlock) {
+				kelpPositions.add(pos.immutable());
 				continue;
 			}
 			if (!isCrop(block)) {
@@ -898,28 +959,38 @@ public final class ScannerController {
 			}
 		}
 
-		addBambooClusters(eye, bambooPositions, results);
+		addStalkClusters(eye, bambooPositions, results);
+		addStalkClusters(eye, canePositions, results);
+		addStalkClusters(eye, kelpPositions, results);
 		results.sort(Comparator.comparingDouble(ScannerItem::distance));
 		return results;
 	}
 
 	/**
-	 * Floods {@code positions} (already range-limited) into connected clumps via {@link
-	 * #floodFillCluster}, reporting each clump once at its lowest block - the base of the
-	 * stalk(s), the same anchor {@link #scanTrees} uses for a tree's trunk base rather than
-	 * wherever the flood fill happened to start.
+	 * Reports each contiguous vertical run within {@code positions} (already range-limited, and
+	 * already narrowed to a single stalk type by the caller) exactly once, at its base -
+	 * deliberately only merging straight up/down, not the full 26-connected flood fill {@link
+	 * #scanTrees} and {@link #addLiquidClusters} use, so two stalks planted right next to each
+	 * other stay two separate entries instead of merging into one "clump" the way a dense
+	 * horizontal thicket of bamboo otherwise would.
 	 */
-	private static void addBambooClusters(Vec3 eye, Set<BlockPos> positions, List<ScannerItem> results) {
+	private static void addStalkClusters(Vec3 eye, Set<BlockPos> positions, List<ScannerItem> results) {
 		Set<BlockPos> visited = new HashSet<>();
-		for (BlockPos start : positions) {
-			if (visited.contains(start)) {
+		for (BlockPos pos : positions) {
+			if (visited.contains(pos) || positions.contains(pos.below())) {
+				// Either already reported as part of another stalk's climb, or not actually this
+				// stalk's base - the block below is part of the same run and will find it instead.
 				continue;
 			}
-			Set<BlockPos> cluster = new HashSet<>();
-			BlockPos base = floodFillCluster(start, positions, visited, cluster);
-			double distance = eye.distanceTo(Vec3.atCenterOf(base));
+			BlockPos top = pos;
+			visited.add(top);
+			while (positions.contains(top.above())) {
+				top = top.above();
+				visited.add(top);
+			}
+			double distance = eye.distanceTo(Vec3.atCenterOf(pos));
 			if (distance <= scanRange()) {
-				results.add(new ScannerItem(base, null, distance, null));
+				results.add(new ScannerItem(pos, null, distance, null));
 			}
 		}
 	}

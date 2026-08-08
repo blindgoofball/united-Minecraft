@@ -107,6 +107,7 @@
 	"united_minecraft.narrate.scanner_no_item": "Nothing selected",
 	"united_minecraft.narrate.scanner_facing": "Facing %s",
 	"united_minecraft.narrate.scanner_ripe": "Ripe",
+	"united_minecraft.narrate.scanner_height": "%s blocks tall",
 	"united_minecraft.narrate.scanner_occupied": "Occupied",
 	"united_minecraft.narrate.scanner_sign_blank": "Blank",
 	"united_minecraft.narrate.baby_mob": "Baby %s",
