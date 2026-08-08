@@ -1,5 +1,11 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
+
 import com.mojang.blaze3d.platform.InputConstants;
 import com.nibblenerds.unitedminecraft.UnitedMinecraft;
 
@@ -19,6 +25,18 @@ import org.lwjgl.glfw.GLFW;
  * raw keys across contexts).
  *
  * <p>The arrow keys are entirely unbound by default in vanilla.
+ *
+ * <p><b>Never call {@code KeyMapping.consumeClick()} on any keybinding declared here -
+ * call {@link #pressed} instead.</b> {@code consumeClick()} drains a click queue that
+ * keeps piling up for as long as nothing reads it, which is exactly what happens every
+ * time this mod's own guard conditions skip a key's handling for a tick (a mode that
+ * blocks it, a menu that's open, a different mode's tick() running instead of this one)
+ * - the queued click doesn't vanish, it just fires the next time that code path happens
+ * to run again, often well after the key was actually released (e.g. toggling Build Mode
+ * on right after leaving Combat Mode, with no Build Mode key pressed in between). {@link
+ * #pressed} sidesteps the queue entirely via {@link #updateAll}, the same {@code isDown()}
+ * plus tracked-held-state approach this mod already used piecemeal for a few keys
+ * (movement/look, Build Mode's cursor) before this was generalized to every keybinding.
  */
 public final class ClientKeyBindings {
 	public static final KeyMapping.Category CATEGORY = KeyMapping.Category.register(UnitedMinecraft.id("keys"));
@@ -129,11 +147,66 @@ public final class ClientKeyBindings {
 	public static final KeyMapping OPEN_SETTINGS = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.open_settings", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_F6, CATEGORY));
 
+	// Every KeyMapping declared above, discovered reflectively rather than hand-listed so a
+	// future keybinding automatically gets the same backlog-proof tracking below without
+	// anyone needing to remember to register it separately - forgetting would silently
+	// reintroduce the exact bug this class exists to prevent, for just that one key.
+	private static final KeyMapping[] ALL_MAPPINGS = discoverMappings();
+
+	private static final Map<KeyMapping, Boolean> heldLastTick = new IdentityHashMap<>();
+	private static final Map<KeyMapping, Boolean> justPressed = new IdentityHashMap<>();
+
 	private ClientKeyBindings() {
 	}
 
 	/** No-op call that forces the static initializers above to run. */
 	public static void register() {
+	}
+
+	private static KeyMapping[] discoverMappings() {
+		List<KeyMapping> mappings = new ArrayList<>();
+		for (Field field : ClientKeyBindings.class.getDeclaredFields()) {
+			if (KeyMapping.class.isAssignableFrom(field.getType())) {
+				try {
+					mappings.add((KeyMapping) field.get(null));
+				} catch (IllegalAccessException e) {
+					// Every KeyMapping field here is public static final and already initialized
+					// by the time this runs (it's assigned near the bottom of the class) - this
+					// can't actually happen.
+					throw new AssertionError(e);
+				}
+			}
+		}
+		return mappings.toArray(new KeyMapping[0]);
+	}
+
+	/**
+	 * Refreshes every keybinding's "was it just pressed" state for this tick - {@link
+	 * AccessibilityTickHandler#onEndTick} calls this exactly once per tick, unconditionally,
+	 * before anything branches on mode or screen state. That unconditional timing is what
+	 * makes {@link #pressed} immune to the backlog {@code consumeClick()} suffers: every
+	 * key's held/not-held state gets updated every tick no matter what else is going on, so a
+	 * key pressed while something was blocking it is already accounted for (not a "fresh"
+	 * press) by the time whatever was blocking it stops.
+	 */
+	public static void updateAll() {
+		for (KeyMapping mapping : ALL_MAPPINGS) {
+			boolean down = mapping.isDown();
+			boolean wasDown = heldLastTick.getOrDefault(mapping, false);
+			justPressed.put(mapping, down && !wasDown);
+			heldLastTick.put(mapping, down);
+		}
+	}
+
+	/** True only on the tick {@code mapping} transitioned from up to down - see {@link #updateAll}. */
+	public static boolean pressed(KeyMapping mapping) {
+		return justPressed.getOrDefault(mapping, false);
+	}
+
+	/** Called when the player unloads, so a key held across a world/session boundary doesn't leak in as a stale state. */
+	public static void resetPressState() {
+		heldLastTick.clear();
+		justPressed.clear();
 	}
 
 	/**

@@ -4,7 +4,6 @@ import java.util.Locale;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
-import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
@@ -70,16 +69,6 @@ public final class AccessibilityTickHandler {
 	private static ItemStack lastOffhand = null;
 	private static Holder<Biome> lastBiome = null;
 
-	// Rising-edge state for snap-turn's arrow keys - see the note on pressedEdge() for why
-	// this replaces KeyMapping's own click-queue tracking. Updated every tick regardless of
-	// which mode is active (not just while snap-turn itself runs) so it stays accurate
-	// across mode switches - e.g. an arrow key held while build mode is active shouldn't
-	// misfire as a fresh press the moment build mode turns off.
-	private static boolean snapLeftHeld;
-	private static boolean snapRightHeld;
-	private static boolean snapUpHeld;
-	private static boolean snapDownHeld;
-
 	private AccessibilityTickHandler() {
 	}
 
@@ -97,7 +86,7 @@ public final class AccessibilityTickHandler {
 			lastTimePeriod = -1;
 			lastOffhand = null;
 			lastBiome = null;
-			snapLeftHeld = snapRightHeld = snapUpHeld = snapDownHeld = false;
+			ClientKeyBindings.resetPressState();
 			BuildModeController.reset();
 			CombatModeController.reset();
 			MapMarkerController.reset();
@@ -116,30 +105,30 @@ public final class AccessibilityTickHandler {
 			return;
 		}
 
-		boolean snapLeftPressed = pressedEdge(ClientKeyBindings.LOOK_LEFT, snapLeftHeld);
-		boolean snapRightPressed = pressedEdge(ClientKeyBindings.LOOK_RIGHT, snapRightHeld);
-		boolean snapUpPressed = pressedEdge(ClientKeyBindings.LOOK_UP, snapUpHeld);
-		boolean snapDownPressed = pressedEdge(ClientKeyBindings.LOOK_DOWN, snapDownHeld);
-		snapLeftHeld = ClientKeyBindings.LOOK_LEFT.isDown();
-		snapRightHeld = ClientKeyBindings.LOOK_RIGHT.isDown();
-		snapUpHeld = ClientKeyBindings.LOOK_UP.isDown();
-		snapDownHeld = ClientKeyBindings.LOOK_DOWN.isDown();
+		// Must run before anything below reads ClientKeyBindings.pressed() - see that method's
+		// own doc for why the timing matters.
+		ClientKeyBindings.updateAll();
+
+		boolean snapLeftPressed = ClientKeyBindings.pressed(ClientKeyBindings.LOOK_LEFT);
+		boolean snapRightPressed = ClientKeyBindings.pressed(ClientKeyBindings.LOOK_RIGHT);
+		boolean snapUpPressed = ClientKeyBindings.pressed(ClientKeyBindings.LOOK_UP);
+		boolean snapDownPressed = ClientKeyBindings.pressed(ClientKeyBindings.LOOK_DOWN);
 
 		// Blocked while locked: lock-on owns rotation until Stop Lock is pressed, and
 		// combining it with the build cursor's own rotation-override would just fight it.
 		// Combat Mode owns rotation the same way, so it blocks entering build mode too -
 		// toggling combat mode on already turns build mode off if it was running.
 		if (!ScannerController.isLocked() && !CombatModeController.isActive()
-				&& ClientKeyBindings.TOGGLE_BUILD_MODE.consumeClick()) {
+				&& ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_BUILD_MODE)) {
 			BuildModeController.toggle(client, player);
 		}
-		if (ClientKeyBindings.TOGGLE_NAV_RADAR.consumeClick()) {
+		if (ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_NAV_RADAR)) {
 			NavRadarController.toggle(client);
 		}
-		if (ClientKeyBindings.TOGGLE_MINING_RADAR.consumeClick()) {
+		if (ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_MINING_RADAR)) {
 			MiningRadarController.toggle(client);
 		}
-		if (ClientKeyBindings.TOGGLE_COMBAT_MODE.consumeClick()) {
+		if (ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_COMBAT_MODE)) {
 			CombatModeController.toggle(client, player);
 		}
 		// Same rotation-owning modes TOGGLE_BUILD_MODE is blocked against above - starting a
@@ -147,19 +136,19 @@ public final class AccessibilityTickHandler {
 		// isn't in that list - starting a swim cancels it outright instead (see
 		// WaterExitController#start), since the two are never useful to run at once anyway.
 		if (!ScannerController.isLocked() && !CombatModeController.isActive() && !BuildModeController.isActive()
-				&& ClientKeyBindings.WATER_ESCAPE.consumeClick()) {
+				&& ClientKeyBindings.pressed(ClientKeyBindings.WATER_ESCAPE)) {
 			if (ClientKeyBindings.isModifierDown(client)) {
 				WaterExitController.start(client, player);
 			} else {
 				WaterExitController.narrate(client, player);
 			}
 		}
-		if (ClientKeyBindings.MARK_TRAIL.consumeClick()) {
+		if (ClientKeyBindings.pressed(ClientKeyBindings.MARK_TRAIL)) {
 			TrailController.markStart(client, player);
 		}
 		// Same rotation-owning modes WATER_ESCAPE is blocked against above, for the same reason.
 		if (!ScannerController.isLocked() && !CombatModeController.isActive() && !BuildModeController.isActive()
-				&& ClientKeyBindings.RETRACE_TRAIL.consumeClick()) {
+				&& ClientKeyBindings.pressed(ClientKeyBindings.RETRACE_TRAIL)) {
 			if (ClientKeyBindings.isModifierDown(client)) {
 				TrailController.start(client, player);
 			} else {
@@ -168,14 +157,14 @@ public final class AccessibilityTickHandler {
 		}
 		MapMarkerController.tick(client);
 		NamedBlockController.tick(client);
-		if (client.gui.screen() == null && ClientKeyBindings.PLACE_MARKER.consumeClick()) {
+		if (client.gui.screen() == null && ClientKeyBindings.pressed(ClientKeyBindings.PLACE_MARKER)) {
 			if (ClientKeyBindings.isModifierDown(client)) {
 				ScannerController.nameFocusedItem(client, player);
 			} else {
 				MapMarkerController.openNameScreen(client, player);
 			}
 		}
-		if (client.gui.screen() == null && ClientKeyBindings.OPEN_SETTINGS.consumeClick()) {
+		if (client.gui.screen() == null && ClientKeyBindings.pressed(ClientKeyBindings.OPEN_SETTINGS)) {
 			client.gui.setScreen(new SettingsScreen());
 		}
 
@@ -273,31 +262,31 @@ public final class AccessibilityTickHandler {
 			handleOffhandNarration(client, player);
 		}
 
-		if (ClientKeyBindings.NARRATE_COORDINATES.consumeClick()) {
+		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_COORDINATES)) {
 			if (ClientKeyBindings.isModifierDown(client)) {
 				narrateLightLevel(client, player);
 			} else {
 				narrateCoordinates(client, player);
 			}
 		}
-		if (ClientKeyBindings.NARRATE_HEALTH.consumeClick()) {
+		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_HEALTH)) {
 			if (ClientKeyBindings.isModifierDown(client)) {
 				narrateExperienceLevel(client, player);
 			} else {
 				narrateHealth(client, player);
 			}
 		}
-		if (ClientKeyBindings.NARRATE_BEARING.consumeClick()) {
+		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_BEARING)) {
 			if (ClientKeyBindings.isModifierDown(client)) {
 				resetRotationToNorth(client, player);
 			} else {
 				narrateBearing(client, player);
 			}
 		}
-		if (ClientKeyBindings.SCAN_SURROUNDINGS.consumeClick()) {
+		if (ClientKeyBindings.pressed(ClientKeyBindings.SCAN_SURROUNDINGS)) {
 			SurroundingsScanner.narrateFront(client, player);
 		}
-		if (ClientKeyBindings.NARRATE_TIME.consumeClick()) {
+		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_TIME)) {
 			narrateTimeOfDay(client, player);
 		}
 	}
@@ -331,7 +320,7 @@ public final class AccessibilityTickHandler {
 	 * one full step, even when already sitting exactly on a 45 degree marker.
 	 *
 	 * <p>Takes pre-computed rising-edge presses rather than reading the keys' click queues
-	 * itself - see {@link #pressedEdge} for why.
+	 * itself - see {@link ClientKeyBindings#pressed} for why.
 	 */
 	private static void handleSnapTurn(Minecraft client, LocalPlayer player,
 			boolean leftPressed, boolean rightPressed, boolean upPressed, boolean downPressed) {
@@ -361,22 +350,6 @@ public final class AccessibilityTickHandler {
 		if (pitchChanged) {
 			narrateBearing(client, player);
 		}
-	}
-
-	/**
-	 * True only on the tick a key transitions from up to down.
-	 *
-	 * <p>GLFW fires repeated key events for a key that's simply being held (not just the
-	 * initial press), which keeps piling into {@link net.minecraft.client.KeyMapping}'s own
-	 * click queue for as long as nothing drains it. Snap-turn used to read the arrow keys via
-	 * {@code consumeClick()}, but ordinary camera-look (and build mode's cursor stepping) only
-	 * ever read them via {@code isDown()} - neither drains the queue - so pressing arrows while
-	 * either of those was active left a backlog that, the next time Alt was held, burned
-	 * through as a burst of unwanted snap-turns all at once. Polling {@code isDown()} and
-	 * tracking held-state ourselves sidesteps the click queue entirely.
-	 */
-	private static boolean pressedEdge(KeyMapping mapping, boolean wasHeld) {
-		return mapping.isDown() && !wasHeld;
 	}
 
 	private static float snapDown45(float degrees) {

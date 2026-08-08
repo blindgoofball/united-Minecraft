@@ -3,7 +3,6 @@ package com.nibblenerds.unitedminecraft.client;
 import java.util.HashMap;
 import java.util.Map;
 
-import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
@@ -154,15 +153,6 @@ public final class BuildModeController {
 	private static float pendingSavedYaw;
 	private static float pendingSavedPitch;
 
-	// Rising-edge state for the movement keys - see the note on movementPressed() for why
-	// this replaces KeyMapping's own click-queue tracking for these six keys.
-	private static boolean leftHeld;
-	private static boolean rightHeld;
-	private static boolean upHeld;
-	private static boolean downHeld;
-	private static boolean pageUpHeld;
-	private static boolean pageDownHeld;
-
 	// Break is a hold, not a click - mirrors a real held mouse button so survival mining
 	// time still applies (see breakBlock()).
 	private static boolean breakHeld;
@@ -184,24 +174,12 @@ public final class BuildModeController {
 		cursor = null;
 		selectedFacing = null;
 		pendingPlaceTicks = -1;
-		leftHeld = rightHeld = upHeld = downHeld = pageUpHeld = pageDownHeld = false;
 		breakHeld = false;
 	}
 
 	public static void toggle(Minecraft client, LocalPlayer player) {
 		active = !active;
 		if (active) {
-			// A stray backlog on the "place" key (e.g. idly pressed while inactive) shouldn't
-			// fire the instant build mode turns on.
-			drainClicks(ClientKeyBindings.BUILD_PLACE);
-			// Prime edge-detection to the keys' current physical state, so a key already held
-			// at the exact moment build mode turns on isn't misread as a fresh press.
-			leftHeld = ClientKeyBindings.LOOK_LEFT.isDown();
-			rightHeld = ClientKeyBindings.LOOK_RIGHT.isDown();
-			upHeld = ClientKeyBindings.LOOK_UP.isDown();
-			downHeld = ClientKeyBindings.LOOK_DOWN.isDown();
-			pageUpHeld = ClientKeyBindings.PAGE_UP.isDown();
-			pageDownHeld = ClientKeyBindings.PAGE_DOWN.isDown();
 			breakHeld = ClientKeyBindings.BUILD_BREAK.isDown();
 			selectedFacing = null;
 			cursor = player.blockPosition();
@@ -224,30 +202,24 @@ public final class BuildModeController {
 
 	public static void tick(Minecraft client, LocalPlayer player) {
 		boolean moved = false;
-		if (movementPressed(ClientKeyBindings.LOOK_LEFT, leftHeld)) {
+		if (ClientKeyBindings.pressed(ClientKeyBindings.LOOK_LEFT)) {
 			moved |= tryMove(client, player, cursor.west());
 		}
-		leftHeld = ClientKeyBindings.LOOK_LEFT.isDown();
-		if (movementPressed(ClientKeyBindings.LOOK_RIGHT, rightHeld)) {
+		if (ClientKeyBindings.pressed(ClientKeyBindings.LOOK_RIGHT)) {
 			moved |= tryMove(client, player, cursor.east());
 		}
-		rightHeld = ClientKeyBindings.LOOK_RIGHT.isDown();
-		if (movementPressed(ClientKeyBindings.LOOK_UP, upHeld)) {
+		if (ClientKeyBindings.pressed(ClientKeyBindings.LOOK_UP)) {
 			moved |= tryMove(client, player, cursor.north());
 		}
-		upHeld = ClientKeyBindings.LOOK_UP.isDown();
-		if (movementPressed(ClientKeyBindings.LOOK_DOWN, downHeld)) {
+		if (ClientKeyBindings.pressed(ClientKeyBindings.LOOK_DOWN)) {
 			moved |= tryMove(client, player, cursor.south());
 		}
-		downHeld = ClientKeyBindings.LOOK_DOWN.isDown();
-		if (movementPressed(ClientKeyBindings.PAGE_UP, pageUpHeld)) {
+		if (ClientKeyBindings.pressed(ClientKeyBindings.PAGE_UP)) {
 			moved |= tryMove(client, player, cursor.above());
 		}
-		pageUpHeld = ClientKeyBindings.PAGE_UP.isDown();
-		if (movementPressed(ClientKeyBindings.PAGE_DOWN, pageDownHeld)) {
+		if (ClientKeyBindings.pressed(ClientKeyBindings.PAGE_DOWN)) {
 			moved |= tryMove(client, player, cursor.below());
 		}
-		pageDownHeld = ClientKeyBindings.PAGE_DOWN.isDown();
 
 		if (moved) {
 			client.getNarrator().saySystemNow(describeCursor(player));
@@ -255,11 +227,11 @@ public final class BuildModeController {
 
 		tickPendingPlacement(client, player);
 
-		if (ClientKeyBindings.BUILD_PLACE.consumeClick()) {
+		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_PLACE)) {
 			place(client, player);
 		}
 
-		if (ClientKeyBindings.BUILD_CYCLE_FACING.consumeClick()) {
+		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CYCLE_FACING)) {
 			cyclePlacementFacing(client, ClientKeyBindings.isModifierDown(client) ? -1 : 1);
 		}
 
@@ -271,7 +243,7 @@ public final class BuildModeController {
 		}
 		breakHeld = breakDown;
 
-		if (ClientKeyBindings.BUILD_WALK_TO_CURSOR.consumeClick()) {
+		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_WALK_TO_CURSOR)) {
 			walkToCursor(client, player);
 		}
 	}
@@ -321,24 +293,6 @@ public final class BuildModeController {
 			case DOWN -> "united_minecraft.direction.down";
 		};
 		return Component.translatable(key);
-	}
-
-	/**
-	 * True only on the tick a movement key transitions from up to down.
-	 *
-	 * <p>GLFW fires repeated key events for a key that's simply being held (not just the
-	 * initial press) - which is exactly what {@link KeyMapping#consumeClick()}'s click queue
-	 * is designed to preserve, one queued move per repeat event. That's fine for the vanilla
-	 * uses it was built for, but it's the wrong behavior here: it meant holding an arrow key
-	 * even briefly past the OS's repeat-delay threshold - easy to do without seeing the
-	 * cursor move - queued up a burst of steps that kept advancing the cursor well after the
-	 * key was released, landing it somewhere other than intended. Polling {@link
-	 * KeyMapping#isDown()} and tracking our own held-state sidesteps the click queue (and its
-	 * repeat events) entirely: a key can only ever produce one move per physical press,
-	 * however long it's held.
-	 */
-	private static boolean movementPressed(KeyMapping mapping, boolean wasHeld) {
-		return mapping.isDown() && !wasHeld;
 	}
 
 	/**
@@ -795,14 +749,6 @@ public final class BuildModeController {
 
 		if (level.getBlockState(cursor).isAir()) {
 			narrateAfterAction(client, player);
-		}
-	}
-
-	private static void drainClicks(KeyMapping... mappings) {
-		for (KeyMapping mapping : mappings) {
-			while (mapping.consumeClick()) {
-				// Discard backlog.
-			}
 		}
 	}
 

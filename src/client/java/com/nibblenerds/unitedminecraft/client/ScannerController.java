@@ -154,13 +154,13 @@ public final class ScannerController {
 	}
 
 	public static void tick(Minecraft client, LocalPlayer player) {
-		boolean prevCategory = ClientKeyBindings.SCANNER_PREV_CATEGORY.consumeClick();
-		boolean nextCategory = ClientKeyBindings.SCANNER_NEXT_CATEGORY.consumeClick();
-		boolean pageDown = ClientKeyBindings.PAGE_DOWN.consumeClick();
-		boolean pageUp = ClientKeyBindings.PAGE_UP.consumeClick();
-		boolean targetPressed = ClientKeyBindings.SCANNER_TARGET.consumeClick();
-		boolean stopPressed = ClientKeyBindings.SCANNER_STOP_LOCK.consumeClick();
-		boolean coordinatesPressed = ClientKeyBindings.SCANNER_COORDINATES.consumeClick();
+		boolean prevCategory = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_PREV_CATEGORY);
+		boolean nextCategory = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_NEXT_CATEGORY);
+		boolean pageDown = ClientKeyBindings.pressed(ClientKeyBindings.PAGE_DOWN);
+		boolean pageUp = ClientKeyBindings.pressed(ClientKeyBindings.PAGE_UP);
+		boolean targetPressed = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_TARGET);
+		boolean stopPressed = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_STOP_LOCK);
+		boolean coordinatesPressed = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_COORDINATES);
 
 		if (isLocked()) {
 			if (stopPressed) {
@@ -193,7 +193,7 @@ public final class ScannerController {
 		if (targetPressed) {
 			target(client, player);
 		}
-		if (ClientKeyBindings.SCANNER_REMOVE_MARKER.consumeClick()
+		if (ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_REMOVE_MARKER)
 				&& categoryIndex >= 0 && CATEGORIES[categoryIndex] == ScannerCategory.MARKERS) {
 			removeCurrentMarker(client, player);
 		}

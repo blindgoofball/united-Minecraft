@@ -103,7 +103,7 @@ public final class AutoWalkController {
 		if (!isActive()) {
 			return;
 		}
-		if (ClientKeyBindings.SCANNER_STOP_LOCK.consumeClick()) {
+		if (ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_STOP_LOCK)) {
 			cancel(client, player);
 			return;
 		}
