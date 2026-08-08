@@ -137,6 +137,7 @@
 	"united_minecraft.narrate.trail_arrived": "Back at the start of the trail",
 	"united_minecraft.narrate.trail_cancelled": "Stopped retracing",
 	"united_minecraft.narrate.trail_blocked": "Blocked - place a block here to climb up, then retrace again",
+	"united_minecraft.narrate.trail_stuck": "Stuck - can't find a way past this point, try moving around it manually, then retrace again",
 	"united_minecraft.narrate.tree_chopping_done": "No more logs",
 	"united_minecraft.narrate.menu_carrying": "Carrying %s",
 	"united_minecraft.narrate.menu_item_discarded": "Discarded %s",

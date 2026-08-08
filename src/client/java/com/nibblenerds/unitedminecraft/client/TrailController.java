@@ -18,12 +18,18 @@ import net.minecraft.world.phys.Vec3;
  * breadcrumb trail and, on request, walks that recorded route back in reverse - the same
  * waypoint-following mechanism those two controllers already use, just fed a route that was
  * recorded instead of computed. Because it's a literal reverse of a route the player already
- * walked, it's trivially reachable by construction.
+ * walked, it's <em>almost</em> always trivially reachable by construction - but not quite
+ * guaranteed: consecutive trail points are only ever recorded a minimum distance apart (see
+ * {@link #TRAIL_MIN_SPACING}) and connected by a straight walk between them, not a
+ * re-simulation of the original route, so a curve the outbound walk took around a corner or
+ * pillar within one of those gaps can end up clipped by the straight line back. {@link #tick}
+ * watches for exactly that - no real progress toward the current waypoint for a while despite
+ * actively walking - and stops instead of pushing against it silently forever.
  *
- * <p>That same property doubles as the answer to "do I need to build up here": any point where
- * retracing would require climbing steeper than an ordinary step is exactly the point where the
- * outbound trip dropped down more than a step, i.e. exactly where the player needs to place a
- * block to climb back out. See {@link #tick} for that check.
+ * <p>That same reachable-by-construction property doubles as the answer to "do I need to build
+ * up here": any point where retracing would require climbing steeper than an ordinary step is
+ * exactly the point where the outbound trip dropped down more than a step, i.e. exactly where
+ * the player needs to place a block to climb back out. See {@link #tick} for that check too.
  */
 public final class TrailController {
 	// 3D distance, so a vertical drop gets recorded the same as horizontal wandering.
@@ -36,12 +42,23 @@ public final class TrailController {
 	// Steeper than this isn't a normal step-up - it's exactly the "you fell here, so you need
 	// to place a block to climb back out" case this whole feature exists to catch.
 	private static final double MAX_CLIMBABLE_STEP = 1.0;
+	// Consecutive trail points are connected by a straight walk, not a re-simulation of the
+	// original route - almost always fine, but not guaranteed: the outbound walk could have
+	// curved around a corner or pillar within a single recorded gap (points are only ever
+	// TRAIL_MIN_SPACING apart) in a way this straight line clips. Rather than trying to detect
+	// that geometrically, #tick instead notices the practical symptom - no real progress toward
+	// the current waypoint for this many ticks despite actively walking - and stops instead of
+	// pushing against it silently forever.
+	private static final int STUCK_TICKS_THRESHOLD = 40;
+	private static final double STUCK_PROGRESS_EPSILON = 0.05;
 
 	private static final List<Vec3> trail = new ArrayList<>();
 
 	private static List<Vec3> route;
 	private static int routeIndex;
 	private static ClientInput previousInput;
+	private static double bestDistanceToNext;
+	private static int stuckTicks;
 
 	private TrailController() {
 	}
@@ -55,6 +72,8 @@ public final class TrailController {
 		route = null;
 		routeIndex = 0;
 		previousInput = null;
+		bestDistanceToNext = Double.MAX_VALUE;
+		stuckTicks = 0;
 	}
 
 	/**
@@ -161,6 +180,8 @@ public final class TrailController {
 
 		route = path;
 		routeIndex = 0;
+		bestDistanceToNext = Double.MAX_VALUE;
+		stuckTicks = 0;
 		previousInput = player.input;
 		player.input = new TrailInput();
 		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.trail_started"));
@@ -185,6 +206,8 @@ public final class TrailController {
 		Vec3 next = route.get(routeIndex);
 		if (player.position().distanceToSqr(next) < NODE_ARRIVAL_DISTANCE_SQR) {
 			routeIndex++;
+			bestDistanceToNext = Double.MAX_VALUE;
+			stuckTicks = 0;
 			if (routeIndex >= route.size()) {
 				finish(client, player, "united_minecraft.narrate.trail_arrived");
 			}
@@ -196,6 +219,18 @@ public final class TrailController {
 		// left intact so a fresh Shift+Z after building resumes right where this left off.
 		if (next.y() - player.getY() > MAX_CLIMBABLE_STEP) {
 			finish(client, player, "united_minecraft.narrate.trail_blocked");
+			return;
+		}
+
+		// See STUCK_TICKS_THRESHOLD's doc - this is what actually catches a straight-line leg
+		// that clips something the original walk curved around, since nothing above this point
+		// checks for real obstructions at all.
+		double distance = player.position().distanceTo(next);
+		if (distance < bestDistanceToNext - STUCK_PROGRESS_EPSILON) {
+			bestDistanceToNext = distance;
+			stuckTicks = 0;
+		} else if (++stuckTicks > STUCK_TICKS_THRESHOLD) {
+			finish(client, player, "united_minecraft.narrate.trail_stuck");
 			return;
 		}
 
