@@ -38,10 +38,19 @@ import net.minecraft.world.phys.Vec3;
  *
  * <p>While active, the arrow keys and Page Up/Down step a {@link BlockPos}
  * cursor instead of turning the camera, narrating the block, coordinates, and
- * whether it's placeable at each step. Movement is fixed to true compass
- * directions (Left/Right = west/east, Up/Down = north/south) regardless of
- * which way the player is currently facing - deliberately, not a bug: it's a
- * consistent, learnable mapping rather than one that flips depending on facing.
+ * whether it's placeable at each step. Movement is relative to a locked-in
+ * {@link #facing} rather than the player's own free-look direction: Up/Down
+ * step forward/back along {@link #facing}, Left/Right strafe relative to it
+ * (its {@link Direction#getCounterClockWise}/{@link Direction#getClockWise}),
+ * and Page Up/Down still just move vertically, unaffected by facing. Toggling
+ * Build Mode on snaps the camera to whichever of the four cardinal directions
+ * is nearest wherever the player was already looking (see {@link
+ * #nearestCardinal}) and locks {@link #facing} to it; {@link
+ * #cycleOrientation} (Alt+Left/Right) turns both the camera and {@link
+ * #facing} a quarter turn at a time from there. Deliberately not free-look:
+ * a fixed, learnable mapping that only changes on an explicit request beats
+ * one that silently flips depending on which way the mouse happens to be
+ * pointing.
  *
  * <p>Both {@link #place} and {@link #breakBlock} act on the cursor directly,
  * through the client's own placement/mining API, entirely independent of
@@ -144,6 +153,10 @@ public final class BuildModeController {
 	private static int anchorX;
 	private static int anchorZ;
 	private static Direction selectedFacing;
+	// The cursor's own movement orientation - Up/Down step forward/back along this, Left/Right
+	// strafe relative to it. Always north/east/south/west; set fresh on every toggle() and
+	// adjusted only by cycleOrientation() from there.
+	private static Direction facing = Direction.NORTH;
 
 	// Set only while a rotated placement is waiting out its sync delay (see startRotatedPlacement
 	// and startBucketUse) - pendingPlaceTicks counts down to 0, at which point pendingAction fires.
@@ -173,6 +186,7 @@ public final class BuildModeController {
 		active = false;
 		cursor = null;
 		selectedFacing = null;
+		facing = Direction.NORTH;
 		pendingPlaceTicks = -1;
 		breakHeld = false;
 	}
@@ -185,7 +199,11 @@ public final class BuildModeController {
 			cursor = player.blockPosition();
 			anchorX = cursor.getX();
 			anchorZ = cursor.getZ();
+			facing = nearestCardinal(player.getYRot());
+			snapYawTo(player, facing);
 			Component message = Component.translatable("united_minecraft.narrate.build_mode_on")
+					.append(Component.literal(" "))
+					.append(Component.translatable("united_minecraft.narrate.build_facing", directionName(facing)))
 					.append(Component.literal(" "))
 					.append(describeCursor(player));
 			client.getNarrator().saySystemNow(message);
@@ -201,18 +219,31 @@ public final class BuildModeController {
 	}
 
 	public static void tick(Minecraft client, LocalPlayer player) {
+		boolean leftPressed = ClientKeyBindings.pressed(ClientKeyBindings.LOOK_LEFT);
+		boolean rightPressed = ClientKeyBindings.pressed(ClientKeyBindings.LOOK_RIGHT);
+
 		boolean moved = false;
-		if (ClientKeyBindings.pressed(ClientKeyBindings.LOOK_LEFT)) {
-			moved |= tryMove(client, player, cursor.west());
-		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.LOOK_RIGHT)) {
-			moved |= tryMove(client, player, cursor.east());
+		if (ClientKeyBindings.isModifierDown(client) && (leftPressed || rightPressed)) {
+			// Alt+Left/Right reorients instead of moving - see cycleOrientation.
+			if (leftPressed) {
+				cycleOrientation(client, player, -1);
+			}
+			if (rightPressed) {
+				cycleOrientation(client, player, 1);
+			}
+		} else {
+			if (leftPressed) {
+				moved |= tryMove(client, player, cursor.relative(facing.getCounterClockWise()));
+			}
+			if (rightPressed) {
+				moved |= tryMove(client, player, cursor.relative(facing.getClockWise()));
+			}
 		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.LOOK_UP)) {
-			moved |= tryMove(client, player, cursor.north());
+			moved |= tryMove(client, player, cursor.relative(facing));
 		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.LOOK_DOWN)) {
-			moved |= tryMove(client, player, cursor.south());
+			moved |= tryMove(client, player, cursor.relative(facing.getOpposite()));
 		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.PAGE_UP)) {
 			moved |= tryMove(client, player, cursor.above());
@@ -246,6 +277,49 @@ public final class BuildModeController {
 		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_WALK_TO_CURSOR)) {
 			walkToCursor(client, player);
 		}
+	}
+
+	/**
+	 * Turns both the cursor's own {@link #facing} and the player's camera a quarter turn -
+	 * clockwise for {@code step > 0} (Alt+Right), counterclockwise otherwise (Alt+Left). Only
+	 * the yaw changes; pitch is left exactly where the player had it, unlike {@link
+	 * #faceDirection}'s placement-rotation use, which deliberately levels pitch out for
+	 * consistent block-orientation math - there's no such requirement here.
+	 */
+	private static void cycleOrientation(Minecraft client, LocalPlayer player, int step) {
+		facing = step > 0 ? facing.getClockWise() : facing.getCounterClockWise();
+		snapYawTo(player, facing);
+		client.getNarrator().saySystemNow(
+				Component.translatable("united_minecraft.narrate.build_facing", directionName(facing)));
+	}
+
+	/**
+	 * Whichever cardinal direction is closest to {@code yaw} - used to pick {@link #facing} when
+	 * Build Mode turns on. Just the inverse of {@link #snapYawTo}'s own mapping (0 = south,
+	 * going up in 90-degree steps toward west).
+	 */
+	private static Direction nearestCardinal(float yaw) {
+		int index = Math.floorMod(Math.round(yaw / 90.0f), 4);
+		return switch (index) {
+			case 0 -> Direction.SOUTH;
+			case 1 -> Direction.WEST;
+			case 2 -> Direction.NORTH;
+			default -> Direction.EAST;
+		};
+	}
+
+	/** Snaps the player's yaw to {@code direction} - see {@link #faceDirection} for the same mapping with pitch included. */
+	private static void snapYawTo(LocalPlayer player, Direction direction) {
+		float yaw = switch (direction) {
+			case SOUTH -> 0.0f;
+			case WEST -> 90.0f;
+			case NORTH -> 180.0f;
+			case EAST -> 270.0f;
+			case UP, DOWN -> player.getYRot();
+		};
+		player.setYRot(yaw);
+		player.setOldRot();
+		player.setYHeadRot(yaw);
 	}
 
 	/** Walks the player to within reach of the cursor, if a path there exists. */

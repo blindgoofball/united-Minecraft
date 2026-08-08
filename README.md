@@ -169,12 +169,18 @@ becomes visible, without needing to run the Scanner yourself.
 ### Build Mode
 
 A virtual cursor for exploring and targeting blocks without needing to
-physically turn to face them. The arrow keys and Page Up/Down step the cursor
-in true compass directions instead of turning the camera, narrating the block,
-coordinates, and whether it's placeable at each step, across a 65x65 area
-centered on wherever you toggled it on. Place and break work reliably no
-matter which way you're actually facing. If the cursor wanders out of reach, a
-dedicated key walks you to it automatically.
+physically turn to face them. Toggling it on snaps your camera to whichever
+cardinal direction (north/east/south/west) you're already closest to facing,
+narrates it, and locks the cursor's movement to that orientation: Up/Down
+step forward/back, Left/Right strafe, and Page Up/Down move vertically -
+narrating the block, coordinates, and whether it's placeable at each step,
+across a 65x65 area centered on wherever you toggled it on. Alt+Left/Right
+turns both the camera and that orientation a quarter turn at a time, the same
+snap-turn mechanism used outside Build Mode, so you can reorient without
+needing to leave Build Mode to physically turn. Place and break work reliably
+no matter which way you're actually facing, independent of the cursor's own
+orientation. If the cursor wanders out of reach, a dedicated key walks you to
+it automatically.
 
 If the block under the cursor has a meaningful facing (repeaters, comparators,
 dispensers, pistons, and the like), that's narrated too, and any block
@@ -317,7 +323,7 @@ where noted.
 | Y (Shift = swim there) | Find the nearest way out of water |
 | X | Mark cave trail start (clears and restarts the recorded trail here) |
 | Z (Shift = walk there) | Find the way back along the recorded cave trail |
-| Left/Right/Up/Down arrows | Turn camera, or move the Build Mode cursor (Alt = snap-turn 45 degrees when not in Build Mode) |
+| Left/Right/Up/Down arrows | Turn camera (Alt = snap-turn 45 degrees), or move the Build Mode cursor relative to its own orientation (Alt+Left/Right = turn the cursor's orientation a quarter turn) |
 | Page Up/Down | Build Mode cursor up/down, or cycle the Scanner's nearest items |
 | Home/End | Cycle the Scanner's category |
 | Enter (Shift = walk there) | Target the Scanner's focused item, or interact with it directly while locked on |
