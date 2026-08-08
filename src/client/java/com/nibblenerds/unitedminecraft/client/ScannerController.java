@@ -185,10 +185,10 @@ public final class ScannerController {
 			switchCategory(client, player, 1);
 		}
 		if (pageDown) {
-			stepItem(client, player, -1);
+			stepItem(client, player, 1);
 		}
 		if (pageUp) {
-			stepItem(client, player, 1);
+			stepItem(client, player, -1);
 		}
 		if (targetPressed) {
 			target(client, player);
