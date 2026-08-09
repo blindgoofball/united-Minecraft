@@ -26,6 +26,7 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.protocol.game.ServerboundSelectTradePacket;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.StackedItemContents;
 import net.minecraft.world.inventory.AbstractCraftingMenu;
@@ -37,10 +38,13 @@ import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.CraftingMenu;
 import net.minecraft.world.inventory.EnchantmentMenu;
 import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.world.inventory.MerchantMenu;
 import net.minecraft.world.inventory.RecipeBookMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.trading.MerchantOffer;
+import net.minecraft.world.item.trading.MerchantOffers;
 import net.minecraft.world.item.crafting.display.FurnaceRecipeDisplay;
 import net.minecraft.world.item.crafting.display.RecipeDisplay;
 import net.minecraft.world.item.crafting.display.RecipeDisplayEntry;
@@ -113,6 +117,20 @@ import org.lwjgl.glfw.GLFW;
  * {@code currentSection} and vanilla's own focus tracking are otherwise entirely independent of
  * each other.
  *
+ * <p>{@link MerchantMenu} (villager/wandering trader) gets its own Trades section for the
+ * same reason as Enchant Options - the trade list is a column of real {@code Button}s, not
+ * slots, so it's otherwise invisible to keyboard/screen-reader navigation entirely, which is
+ * also why "the trades don't show" was previously indistinguishable from the screen just not
+ * exposing them: nothing here ever read {@link MerchantMenu#getOffers}. Up/Down move between
+ * offers, narrating what the trade button's own tooltip shows - both cost items, the result,
+ * and whether it's out of stock - and Enter selects the focused trade via the same three calls
+ * vanilla's own {@code TradeOfferButton} click makes: {@code setSelectionHint} and {@code
+ * tryMoveItems} for local prediction (the latter is what actually auto-fills the payment slots
+ * from the player's inventory), then a {@link ServerboundSelectTradePacket} to notify the
+ * server. The menu's own two payment slots and result slot also get proper role labels now
+ * (they used to fall through every {@code instanceof} check in {@link #slotRole} to a generic
+ * "Storage", since none of them recognized {@link MerchantMenu} at all).
+ *
  * <p>The Creative inventory's item-picker tabs are handled separately, by
  * {@link CreativeInventoryController} - vanilla's item grid is always exactly 45 real slots
  * (a scrolling window), which doesn't fit this class's "one slot per real item" model at all.
@@ -136,6 +154,8 @@ public final class MenuAccessibilityController {
 	private static boolean recipeCraftableOnlyFilter = false;
 
 	private static int enchantOptionIndex = 0;
+
+	private static int tradeIndex = 0;
 
 	private MenuAccessibilityController() {
 	}
@@ -207,6 +227,9 @@ public final class MenuAccessibilityController {
 		if (currentSection == Section.ENCHANT_OPTIONS) {
 			return handleEnchantOptionKey(screen, player, key);
 		}
+		if (currentSection == Section.TRADES) {
+			return handleTradeKey(screen, key);
+		}
 
 		Direction direction = switch (key) {
 			case GLFW.GLFW_KEY_LEFT -> Direction.LEFT;
@@ -263,6 +286,11 @@ public final class MenuAccessibilityController {
 		// both the visual layout and vanilla's own default initial focus there.
 		if (menu instanceof AnvilMenu) {
 			sections.add(Section.RENAME);
+		}
+		// Leads for the same reason Rename does above: the trade list is the actual point of
+		// this screen, and sits to the left of the container's own slots on screen.
+		if (menu instanceof MerchantMenu) {
+			sections.add(Section.TRADES);
 		}
 		// Creative's Inventory tab has no real "container" section of its own - its crafting
 		// slots are parked off-screen (filtered out by sectionSlots' x < 0 check already), and
@@ -333,6 +361,9 @@ public final class MenuAccessibilityController {
 			narrateEnchantOption(screen, player, true);
 		} else if (currentSection == Section.RENAME) {
 			enterRenameSection(screen);
+		} else if (currentSection == Section.TRADES) {
+			tradeIndex = 0;
+			narrateTradeFocus(screen, true);
 		} else {
 			// Release the rename box's real focus, if it still has it from a previous visit to
 			// that section - otherwise handleKey's own Rename bypass would keep swallowing every
@@ -383,7 +414,7 @@ public final class MenuAccessibilityController {
 			// moveFocus is never called while any of these sections is active - each routes its
 			// own keys to a dedicated handler (or straight to vanilla) before this method is
 			// ever reached.
-			case RECIPE_BOOK, ENCHANT_OPTIONS, RENAME -> null;
+			case RECIPE_BOOK, ENCHANT_OPTIONS, RENAME, TRADES -> null;
 		};
 		if (next != null) {
 			focusedSlot = next;
@@ -670,6 +701,79 @@ public final class MenuAccessibilityController {
 				.orElse(Component.translatable("united_minecraft.menu.enchant_option_none"));
 	}
 
+	private static boolean handleTradeKey(AbstractContainerScreen<?> screen, int key) {
+		switch (key) {
+			case GLFW.GLFW_KEY_UP -> moveTrade(screen, -1);
+			case GLFW.GLFW_KEY_DOWN -> moveTrade(screen, 1);
+			case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> selectTrade(screen);
+			default -> {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static void moveTrade(AbstractContainerScreen<?> screen, int direction) {
+		if (!(screen.getMenu() instanceof MerchantMenu menu)) {
+			return;
+		}
+		int size = menu.getOffers().size();
+		int next = tradeIndex + direction;
+		if (size == 0 || next < 0 || next >= size) {
+			return;
+		}
+		tradeIndex = next;
+		narrateTradeFocus(screen, false);
+	}
+
+	/**
+	 * Selects the focused trade via the same three calls vanilla's own {@code TradeOfferButton}
+	 * click makes ({@code MerchantScreen#postButtonClick}): {@code setSelectionHint} and {@code
+	 * tryMoveItems} locally (the latter is what actually moves matching items from the player's
+	 * inventory into the payment slots - not something clicking a slot does on its own), then a
+	 * {@link ServerboundSelectTradePacket} so the server does the same.
+	 */
+	private static void selectTrade(AbstractContainerScreen<?> screen) {
+		if (!(screen.getMenu() instanceof MerchantMenu menu) || menu.getOffers().isEmpty()) {
+			return;
+		}
+		menu.setSelectionHint(tradeIndex);
+		menu.tryMoveItems(tradeIndex);
+		Minecraft.getInstance().getConnection().send(new ServerboundSelectTradePacket(tradeIndex));
+		narrateTradeFocus(screen, false);
+	}
+
+	private static void narrateTradeFocus(AbstractContainerScreen<?> screen, boolean announceSection) {
+		if (!(screen.getMenu() instanceof MerchantMenu menu)) {
+			return;
+		}
+		LocalPlayer player = Minecraft.getInstance().player;
+		MerchantOffers offers = menu.getOffers();
+		MutableComponent message;
+		if (offers.isEmpty() || tradeIndex >= offers.size()) {
+			message = Component.translatable("united_minecraft.menu.trade.empty").copy();
+		} else {
+			MerchantOffer offer = offers.get(tradeIndex);
+			message = ItemDescriptions.describe(offer.getCostA(), player).copy();
+			if (!offer.getCostB().isEmpty()) {
+				message = message.append(Component.literal(", ")).append(ItemDescriptions.describe(offer.getCostB(), player));
+			}
+			message = message.append(Component.literal(", ")).append(Component.translatable(
+					"united_minecraft.menu.trade.result", ItemDescriptions.describe(offer.getResult(), player)));
+			if (offer.isOutOfStock()) {
+				message = message.append(Component.literal(", ")).append(
+						Component.translatable("united_minecraft.menu.trade.out_of_stock"));
+			}
+			message = message.append(Component.literal(", ")).append(Component.translatable(
+					"united_minecraft.menu.trade.number", tradeIndex + 1, offers.size()));
+		}
+
+		if (announceSection) {
+			message = sectionLabel(Section.TRADES).copy().append(Component.literal(". ")).append(message);
+		}
+		Minecraft.getInstance().getNarrator().saySystemNow(message);
+	}
+
 	/** {@link #focusedSlot} if it's still actually present in this menu, else null. */
 	private static Slot currentSlot(AbstractContainerMenu menu) {
 		return focusedSlot != null && menu.slots.contains(focusedSlot) ? focusedSlot : null;
@@ -700,7 +804,7 @@ public final class MenuAccessibilityController {
 				case EQUIPMENT -> isPlayerInventory && containerSlotOf(slot) >= 36;
 				case CONTAINER -> !isPlayerInventory;
 				// None of these are slot-based; sectionSlots is never called for any of them.
-				case RECIPE_BOOK, ENCHANT_OPTIONS, RENAME -> false;
+				case RECIPE_BOOK, ENCHANT_OPTIONS, RENAME, TRADES -> false;
 			};
 			if (matches) {
 				result.add(slot);
@@ -805,6 +909,7 @@ public final class MenuAccessibilityController {
 			case EQUIPMENT -> Component.translatable("united_minecraft.menu.section.equipment");
 			case ENCHANT_OPTIONS -> Component.translatable("united_minecraft.menu.section.enchant_options");
 			case RENAME -> Component.translatable("united_minecraft.menu.section.rename");
+			case TRADES -> Component.translatable("united_minecraft.menu.section.trades");
 		};
 	}
 
@@ -874,6 +979,17 @@ public final class MenuAccessibilityController {
 					? Component.translatable("united_minecraft.menu.slot.item")
 					: Component.translatable("united_minecraft.menu.slot.lapis");
 		}
+		// MerchantMenu.PAYMENT1_SLOT/PAYMENT2_SLOT/RESULT_SLOT are protected, not public (unlike
+		// every other menu type handled here), so these are the same 0/1/2 literals they're
+		// defined as - confirmed against the game's own MerchantMenu class file.
+		if (menu instanceof MerchantMenu) {
+			return switch (slot.index) {
+				case 0 -> Component.translatable("united_minecraft.menu.slot.payment_1");
+				case 1 -> Component.translatable("united_minecraft.menu.slot.payment_2");
+				case 2 -> Component.translatable("united_minecraft.menu.slot.output");
+				default -> Component.translatable("united_minecraft.menu.slot.storage");
+			};
+		}
 
 		return Component.translatable("united_minecraft.menu.slot.storage");
 	}
@@ -895,7 +1011,7 @@ public final class MenuAccessibilityController {
 	 * then the container's own slots, then the player's main inventory, then the hotbar.
 	 */
 	private enum Section {
-		RENAME, CONTAINER, RECIPE_BOOK, ENCHANT_OPTIONS, EQUIPMENT, INVENTORY, HOTBAR
+		RENAME, TRADES, CONTAINER, RECIPE_BOOK, ENCHANT_OPTIONS, EQUIPMENT, INVENTORY, HOTBAR
 	}
 
 	private enum Direction {
