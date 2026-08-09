@@ -109,10 +109,16 @@ import net.minecraft.world.phys.Vec3;
  * click - a door, chest, lever, repeater, and so on, see {@link #isInteractable} -
  * interacts with it instead of failing outright, the same priority a real
  * right-click gives its own block over whatever's in hand; see {@link
- * #interactWithCursor}. Pressing Place while holding nothing placeable (empty
- * hand, or an item that isn't a block at all) narrates that specifically rather
- * than the generic "Can't place there", which is reserved for a placeable item
- * that got rejected by the destination itself.
+ * #interactWithCursor}. The same call also fires whenever the held item isn't a
+ * placeable block in the first place - a hoe, axe, shovel, flint and steel,
+ * shears, bone meal, and anything else whose own {@code useOn} does something to
+ * a block it's aimed at - since there's no placement-sequence alternative being
+ * held back for a non-block item; see {@link #place} for why a placeable block
+ * item doesn't get the same treatment against a non-interactable block. Pressing
+ * Place while holding nothing placeable (empty hand, or an item that isn't a
+ * block at all) narrates that specifically rather than the generic "Can't place
+ * there", which is reserved for a placeable item that got rejected by the
+ * destination itself.
  *
  * <p>{@link #cyclePlacementFacing} lets a chosen direction override where the
  * next placed block's own {@code FACING} points, via a trick rather than any
@@ -422,7 +428,18 @@ public final class BuildModeController {
 			return;
 		}
 		if (!cursorState.canBeReplaced()) {
-			if (isInteractable(cursorState.getBlock()) && interactWithCursor(client, player)) {
+			// Two separate reasons to try interacting instead of just failing: either the block
+			// itself has click behavior (isInteractable - a door, chest, lever...), or it doesn't
+			// but whatever's in hand isn't a placeable block either (a hoe, axe, shovel, flint and
+			// steel, shears, bone meal...), so there's no placement-sequence alternative being
+			// held back for it - the same "try it and see" call is the only way to find out
+			// whether the *item* does something to this block, mirroring a real right-click
+			// falling through from the block's own behavior to the held item's. A placeable block
+			// item deliberately does NOT take this path when the target block isn't interactable,
+			// so it still narrates "Can't place there" instead of silently interacting/placing on
+			// top via the item's own single-guess logic, short-circuiting attemptPlacementSequence's
+			// dedicated face search below.
+			if ((isInteractable(cursorState.getBlock()) || placingBlock(player) == null) && interactWithCursor(client, player)) {
 				narrateAfterAction(client, player);
 			} else {
 				client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_cannot_place"));
@@ -444,14 +461,17 @@ public final class BuildModeController {
 	}
 
 	/**
-	 * Whether pressing Place should interact with the cursor's own block (open a chest,
-	 * flip a lever, cycle a repeater's delay, etc.) instead of failing outright just because
-	 * the cell isn't empty. Mirrors a real right-click's own block-before-item priority - see
-	 * {@link #interactWithCursor} - but only actually attempted for blocks that define click
-	 * behavior in the first place (see {@link #declaresUseWithoutItem}), so an ordinary solid
-	 * block (stone, dirt) with a placeable item in hand still narrates "Can't place there"
-	 * instead of silently placing on top of it, which a real click's item-placement fallback
-	 * would otherwise do for a block with no click behavior of its own.
+	 * Whether the cursor's own block has click behavior of its own (open a chest, flip a
+	 * lever, cycle a repeater's delay, etc.) regardless of what's in hand - one of two
+	 * conditions {@link #place} accepts before attempting {@link #interactWithCursor} instead
+	 * of failing outright just because the cell isn't empty, mirroring a real right-click's
+	 * own block-before-item priority. Gated on blocks that define click behavior in the first
+	 * place (see {@link #declaresUseWithoutItem}) specifically so an ordinary solid block
+	 * (stone, dirt) with a placeable block item in hand still narrates "Can't place there"
+	 * instead of silently placing on top of it via the held item's own single-guess
+	 * item-placement fallback - {@link #place}'s other condition (a non-block item in hand,
+	 * e.g. a hoe) doesn't have that placement-sequence alternative to protect, so it isn't
+	 * gated on this at all.
 	 */
 	private static boolean isInteractable(Block block) {
 		return INTERACTABLE_CACHE.computeIfAbsent(block, BuildModeController::declaresUseWithoutItem);
