@@ -26,7 +26,8 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.animal.Animal;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Enemy;
@@ -679,7 +680,11 @@ public final class ScannerController {
 			case LIQUIDS -> scanLiquids(player);
 			case CROPS -> scanCrops(player);
 			case BIOMES -> scanBiomes(player);
-			case PASSIVE_MOBS -> scanEntities(player, entity -> entity instanceof Animal);
+			// instanceof Animal alone missed anything that isn't a beast - villagers, wandering
+			// traders, iron/snow/copper golems, bats, squids, allays - since none of those extend
+			// Animal. Classify by spawn MobCategory instead so any non-hostile Mob counts.
+			case PASSIVE_MOBS -> scanEntities(player, entity ->
+					entity instanceof Mob mob && !(entity instanceof Enemy) && mob.getType().getCategory() != MobCategory.MONSTER);
 			case HOSTILE_MOBS -> scanEntities(player, entity -> entity instanceof Enemy);
 			case MARKERS -> scanMarkers(player);
 			case PLAYERS -> scanPlayers(player);
