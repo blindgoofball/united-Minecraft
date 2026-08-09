@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
 
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 
@@ -131,6 +132,13 @@ import org.lwjgl.glfw.GLFW;
  * (they used to fall through every {@code instanceof} check in {@link #slotRole} to a generic
  * "Storage", since none of them recognized {@link MerchantMenu} at all).
  *
+ * <p>The Container section's own announced name is the screen's real {@link
+ * AbstractContainerScreen#getTitle}, not a fixed "Container" label - so a chest says "Chest", a
+ * furnace says "Furnace", the villager's own menu says the villager's name, and so on, matching
+ * whatever vanilla itself puts at the top of that screen. See {@link
+ * #pendingInitialSlotRecheck} for a related fix to the very first slot narrated after a screen
+ * opens, which could otherwise describe a non-empty slot as empty.
+ *
  * <p>The Creative inventory's item-picker tabs are handled separately, by
  * {@link CreativeInventoryController} - vanilla's item grid is always exactly 45 real slots
  * (a scrolling window), which doesn't fit this class's "one slot per real item" model at all.
@@ -157,6 +165,18 @@ public final class MenuAccessibilityController {
 
 	private static int tradeIndex = 0;
 
+	// The container's real contents haven't necessarily synced yet at ScreenEvents.AFTER_INIT
+	// time - the server sends the open-screen packet and the initial ClientboundContainerSetContentPacket
+	// separately, and the screen (so AFTER_INIT) fires as soon as the first is handled, before the
+	// second has necessarily been processed. Narrating the initial focused slot immediately would
+	// then describe it as empty even when it actually has an item, until the player moves focus and
+	// happens to re-narrate a since-populated slot. Set true right after that initial narration so
+	// the very next tick (by which point the content packet has arrived, in every observed case) can
+	// re-narrate with the real contents - but only if they actually differ, so a slot that was
+	// correctly empty doesn't get spoken twice.
+	private static boolean pendingInitialSlotRecheck = false;
+	private static ItemStack lastNarratedSlotItem = ItemStack.EMPTY;
+
 	private MenuAccessibilityController() {
 	}
 
@@ -169,6 +189,21 @@ public final class MenuAccessibilityController {
 			ScreenKeyboardEvents.allowKeyPress(screen).register(
 					(scr, event) -> handleKey(containerScreen, event));
 		});
+		ClientTickEvents.END_CLIENT_TICK.register(MenuAccessibilityController::recheckInitialSlotNarration);
+	}
+
+	private static void recheckInitialSlotNarration(Minecraft client) {
+		if (!pendingInitialSlotRecheck) {
+			return;
+		}
+		pendingInitialSlotRecheck = false;
+		if (client.player == null || !(client.gui.screen() instanceof AbstractContainerScreen<?> screen)) {
+			return;
+		}
+		Slot slot = currentSlot(screen.getMenu());
+		if (slot != null && !ItemStack.matches(slot.getItem(), lastNarratedSlotItem)) {
+			narrateFocusedSlot(screen, client.player, true);
+		}
 	}
 
 	/** True while a Creative screen's item-picker tab (not its Inventory tab) is selected - see the class doc. */
@@ -193,7 +228,7 @@ public final class MenuAccessibilityController {
 		}
 		recipeCraftableOnlyFilter = false;
 		currentSection = applicableSections(screen.getMenu())[0];
-		enterSection(screen, player);
+		enterSection(screen, player, true);
 	}
 
 	private static boolean handleKey(AbstractContainerScreen<?> screen, KeyEvent event) {
@@ -347,10 +382,10 @@ public final class MenuAccessibilityController {
 			}
 		}
 		currentSection = sections[Math.floorMod(i + direction, sections.length)];
-		enterSection(screen, player);
+		enterSection(screen, player, false);
 	}
 
-	private static void enterSection(AbstractContainerScreen<?> screen, LocalPlayer player) {
+	private static void enterSection(AbstractContainerScreen<?> screen, LocalPlayer player, boolean isInitialOpen) {
 		if (currentSection == Section.RECIPE_BOOK) {
 			refreshRecipeGroups(screen.getMenu(), player);
 			recipeGroupIndex = visibleRecipeGroups().isEmpty() ? -1 : 0;
@@ -372,6 +407,10 @@ public final class MenuAccessibilityController {
 			screen.setFocused(null);
 			focusedSlot = firstSlot(screen.getMenu(), player, currentSection);
 			narrateFocusedSlot(screen, player, true);
+			// See the field doc on pendingInitialSlotRecheck - only the very first narration right
+			// after a screen opens can race the container's initial content sync; a Tab switch into
+			// this section later (isInitialOpen false) is long past that window.
+			pendingInitialSlotRecheck = isInitialOpen;
 		}
 	}
 
@@ -872,6 +911,7 @@ public final class MenuAccessibilityController {
 		if (slot == null) {
 			return;
 		}
+		lastNarratedSlotItem = slot.getItem().copy();
 
 		Component itemDescription = slot.getItem().isEmpty()
 				? Component.translatable("united_minecraft.narrate.hotbar_empty")
@@ -888,7 +928,11 @@ public final class MenuAccessibilityController {
 		}
 
 		if (announceSection) {
-			message = sectionLabel(currentSection).copy().append(Component.literal(". ")).append(message);
+			// CONTAINER is a stand-in for whatever this menu actually is (chest, furnace, crafting
+			// table, the villager's own name...) - the screen's own title is exactly that, the same
+			// text vanilla itself puts at the top of the screen, rather than a fixed generic label.
+			Component sectionName = currentSection == Section.CONTAINER ? screen.getTitle() : sectionLabel(currentSection);
+			message = sectionName.copy().append(Component.literal(". ")).append(message);
 		}
 
 		ItemStack carried = menu.getCarried();
