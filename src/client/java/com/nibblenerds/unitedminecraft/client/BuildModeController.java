@@ -225,6 +225,17 @@ public final class BuildModeController {
 	}
 
 	public static void tick(Minecraft client, LocalPlayer player) {
+		if (pendingPlaceTicks < 0) {
+			// Re-lock the camera to facing every tick, the same way Scanner lock-on and Combat
+			// Mode continuously re-aim rather than setting rotation once and leaving it - Build
+			// Mode doesn't consume mouse/trackpad input, so without this an incidental nudge
+			// silently drifts the player's real yaw away from what facing still thinks it's
+			// locked to. Skipped while a rotated placement/bucket use is pending: that
+			// deliberately fakes the yaw away from facing for a couple of ticks (see
+			// startRotatedPlacement), and this would stomp it before the placement packet fires.
+			snapYawTo(player, facing);
+		}
+
 		boolean leftPressed = ClientKeyBindings.pressed(ClientKeyBindings.LOOK_LEFT);
 		boolean rightPressed = ClientKeyBindings.pressed(ClientKeyBindings.LOOK_RIGHT);
 

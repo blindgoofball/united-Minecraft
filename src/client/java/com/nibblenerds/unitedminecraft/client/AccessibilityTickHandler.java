@@ -278,7 +278,12 @@ public final class AccessibilityTickHandler {
 		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_BEARING)) {
 			if (ClientKeyBindings.isShiftDown(client)) {
-				resetRotationToNorth(client, player);
+				// Build Mode locks the player's yaw to its own facing (see BuildModeController) -
+				// snapping it to north here would silently desync the two and jerk the camera off
+				// whatever facing the cursor is actually keyed to.
+				if (!BuildModeController.isActive()) {
+					resetRotationToNorth(client, player);
+				}
 			} else {
 				narrateBearing(client, player);
 			}
