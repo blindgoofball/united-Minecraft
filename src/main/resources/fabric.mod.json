@@ -8,6 +8,9 @@
 		"NibbleNerds"
 	],
 	"contact": {
+		"homepage": "https://github.com/blindgoofball/united-Minecraft",
+		"sources": "https://github.com/blindgoofball/united-Minecraft",
+		"issues": "https://github.com/blindgoofball/united-Minecraft/issues"
 	},
 	"license": "GPL-3.0-or-later",
 	"icon": "assets/united_minecraft/icon.png",
