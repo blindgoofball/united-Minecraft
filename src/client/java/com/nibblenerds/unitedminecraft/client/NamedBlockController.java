@@ -85,6 +85,7 @@ public final class NamedBlockController {
 				Component.translatable("united_minecraft.named_block_screen.title"),
 				Component.translatable("united_minecraft.narrate.named_block_prompt"),
 				Component.translatable("united_minecraft.narrate.named_block_cancelled"),
+				Component.translatable("united_minecraft.named_block_screen.name"),
 				initialValue,
 				name -> {
 					setName(client, dimension, pos, name);

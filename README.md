@@ -39,7 +39,7 @@ Cycle through nearby things by category and get full narration, targeting, and
 navigation without needing to see or aim at them.
 
 - Categories: Interactables, Mechanisms, Items, Passive Mobs, Hostile Mobs, Trees,
-  Ores, Liquids, Crops, Biomes, Markers (see Map Markers below), and Players.
+  Ores, Liquids, Crops, Search, Biomes, Markers (see Map Markers below), and Players.
 - Like Markers, Players ignores the Scanner's normal range - every other player in
   your current dimension shows up regardless of distance, since the game already
   tells your client about all of them no matter how far away they are.
@@ -56,6 +56,11 @@ navigation without needing to see or aim at them.
   won't show up until there's an actual way to see it.
 - Ore detection (here and in the Mining Radar) only flags ore you could actually
   see - not ore sealed behind an unmined wall.
+- Search finds every visible block whose name matches a term you type - Shift+U
+  while it's the selected category (instead of naming, which it does for every
+  other category) opens a prompt for the term, then finds anything nearby whose
+  name contains it, e.g. typing "glowstone" locates glowstone blocks. Same "no
+  x-ray" rule as Ores and Liquids.
 - Biomes covers nearby distinct biomes worth exploring toward - one entry per
   biome type, at the nearest surface point of it - out to a fixed 64 blocks
   regardless of your configured Scanner range, since it's meant for
@@ -311,7 +316,7 @@ where noted.
 | B (Shift+B resets facing to north) | Narrate facing direction and pitch |
 | R | Read what's in front of me |
 | V | Narrate time of day |
-| U (Shift = name the Scanner's focused item) | Place a named map marker at your current location |
+| U (Shift = name the Scanner's focused item, or enter a Search term while Search is selected) | Place a named map marker at your current location |
 | I | Toggle Build Mode |
 | Right Control | Build Mode: place block, or interact with it if it's something clickable (chest, door, lever, repeater, etc.) |
 | Right Shift (hold) | Build Mode: break block |

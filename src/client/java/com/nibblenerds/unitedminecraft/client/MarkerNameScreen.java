@@ -16,12 +16,14 @@ import org.lwjgl.glfw.GLFW;
  * that already covers every other vanilla-style screen in the mod.
  *
  * <p>Shared by {@link MapMarkerController} (placing a marker; a blank name falls back to an
- * auto-numbered one) and {@link NamedBlockController} (naming/renaming a Scanner block).
+ * auto-numbered one), {@link NamedBlockController} (naming/renaming a Scanner block), and
+ * {@link ScannerController} (entering the Search category's term).
  */
 final class MarkerNameScreen extends Screen {
 	private final Consumer<String> onConfirm;
 	private final Component prompt;
 	private final Component cancelled;
+	private final Component fieldLabel;
 	private final String initialValue;
 	private EditBox nameBox;
 
@@ -29,21 +31,22 @@ final class MarkerNameScreen extends Screen {
 		this(Component.translatable("united_minecraft.marker_screen.title"),
 				Component.translatable("united_minecraft.narrate.marker_prompt"),
 				Component.translatable("united_minecraft.narrate.marker_cancelled"),
+				Component.translatable("united_minecraft.marker_screen.name"),
 				"", onConfirm);
 	}
 
-	MarkerNameScreen(Component title, Component prompt, Component cancelled, String initialValue, Consumer<String> onConfirm) {
+	MarkerNameScreen(Component title, Component prompt, Component cancelled, Component fieldLabel, String initialValue, Consumer<String> onConfirm) {
 		super(title);
 		this.prompt = prompt;
 		this.cancelled = cancelled;
+		this.fieldLabel = fieldLabel;
 		this.initialValue = initialValue;
 		this.onConfirm = onConfirm;
 	}
 
 	@Override
 	protected void init() {
-		nameBox = new EditBox(this.font, this.width / 2 - 100, this.height / 2 - 10, 200, 20,
-				Component.translatable("united_minecraft.marker_screen.name"));
+		nameBox = new EditBox(this.font, this.width / 2 - 100, this.height / 2 - 10, 200, 20, fieldLabel);
 		nameBox.setMaxLength(64);
 		nameBox.setValue(initialValue);
 		addRenderableWidget(nameBox);

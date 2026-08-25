@@ -7,6 +7,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiPredicate;
@@ -136,6 +137,9 @@ public final class ScannerController {
 
 	private static Entity lockedEntity;
 
+	/** The Search category's current term - blank until the player enters one via {@link #openSearchPrompt}. */
+	private static String searchTerm = "";
+
 	private ScannerController() {
 	}
 
@@ -152,6 +156,7 @@ public final class ScannerController {
 		items = List.of();
 		itemIndex = 0;
 		lockedEntity = null;
+		searchTerm = "";
 	}
 
 	public static void tick(Minecraft client, LocalPlayer player) {
@@ -231,9 +236,15 @@ public final class ScannerController {
 	 * narrates it (cycling with Page Up/Down, targeting, etc.), the same way a Map Marker's
 	 * name does - see {@link #itemName}. Entities have no fixed position to key a saved name
 	 * off of, so this narrates a no-op message while one is focused instead of doing nothing
-	 * silently.
+	 * silently. The Search category has no "focused item" to name yet the first time it's
+	 * opened - Shift+U there means "enter a search term" instead, via {@link
+	 * #openSearchPrompt}.
 	 */
 	public static void nameFocusedItem(Minecraft client, LocalPlayer player) {
+		if (categoryIndex != -1 && CATEGORIES[categoryIndex] == ScannerCategory.SEARCH) {
+			openSearchPrompt(client, player);
+			return;
+		}
 		if (categoryIndex == -1 || CATEGORIES[categoryIndex] == ScannerCategory.MARKERS) {
 			return;
 		}
@@ -247,6 +258,30 @@ public final class ScannerController {
 		String currentName = NamedBlockController.findAt(dimension, pos);
 		NamedBlockController.openNameScreen(client, dimension, pos, currentName,
 				() -> rescanAndRefocus(player, refreshed -> pos.equals(refreshed.blockPos())));
+	}
+
+	/**
+	 * Opens a prompt for the Search category's term - typing something like "glowstone" then
+	 * re-scans for every visible block whose name contains it, the same "don't x-ray"
+	 * visibility rule Ores and Liquids use (see {@link #scanSearch}). Pre-filled with whatever
+	 * term is already set, so adjusting a search doesn't mean retyping it from scratch.
+	 */
+	private static void openSearchPrompt(Minecraft client, LocalPlayer player) {
+		client.gui.setScreen(new MarkerNameScreen(
+				Component.translatable("united_minecraft.search_screen.title"),
+				Component.translatable("united_minecraft.narrate.search_prompt"),
+				Component.translatable("united_minecraft.narrate.search_cancelled"),
+				Component.translatable("united_minecraft.search_screen.term"),
+				searchTerm,
+				term -> {
+					searchTerm = term == null ? "" : term.trim();
+					items = scan(ScannerCategory.SEARCH, player);
+					itemIndex = 0;
+					client.getNarrator().saySystemNow(ScannerCategory.SEARCH.label().append(Component.literal(": ")).append(
+							items.isEmpty()
+									? Component.translatable("united_minecraft.narrate.scanner_empty")
+									: describeItem(ScannerCategory.SEARCH, items.get(0), player)));
+				}));
 	}
 
 	private static void announceCoordinates(Minecraft client, BlockPos pos) {
@@ -350,11 +385,15 @@ public final class ScannerController {
 		items = scan(category, player);
 		itemIndex = 0;
 
-		Component message = category.label().append(Component.literal(": ")).append(
-				items.isEmpty()
-						? Component.translatable("united_minecraft.narrate.scanner_empty")
-						: describeItem(category, items.get(0), player));
-		client.getNarrator().saySystemNow(message);
+		Component summary;
+		if (category == ScannerCategory.SEARCH && searchTerm.isBlank()) {
+			summary = Component.translatable("united_minecraft.narrate.search_no_term");
+		} else {
+			summary = items.isEmpty()
+					? Component.translatable("united_minecraft.narrate.scanner_empty")
+					: describeItem(category, items.get(0), player);
+		}
+		client.getNarrator().saySystemNow(category.label().append(Component.literal(": ")).append(summary));
 	}
 
 	private static void stepItem(Minecraft client, LocalPlayer player, int direction) {
@@ -679,6 +718,7 @@ public final class ScannerController {
 					OreDetection.isValuableOre(state) && OreDetection.isExposed(player.level(), pos, player.getEyePosition()));
 			case LIQUIDS -> scanLiquids(player);
 			case CROPS -> scanCrops(player);
+			case SEARCH -> scanSearch(player);
 			case BIOMES -> scanBiomes(player);
 			// instanceof Animal alone missed anything that isn't a beast - villagers, wandering
 			// traders, iron/snow/copper golems, bats, squids, allays - since none of those extend
@@ -808,6 +848,31 @@ public final class ScannerController {
 		}
 		results.sort(Comparator.comparingDouble(ScannerItem::distance));
 		return results;
+	}
+
+	/**
+	 * Matches against a player-entered search term instead of a fixed set of block types - see
+	 * {@link #openSearchPrompt}. Deliberately not x-ray, same as Ores/Liquids: {@link
+	 * OreDetection#isExposed} only counts a match already bordering air or a fluid and actually
+	 * visible through that gap, not sealed behind unmined blocks.
+	 */
+	private static List<ScannerItem> scanSearch(LocalPlayer player) {
+		if (searchTerm.isBlank()) {
+			return List.of();
+		}
+		String term = searchTerm.toLowerCase(Locale.ROOT);
+		return scanBlocks(player, (pos, state) -> !state.isAir()
+				&& matchesSearchTerm(state, term)
+				&& OreDetection.isExposed(player.level(), pos, player.getEyePosition()));
+	}
+
+	/** Matches either the block's localized display name or its registry id (underscores treated as spaces) against {@code term}. */
+	private static boolean matchesSearchTerm(BlockState state, String term) {
+		if (state.getBlock().getName().getString().toLowerCase(Locale.ROOT).contains(term)) {
+			return true;
+		}
+		String path = BuiltInRegistries.BLOCK.getKey(state.getBlock()).getPath().replace('_', ' ');
+		return path.contains(term);
 	}
 
 	private static List<ScannerItem> scanEntities(LocalPlayer player, Predicate<Entity> predicate) {
