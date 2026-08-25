@@ -34,6 +34,14 @@ no server-side install needed, and it works on any vanilla server.
   it changes to a different block, not for every step across the same one, so
   sweeping across a stone wall doesn't repeat "Stone" over and over. Air is
   never narrated.
+- Reading a written book narrates the current page's text out loud - turning
+  the page (buttons or Page Up/Down) narrates the new page automatically,
+  since vanilla itself only ever includes the page text in a book's narration
+  passively, with nothing that actually re-triggers it when you turn a page.
+- Writing a book and quill narrates the current page's text when you open it
+  or turn the page - vanilla doesn't narrate page text there at all, even
+  passively. Typing, pasting, deleting, and moving the cursor within a page
+  all narrate incrementally too, the same as any other text field.
 - Reactive movement narration: if you're stuck walking into something, it tells
   you what (a wall, a wall you could jump, a drop-off, water, lava) and, if
   there's a clear way around it, which side to go.

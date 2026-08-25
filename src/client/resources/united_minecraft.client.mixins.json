@@ -11,7 +11,11 @@
 		"AnvilScreenAccessorMixin",
 		"EditBoxMixin",
 		"ChatScreenMixin",
-		"SuggestionsListMixin"
+		"SuggestionsListMixin",
+		"BookViewScreenMixin",
+		"MultilineTextFieldMixin",
+		"MultiLineEditBoxMixin",
+		"BookEditScreenMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
