@@ -213,6 +213,8 @@
 	"united_minecraft.direction.down": "Down",
 	"united_minecraft.direction.above": "Above",
 	"united_minecraft.direction.below": "Below",
+	"united_minecraft.direction.top": "Top",
+	"united_minecraft.direction.bottom": "Bottom",
 	"united_minecraft.settings_screen.title": "United Minecraft Settings",
 	"united_minecraft.settings_screen.hostile_radar_enabled": "Hostile Radar",
 	"united_minecraft.settings_screen.hostile_radar_range": "Hostile Radar Range",

@@ -3,6 +3,7 @@ package com.nibblenerds.unitedminecraft.client;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.ClipContext;
@@ -60,7 +61,28 @@ public final class SurroundingsScanner {
 		BlockPos pos = hit.getBlockPos();
 		BlockState state = level.getBlockState(pos);
 		int distance = (int) Math.round(from.distanceTo(hit.getLocation()));
-		return new BlockHit(state.getBlock().getName(), distance);
+		Component name = state.getBlock().getName().copy()
+				.append(Component.literal(", "))
+				.append(faceName(hit.getDirection()));
+		return new BlockHit(name, distance);
+	}
+
+	/**
+	 * Which side of the block the raycast actually landed on - useful for placement/orientation
+	 * the same way it is for a sighted player glancing at where their crosshair lands. Top/Bottom
+	 * rather than Up/Down for the vertical faces, distinct from the pitch-facing narration
+	 * elsewhere ({@link CameraUtil}), since "the block's top face" and "which way you're looking"
+	 * are different things worth different words.
+	 */
+	private static Component faceName(Direction direction) {
+		return Component.translatable(switch (direction) {
+			case NORTH -> "united_minecraft.direction.north";
+			case SOUTH -> "united_minecraft.direction.south";
+			case EAST -> "united_minecraft.direction.east";
+			case WEST -> "united_minecraft.direction.west";
+			case UP -> "united_minecraft.direction.top";
+			case DOWN -> "united_minecraft.direction.bottom";
+		});
 	}
 
 	private static EntityHit findNearestEntityAhead(LocalPlayer player) {

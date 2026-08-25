@@ -25,7 +25,10 @@ no server-side install needed, and it works on any vanilla server.
   midnight. A dedicated key instead reads the full picture on demand - day
   count, current period, and a clock-style time.
 - "Read what's in front of me": narrates the nearest block and/or entity ahead,
-  with distance.
+  with distance. For a block, also narrates which face your crosshair actually
+  landed on (North/East/South/West/Top/Bottom) - the same raycast the vanilla
+  crosshair itself uses, so it's exactly what you'd be interacting with if you
+  clicked.
 - Reactive movement narration: if you're stuck walking into something, it tells
   you what (a wall, a wall you could jump, a drop-off, water, lava) and, if
   there's a clear way around it, which side to go.
