@@ -29,6 +29,11 @@ no server-side install needed, and it works on any vanilla server.
   landed on (North/East/South/West/Top/Bottom) - the same raycast the vanilla
   crosshair itself uses, so it's exactly what you'd be interacting with if you
   clicked.
+- Auto Crosshair Narration: toggleable with Shift+R, automatically narrates
+  whatever block your crosshair is resting on as you look around - only when
+  it changes to a different block, not for every step across the same one, so
+  sweeping across a stone wall doesn't repeat "Stone" over and over. Air is
+  never narrated.
 - Reactive movement narration: if you're stuck walking into something, it tells
   you what (a wall, a wall you could jump, a drop-off, water, lava) and, if
   there's a clear way around it, which side to go.
@@ -317,7 +322,7 @@ where noted.
 | C (Shift = light level, of Build Mode's cursor if active) | Narrate coordinates, standing block, and biome |
 | H (Shift = experience level) | Narrate health and hunger |
 | B (Shift+B resets facing to north) | Narrate facing direction and pitch |
-| R | Read what's in front of me |
+| R (Shift = toggle Auto Crosshair Narration) | Read what's in front of me |
 | V | Narrate time of day |
 | U (Shift = name the Scanner's focused item, or enter a Search term while Search is selected) | Place a named map marker at your current location |
 | I | Toggle Build Mode |

@@ -102,6 +102,7 @@ public final class AccessibilityTickHandler {
 			ArrowHitController.reset();
 			FallWarningController.reset();
 			TreeChoppingAssist.reset();
+			AutoCrosshairNarrationController.reset();
 			return;
 		}
 
@@ -222,6 +223,7 @@ public final class AccessibilityTickHandler {
 				NavRadarController.tick(client, player);
 				MiningRadarController.tick(client, player);
 				FallWarningController.tick(client, player);
+				AutoCrosshairNarrationController.tick(client, player);
 			}
 			// Runs no matter which mode owns rotation - the trail should keep recording real
 			// movement regardless of what else is going on, except while it's driving that
@@ -289,7 +291,11 @@ public final class AccessibilityTickHandler {
 			}
 		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.SCAN_SURROUNDINGS)) {
-			SurroundingsScanner.narrateFront(client, player);
+			if (ClientKeyBindings.isShiftDown(client)) {
+				AutoCrosshairNarrationController.toggle(client);
+			} else {
+				SurroundingsScanner.narrateFront(client, player);
+			}
 		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_TIME)) {
 			narrateTimeOfDay(client, player);
