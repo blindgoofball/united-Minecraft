@@ -8,7 +8,10 @@
 		"ScreenNarrationDelayMixin",
 		"CreativeModeInventoryScreenAccessorMixin",
 		"CreativeSlotWrapperAccessorMixin",
-		"AnvilScreenAccessorMixin"
+		"AnvilScreenAccessorMixin",
+		"EditBoxMixin",
+		"ChatScreenMixin",
+		"SuggestionsListMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
