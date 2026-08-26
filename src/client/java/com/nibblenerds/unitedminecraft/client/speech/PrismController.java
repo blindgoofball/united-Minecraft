@@ -27,13 +27,14 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
  * cross-platform library that picks the best available screen reader or TTS
  * backend on the current platform, via the Java Foreign Function & Memory API.
  *
- * <p>Prism ships one native library per platform under
- * {@code src/client/resources/prism/<platform>/}. Only Windows is wired up today
- * ({@code windows-x86_64/prism.dll}); adding macOS/Linux support later is just a
- * matter of dropping {@code libprism.dylib}/{@code libprism.so} into a matching
- * directory and adding a case to {@link NativeLibrary#detect()} - the rest of this
- * class (method handles, speak/stop/shutdown) is already portable since Prism's C
- * ABI is identical across platforms.
+ * <p>Prism ships one native library per platform/architecture under
+ * {@code src/client/resources/prism/<platform>/} - Windows (x86-64, arm64), macOS
+ * (a single universal x86-64 + arm64 dylib), and Linux (x86-64, arm64) are all
+ * wired up. Adding another platform/architecture later is just a matter of
+ * dropping its native library into a matching directory and adding a case to
+ * {@link NativeLibrary#detect()} - the rest of this class (method handles,
+ * speak/stop/shutdown) is already portable since Prism's C ABI is identical
+ * across platforms.
  *
  * <p>Like the DLL it replaces, the native library can only be loaded from disk, so
  * it's extracted from the classpath to a temp file the first time it's needed.
@@ -273,13 +274,32 @@ public final class PrismController {
 		static Optional<NativeLibrary> detect() {
 			String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
 			String arch = System.getProperty("os.arch", "").toLowerCase(Locale.ROOT);
+			boolean isArm64 = arch.equals("aarch64") || arch.equals("arm64");
+			boolean isX86_64 = arch.equals("amd64") || arch.equals("x86_64");
 
-			// Only Windows x86-64 is wired up today. To add another platform, drop its
-			// native library under src/client/resources/prism/<dir>/ and add a case here -
-			// PrismController itself needs no other changes, since Prism's C ABI is
-			// identical across platforms.
-			if (os.contains("win") && (arch.equals("amd64") || arch.equals("x86_64"))) {
-				return Optional.of(new NativeLibrary("/prism/windows-x86_64/prism.dll", "prism.dll"));
+			// To add another platform/architecture, drop its native library under
+			// src/client/resources/prism/<dir>/ and add a case here - PrismController
+			// itself needs no other changes, since Prism's C ABI is identical across
+			// platforms.
+			if (os.contains("win")) {
+				if (isX86_64) {
+					return Optional.of(new NativeLibrary("/prism/windows-x86_64/prism.dll", "prism.dll"));
+				}
+				if (isArm64) {
+					return Optional.of(new NativeLibrary("/prism/windows-aarch64/prism.dll", "prism.dll"));
+				}
+			} else if (os.contains("mac") || os.contains("darwin")) {
+				// One universal (x86_64 + arm64) dylib covers both Intel and Apple Silicon.
+				if (isX86_64 || isArm64) {
+					return Optional.of(new NativeLibrary("/prism/macos-universal/libprism.dylib", "libprism.dylib"));
+				}
+			} else if (os.contains("nux")) {
+				if (isX86_64) {
+					return Optional.of(new NativeLibrary("/prism/linux-x86_64/libprism.so", "libprism.so"));
+				}
+				if (isArm64) {
+					return Optional.of(new NativeLibrary("/prism/linux-aarch64/libprism.so", "libprism.so"));
+				}
 			}
 
 			return Optional.empty();

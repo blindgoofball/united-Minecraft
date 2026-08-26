@@ -1,13 +1,21 @@
 Native builds of [Prism](https://github.com/ethindp/prism) live here, one directory
 per platform/architecture:
 
-- `windows-x86_64/prism.dll` - the only platform wired up today.
+- `windows-x86_64/prism.dll`
+- `windows-aarch64/prism.dll`
+- `macos-universal/libprism.dylib` - a single universal binary covering both
+  Intel and Apple Silicon, so there's no separate `macos-x86_64`/`macos-aarch64`.
+- `linux-x86_64/libprism.so`
+- `linux-aarch64/libprism.so`
 
-To add another platform, drop its build (e.g. `macos-x86_64/libprism.dylib`,
-`macos-aarch64/libprism.dylib`, `linux-x86_64/libprism.so`) in a matching directory
-and add a case to `PrismController.NativeLibrary#detect()` - everything else
-(method handles, speak/stop/shutdown) is already portable, since Prism's C ABI is
-identical across platforms.
+These are the `dynamic/release` builds from Prism's prebuilt SDK release for each
+platform - not `static` (`.a`/`.lib` files are for linking into a C/C++ binary at
+compile time, not for runtime loading) and not `debug`.
+
+To add another platform/architecture, drop its native library in a matching
+directory and add a case to `PrismController.NativeLibrary#detect()` - everything
+else (method handles, speak/stop/shutdown) is already portable, since Prism's C
+ABI is identical across platforms.
 
 At runtime,
 `com.nibblenerds.unitedminecraft.client.speech.PrismController` reads the

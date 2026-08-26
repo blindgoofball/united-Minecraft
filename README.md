@@ -14,9 +14,9 @@ no server-side install needed, and it works on any vanilla server.
   picks the best available screen reader (or, failing that, TTS backend) on your
   system, for better screen reader output than Minecraft's built-in narrator.
   Falls back to the normal narrator automatically when no such backend is
-  available. Currently Windows-only; see
+  available. Works on Windows, macOS, and Linux (x86-64 and arm64); see
   [`src/client/resources/prism/README.md`](src/client/resources/prism/README.md)
-  for details, including how to add other platforms.
+  for details.
 - On-demand readouts for coordinates/standing block/biome, health and hunger, and
   facing direction in compass degrees with pitch, each on their own key. Shift on the
   coordinates key instead reads the light level (combined, plus block/sky split) -
