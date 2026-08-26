@@ -10,11 +10,13 @@ no server-side install needed, and it works on any vanilla server.
 
 ### Narration
 
-- Narration is routed through [NVDA](https://www.nvaccess.org/) when it's running,
-  for better screen reader output than Minecraft's built-in narrator. Falls back
-  to the normal narrator automatically when NVDA isn't running. See
-  [`src/client/resources/nvda/README.md`](src/client/resources/nvda/README.md)
-  for setup details.
+- Narration is routed through [Prism](https://github.com/ethindp/prism), which
+  picks the best available screen reader (or, failing that, TTS backend) on your
+  system, for better screen reader output than Minecraft's built-in narrator.
+  Falls back to the normal narrator automatically when no such backend is
+  available. Currently Windows-only; see
+  [`src/client/resources/prism/README.md`](src/client/resources/prism/README.md)
+  for details, including how to add other platforms.
 - On-demand readouts for coordinates/standing block/biome, health and hunger, and
   facing direction in compass degrees with pitch, each on their own key. Shift on the
   coordinates key instead reads the light level (combined, plus block/sky split) -
@@ -315,10 +317,10 @@ on the server you're playing on.
    Settings > Narrator. This is what actually triggers speech; United
    Minecraft narrates through it rather than replacing it.
 
-If [NVDA](https://www.nvaccess.org/) is running, United Minecraft speaks
-through it automatically for better screen-reader output - there's nothing
-to set up for that part. Without NVDA running, it falls back to Minecraft's
-normal narrator on its own.
+If a screen reader (or other Prism-supported speech backend) is available,
+United Minecraft speaks through it automatically for better screen-reader
+output - there's nothing to set up for that part. Otherwise, it falls back to
+Minecraft's normal narrator on its own.
 
 ## Default Key Bindings
 
