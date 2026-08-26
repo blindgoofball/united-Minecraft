@@ -12,8 +12,11 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.Util;
+import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.MoonPhase;
 import net.minecraft.world.level.biome.Biome;
 
 /**
@@ -237,6 +240,9 @@ public final class AccessibilityTickHandler {
 			// Same reasoning - a fired arrow keeps flying, and needs watching for a hit,
 			// regardless of what else the player is doing once it's loosed.
 			ArrowHitController.tick(client, player);
+			// Same reasoning - the attack-strength meter keeps recharging regardless of what
+			// else is going on, and CombatCueMode.ALWAYS needs it tracked outside Combat Mode too.
+			CombatModeController.tickAttackCue(client, player);
 		}
 
 		boolean rotationOwned = BuildModeController.isActive() || ScannerController.isLocked() || AutoWalkController.isActive()
@@ -298,7 +304,11 @@ public final class AccessibilityTickHandler {
 			}
 		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_TIME)) {
-			narrateTimeOfDay(client, player);
+			if (ClientKeyBindings.isShiftDown(client)) {
+				narrateWeatherAndMoon(client, player);
+			} else {
+				narrateTimeOfDay(client, player);
+			}
 		}
 	}
 
@@ -483,6 +493,45 @@ public final class AccessibilityTickHandler {
 		client.getNarrator().saySystemNow(message);
 	}
 
+	/** Shares the Narrate Time of Day key via Shift, same layering as the mod's other dual-purpose keys. */
+	private static void narrateWeatherAndMoon(Minecraft client, LocalPlayer player) {
+		Level level = player.level();
+		String weatherKey;
+		if (level.isThundering()) {
+			weatherKey = "united_minecraft.narrate.weather_thunder";
+		} else if (level.isRaining()) {
+			BlockPos pos = player.blockPosition();
+			Biome.Precipitation precipitation = level.getBiome(pos).value().getPrecipitationAt(pos, level.getSeaLevel());
+			weatherKey = precipitation == Biome.Precipitation.SNOW
+					? "united_minecraft.narrate.weather_snow"
+					: "united_minecraft.narrate.weather_rain";
+		} else {
+			weatherKey = "united_minecraft.narrate.weather_clear";
+		}
+		Component message = Component.translatable(weatherKey);
+
+		// Moon phase only matters once it's actually visible - matches the same night threshold
+		// used for the ambient "night" time-of-day narration.
+		if (timePeriodIndex(player) >= 3) {
+			MoonPhase phase = level.environmentAttributes().getDimensionValue(EnvironmentAttributes.MOON_PHASE);
+			message = message.copy().append(Component.literal(". ")).append(Component.translatable(moonPhaseKey(phase)));
+		}
+		client.getNarrator().saySystemNow(message);
+	}
+
+	private static String moonPhaseKey(MoonPhase phase) {
+		return switch (phase) {
+			case FULL_MOON -> "united_minecraft.narrate.moon_full";
+			case WANING_GIBBOUS -> "united_minecraft.narrate.moon_waning_gibbous";
+			case THIRD_QUARTER -> "united_minecraft.narrate.moon_third_quarter";
+			case WANING_CRESCENT -> "united_minecraft.narrate.moon_waning_crescent";
+			case NEW_MOON -> "united_minecraft.narrate.moon_new";
+			case WAXING_CRESCENT -> "united_minecraft.narrate.moon_waxing_crescent";
+			case FIRST_QUARTER -> "united_minecraft.narrate.moon_first_quarter";
+			case WAXING_GIBBOUS -> "united_minecraft.narrate.moon_waxing_gibbous";
+		};
+	}
+
 	private static void narrateCoordinates(Minecraft client, LocalPlayer player) {
 		BlockPos pos = player.blockPosition();
 		Component standingOn = player.level().getBlockState(pos.below()).getBlock().getName();
@@ -510,12 +559,17 @@ public final class AccessibilityTickHandler {
 				"united_minecraft.narrate.light_level", combined, blockLight, skyLight));
 	}
 
+	/** Reports on the same 10-heart/10-shank scale the sighted HUD shows, half-point precision included. */
 	private static void narrateHealth(Minecraft client, LocalPlayer player) {
-		int health = Math.round(player.getHealth());
-		int maxHealth = Math.round(player.getMaxHealth());
-		int hunger = player.getFoodData().getFoodLevel();
+		double hearts = player.getHealth() / 2.0;
+		double maxHearts = player.getMaxHealth() / 2.0;
+		double hunger = player.getFoodData().getFoodLevel() / 2.0;
 		client.getNarrator().saySystemNow(Component.translatable(
-				"united_minecraft.narrate.health", health, maxHealth, hunger));
+				"united_minecraft.narrate.health", formatHalf(hearts), formatHalf(maxHearts), formatHalf(hunger)));
+	}
+
+	private static String formatHalf(double value) {
+		return value == Math.rint(value) ? String.valueOf((long) value) : String.format(Locale.ROOT, "%.1f", value);
 	}
 
 	/** Shares the Narrate Health key via Shift, same layering as Narrate Coordinates' light-level readout. */

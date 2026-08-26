@@ -1,7 +1,11 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import java.util.List;
+import java.util.Locale;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.CycleButton;
@@ -27,6 +31,8 @@ public final class SettingsScreen extends Screen {
 	private static final int ROW_WIDTH = 240;
 	private static final int ROW_HEIGHT = 20;
 	private static final int ROW_SPACING = 4;
+	// 9 original setting rows + the Attack Ready Cue cycle + the glossary button + Done.
+	private static final int ROW_COUNT = 12;
 
 	public SettingsScreen() {
 		super(Component.translatable("united_minecraft.settings_screen.title"));
@@ -36,7 +42,7 @@ public final class SettingsScreen extends Screen {
 	protected void init() {
 		UnitedMinecraftConfig config = UnitedMinecraftConfig.get();
 		int x = this.width / 2 - ROW_WIDTH / 2;
-		int y = this.height / 2 - (ROW_HEIGHT + ROW_SPACING) * 5 - ROW_HEIGHT / 2;
+		int y = this.height / 2 - (ROW_HEIGHT + ROW_SPACING) * (ROW_COUNT / 2) - ROW_HEIGHT / 2;
 
 		y = addToggle(x, y, "united_minecraft.settings_screen.hostile_radar_enabled",
 				config.hostileRadarEnabled, value -> config.hostileRadarEnabled = value);
@@ -58,11 +64,30 @@ public final class SettingsScreen extends Screen {
 				"united_minecraft.settings_screen.scanner_range", value -> config.scannerRange = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.build_mode_action_narration_enabled",
 				config.buildModeActionNarrationEnabled, value -> config.buildModeActionNarrationEnabled = value);
+		y = addCycle(x, y, "united_minecraft.settings_screen.combat_cue_mode",
+				List.of(UnitedMinecraftConfig.CombatCueMode.values()), config.combatCueMode,
+				mode -> Component.translatable("united_minecraft.settings_screen.combat_cue_mode." + mode.name().toLowerCase(Locale.ROOT)),
+				value -> config.combatCueMode = value);
+
+		addRenderableWidget(Button.builder(Component.translatable("united_minecraft.settings_screen.sound_glossary"),
+				button -> Minecraft.getInstance().gui.setScreen(new SoundGlossaryScreen()))
+				.bounds(x, y, ROW_WIDTH, ROW_HEIGHT)
+				.build());
+		y += ROW_HEIGHT + ROW_SPACING;
 
 		addRenderableWidget(Button.builder(Component.translatable("united_minecraft.settings_screen.done"),
 				button -> onClose())
 				.bounds(x, y + ROW_SPACING, ROW_WIDTH, ROW_HEIGHT)
 				.build());
+	}
+
+	private <T> int addCycle(int x, int y, String labelKey, List<T> values, T initial,
+			Function<T, Component> valueLabel, Consumer<T> onChange) {
+		addRenderableWidget(CycleButton.<T>builder(valueLabel::apply, initial)
+				.withValues(values)
+				.create(x, y, ROW_WIDTH, ROW_HEIGHT, Component.translatable(labelKey),
+						(button, value) -> onChange.accept(value)));
+		return y + ROW_HEIGHT + ROW_SPACING;
 	}
 
 	private int addToggle(int x, int y, String labelKey, boolean initial, Consumer<Boolean> onChange) {

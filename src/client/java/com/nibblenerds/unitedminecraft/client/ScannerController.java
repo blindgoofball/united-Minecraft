@@ -191,10 +191,18 @@ public final class ScannerController {
 			switchCategory(client, player, 1);
 		}
 		if (pageDown) {
-			stepItem(client, player, 1);
+			if (ClientKeyBindings.isModifierDown(client)) {
+				stepItemSameType(client, player, 1);
+			} else {
+				stepItem(client, player, 1);
+			}
 		}
 		if (pageUp) {
-			stepItem(client, player, -1);
+			if (ClientKeyBindings.isModifierDown(client)) {
+				stepItemSameType(client, player, -1);
+			} else {
+				stepItem(client, player, -1);
+			}
 		}
 		if (targetPressed) {
 			target(client, player);
@@ -277,10 +285,12 @@ public final class ScannerController {
 					searchTerm = term == null ? "" : term.trim();
 					items = scan(ScannerCategory.SEARCH, player);
 					itemIndex = 0;
-					client.getNarrator().saySystemNow(ScannerCategory.SEARCH.label().append(Component.literal(": ")).append(
-							items.isEmpty()
-									? Component.translatable("united_minecraft.narrate.scanner_empty")
-									: describeItem(ScannerCategory.SEARCH, items.get(0), player)));
+					Component summary = items.isEmpty()
+							? Component.translatable("united_minecraft.narrate.scanner_empty")
+							: Component.translatable("united_minecraft.narrate.scanner_count", items.size())
+									.append(Component.literal(". "))
+									.append(describeItem(ScannerCategory.SEARCH, items.get(0), player));
+					client.getNarrator().saySystemNow(ScannerCategory.SEARCH.label().append(Component.literal(", ")).append(summary));
 				}));
 	}
 
@@ -385,15 +395,21 @@ public final class ScannerController {
 		items = scan(category, player);
 		itemIndex = 0;
 
-		Component summary;
 		if (category == ScannerCategory.SEARCH && searchTerm.isBlank()) {
-			summary = Component.translatable("united_minecraft.narrate.search_no_term");
-		} else {
-			summary = items.isEmpty()
-					? Component.translatable("united_minecraft.narrate.scanner_empty")
-					: describeItem(category, items.get(0), player);
+			client.getNarrator().saySystemNow(category.label().append(Component.literal(", "))
+					.append(Component.translatable("united_minecraft.narrate.search_no_term")));
+			return;
 		}
-		client.getNarrator().saySystemNow(category.label().append(Component.literal(": ")).append(summary));
+		if (items.isEmpty()) {
+			client.getNarrator().saySystemNow(category.label().append(Component.literal(", "))
+					.append(Component.translatable("united_minecraft.narrate.scanner_empty")));
+			return;
+		}
+		// "Trees, 13" - just the category and count, no extra wording - then the nearest item.
+		client.getNarrator().saySystemNow(category.label().append(Component.literal(", "))
+				.append(Component.translatable("united_minecraft.narrate.scanner_count", items.size()))
+				.append(Component.literal(". "))
+				.append(describeItem(category, items.get(0), player)));
 	}
 
 	private static void stepItem(Minecraft client, LocalPlayer player, int direction) {
@@ -401,7 +417,54 @@ public final class ScannerController {
 			return;
 		}
 		itemIndex = Math.floorMod(itemIndex + direction, items.size());
-		client.getNarrator().saySystemNow(describeItem(CATEGORIES[categoryIndex], items.get(itemIndex), player));
+		client.getNarrator().saySystemNow(
+				describeItemWithPosition(CATEGORIES[categoryIndex], items.get(itemIndex), player, itemIndex, items.size()));
+	}
+
+	/**
+	 * Jumps to the next/previous item that's the "same kind of thing" as the currently
+	 * selected one - e.g. skipping past every cow and pig to reach the next sheep - instead
+	 * of stepping one item at a time through the whole distance-sorted list like {@link
+	 * #stepItem}. Falls back to re-narrating the current item if nothing else in the list
+	 * matches. See {@link #sameType} for what "same kind" means per category.
+	 */
+	private static void stepItemSameType(Minecraft client, LocalPlayer player, int direction) {
+		if (categoryIndex == -1 || items.isEmpty()) {
+			return;
+		}
+		ScannerCategory category = CATEGORIES[categoryIndex];
+		ScannerItem current = items.get(itemIndex);
+		Level level = player.level();
+		int size = items.size();
+		for (int step = 1; step <= size; step++) {
+			int candidate = Math.floorMod(itemIndex + direction * step, size);
+			if (sameType(category, current, items.get(candidate), level)) {
+				itemIndex = candidate;
+				client.getNarrator().saySystemNow(describeItemWithPosition(category, items.get(itemIndex), player, itemIndex, size));
+				return;
+			}
+		}
+		client.getNarrator().saySystemNow(describeItemWithPosition(category, current, player, itemIndex, size));
+	}
+
+	/**
+	 * Whether {@code a} and {@code b} are the same species/block type - entities compare by
+	 * {@link net.minecraft.world.entity.EntityType}, blocks by their live {@link Block}
+	 * instance at each item's stored position (the same live-lookup pattern {@link
+	 * #describeItem}/{@link #itemName} already use, since a scanned block can change between
+	 * scan time and now). Markers are individually named rather than typed, so they never match.
+	 */
+	private static boolean sameType(ScannerCategory category, ScannerItem a, ScannerItem b, Level level) {
+		if (category == ScannerCategory.MARKERS) {
+			return false;
+		}
+		if (a.entity() != null && b.entity() != null) {
+			return a.entity().getType() == b.entity().getType();
+		}
+		if (a.blockPos() != null && b.blockPos() != null) {
+			return level.getBlockState(a.blockPos()).getBlock() == level.getBlockState(b.blockPos()).getBlock();
+		}
+		return false;
 	}
 
 	private static void target(Minecraft client, LocalPlayer player) {
@@ -595,6 +658,13 @@ public final class ScannerController {
 			}
 		}
 		return Component.translatable("united_minecraft.narrate.scanner_item", name, distance, direction);
+	}
+
+	/** {@link #describeItem} plus "item N of M" - used when cycling ({@link #stepItem}/{@link #stepItemSameType}), not on category select. */
+	private static Component describeItemWithPosition(ScannerCategory category, ScannerItem item, LocalPlayer player, int index, int total) {
+		return describeItem(category, item, player).copy()
+				.append(Component.literal(", "))
+				.append(Component.translatable("united_minecraft.narrate.scanner_position", index + 1, total));
 	}
 
 	/** Null when {@code to} is within the normal vertical range for a plain compass heading. */

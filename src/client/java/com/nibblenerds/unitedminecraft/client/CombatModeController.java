@@ -2,7 +2,11 @@ package com.nibblenerds.unitedminecraft.client;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.monster.EnderMan;
@@ -34,6 +38,9 @@ public final class CombatModeController {
 
 	private static boolean enabled;
 	private static Entity target;
+	// Starts true so a fresh world/session doesn't immediately narrate a false "ready" cue -
+	// same reasoning as this mod's other edge-triggered ambient narration.
+	private static boolean attackReadyLastTick = true;
 
 	private CombatModeController() {
 	}
@@ -45,6 +52,7 @@ public final class CombatModeController {
 	public static void reset() {
 		enabled = false;
 		target = null;
+		attackReadyLastTick = true;
 	}
 
 	public static void toggle(Minecraft client, LocalPlayer player) {
@@ -88,6 +96,37 @@ public final class CombatModeController {
 		if (target != null) {
 			CameraUtil.aimAtEntity(player, target);
 		}
+	}
+
+	/**
+	 * Plays an audio cue the moment the weapon's attack-strength meter (the cooldown that
+	 * scales down damage on an early swing) refills to full - edge-triggered off {@link
+	 * #attackReadyLastTick}, same pattern as this mod's other ambient narration. Runs every
+	 * tick regardless of whether Combat Mode is active, since {@link
+	 * UnitedMinecraftConfig.CombatCueMode#ALWAYS} needs to track it outside Combat Mode too.
+	 */
+	public static void tickAttackCue(Minecraft client, LocalPlayer player) {
+		UnitedMinecraftConfig.CombatCueMode mode = UnitedMinecraftConfig.get().combatCueMode;
+		boolean shouldTrack = mode == UnitedMinecraftConfig.CombatCueMode.ALWAYS
+				|| (mode == UnitedMinecraftConfig.CombatCueMode.COMBAT_MODE_ONLY && enabled);
+		if (!shouldTrack) {
+			// Resync so flipping the setting/entering Combat Mode mid-cooldown doesn't fire a
+			// stale "just became ready" cue for a refill that already happened while untracked.
+			attackReadyLastTick = true;
+			return;
+		}
+		boolean ready = player.getAttackStrengthScale(1.0f) >= 1.0f;
+		if (ready && !attackReadyLastTick) {
+			playAttackReadyCue(client, player);
+		}
+		attackReadyLastTick = ready;
+	}
+
+	private static void playAttackReadyCue(Minecraft client, LocalPlayer player) {
+		RandomSource random = player.getRandom();
+		Vec3 pos = player.position();
+		client.getSoundManager().play(new SimpleSoundInstance(
+				SoundEvents.NOTE_BLOCK_XYLOPHONE.value(), SoundSource.MASTER, 0.5f, 1.4f, random, pos.x(), pos.y(), pos.z()));
 	}
 
 	private static boolean shouldSwitchTo(Vec3 eye, Entity candidate) {

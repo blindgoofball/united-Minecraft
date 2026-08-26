@@ -54,6 +54,7 @@ public final class ClientKeyBindings {
 	public static final KeyMapping SCAN_SURROUNDINGS = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.scan_surroundings", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R, CATEGORY));
 
+	/** Shift instead narrates current weather and, at night, moon phase. */
 	public static final KeyMapping NARRATE_TIME = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.narrate_time", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, CATEGORY));
 
@@ -105,7 +106,9 @@ public final class ClientKeyBindings {
 	 *
 	 * <p>Page Up/Down are triple-purpose: build mode's cursor Y level, or the
 	 * scanner's item cycling (see {@link ScannerController}) when build mode
-	 * isn't active. Home/End cycle the scanner's category instead.
+	 * isn't active - Alt held during scanner item cycling jumps to the next/previous
+	 * item of the same type instead of the next item overall. Home/End cycle the
+	 * scanner's category instead.
 	 */
 	public static final KeyMapping LOOK_LEFT = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.look_left", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT, CATEGORY));
@@ -234,8 +237,9 @@ public final class ClientKeyBindings {
 	/**
 	 * Whether Shift is held - the default modifier for this mod's dual-purpose keys ({@link
 	 * #NARRATE_COORDINATES}, {@link #NARRATE_HEALTH}, {@link #NARRATE_BEARING}, {@link
-	 * #WATER_ESCAPE}, {@link #RETRACE_TRAIL}, {@link #SCANNER_TARGET}, {@link #PLACE_MARKER}'s
-	 * name-item layering), each a one-shot press rather than something held during movement, so
+	 * #NARRATE_TIME}, {@link #WATER_ESCAPE}, {@link #RETRACE_TRAIL}, {@link #SCANNER_TARGET},
+	 * {@link #PLACE_MARKER}'s name-item layering), each a one-shot press rather than something
+	 * held during movement, so
 	 * a brief, incidental crouch while pressing it doesn't cost anything - and Shift sits right
 	 * next to several of these keys (Enter especially), which is more comfortable to reach than
 	 * Alt. See {@link #isModifierDown} for the couple of keys where that incidental crouch

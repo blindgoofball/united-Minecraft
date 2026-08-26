@@ -41,6 +41,12 @@ public final class UnitedMinecraftConfig {
 	public int navRadarRange = 8;
 	public double scannerRange = 32.0;
 	public boolean buildModeActionNarrationEnabled = true;
+	public CombatCueMode combatCueMode = CombatCueMode.COMBAT_MODE_ONLY;
+
+	/** Governs the audio cue for the weapon attack-strength meter refilling - see {@link CombatModeController#tickAttackCue}. */
+	public enum CombatCueMode {
+		OFF, COMBAT_MODE_ONLY, ALWAYS
+	}
 
 	private UnitedMinecraftConfig() {
 	}
