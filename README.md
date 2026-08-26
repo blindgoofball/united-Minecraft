@@ -17,15 +17,20 @@ no server-side install needed, and it works on any vanilla server.
   available. Works on Windows, macOS, and Linux (x86-64 and arm64); see
   [`src/client/resources/prism/README.md`](src/client/resources/prism/README.md)
   for details.
-- On-demand readouts for coordinates/standing block/biome, health and hunger, and
-  facing direction in compass degrees with pitch, each on their own key. Shift on the
-  coordinates key instead reads the light level (combined, plus block/sky split) -
-  of the block under Build Mode's cursor if it's active, your own block otherwise.
+- On-demand readouts for coordinates/standing block/biome, health and hunger
+  (on the same 10-heart/10-shank scale the sighted heart bar uses, half-point
+  precision included), and facing direction in compass degrees with pitch,
+  each on their own key. Shift on the coordinates key instead reads the light
+  level (combined, plus block/sky split) - of the block under Build Mode's
+  cursor if it's active, your own block otherwise.
 - Automatic narration as things change: facing direction, hotbar slot,
   offhand/main-hand swaps, entering a new biome, and the time of day reaching
   sunrise, noon, sunset, night (when mobs can start spawning in the dark), or
   midnight. A dedicated key instead reads the full picture on demand - day
-  count, current period, and a clock-style time.
+  count, current period, and a clock-style time. Shift on that same key
+  instead reads current weather (clear, rain, snow, or thunderstorm) and, at
+  night, the moon phase - useful since it affects spawn rates and mob gear
+  drops.
 - "Read what's in front of me": narrates the nearest block and/or entity ahead,
   with distance. For a block, also narrates which face your crosshair actually
   landed on (North/East/South/West/Top/Bottom) - the same raycast the vanilla
@@ -58,6 +63,14 @@ navigation without needing to see or aim at them.
 
 - Categories: Interactables, Mechanisms, Items, Passive Mobs, Hostile Mobs, Trees,
   Ores, Liquids, Crops, Search, Biomes, Markers (see Map Markers below), and Players.
+- Selecting a category announces how many items it found (e.g. "Trees, 13"),
+  and cycling through them with Page Up/Down announces your position in that
+  list (e.g. "3 of 13") alongside the item itself.
+- Alt+Page Up/Down jumps to the next/previous item of the same kind as the one
+  currently selected - the same entity type for mobs, the same block for
+  everything else - instead of stepping through every item one at a time.
+  Handy for skipping past a crowd of cows and pigs to reach the one sheep, or
+  past a dozen spruce trees to find the one oak.
 - Like Markers, Players ignores the Scanner's normal range - every other player in
   your current dimension shows up regardless of distance, since the game already
   tells your client about all of them no matter how far away they are.
@@ -122,6 +135,11 @@ nearest, switching target as a fight moves rather than sticking to one until
 it dies - built for fighting more than one attacker, where re-targeting by
 hand between hits isn't practical. Auto-disables Build Mode if it was on, and
 you can still walk, strafe, and jump freely while your aim stays locked.
+
+A separate audio cue plays the moment your weapon's attack-strength meter
+refills to full - the cooldown that reduces damage on an early swing - so you
+know when a hit will land at full strength without watching for it.
+Configurable from Settings to play only in Combat Mode, always, or never.
 
 ### Hostile Radar
 
@@ -264,13 +282,20 @@ just the Inventory tab.
 
 A dedicated key opens a settings screen for the things worth tuning to
 taste: on/off switches for Hostile Radar, its melee-range alert, and Fall
-Warning (all otherwise always-on with no toggle of their own), and
-range/threshold sliders for Hostile Radar, Fall Warning, Mining Radar,
-Navigation Radar, and the Scanner. Saved to a config file shared across
+Warning (all otherwise always-on with no toggle of their own), a three-way
+switch for the Combat Mode attack-ready cue (off, Combat Mode only, or
+always), and range/threshold sliders for Hostile Radar, Fall Warning, Mining
+Radar, Navigation Radar, and the Scanner. Saved to a config file shared across
 every world and server, and
 built from the same vanilla screen widgets as the rest of Minecraft's
 Options menus rather than a third-party settings toolkit, so it narrates
 exactly as reliably.
+
+A button on that screen opens the Sound and Cue Glossary - a scrollable,
+keyboard-navigable list of every audio cue this mod plays and what it means,
+since it's not always obvious the first time you hear one. Selecting an
+entry (Enter or a click) replays its sound at the exact volume and pitch the
+mod actually uses, so you can learn to recognize it on demand.
 
 ## Installation
 
@@ -333,7 +358,7 @@ where noted.
 | H (Shift = experience level) | Narrate health and hunger |
 | B (Shift+B resets facing to north) | Narrate facing direction and pitch |
 | R (Shift = toggle Auto Crosshair Narration) | Read what's in front of me |
-| V | Narrate time of day |
+| V (Shift = weather and, at night, moon phase) | Narrate time of day |
 | U (Shift = name the Scanner's focused item, or enter a Search term while Search is selected) | Place a named map marker at your current location |
 | I | Toggle Build Mode |
 | Right Control | Build Mode: place block, or interact with it if it's something clickable (chest, door, lever, repeater, etc.) |
@@ -347,7 +372,7 @@ where noted.
 | X | Mark cave trail start (clears and restarts the recorded trail here) |
 | Z (Shift = walk there) | Find the way back along the recorded cave trail |
 | Left/Right/Up/Down arrows | Turn camera (Alt = snap-turn 45 degrees), or move the Build Mode cursor relative to its own orientation (Alt+Left/Right = turn the cursor's orientation a quarter turn) |
-| Page Up/Down | Build Mode cursor up/down, or cycle the Scanner's nearest items |
+| Page Up/Down (Alt = jump to the next/previous item of the same kind) | Build Mode cursor up/down, or cycle the Scanner's nearest items |
 | Home/End | Cycle the Scanner's category |
 | Enter (Shift = walk there) | Target the Scanner's focused item, or interact with it directly while locked on |
 | Backspace | Stop Scanner lock-on / cancel Auto-Walk, swim, or trail retrace |
