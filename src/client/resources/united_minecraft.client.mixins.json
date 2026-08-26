@@ -21,7 +21,8 @@
 		"RecipeToastMixin",
 		"TutorialToastMixin",
 		"FriendToastMixin",
-		"NowPlayingToastMixin"
+		"NowPlayingToastMixin",
+		"ChatOverlayNarrationMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

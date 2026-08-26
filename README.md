@@ -17,6 +17,10 @@ no server-side install needed, and it works on any vanilla server.
   available. Works on Windows, macOS, and Linux (x86-64 and arm64); see
   [`src/client/resources/prism/README.md`](src/client/resources/prism/README.md)
   for details.
+- Action-bar HUDs (health/mana readouts, cooldowns, etc.) that some servers
+  keep alive by resending the same message every second or two are only
+  narrated when the text actually changes, instead of vanilla's own behavior
+  of re-narrating every resend even when nothing changed.
 - On-demand readouts for coordinates/standing block/biome, health and hunger
   (on the same 10-heart/10-shank scale the sighted heart bar uses, half-point
   precision included), and facing direction in compass degrees with pitch,
