@@ -15,7 +15,13 @@
 		"BookViewScreenMixin",
 		"MultilineTextFieldMixin",
 		"MultiLineEditBoxMixin",
-		"BookEditScreenMixin"
+		"BookEditScreenMixin",
+		"SystemToastMixin",
+		"AdvancementToastMixin",
+		"RecipeToastMixin",
+		"TutorialToastMixin",
+		"FriendToastMixin",
+		"NowPlayingToastMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

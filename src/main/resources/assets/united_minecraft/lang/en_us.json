@@ -157,6 +157,7 @@
 	"united_minecraft.narrate.trail_blocked": "Blocked - place a block here to climb up, then retrace again",
 	"united_minecraft.narrate.trail_stuck": "Stuck - can't find a way past this point, try moving around it manually, then retrace again",
 	"united_minecraft.narrate.tree_chopping_done": "No more logs",
+	"united_minecraft.narrate.recipe_unlocked": "Recipe unlocked: %s",
 	"united_minecraft.narrate.menu_carrying": "Carrying %s",
 	"united_minecraft.narrate.menu_item_discarded": "Discarded %s",
 	"united_minecraft.narrate.creative_item_position": "item %s of %s",
