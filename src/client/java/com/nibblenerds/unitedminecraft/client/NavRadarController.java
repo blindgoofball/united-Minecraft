@@ -145,7 +145,8 @@ public final class NavRadarController {
 
 		BlockPos hitPos = hit.getBlockPos();
 		BlockState hitState = level.getBlockState(hitPos);
-		double top = hitPos.getY() + hitState.getCollisionShape(level, hitPos).bounds().maxY;
+		var collisionShape = hitState.getCollisionShape(level, hitPos);
+		double top = hitPos.getY() + (collisionShape.isEmpty() ? 0.0 : collisionShape.bounds().maxY);
 		double rise = top - player.getY();
 		double distance = from.distanceTo(hit.getLocation());
 

@@ -34,7 +34,10 @@ public final class TreeChoppingAssist {
 		Level level = player.level();
 
 		if (trackedLogPos != null) {
-			if (!level.getBlockState(trackedLogPos).is(BlockTags.LOGS)) {
+			double maxReach = player.blockInteractionRange() + 1.0;
+			if (player.getEyePosition().distanceTo(Vec3.atCenterOf(trackedLogPos)) > maxReach) {
+				trackedLogPos = null;
+			} else if (!level.getBlockState(trackedLogPos).is(BlockTags.LOGS)) {
 				// It just got broken since the last tick we checked.
 				BlockPos next = findAdjacentLog(level, trackedLogPos);
 				if (next != null) {
@@ -44,8 +47,10 @@ public final class TreeChoppingAssist {
 					trackedLogPos = null;
 					client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.tree_chopping_done"));
 				}
+				return;
+			} else {
+				return;
 			}
-			return;
 		}
 
 		// Not currently tracking anything; pick up whatever log (if any) is under the crosshair.

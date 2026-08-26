@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -501,11 +502,17 @@ public final class BuildModeController {
 	 */
 	private static boolean declaresUseWithoutItem(Block block) {
 		for (Class<?> type = block.getClass(); type != null && type != BlockBehaviour.class; type = type.getSuperclass()) {
-			try {
-				type.getDeclaredMethod("useWithoutItem", BlockState.class, Level.class, BlockPos.class, Player.class, BlockHitResult.class);
-				return true;
-			} catch (NoSuchMethodException ignored) {
-				// Not declared at this level - keep walking up toward BlockBehaviour.
+			for (Method method : type.getDeclaredMethods()) {
+				Class<?>[] params = method.getParameterTypes();
+				if (params.length == 5
+						&& params[0] == BlockState.class
+						&& params[1] == Level.class
+						&& params[2] == BlockPos.class
+						&& params[3] == Player.class
+						&& params[4] == BlockHitResult.class
+						&& InteractionResult.class.isAssignableFrom(method.getReturnType())) {
+					return true;
+				}
 			}
 		}
 		return false;

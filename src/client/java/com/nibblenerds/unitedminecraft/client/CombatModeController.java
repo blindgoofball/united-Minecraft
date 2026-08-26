@@ -94,8 +94,7 @@ public final class CombatModeController {
 		if (target == null) {
 			return true;
 		}
-		double margin = SWITCH_MARGIN * SWITCH_MARGIN;
-		return distanceSq(eye, candidate) + margin < distanceSq(eye, target);
+		return Math.sqrt(distanceSq(eye, candidate)) + SWITCH_MARGIN < Math.sqrt(distanceSq(eye, target));
 	}
 
 	private static Entity findNearestHostile(LocalPlayer player, Vec3 eye) {

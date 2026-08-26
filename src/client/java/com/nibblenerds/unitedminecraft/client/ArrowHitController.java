@@ -80,7 +80,8 @@ public final class ArrowHitController {
 			Tracked tracked = entry.getValue();
 			Entity entity = player.level().getEntity(entry.getKey());
 			if (entity == null) {
-				if (tracked.stillTicks < STILL_TICKS_FOR_SETTLED) {
+				double maxRangeSqr = (DISCOVERY_RANGE - 8.0) * (DISCOVERY_RANGE - 8.0);
+				if (tracked.stillTicks < STILL_TICKS_FOR_SETTLED && tracked.lastPos.distanceToSqr(player.position()) < maxRangeSqr) {
 					playHitCue(client, player);
 				}
 				iterator.remove();
