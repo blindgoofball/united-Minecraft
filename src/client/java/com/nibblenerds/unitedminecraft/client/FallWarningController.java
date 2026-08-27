@@ -114,6 +114,8 @@ public final class FallWarningController {
 		double referenceY = player.getY();
 		double aheadX = player.getX();
 		double aheadZ = player.getZ();
+		double prevX = player.getX();
+		double prevZ = player.getZ();
 		BlockPos landing = null;
 		double dropHeight = 0;
 		boolean dangerous = false;
@@ -123,10 +125,16 @@ public final class FallWarningController {
 			double x = player.getX() + dirX * sampleDist;
 			double z = player.getZ() + dirZ * sampleDist;
 
-			if (!canOccupy(level, player, x, referenceY, z) || !canOccupy(level, player, x, referenceY + 1.0, z)) {
+			// Swept across the whole segment since the last sample, not just tested at this
+			// single point - a wall no wider than one sample step could otherwise sit entirely
+			// between two sample points and never register as a collision at either of them.
+			if (!canOccupySwept(level, player, prevX, prevZ, x, z, referenceY)
+					|| !canOccupySwept(level, player, prevX, prevZ, x, z, referenceY + 1.0)) {
 				// Blocked by a wall before any fall is even reachable in a straight line.
 				return;
 			}
+			prevX = x;
+			prevZ = z;
 
 			landing = scanForLanding(level, Mth.floor(x), Mth.floor(referenceY), Mth.floor(z));
 			// No floor at all down to the bottom of the world - falling out of it entirely,
@@ -171,10 +179,18 @@ public final class FallWarningController {
 		warn(client, player, new Vec3(aheadX, referenceY, aheadZ), dropHeight, damaging);
 	}
 
-	/** Whether the player's own bounding box would fit at this position without colliding with anything. */
-	private static boolean canOccupy(Level level, LocalPlayer player, double x, double y, double z) {
-		AABB box = player.getBoundingBox().move(x - player.getX(), y - player.getY(), z - player.getZ());
-		return level.noCollision(player, box);
+	/**
+	 * Whether the player's own bounding box would fit anywhere along the straight line from
+	 * {@code (fromX, fromZ)} to {@code (toX, toZ)} at height {@code y}, without colliding with
+	 * anything. Swept across the whole segment (via {@link AABB#expandTowards}, the same
+	 * technique vanilla's own movement collision uses) rather than tested only at the
+	 * endpoint, so a wall no wider than one sample step can't sit entirely between two sample
+	 * points and slip through undetected.
+	 */
+	private static boolean canOccupySwept(Level level, LocalPlayer player, double fromX, double fromZ, double toX, double toZ, double y) {
+		AABB box = player.getBoundingBox().move(fromX - player.getX(), y - player.getY(), fromZ - player.getZ());
+		AABB swept = box.expandTowards(toX - fromX, 0, toZ - fromZ);
+		return level.noCollision(player, swept);
 	}
 
 	/** First solid or fluid block found scanning straight down from {@code startY} to the bottom of the world, or null if none. */
