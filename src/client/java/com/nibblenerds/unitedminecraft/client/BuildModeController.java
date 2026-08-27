@@ -15,7 +15,9 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.BucketItem;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.ComparatorBlock;
@@ -126,11 +128,15 @@ import net.minecraft.world.phys.Vec3;
  * so on - vanilla's own right-click dispatches the same way, off whichever solid
  * neighbor the crosshair ray actually lands on behind the empty cell you're
  * looking through, not the empty cell itself. Pressing Place while holding
- * nothing in either hand is the one case that fallback can never lead anywhere
- * for, so it's still called out with its own distinct message rather than the
- * generic "Can't place there" a real item gets when a specific spot rejects it -
- * otherwise there'd be no way to tell "nothing you're holding could ever do
- * anything here" apart from "that particular attempt didn't work".
+ * nothing with any {@code useOn} behavior at all in either hand - an empty
+ * hand, but just as much a sword, food, or any other item that fundamentally
+ * has nothing to do with a block (see {@link #hasUseOnBehavior}) - is the one
+ * case that fallback can never lead anywhere for regardless of which neighbor
+ * face gets tried, so it's still called out with its own distinct message
+ * rather than the generic "Can't place there" a real item (a hoe, flint and
+ * steel...) gets when a specific spot rejects it - otherwise there'd be no way
+ * to tell "nothing you're holding could ever do anything here" apart from
+ * "that particular attempt didn't work".
  *
  * <p>{@link #cyclePlacementFacing} lets a chosen direction override where the
  * next placed block's own {@code FACING} points, via a trick rather than any
@@ -165,6 +171,9 @@ public final class BuildModeController {
 	// Per-Block memoization for #declaresUseWithoutItem - a block's class never changes at
 	// runtime, so the reflective hierarchy walk only ever needs to happen once per distinct block.
 	private static final Map<Block, Boolean> INTERACTABLE_CACHE = new HashMap<>();
+
+	// Same idea as INTERACTABLE_CACHE, for #declaresUseOn.
+	private static final Map<Item, Boolean> USE_ON_CACHE = new HashMap<>();
 
 	private static boolean active;
 	private static BlockPos cursor;
@@ -475,11 +484,12 @@ public final class BuildModeController {
 			startRotatedPlacement(player);
 			return;
 		}
-		if (placing == null && player.getMainHandItem().isEmpty() && player.getOffhandItem().isEmpty()) {
-			// Genuinely nothing in either hand - unlike any actual item, this can never lead
-			// anywhere no matter what neighbor face gets tried, so it's worth its own distinct
-			// message rather than folding it into the generic "Can't place there" that a real,
-			// specific item failing against this particular spot gets below.
+		if (placing == null && !hasUseOnBehavior(player.getMainHandItem()) && !hasUseOnBehavior(player.getOffhandItem())) {
+			// Neither an empty hand nor an item with no useOn behavior of its own (a sword,
+			// food, an unrelated resource...) can ever lead anywhere no matter what neighbor
+			// face gets tried - worth its own distinct message rather than always trying and
+			// folding the result into the generic "Can't place there" a real item (a hoe,
+			// flint and steel...) gets when this particular spot specifically rejects it.
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_not_a_block"));
 			return;
 		}
@@ -531,6 +541,45 @@ public final class BuildModeController {
 						&& params[2] == BlockPos.class
 						&& params[3] == Player.class
 						&& params[4] == BlockHitResult.class
+						&& InteractionResult.class.isAssignableFrom(method.getReturnType())) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Whether {@code stack}'s item has any {@code useOn} behavior of its own at all - the same
+	 * reflective "does this override the method vanilla actually dispatches to" technique as
+	 * {@link #declaresUseWithoutItem}, just for items instead of blocks. Distinguishes a real
+	 * candidate for {@link #attemptPlacementSequence}'s neighbor-face search (a hoe, flint and
+	 * steel, bone meal, shears...) from something that fundamentally can't do anything there no
+	 * matter which face gets tried (a sword, food, an unrelated resource) - {@link #place} uses
+	 * this to decide between actually attempting the search and narrating the distinct "Not a
+	 * block" message immediately instead, since trying would only ever come back "Can't place
+	 * there" regardless of the target, which is a much less useful thing to hear.
+	 */
+	private static boolean hasUseOnBehavior(ItemStack stack) {
+		if (stack.isEmpty()) {
+			return false;
+		}
+		return USE_ON_CACHE.computeIfAbsent(stack.getItem(), BuildModeController::declaresUseOn);
+	}
+
+	/**
+	 * Whether {@code item}'s own class (or one of its superclasses, short of {@link Item}
+	 * itself) overrides {@code useOn} - vanilla's base {@link Item#useOn} is a no-op {@code
+	 * PASS}, so an override is a generic stand-in for "does aiming this at a block do anything
+	 * at all", the same way {@link #declaresUseWithoutItem} stands in for a block's own
+	 * click behavior.
+	 */
+	private static boolean declaresUseOn(Item item) {
+		for (Class<?> type = item.getClass(); type != null && type != Item.class; type = type.getSuperclass()) {
+			for (Method method : type.getDeclaredMethods()) {
+				Class<?>[] params = method.getParameterTypes();
+				if (params.length == 1
+						&& params[0] == UseOnContext.class
 						&& InteractionResult.class.isAssignableFrom(method.getReturnType())) {
 					return true;
 				}
