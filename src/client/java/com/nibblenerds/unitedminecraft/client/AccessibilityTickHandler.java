@@ -211,9 +211,13 @@ public final class AccessibilityTickHandler {
 				// also running build mode/normal camera look/scanner key handling here.
 				CombatModeController.tick(client, player);
 			} else if (BuildModeController.isActive()) {
+				// Build Mode only repurposes arrow keys for the virtual cursor - it never
+				// touches player movement input, so the player can still walk (and fall)
+				// normally and still needs the same warning as ordinary walking below.
 				BuildModeController.tick(client, player);
 				ScannerController.tick(client, player);
 				MiningRadarController.tick(client, player);
+				FallWarningController.tick(client, player);
 			} else {
 				if (ClientKeyBindings.isModifierDown(client)) {
 					handleSnapTurn(client, player, snapLeftPressed, snapRightPressed, snapUpPressed, snapDownPressed);

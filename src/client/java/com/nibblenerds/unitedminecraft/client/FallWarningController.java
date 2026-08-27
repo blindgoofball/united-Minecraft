@@ -32,9 +32,11 @@ import net.minecraft.world.phys.Vec3;
  * a distinct sound and narration for "this will hurt" versus "this won't" (e.g. a cave lake
  * below), so a safe drop into water is useful information rather than a false alarm.
  *
- * <p>Only runs during ordinary manual walking, same scope as {@link MovementAssistController}
- * and {@link NavRadarController} - auto-walk, build mode, scanner lock-on, and combat mode all
- * drive movement or rotation themselves. Requires standing on solid ground before projecting
+ * <p>Runs during ordinary manual walking and Build Mode alike, same scope as {@link
+ * MovementAssistController} and {@link NavRadarController} - auto-walk, scanner lock-on, and
+ * combat mode all drive movement or rotation themselves, but Build Mode only repurposes arrow
+ * keys for its virtual cursor and never touches player movement, so the player can still walk
+ * (and fall) normally while it's active. Requires standing on solid ground before projecting
  * ahead (so it fires once, proactively, before you actually step off an edge) and is skipped
  * entirely in Creative/Spectator, while gliding, and while Slow Falling or Levitation is active,
  * since none of those can take fall damage in the first place - though the last two still get no
@@ -55,6 +57,10 @@ public final class FallWarningController {
 	private static final double LOOKAHEAD_TICKS = 20.0;
 	private static final double MIN_LOOKAHEAD = 3.0;
 	private static final double MAX_LOOKAHEAD = 8.0;
+	// Distance between samples along the lookahead line. Small enough that a staircase of
+	// single-block steps gets a sample on each tread, so a walkable descent updates the
+	// reference ground level gradually instead of being measured against the far endpoint.
+	private static final double SAMPLE_STEP = 1.0;
 	private static final int RE_WARN_COOLDOWN_TICKS = 40;
 
 	private static int ticks;
@@ -98,20 +104,56 @@ public final class FallWarningController {
 		double dirZ = vz / speed;
 
 		Level level = player.level();
-		double aheadX = player.getX() + dirX * lookahead;
-		double aheadZ = player.getZ() + dirZ * lookahead;
 
-		if (!canOccupy(level, player, aheadX, player.getY(), aheadZ)
-				|| !canOccupy(level, player, aheadX, player.getY() + 1.0, aheadZ)) {
-			// Blocked by a wall before any fall is even reachable in a straight line.
-			return;
+		// Walk the lookahead line in small steps rather than jumping straight to the far
+		// endpoint, tracking the ground level as it goes. A staircase the player can walk
+		// down normally (each tread a safe-or-smaller drop) advances the reference ground
+		// level a step at a time instead of being measured all at once against the distant
+		// endpoint, which would otherwise read as one big unwalkable fall. Only a drop past
+		// the threshold relative to the *nearest* ground below it triggers a warning.
+		double referenceY = player.getY();
+		double aheadX = player.getX();
+		double aheadZ = player.getZ();
+		BlockPos landing = null;
+		double dropHeight = 0;
+		boolean dangerous = false;
+
+		for (double d = SAMPLE_STEP; d <= lookahead + 1.0e-9; d += SAMPLE_STEP) {
+			double sampleDist = Math.min(d, lookahead);
+			double x = player.getX() + dirX * sampleDist;
+			double z = player.getZ() + dirZ * sampleDist;
+
+			if (!canOccupy(level, player, x, referenceY, z) || !canOccupy(level, player, x, referenceY + 1.0, z)) {
+				// Blocked by a wall before any fall is even reachable in a straight line.
+				return;
+			}
+
+			landing = scanForLanding(level, Mth.floor(x), Mth.floor(referenceY), Mth.floor(z));
+			// No floor at all down to the bottom of the world - falling out of it entirely,
+			// which always kills. Still worth a (damaging) warning rather than staying silent.
+			dropHeight = landing != null ? referenceY - (landing.getY() + 1) : referenceY - level.getMinY();
+			aheadX = x;
+			aheadZ = z;
+
+			if (dropHeight > UnitedMinecraftConfig.get().fallWarningThreshold) {
+				dangerous = true;
+				break;
+			}
+
+			if (landing == null) {
+				// Fell out of the bottom of the world without ever exceeding the threshold
+				// (i.e. the threshold is configured above the world depth) - nothing more to
+				// scan for past this point.
+				break;
+			}
+
+			referenceY = landing.getY() + 1;
+			if (sampleDist >= lookahead) {
+				break;
+			}
 		}
 
-		BlockPos landing = scanForLanding(level, Mth.floor(aheadX), Mth.floor(player.getY()), Mth.floor(aheadZ));
-		// No floor at all down to the bottom of the world - falling out of it entirely, which
-		// always kills. Still worth a (damaging) warning rather than staying silent.
-		double dropHeight = landing != null ? player.getY() - (landing.getY() + 1) : player.getY() - level.getMinY();
-		if (dropHeight <= UnitedMinecraftConfig.get().fallWarningThreshold) {
+		if (!dangerous) {
 			return;
 		}
 
@@ -126,7 +168,7 @@ public final class FallWarningController {
 		// Played at the edge itself, not the landing spot below - for anything but a short
 		// drop, the landing spot is far enough away (or, for a void fall, doesn't exist) that
 		// positional attenuation would make it inaudible right when it matters most.
-		warn(client, player, new Vec3(aheadX, player.getY(), aheadZ), dropHeight, damaging);
+		warn(client, player, new Vec3(aheadX, referenceY, aheadZ), dropHeight, damaging);
 	}
 
 	/** Whether the player's own bounding box would fit at this position without colliding with anything. */
