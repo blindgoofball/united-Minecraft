@@ -620,7 +620,14 @@ public final class MenuAccessibilityController {
 		if (recipeGroupIndex < 0 || recipeGroupIndex >= groups.size()) {
 			return List.of();
 		}
-		return groups.get(recipeGroupIndex).getSelectedRecipes(RecipeCollection.CraftableStatus.ANY);
+		// A group can mix craftable and uncraftable variants (e.g. oak planks craftable,
+		// jungle planks not) - hasCraftable() above only filters out groups with none at
+		// all, so this still needs to drop the individual uncraftable variants within an
+		// otherwise-visible group when the filter is on.
+		RecipeCollection.CraftableStatus status = recipeCraftableOnlyFilter
+				? RecipeCollection.CraftableStatus.CRAFTABLE
+				: RecipeCollection.CraftableStatus.ANY;
+		return groups.get(recipeGroupIndex).getSelectedRecipes(status);
 	}
 
 	private static void narrateRecipeFocus(LocalPlayer player, boolean announceSection) {
