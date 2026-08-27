@@ -2,7 +2,6 @@ package com.nibblenerds.unitedminecraft.client;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -63,9 +62,7 @@ public final class FishingCatchController {
 		}
 		if (wasFishing) {
 			wasFishing = false;
-			if (UnitedMinecraftConfig.get().fishingCatchNarrationEnabled) {
-				announceCatch(client, player);
-			}
+			announceCatch(client, player);
 		}
 	}
 
@@ -74,7 +71,7 @@ public final class FishingCatchController {
 		for (Entity entity : player.level().getEntities((Entity) null, box,
 				e -> e instanceof ItemEntity item && item.tickCount <= MAX_CATCH_AGE_TICKS)) {
 			MutableComponent description = ItemDescriptions.describe(((ItemEntity) entity).getItem(), player);
-			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.fishing_caught", description));
+			client.getNarrator().saySystemNow(description);
 		}
 	}
 }

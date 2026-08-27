@@ -65,7 +65,7 @@ no server-side install needed, and it works on any vanilla server.
   straight to the newest or oldest message. The screen always opens scrolled
   to the most recent message regardless of where it was left last time.
 - Fishing catches are narrated - vanilla gives no feedback at all about what
-  a cast just reeled in, sighted or otherwise. Toggleable in Settings.
+  a cast just reeled in, sighted or otherwise.
 
 ### The Scanner
 
