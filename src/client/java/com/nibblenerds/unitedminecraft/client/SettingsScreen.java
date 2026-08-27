@@ -31,8 +31,9 @@ public final class SettingsScreen extends Screen {
 	private static final int ROW_WIDTH = 240;
 	private static final int ROW_HEIGHT = 20;
 	private static final int ROW_SPACING = 4;
-	// 9 original setting rows + the Attack Ready Cue cycle + the glossary button + Done.
-	private static final int ROW_COUNT = 12;
+	// 9 original setting rows + Fishing Catch Narration + the Attack Ready Cue cycle + the
+	// glossary button + Done.
+	private static final int ROW_COUNT = 13;
 
 	public SettingsScreen() {
 		super(Component.translatable("united_minecraft.settings_screen.title"));
@@ -64,6 +65,8 @@ public final class SettingsScreen extends Screen {
 				"united_minecraft.settings_screen.scanner_range", value -> config.scannerRange = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.build_mode_action_narration_enabled",
 				config.buildModeActionNarrationEnabled, value -> config.buildModeActionNarrationEnabled = value);
+		y = addToggle(x, y, "united_minecraft.settings_screen.fishing_catch_narration_enabled",
+				config.fishingCatchNarrationEnabled, value -> config.fishingCatchNarrationEnabled = value);
 		y = addCycle(x, y, "united_minecraft.settings_screen.combat_cue_mode",
 				List.of(UnitedMinecraftConfig.CombatCueMode.values()), config.combatCueMode,
 				mode -> Component.translatable("united_minecraft.settings_screen.combat_cue_mode." + mode.name().toLowerCase(Locale.ROOT)),

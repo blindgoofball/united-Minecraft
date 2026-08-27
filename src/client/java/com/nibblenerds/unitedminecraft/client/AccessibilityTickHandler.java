@@ -103,6 +103,7 @@ public final class AccessibilityTickHandler {
 			MiningRadarController.reset();
 			HostileRadarController.reset();
 			ArrowHitController.reset();
+			FishingCatchController.reset();
 			FallWarningController.reset();
 			TreeChoppingAssist.reset();
 			AutoCrosshairNarrationController.reset();
@@ -244,6 +245,9 @@ public final class AccessibilityTickHandler {
 			// Same reasoning - a fired arrow keeps flying, and needs watching for a hit,
 			// regardless of what else the player is doing once it's loosed.
 			ArrowHitController.tick(client, player);
+			// Same reasoning - a cast line keeps waiting for a bite regardless of what else
+			// the player is doing meanwhile.
+			FishingCatchController.tick(client, player);
 			// Same reasoning - the attack-strength meter keeps recharging regardless of what
 			// else is going on, and CombatCueMode.ALWAYS needs it tracked outside Combat Mode too.
 			CombatModeController.tickAttackCue(client, player);
