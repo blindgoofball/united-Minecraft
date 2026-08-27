@@ -82,6 +82,7 @@
 	"united_minecraft.narrate.build_placeable": "Placeable",
 	"united_minecraft.narrate.build_out_of_reach": "Out of reach",
 	"united_minecraft.narrate.build_cannot_place": "Can't place there",
+	"united_minecraft.narrate.build_not_a_block": "Not a block",
 	"united_minecraft.narrate.build_repeater_delay": "Delay %s",
 	"united_minecraft.narrate.build_comparator_compare": "Compare mode",
 	"united_minecraft.narrate.build_comparator_subtract": "Subtract mode",

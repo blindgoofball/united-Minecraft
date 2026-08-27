@@ -125,7 +125,12 @@ import net.minecraft.world.phys.Vec3;
  * interior of a nether portal frame, a hoe aimed at the air above farmland, and
  * so on - vanilla's own right-click dispatches the same way, off whichever solid
  * neighbor the crosshair ray actually lands on behind the empty cell you're
- * looking through, not the empty cell itself.
+ * looking through, not the empty cell itself. Pressing Place while holding
+ * nothing in either hand is the one case that fallback can never lead anywhere
+ * for, so it's still called out with its own distinct message rather than the
+ * generic "Can't place there" a real item gets when a specific spot rejects it -
+ * otherwise there'd be no way to tell "nothing you're holding could ever do
+ * anything here" apart from "that particular attempt didn't work".
  *
  * <p>{@link #cyclePlacementFacing} lets a chosen direction override where the
  * next placed block's own {@code FACING} points, via a trick rather than any
@@ -468,6 +473,14 @@ public final class BuildModeController {
 		Block placing = placingBlock(player);
 		if (placing != null && selectedFacing != null && !facingIsOppositeOfClickedFace(placing)) {
 			startRotatedPlacement(player);
+			return;
+		}
+		if (placing == null && player.getMainHandItem().isEmpty() && player.getOffhandItem().isEmpty()) {
+			// Genuinely nothing in either hand - unlike any actual item, this can never lead
+			// anywhere no matter what neighbor face gets tried, so it's worth its own distinct
+			// message rather than folding it into the generic "Can't place there" that a real,
+			// specific item failing against this particular spot gets below.
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_not_a_block"));
 			return;
 		}
 		// Not holding a placeable block either doesn't mean give up - the exact same
