@@ -115,11 +115,17 @@ import net.minecraft.world.phys.Vec3;
  * shears, bone meal, and anything else whose own {@code useOn} does something to
  * a block it's aimed at - since there's no placement-sequence alternative being
  * held back for a non-block item; see {@link #place} for why a placeable block
- * item doesn't get the same treatment against a non-interactable block. Pressing
- * Place while holding nothing placeable (empty hand, or an item that isn't a
- * block at all) narrates that specifically rather than the generic "Can't place
- * there", which is reserved for a placeable item that got rejected by the
- * destination itself.
+ * item doesn't get the same treatment against a non-interactable block. When the
+ * cursor cell is empty (plain air, water, tall grass, a snow layer...) instead of
+ * an existing block, there's nothing of its own to interact with, so the same
+ * non-block-item fallback goes through {@link #attemptPlacementSequence} instead -
+ * searching neighbor faces and trying the real {@code useItemOn} call against
+ * each exactly like an actual block placement would, just without requiring a
+ * block in hand. That's what makes flint and steel work aimed at the empty
+ * interior of a nether portal frame, a hoe aimed at the air above farmland, and
+ * so on - vanilla's own right-click dispatches the same way, off whichever solid
+ * neighbor the crosshair ray actually lands on behind the empty cell you're
+ * looking through, not the empty cell itself.
  *
  * <p>{@link #cyclePlacementFacing} lets a chosen direction override where the
  * next placed block's own {@code FACING} points, via a trick rather than any
@@ -460,15 +466,17 @@ public final class BuildModeController {
 		}
 
 		Block placing = placingBlock(player);
-		if (placing == null) {
-			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_not_a_block"));
-			return;
-		}
-
-		if (selectedFacing != null && !facingIsOppositeOfClickedFace(placing)) {
+		if (placing != null && selectedFacing != null && !facingIsOppositeOfClickedFace(placing)) {
 			startRotatedPlacement(player);
 			return;
 		}
+		// Not holding a placeable block either doesn't mean give up - the exact same
+		// neighbor-face search and real useItemOn call still needs trying for a non-block
+		// item's own useOn (flint and steel lighting a nether portal from its empty interior,
+		// a hoe tilling farmland, bone meal on a neighbor, and so on), the same as {@link
+		// #interactWithCursor} already does for the non-replaceable-cursor case above - a
+		// replaceable cursor cell (usually plain air) just has no block of its own to target,
+		// so the candidate has to be a neighbor instead.
 		attemptPlacementSequence(client, player);
 	}
 
