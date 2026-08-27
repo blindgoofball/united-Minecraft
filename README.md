@@ -59,6 +59,11 @@ no server-side install needed, and it works on any vanilla server.
 - More reliable narration on settings and list screens - Key Binds, Options,
   World Selection, and similar - including cases where vanilla itself goes
   silent or only reads a bare position with no content.
+- Chat history browsing: in the chat screen, Page Down/Up steps to a more
+  recent/older message and narrates it (vanilla only scrolls the log
+  silently, a whole page of lines at a time). Shift with either jumps
+  straight to the newest or oldest message. The screen always opens scrolled
+  to the most recent message regardless of where it was left last time.
 
 ### The Scanner
 
