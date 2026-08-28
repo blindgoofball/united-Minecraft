@@ -262,5 +262,21 @@
 	"united_minecraft.glossary.nav_radar_clear": "The navigation radar's aimed direction is clear to walk",
 	"united_minecraft.glossary.arrow_hit": "A fired arrow has hit something",
 	"united_minecraft.glossary.autowalk_arrived": "Auto-Walk has arrived at its destination",
-	"united_minecraft.glossary.combat_cue": "Your weapon has fully recharged and is ready to swing at full strength"
+	"united_minecraft.glossary.combat_cue": "Your weapon has fully recharged and is ready to swing at full strength",
+	"united_minecraft.narrate.durability_warning": "Your %s is getting low",
+	"united_minecraft.narrate.durability_critical": "Your %s is about to break",
+	"united_minecraft.narrate.durability_broke": "%s broke",
+	"united_minecraft.durability_slot.held_item": "held item",
+	"united_minecraft.settings_screen.durability_awareness_enabled": "Durability Warnings",
+	"united_minecraft.settings_screen.durability_warning_threshold": "Durability Warning Threshold",
+	"united_minecraft.settings_screen.durability_critical_threshold": "Durability Critical Threshold",
+	"united_minecraft.settings_screen.tool_harvest_warning_enabled": "Mining Tool Warnings",
+	"united_minecraft.narrate.tool_mismatch_diamond": "Warning: %s requires diamond pickaxe or higher to drop items",
+	"united_minecraft.narrate.tool_mismatch_iron": "Warning: %s requires iron pickaxe or higher to drop items",
+	"united_minecraft.narrate.tool_mismatch_stone": "Warning: %s requires stone pickaxe or higher to drop items",
+	"united_minecraft.narrate.tool_mismatch_pickaxe": "Warning: %s requires a pickaxe to drop items",
+	"united_minecraft.narrate.tool_mismatch_axe": "Warning: %s requires an axe to drop items",
+	"united_minecraft.narrate.tool_mismatch_shovel": "Warning: %s requires a shovel to drop items",
+	"united_minecraft.narrate.tool_mismatch_hoe": "Warning: %s requires a hoe to drop items",
+	"united_minecraft.narrate.tool_mismatch_generic": "Warning: %s cannot be harvested with current item"
 }

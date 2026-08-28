@@ -109,13 +109,24 @@ public final class CameraUtil {
 	private static float solveBallisticPitch(double horizontalDistance, double heightDiff, double speed) {
 		double low = -80.0;
 		double high = 80.0;
+		boolean reachable = false;
 		for (int i = 0; i < BISECTION_STEPS; i++) {
 			double mid = (low + high) / 2.0;
-			if (heightAtDistance(mid, speed, horizontalDistance) > heightDiff) {
-				low = mid;
+			double h = heightAtDistance(mid, speed, horizontalDistance);
+			if (Double.isFinite(h)) {
+				reachable = true;
+				if (h > heightDiff) {
+					low = mid;
+				} else {
+					high = mid;
+				}
 			} else {
+				// Steep angle couldn't cover the horizontal distance; try flatter angles
 				high = mid;
 			}
+		}
+		if (!reachable) {
+			return (float) Math.toDegrees(Math.atan2(-heightDiff, horizontalDistance));
 		}
 		return (float) ((low + high) / 2.0);
 	}

@@ -42,6 +42,10 @@ public final class UnitedMinecraftConfig {
 	public double scannerRange = 32.0;
 	public boolean buildModeActionNarrationEnabled = true;
 	public CombatCueMode combatCueMode = CombatCueMode.COMBAT_MODE_ONLY;
+	public boolean durabilityAwarenessEnabled = true;
+	public int durabilityWarningThreshold = 25;
+	public int durabilityCriticalThreshold = 10;
+	public boolean toolHarvestWarningEnabled = true;
 
 	/** Governs the audio cue for the weapon attack-strength meter refilling - see {@link CombatModeController#tickAttackCue}. */
 	public enum CombatCueMode {

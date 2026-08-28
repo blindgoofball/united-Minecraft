@@ -49,6 +49,8 @@ final class ClientPathfinding {
 		PathNavigationRegion region = new PathNavigationRegion(level, regionStart, regionEnd);
 
 		PathFinder finder = new PathFinder(new WalkNodeEvaluator(), 4096);
-		return finder.findPath(region, ghost, Set.of(target), maxPathLength, reachRange, 1.0f);
+		Path path = finder.findPath(region, ghost, Set.of(target), maxPathLength, reachRange, 1.0f);
+		ghost.discard();
+		return path;
 	}
 }
