@@ -78,7 +78,7 @@
 	"united_minecraft.narrate.fall_warning_safe": "Fall ahead, %s blocks, safe landing",
 	"united_minecraft.narrate.build_mode_on": "Build mode on.",
 	"united_minecraft.narrate.build_mode_off": "Build mode off",
-	"united_minecraft.narrate.build_cursor": "%s, %s, %s, %s",
+	"united_minecraft.narrate.build_cursor_position": "%s, %s, %s",
 	"united_minecraft.narrate.build_placeable": "Placeable",
 	"united_minecraft.narrate.build_out_of_reach": "Out of reach",
 	"united_minecraft.narrate.build_cannot_place": "Can't place there",

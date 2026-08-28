@@ -968,19 +968,17 @@ public final class BuildModeController {
 		}
 	}
 
+	/**
+	 * Block name, then any extra state (facing, powered, ripe, and so on), then the
+	 * coordinates, then whether it's actionable right now - state describes the block itself
+	 * so it belongs right after naming it, not after the coordinates that just happen to be
+	 * read next; "Out of reach"/"Placeable" describe the cursor's current actionability rather
+	 * than the block, so they stay last regardless.
+	 */
 	private static Component describeCursor(LocalPlayer player) {
 		Level level = player.level();
 		BlockState state = level.getBlockState(cursor);
-		Component blockName = state.getBlock().getName();
-		MutableComponent message = Component.translatable(
-				"united_minecraft.narrate.build_cursor", blockName, cursor.getX(), cursor.getY(), cursor.getZ());
-		if (!isInReach(player, cursor)) {
-			// Not actionable yet either way, whatever the block - lead with that rather than
-			// also claiming "Placeable" for something you can't actually place at right now.
-			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_out_of_reach"));
-		} else if (isPlaceable(level, player)) {
-			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_placeable"));
-		}
+		MutableComponent message = state.getBlock().getName().copy();
 
 		Direction facing = directionPropertyOf(state);
 		if (facing != null) {
@@ -1008,6 +1006,17 @@ public final class BuildModeController {
 		}
 		if (state.getBlock() instanceof DaylightDetectorBlock && state.getValue(DaylightDetectorBlock.INVERTED)) {
 			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_daylight_inverted"));
+		}
+
+		message = message.append(Component.literal(" ")).append(Component.translatable(
+				"united_minecraft.narrate.build_cursor_position", cursor.getX(), cursor.getY(), cursor.getZ()));
+
+		if (!isInReach(player, cursor)) {
+			// Not actionable yet either way, whatever the block - lead with that rather than
+			// also claiming "Placeable" for something you can't actually place at right now.
+			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_out_of_reach"));
+		} else if (isPlaceable(level, player)) {
+			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_placeable"));
 		}
 		return message;
 	}
