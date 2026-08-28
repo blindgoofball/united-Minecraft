@@ -31,8 +31,9 @@ public final class SettingsScreen extends Screen {
 	private static final int ROW_WIDTH = 240;
 	private static final int ROW_HEIGHT = 20;
 	private static final int ROW_SPACING = 4;
-	// 9 original setting rows + the Attack Ready Cue cycle + the glossary button + Done.
-	private static final int ROW_COUNT = 12;
+	// 9 original setting rows + the Attack Ready Cue cycle + the glossary button + Done
+	// + 3 durability awareness rows (toggle + 2 sliders) + 1 tool harvest warning row.
+	private static final int ROW_COUNT = 16;
 
 	public SettingsScreen() {
 		super(Component.translatable("united_minecraft.settings_screen.title"));
@@ -68,6 +69,16 @@ public final class SettingsScreen extends Screen {
 				List.of(UnitedMinecraftConfig.CombatCueMode.values()), config.combatCueMode,
 				mode -> Component.translatable("united_minecraft.settings_screen.combat_cue_mode." + mode.name().toLowerCase(Locale.ROOT)),
 				value -> config.combatCueMode = value);
+		y = addToggle(x, y, "united_minecraft.settings_screen.durability_awareness_enabled",
+				config.durabilityAwarenessEnabled, value -> config.durabilityAwarenessEnabled = value);
+		y = addSlider(x, y, 1.0, 50.0, 1.0, config.durabilityWarningThreshold,
+				"united_minecraft.settings_screen.durability_warning_threshold",
+				value -> config.durabilityWarningThreshold = (int) Math.round(value));
+		y = addSlider(x, y, 1.0, 50.0, 1.0, config.durabilityCriticalThreshold,
+				"united_minecraft.settings_screen.durability_critical_threshold",
+				value -> config.durabilityCriticalThreshold = (int) Math.round(value));
+		y = addToggle(x, y, "united_minecraft.settings_screen.tool_harvest_warning_enabled",
+				config.toolHarvestWarningEnabled, value -> config.toolHarvestWarningEnabled = value);
 
 		addRenderableWidget(Button.builder(Component.translatable("united_minecraft.settings_screen.sound_glossary"),
 				button -> Minecraft.getInstance().gui.setScreen(new SoundGlossaryScreen()))

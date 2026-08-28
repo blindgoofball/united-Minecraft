@@ -8,7 +8,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.phys.AABB;
 
@@ -126,6 +125,18 @@ public final class MovementAssistController {
 		return true;
 	}
 
+	private static int findGroundY(Level level, BlockPos pos) {
+		BlockPos.MutableBlockPos scan = pos.mutable().setY(pos.getY() + 2);
+		for (int i = 0; i < MAX_DROP_SCAN + 4; i++) {
+			BlockState state = level.getBlockState(scan);
+			if (isObstacle(level, scan, state)) {
+				return scan.getY() + 1;
+			}
+			scan.move(Direction.DOWN);
+		}
+		return pos.getY();
+	}
+
 	/**
 	 * Asks the pathfinder for a short route to just past the obstacle, then checks whether
 	 * its first real waypoint (skipping the first ~1.2 blocks, which is still basically the
@@ -134,9 +145,7 @@ public final class MovementAssistController {
 	private static Component findRouteAround(LocalPlayer player, Direction facing) {
 		Level level = player.level();
 		BlockPos beyond = player.blockPosition().relative(facing, ROUTE_CHECK_DISTANCE);
-		// OCEAN_FLOOR is server-only and reads back garbage on the client -
-		// MOTION_BLOCKING_NO_LEAVES is the client-safe equivalent.
-		int groundY = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, beyond.getX(), beyond.getZ());
+		int groundY = findGroundY(level, beyond);
 		BlockPos target = new BlockPos(beyond.getX(), groundY, beyond.getZ());
 
 		Path path = ClientPathfinding.computePath(player, target, ROUTE_MAX_PATH_LENGTH, ROUTE_REACH_RANGE);
