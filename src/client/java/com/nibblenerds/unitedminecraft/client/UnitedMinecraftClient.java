@@ -14,5 +14,7 @@ public class UnitedMinecraftClient implements ClientModInitializer {
 		MenuAccessibilityController.register();
 		CreativeInventoryController.register();
 		AnimalFeedingController.register();
+		DurabilityAwarenessController.register();
+		ToolHarvestAwarenessController.register();
 	}
 }
