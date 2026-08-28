@@ -21,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
+import net.fabricmc.loader.api.FabricLoader;
 
 /**
  * Binds the C API exported by Prism (https://github.com/ethindp/prism), a
@@ -46,32 +47,45 @@ public final class PrismController {
 
 	private static final Optional<PrismController> INSTANCE = tryLoad();
 
+	private static final long BACKEND_SUPPORTS_BRAILLE = 1L << 4;
+	private static final long BACKEND_SUPPORTS_OUTPUT = 1L << 5;
+
 	private final Arena arena;
 	private final MethodHandle prismShutdown;
 	private final MethodHandle registryCreateBest;
 	private final MethodHandle backendFree;
 	private final MethodHandle backendName;
+	private final MethodHandle backendGetFeatures;
 	private final MethodHandle backendSpeak;
+	private final MethodHandle backendBraille;
+	private final MethodHandle backendOutput;
 	private final MethodHandle backendStop;
 	private final MethodHandle errorString;
 
 	private final MemorySegment context;
 	private MemorySegment backend;
+	private boolean brailleSupported;
+	private boolean outputSupported;
 
 	private PrismController(Arena arena, MethodHandle prismShutdown, MethodHandle registryCreateBest,
-			MethodHandle backendFree, MethodHandle backendName,
-			MethodHandle backendSpeak, MethodHandle backendStop, MethodHandle errorString,
+			MethodHandle backendFree, MethodHandle backendName, MethodHandle backendGetFeatures,
+			MethodHandle backendSpeak, MethodHandle backendBraille, MethodHandle backendOutput,
+			MethodHandle backendStop, MethodHandle errorString,
 			MemorySegment context, MemorySegment backend) {
 		this.arena = arena;
 		this.prismShutdown = prismShutdown;
 		this.registryCreateBest = registryCreateBest;
 		this.backendFree = backendFree;
 		this.backendName = backendName;
+		this.backendGetFeatures = backendGetFeatures;
 		this.backendSpeak = backendSpeak;
+		this.backendBraille = backendBraille;
+		this.backendOutput = backendOutput;
 		this.backendStop = backendStop;
 		this.errorString = errorString;
 		this.context = context;
 		this.backend = backend;
+		updateSupportedFeatures();
 	}
 
 	public static Optional<PrismController> getInstance() {
@@ -111,8 +125,17 @@ public final class PrismController {
 			MethodHandle backendName = linker.downcallHandle(
 					lookup.find("prism_backend_name").orElseThrow(),
 					FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+			MethodHandle backendGetFeatures = linker.downcallHandle(
+					lookup.find("prism_backend_get_features").orElseThrow(),
+					FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 			MethodHandle backendSpeak = linker.downcallHandle(
 					lookup.find("prism_backend_speak").orElseThrow(),
+					FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_BOOLEAN));
+			MethodHandle backendBraille = linker.downcallHandle(
+					lookup.find("prism_backend_braille").orElseThrow(),
+					FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+			MethodHandle backendOutput = linker.downcallHandle(
+					lookup.find("prism_backend_output").orElseThrow(),
 					FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_BOOLEAN));
 			MethodHandle backendStop = linker.downcallHandle(
 					lookup.find("prism_backend_stop").orElseThrow(),
@@ -143,9 +166,15 @@ public final class PrismController {
 			LOGGER.info("Loaded Prism speech backend '{}' from {}", name, dll);
 
 			return Optional.of(new PrismController(arena, prismShutdown, registryCreateBest, backendFree, backendName,
-					backendSpeak, backendStop, errorString, context, backend));
+					backendGetFeatures, backendSpeak, backendBraille, backendOutput, backendStop, errorString,
+					context, backend));
 		} catch (Throwable t) {
-			LOGGER.info("Prism unavailable, the default narrator will be used instead: {}", t.toString());
+			// Logged at WARN with the full stack trace (not just t.toString()) because a
+			// bare message loses the cause chain that usually explains *why* the native
+			// library failed to load or link (e.g. an UnsatisfiedLinkError wrapping a
+			// dlopen failure) - that detail is the difference between "it just doesn't
+			// work" reports and an actionable diagnosis.
+			LOGGER.warn("Prism unavailable, the default narrator will be used instead", t);
 			return Optional.empty();
 		}
 	}
@@ -166,35 +195,47 @@ public final class PrismController {
 	}
 
 	private static Path extractLibrary(NativeLibrary library) throws IOException {
-		Path dir = Path.of(System.getProperty("java.io.tmpdir"), "united-minecraft-prism");
+		// Deliberately not System.getProperty("java.io.tmpdir"): on Linux that's
+		// usually /tmp, which many distros (and containers/Flatpak) mount `noexec`.
+		// The copy itself succeeds either way, but dlopen()/mmap(PROT_EXEC) on the
+		// extracted .so then fails - silently, from Java's point of view, since it
+		// just surfaces as a generic link failure with no mention of the real cause.
+		// The game directory is never mounted noexec, so extract there instead.
+		Path dir = FabricLoader.getInstance().getGameDir().resolve("united_minecraft").resolve("prism-native");
 		Files.createDirectories(dir);
 		Path dest = dir.resolve(library.fileName());
-		if (Files.notExists(dest)) {
-			try (InputStream in = PrismController.class.getResourceAsStream(library.resourcePath())) {
-				if (in == null) {
-					throw new UncheckedIOException(new IOException(library.resourcePath() + " was not found on the classpath"));
-				}
-				Files.copy(in, dest, StandardCopyOption.REPLACE_EXISTING);
+		// Always re-extract rather than reusing a file left over from a previous run:
+		// a prior interrupted copy, a mod update that shipped a fixed library under
+		// the same file name, or third-party interference (AV quarantine, etc.) could
+		// otherwise leave a stale or corrupt copy in place indefinitely.
+		try (InputStream in = PrismController.class.getResourceAsStream(library.resourcePath())) {
+			if (in == null) {
+				throw new UncheckedIOException(new IOException(library.resourcePath() + " was not found on the classpath"));
 			}
+			Files.copy(in, dest, StandardCopyOption.REPLACE_EXISTING);
 		}
 		return dest;
 	}
 
-	/** Speaks {@code text}, interrupting any speech in progress first if {@code interrupt} is set. */
+	/**
+	 * Outputs {@code text} through every modality the backend supports (speech and,
+	 * where available, a connected braille display), interrupting any speech in
+	 * progress first if {@code interrupt} is set.
+	 */
 	public synchronized void speak(String text, boolean interrupt) {
 		if (backend == null) {
 			return;
 		}
 		try {
-			int result = doSpeak(text, interrupt);
+			int result = doOutput(text, interrupt);
 			if (result != PRISM_OK) {
 				// The backend may have entered an unrecoverable state (e.g. the screen
 				// reader it was talking to was closed) - Prism's own docs say backends
 				// don't reconnect on their own, so re-acquire the best backend and retry once.
-				LOGGER.debug("prism_backend_speak failed ({}), re-acquiring the best backend",
+				LOGGER.debug("Prism output failed ({}), re-acquiring the best backend",
 						describeError(errorString, result));
 				if (reacquireBackend()) {
-					doSpeak(text, interrupt);
+					doOutput(text, interrupt);
 				}
 			}
 		} catch (Throwable t) {
@@ -202,10 +243,39 @@ public final class PrismController {
 		}
 	}
 
+	/**
+	 * Sends {@code text} through {@code prism_backend_output} (speech + braille together)
+	 * when the backend supports it; otherwise falls back to speaking, plus a separate
+	 * braille call if the backend supports braille but not the combined output call.
+	 */
+	private int doOutput(String text, boolean interrupt) throws Throwable {
+		if (outputSupported) {
+			try (Arena callArena = Arena.ofConfined()) {
+				MemorySegment cText = toCString(callArena, text);
+				return (int) backendOutput.invoke(backend, cText, interrupt);
+			}
+		}
+		int result = doSpeak(text, interrupt);
+		if (result == PRISM_OK && brailleSupported) {
+			int brailleResult = doBraille(text);
+			if (brailleResult != PRISM_OK) {
+				LOGGER.debug("prism_backend_braille failed ({})", describeError(errorString, brailleResult));
+			}
+		}
+		return result;
+	}
+
 	private int doSpeak(String text, boolean interrupt) throws Throwable {
 		try (Arena callArena = Arena.ofConfined()) {
 			MemorySegment cText = toCString(callArena, text);
 			return (int) backendSpeak.invoke(backend, cText, interrupt);
+		}
+	}
+
+	private int doBraille(String text) throws Throwable {
+		try (Arena callArena = Arena.ofConfined()) {
+			MemorySegment cText = toCString(callArena, text);
+			return (int) backendBraille.invoke(backend, cText);
 		}
 	}
 
@@ -237,11 +307,25 @@ public final class PrismController {
 				return false;
 			}
 			backend = newBackend;
+			updateSupportedFeatures();
 			return true;
 		} catch (Throwable t) {
 			LOGGER.warn("Failed to re-acquire a Prism backend", t);
 			backend = null;
 			return false;
+		}
+	}
+
+	/** Refreshes {@link #brailleSupported}/{@link #outputSupported} for the current {@link #backend}. */
+	private void updateSupportedFeatures() {
+		try {
+			long features = (long) backendGetFeatures.invoke(backend);
+			brailleSupported = (features & BACKEND_SUPPORTS_BRAILLE) != 0;
+			outputSupported = (features & BACKEND_SUPPORTS_OUTPUT) != 0;
+		} catch (Throwable t) {
+			LOGGER.debug("Failed to query Prism backend features, assuming speech-only", t);
+			brailleSupported = false;
+			outputSupported = false;
 		}
 	}
 
