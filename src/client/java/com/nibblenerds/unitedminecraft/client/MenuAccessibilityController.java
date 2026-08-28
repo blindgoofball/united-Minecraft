@@ -28,6 +28,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.protocol.game.ServerboundSelectTradePacket;
+import net.minecraft.util.context.ContextMap;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.StackedItemContents;
 import net.minecraft.world.inventory.AbstractCraftingMenu;
@@ -52,6 +53,7 @@ import net.minecraft.world.item.crafting.display.RecipeDisplayEntry;
 import net.minecraft.world.item.crafting.display.RecipeDisplayId;
 import net.minecraft.world.item.crafting.display.ShapedCraftingRecipeDisplay;
 import net.minecraft.world.item.crafting.display.ShapelessCraftingRecipeDisplay;
+import net.minecraft.world.item.crafting.display.SlotDisplay;
 import net.minecraft.world.item.crafting.display.SlotDisplayContext;
 import net.minecraft.world.item.enchantment.Enchantment;
 
@@ -91,7 +93,9 @@ import org.lwjgl.glfw.GLFW;
  * simulation involved. Up/Down move between recipe groups, Left/Right move between variants
  * within a group (vanilla bundles near-duplicate recipes, e.g. different colors, into one
  * button), F toggles showing only currently-craftable recipes, and Enter/Shift+Enter place
- * the focused recipe (Shift = fill to max stack size).
+ * the focused recipe (Shift = fill to max stack size). Focusing a recipe also narrates its
+ * ingredients - see {@link #recipeIngredients} - since vanilla's own recipe book never says
+ * what a recipe actually needs anywhere except by looking at the grid preview itself.
  *
  * <p>{@link EnchantmentMenu} similarly gets an extra Enchant Options section, for the three
  * enchantment buttons - not slots at all, so they'd otherwise be invisible to a keyboard/
@@ -602,6 +606,43 @@ public final class MenuAccessibilityController {
 		return false;
 	}
 
+	/**
+	 * The ingredients a recipe actually needs, one stack per distinct item with duplicate grid
+	 * slots merged into a single count (e.g. a recipe needing planks in six different grid
+	 * cells narrates as one "6 Oak Planks" instead of six separate "Oak Planks"). Each slot is
+	 * resolved to a single representative stack via {@link SlotDisplay#resolveForFirstStack} -
+	 * the same "currently shown" item vanilla's own recipe book icon cycles through for a slot
+	 * that accepts several interchangeable items (any plank, any log...), rather than trying to
+	 * narrate every acceptable alternative for a slot at once.
+	 */
+	private static List<ItemStack> recipeIngredients(RecipeDisplay display, ContextMap context) {
+		List<SlotDisplay> slots;
+		if (display instanceof ShapedCraftingRecipeDisplay shaped) {
+			slots = shaped.ingredients();
+		} else if (display instanceof ShapelessCraftingRecipeDisplay shapeless) {
+			slots = shapeless.ingredients();
+		} else if (display instanceof FurnaceRecipeDisplay furnace) {
+			slots = List.of(furnace.ingredient());
+		} else {
+			return List.of();
+		}
+
+		List<ItemStack> merged = new ArrayList<>();
+		for (SlotDisplay slot : slots) {
+			ItemStack stack = slot.resolveForFirstStack(context);
+			if (stack.isEmpty()) {
+				continue;
+			}
+			ItemStack existing = merged.stream().filter(s -> ItemStack.isSameItemSameComponents(s, stack)).findFirst().orElse(null);
+			if (existing != null) {
+				existing.grow(stack.getCount());
+			} else {
+				merged.add(stack.copy());
+			}
+		}
+		return merged;
+	}
+
 	private static List<RecipeCollection> visibleRecipeGroups() {
 		if (!recipeCraftableOnlyFilter) {
 			return recipeGroups;
@@ -638,7 +679,8 @@ public final class MenuAccessibilityController {
 		} else {
 			RecipeCollection group = visibleRecipeGroups().get(recipeGroupIndex);
 			RecipeDisplayEntry entry = variants.get(Math.min(recipeVariantIndex, variants.size() - 1));
-			List<ItemStack> results = entry.resultItems(SlotDisplayContext.fromLevel(player.level()));
+			ContextMap context = SlotDisplayContext.fromLevel(player.level());
+			List<ItemStack> results = entry.resultItems(context);
 			MutableComponent itemName = results.isEmpty()
 					? Component.translatable("united_minecraft.narrate.hotbar_empty")
 					: ItemDescriptions.describe(results.get(0), player);
@@ -646,6 +688,17 @@ public final class MenuAccessibilityController {
 					? "united_minecraft.menu.recipe_book.craftable"
 					: "united_minecraft.menu.recipe_book.not_craftable");
 			message = itemName.copy().append(Component.literal(", ")).append(status);
+
+			List<ItemStack> ingredients = recipeIngredients(entry.display(), context);
+			if (!ingredients.isEmpty()) {
+				MutableComponent ingredientList = ItemDescriptions.describe(ingredients.get(0), player).copy();
+				for (int i = 1; i < ingredients.size(); i++) {
+					ingredientList = ingredientList.append(Component.literal(", ")).append(ItemDescriptions.describe(ingredients.get(i), player));
+				}
+				message = message.append(Component.literal(", ")).append(
+						Component.translatable("united_minecraft.menu.recipe_book.requires", ingredientList));
+			}
+
 			if (variants.size() > 1) {
 				message = message.append(Component.literal(", ")).append(Component.translatable(
 						"united_minecraft.menu.recipe_book.variant", recipeVariantIndex + 1, variants.size()));

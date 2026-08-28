@@ -212,6 +212,7 @@
 	"united_minecraft.menu.recipe_book.empty": "No recipes",
 	"united_minecraft.menu.recipe_book.craftable": "Craftable",
 	"united_minecraft.menu.recipe_book.not_craftable": "Not craftable",
+	"united_minecraft.menu.recipe_book.requires": "Requires %s",
 	"united_minecraft.menu.recipe_book.variant": "Variant %s of %s",
 	"united_minecraft.menu.recipe_book.filter_on": "Showing only craftable recipes",
 	"united_minecraft.menu.recipe_book.filter_off": "Showing all known recipes",
