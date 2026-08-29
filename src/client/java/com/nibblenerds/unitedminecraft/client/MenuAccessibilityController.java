@@ -14,6 +14,7 @@ import com.nibblenerds.unitedminecraft.client.access.AnvilScreenAccess;
 import com.nibblenerds.unitedminecraft.client.access.CreativeModeInventoryScreenAccess;
 import com.nibblenerds.unitedminecraft.client.access.SlotWrapperAccess;
 
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -246,6 +247,7 @@ public final class MenuAccessibilityController {
 		}
 
 		boolean shiftHeld = (event.modifiers() & GLFW.GLFW_MOD_SHIFT) != 0;
+		boolean ctrlHeld = (event.modifiers() & GLFW.GLFW_MOD_CONTROL) != 0;
 		int key = event.key();
 
 		if (key == GLFW.GLFW_KEY_TAB) {
@@ -283,7 +285,6 @@ public final class MenuAccessibilityController {
 		}
 
 		if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) {
-			boolean ctrlHeld = (event.modifiers() & GLFW.GLFW_MOD_CONTROL) != 0;
 			// Button 0 = left click, button 1 = right click - same distinction the real mouse
 			// buttons make on AbstractContainerMenu.clicked. Right-click-pickup is what splits
 			// a stack in half (or drops one item at a time back into a slot from the cursor).
@@ -294,6 +295,10 @@ public final class MenuAccessibilityController {
 
 		if (key == GLFW.GLFW_KEY_DELETE) {
 			return !discardCarriedItem(screen);
+		}
+
+		if (handleHotbarSwapOrDrop(screen, player, event, ctrlHeld)) {
+			return false;
 		}
 
 		return true;
@@ -316,6 +321,43 @@ public final class MenuAccessibilityController {
 		Minecraft.getInstance().getNarrator().saySystemNow(
 				Component.translatable("united_minecraft.narrate.menu_item_discarded", itemName));
 		return true;
+	}
+
+	/**
+	 * Mirrors {@code AbstractContainerScreen#checkHotbarKeyPressed}/{@code #keyPressed}'s own
+	 * hotbar-swap and drop handling, just off the focused slot instead of whatever the real
+	 * mouse happens to be hovering - keyboard navigation moves {@link #focusedSlot} without
+	 * moving the actual cursor, so vanilla's own hover-only handling of these two keybindings
+	 * never fires for a screen-reader user at all. Reads the real (rebindable) {@code
+	 * Options.keyHotbarSlots}/{@code Options.keyDrop} keybindings rather than fixed key codes,
+	 * matching whatever vanilla itself has bound. Same guards as vanilla: hotbar-swap only
+	 * fires with an empty cursor (swapping while carrying something is undefined there), drop
+	 * only fires on a non-empty slot.
+	 */
+	private static boolean handleHotbarSwapOrDrop(AbstractContainerScreen<?> screen, LocalPlayer player, KeyEvent event, boolean ctrlHeld) {
+		AbstractContainerMenu menu = screen.getMenu();
+		Slot slot = currentSlot(menu);
+		if (slot == null) {
+			return false;
+		}
+
+		if (slot.hasItem() && Minecraft.getInstance().options.keyDrop.matches(event)) {
+			// Button 0 = drop one item, button 1 (Ctrl held) = drop the whole stack.
+			click(screen, player, ContainerInput.THROW, ctrlHeld ? 1 : 0);
+			return true;
+		}
+
+		if (menu.getCarried().isEmpty()) {
+			KeyMapping[] hotbarKeys = Minecraft.getInstance().options.keyHotbarSlots;
+			for (int i = 0; i < hotbarKeys.length; i++) {
+				if (hotbarKeys[i].matches(event)) {
+					click(screen, player, ContainerInput.SWAP, i);
+					return true;
+				}
+			}
+		}
+
+		return false;
 	}
 
 	/** Sections present for this menu type, in Tab-cycle order. Recipe Book/Equipment/Enchant Options/Rename only appear when supported. */
