@@ -19,9 +19,12 @@ ABI is identical across platforms.
 
 At runtime,
 `com.nibblenerds.unitedminecraft.client.speech.PrismController` reads the
-appropriate library from the classpath and copies it out to a temp file, since
-none of Windows/macOS/Linux can load a native library from memory - it has to be a
-real file on disk.
+appropriate library from the classpath and copies it out to
+`<game dir>/united_minecraft/prism-native/`, since none of Windows/macOS/Linux
+can load a native library from memory - it has to be a real file on disk. This
+is deliberately not a system temp directory: on Linux that's usually `/tmp`,
+which many distros (and containers/Flatpak) mount `noexec`, silently breaking
+the library load.
 
 If no native library is available for the current platform, or Prism can't find a
 usable speech backend at startup, the mod silently falls back to Minecraft's normal

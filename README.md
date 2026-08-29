@@ -12,7 +12,8 @@ no server-side install needed, and it works on any vanilla server.
 
 - Narration is routed through [Prism](https://github.com/ethindp/prism), which
   picks the best available screen reader (or, failing that, TTS backend) on your
-  system, for better screen reader output than Minecraft's built-in narrator.
+  system, for better screen reader output than Minecraft's built-in narrator,
+  including a connected braille display where your screen reader supports one.
   Falls back to the normal narrator automatically when no such backend is
   available. Works on Windows, macOS, and Linux (x86-64 and arm64); see
   [`src/client/resources/prism/README.md`](src/client/resources/prism/README.md)
@@ -73,7 +74,8 @@ Cycle through nearby things by category and get full narration, targeting, and
 navigation without needing to see or aim at them.
 
 - Categories: Interactables, Mechanisms, Items, Passive Mobs, Hostile Mobs, Trees,
-  Ores, Liquids, Crops, Search, Biomes, Markers (see Map Markers below), and Players.
+  Ores, Liquids, Crops, Search, Biomes, Markers (see Map Markers below), Players,
+  and Vehicles (minecarts, boats, and armor stands).
 - Selecting a category announces how many items it found (e.g. "Trees, 13"),
   and cycling through them with Page Up/Down announces your position in that
   list (e.g. "3 of 13") alongside the item itself.
@@ -206,6 +208,20 @@ narration means it's safe (a cave lake below, say) - useful information
 either way, not just a hazard alert. No key or toggle - it just runs while
 you're walking normally.
 
+### Durability & Tool Harvest Awareness
+
+Always-on warnings that head off the two most common ways to lose progress
+without noticing: worn armor and hand items narrate once when they cross a
+configurable "getting low" threshold and again at a more urgent "about to
+break" threshold (both tunable from Settings), so a pick or a chestplate
+never breaks as a surprise. Repairing past a threshold - Mending, an anvil -
+re-arms it, so the same warning can fire again if it happens a second time.
+Separately, starting to mine a block your held item can't actually harvest
+(diamond ore with a stone pickaxe, stone with bare hands) narrates what tool
+or tier it actually needs, before you waste the time mining a block whose
+drop would've been destroyed anyway. Both are toggleable independently from
+Settings.
+
 ### Navigation Radar
 
 Toggleable audio radar covering front, left, and right as you walk - a sound
@@ -264,7 +280,17 @@ tables, anvils, brewing stands, enchanting tables, and your own inventory.
 Tab/Shift+Tab cycle between sections (the container's own slots, equipment,
 main inventory, hotbar, and a Recipe Book section where applicable); arrow
 keys move within a section in a proper 2D grid; Enter picks up/places
-(Shift+Enter quick-moves).
+(Shift+Enter quick-moves). Hovering a slot and pressing 1-9 swaps its
+contents into that hotbar slot, and Q (Ctrl+Q for the whole stack) drops it,
+the same as they would with a real mouse cursor.
+
+Wherever a crafting grid and Recipe Book are both present, Up/Down move
+between recipe groups and Left/Right between variants within one (vanilla
+bundles near-duplicates, like different wood colors, together), narrating
+the result, whether it's currently craftable, and the ingredients it
+actually needs - something vanilla's own recipe book never says out loud
+anywhere. F toggles showing only recipes you can currently craft. Enter
+places the focused recipe; Shift+Enter fills the grid to the max stack size.
 
 The enchanting table's three enchantment options aren't slots at all, so they
 get their own Enchant Options section: Up/Down move between them, narrating
@@ -292,12 +318,13 @@ just the Inventory tab.
 ### Settings
 
 A dedicated key opens a settings screen for the things worth tuning to
-taste: on/off switches for Hostile Radar, its melee-range alert, and Fall
-Warning (all otherwise always-on with no toggle of their own), a three-way
-switch for the Combat Mode attack-ready cue (off, Combat Mode only, or
-always), and range/threshold sliders for Hostile Radar, Fall Warning, Mining
-Radar, Navigation Radar, and the Scanner. Saved to a config file shared across
-every world and server, and
+taste: on/off switches for Hostile Radar, its melee-range alert, Fall
+Warning, Durability Awareness, and Tool Harvest Awareness (all otherwise
+always-on with no toggle of their own), a three-way switch for the Combat
+Mode attack-ready cue (off, Combat Mode only, or always), and range/threshold
+sliders for Hostile Radar, Fall Warning, Mining Radar, Navigation Radar, the
+Scanner, and Durability Awareness's warning/critical thresholds. Saved to a
+config file shared across every world and server, and
 built from the same vanilla screen widgets as the rest of Minecraft's
 Options menus rather than a third-party settings toolkit, so it narrates
 exactly as reliably.
