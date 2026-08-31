@@ -67,6 +67,11 @@ no server-side install needed, and it works on any vanilla server.
   to the most recent message regardless of where it was left last time.
 - Fishing catches are narrated - vanilla gives no feedback at all about what
   a cast just reeled in, sighted or otherwise.
+- Dedicated keys read the current boss bar(s) (name and percentage) and the
+  sidebar scoreboard (objective name plus each line's score, highest first)
+  on demand - vanilla shows both purely visually, with nothing narrating
+  either one. The scoreboard reads the top 10 entries by default; hold Alt
+  to hear the whole thing.
 
 ### The Scanner
 
@@ -75,7 +80,11 @@ navigation without needing to see or aim at them.
 
 - Categories: Interactables, Mechanisms, Items, Passive Mobs, Hostile Mobs, Trees,
   Ores, Liquids, Crops, Search, Biomes, Markers (see Map Markers below), Players,
-  and Vehicles (minecarts, boats, and armor stands).
+  and Entities (minecarts, boats, armor stands, item frames and glow item frames -
+  narrating what they're holding, if anything - paintings by their actual name
+  rather than just "Painting", end crystals, and leash knots).
+- An optional Settings toggle skips empty categories entirely when cycling with
+  Home/End, instead of stopping on them to announce "empty" - off by default.
 - Selecting a category announces how many items it found (e.g. "Trees, 13"),
   and cycling through them with Page Up/Down announces your position in that
   list (e.g. "3 of 13") alongside the item itself.
@@ -84,6 +93,12 @@ navigation without needing to see or aim at them.
   everything else - instead of stepping through every item one at a time.
   Handy for skipping past a crowd of cows and pigs to reach the one sheep, or
   past a dozen spruce trees to find the one oak.
+- Sheep narrate their wool color (e.g. "White Sheep"), including sheared
+  ones, which still narrate their last color alongside "sheared".
+- Mechanisms now also includes nether and end portals - clustered into one
+  entry per portal, the same way Liquids clusters a lake into one entry
+  instead of one per block - alongside doors, buttons, levers, and the rest
+  of Mechanisms' usual redstone-adjacent contents.
 - Like Markers, Players ignores the Scanner's normal range - every other player in
   your current dimension shows up regardless of distance, since the game already
   tells your client about all of them no matter how far away they are.
@@ -121,6 +136,14 @@ navigation without needing to see or aim at them.
   another entity is physically in the way of the one you're locked onto (two
   chickens crowded together while trying to breed them, say), where camera aim
   alone can't tell them apart.
+- The rest of the Scanner still works while locked on - Home/End and Page
+  Up/Down keep cycling categories and items so you can look for something
+  else without releasing the lock first. Targeting a *different* item drops
+  the old lock and targets the new one normally; Shift+B (reset facing to
+  north) also releases the lock.
+- Walking to a mob (Shift+target) just faces it once you arrive, the same
+  as walking to a block already does - turn on the auto-lock Settings
+  toggle if you'd rather it lock on automatically instead.
 - Any bow shot that actually connects - locked on or not - gets a confirmation cue
   at full volume regardless of distance, since a hit at real range is easy to miss
   both by eye and by ear.
@@ -248,19 +271,30 @@ snap-turn mechanism used outside Build Mode, so you can reorient without
 needing to leave Build Mode to physically turn. Place and break work reliably
 no matter which way you're actually facing, independent of the cursor's own
 orientation. If the cursor wanders out of reach, a dedicated key walks you to
-it automatically.
+it automatically; Alt+I instead snaps the cursor straight back to wherever
+you're currently standing and re-centers the whole 65x65 area there, so you
+don't have to walk back to keep exploring from your new position. Moving the
+cursor onto the block you're actually standing on narrates that too.
 
 If the block under the cursor has a meaningful facing (repeaters, comparators,
 dispensers, pistons, and the like), that's narrated too, and any block
 currently receiving redstone power speaks up about it - silent otherwise, so
-it doesn't get in the way. A dedicated key cycles a placement facing - North,
-East, South, West, Up, Down, or back to automatic - so you can place a
+it doesn't get in the way. Stairs narrate their corner as a compass direction
+(e.g. "Northwest corner") when they're not a plain straight stair, and
+"Upside down" when placed on the underside of the block above - both silent
+for the plain, right-side-up case. A dedicated key cycles a placement facing -
+North, East, South, West, Up, Down, or back to automatic - so you can place a
 dispenser with its output facing a specific direction, or attach a torch,
 lever, or button to a specific side of
 a block, without needing to physically turn to face that way first. There's a
 brief pause between pressing place and the block actually appearing whenever a
 facing is selected (getting the orientation right requires the choice to
 genuinely reach the server first) - expected, not lag.
+
+When a block can't be placed, the reason is narrated specifically instead of
+a generic "Can't place there" - you're standing in the way, something's
+already occupying that space, there's no adjacent block to place against, or
+something else (usually an entity) is blocking the spot.
 
 Water and lava buckets work too, including pouring into a spot with no
 directly clickable face - a narrow hole, say - the same way it works for a
@@ -289,7 +323,13 @@ between recipe groups and Left/Right between variants within one (vanilla
 bundles near-duplicates, like different wood colors, together), narrating
 the result, whether it's currently craftable, and the ingredients it
 actually needs - something vanilla's own recipe book never says out loud
-anywhere. F toggles showing only recipes you can currently craft. Enter
+anywhere. Home/End jump straight to the first/last recipe group, and Page
+Up/Down cycle through vanilla's own recipe-book category tabs (Building
+Blocks, Redstone, and so on), so you're not stuck paging through every
+recipe one at a time to reach a specific kind. F toggles showing only
+recipes you can currently craft. Space opens a search prompt - the term
+also filters vanilla's own recipe book search box, if it's open, so you and
+a sighted player looking over your shoulder see the same results. Enter
 places the focused recipe; Shift+Enter fills the grid to the max stack size.
 
 The enchanting table's three enchantment options aren't slots at all, so they
@@ -315,19 +355,26 @@ item discards it, the same as dragging it onto the trash slot would, without
 having to navigate there - works from anywhere in the Creative screen, not
 just the Inventory tab.
 
+The Search tab's text field is fully keyboard-accessible: Tab reaches it,
+typing filters the grid and narrates a result count as you go, and Up/Down
+(or Page Up/Down) leave the field to jump straight into the first filtered
+result - pressing Up again from the very first result returns to the field.
+
 ### Settings
 
 A dedicated key opens a settings screen for the things worth tuning to
 taste: on/off switches for Hostile Radar, its melee-range alert, Fall
-Warning, Durability Awareness, and Tool Harvest Awareness (all otherwise
-always-on with no toggle of their own), a three-way switch for the Combat
-Mode attack-ready cue (off, Combat Mode only, or always), and range/threshold
-sliders for Hostile Radar, Fall Warning, Mining Radar, Navigation Radar, the
-Scanner, and Durability Awareness's warning/critical thresholds. Saved to a
-config file shared across every world and server, and
+Warning, Durability Awareness, Tool Harvest Awareness (all otherwise
+always-on with no toggle of their own), skipping empty Scanner categories,
+and auto-locking onto a mob after walking to it, a three-way switch for the
+Combat Mode attack-ready cue (off, Combat Mode only, or always), and
+range/threshold sliders for Hostile Radar, Fall Warning, Mining Radar,
+Navigation Radar, the Scanner, and Durability Awareness's warning/critical
+thresholds. Saved to a config file shared across every world and server, and
 built from the same vanilla screen widgets as the rest of Minecraft's
 Options menus rather than a third-party settings toolkit, so it narrates
-exactly as reliably.
+exactly as reliably - including scrolling to keep whatever's focused on
+screen as the list of settings grows past what fits.
 
 A button on that screen opens the Sound and Cue Glossary - a scrollable,
 keyboard-navigable list of every audio cue this mod plays and what it means,
@@ -398,7 +445,7 @@ where noted.
 | R (Shift = toggle Auto Crosshair Narration) | Read what's in front of me |
 | V (Shift = weather and, at night, moon phase) | Narrate time of day |
 | U (Shift = name the Scanner's focused item, or enter a Search term while Search is selected) | Place a named map marker at your current location |
-| I | Toggle Build Mode |
+| I (Alt+I while Build Mode is on) | Toggle Build Mode / recenter its cursor and movement area on your current position |
 | Right Control | Build Mode: place block, or interact with it if it's something clickable (chest, door, lever, repeater, etc.) |
 | Right Shift (hold) | Build Mode: break block |
 | G | Build Mode: walk to cursor |
@@ -416,12 +463,14 @@ where noted.
 | Backspace | Stop Scanner lock-on / cancel Auto-Walk, swim, or trail retrace |
 | Delete | Remove the focused marker in the Markers category |
 | \ (backslash) | Announce the Scanner's focused item's coordinates |
+| ; (semicolon) | Read the current boss bar(s) |
+| ' (apostrophe, hold Alt for the whole board) | Read the sidebar scoreboard |
 | F6 | Open United Minecraft Settings |
 
 Inside container menus, the Creative inventory, and settings/list screens, arrow
-keys/Tab/Enter/Home/End/Delete take on the screen-specific meanings described
-above - those are fixed, not part of the rebindable list, since they only
-apply within that particular screen.
+keys/Tab/Enter/Home/End/Delete/Space/Page Up/Down take on the screen-specific
+meanings described above - those are fixed, not part of the rebindable list,
+since they only apply within that particular screen.
 
 ## Building From Source
 
