@@ -29,12 +29,19 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.entity.animal.sheep.Sheep;
+import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
 import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.entity.decoration.ItemFrame;
+import net.minecraft.world.entity.decoration.LeashFenceKnotEntity;
+import net.minecraft.world.entity.decoration.painting.Painting;
+import net.minecraft.world.entity.decoration.painting.PaintingVariant;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.vehicle.boat.Boat;
 import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
+import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
@@ -50,10 +57,13 @@ import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.CocoaBlock;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.EndPortalBlock;
+import net.minecraft.world.level.block.EndPortalFrameBlock;
 import net.minecraft.world.level.block.FenceGateBlock;
 import net.minecraft.world.level.block.KelpBlock;
 import net.minecraft.world.level.block.KelpPlantBlock;
 import net.minecraft.world.level.block.LeverBlock;
+import net.minecraft.world.level.block.NetherPortalBlock;
 import net.minecraft.world.level.block.NetherWartBlock;
 import net.minecraft.world.level.block.SaplingBlock;
 import net.minecraft.world.level.block.SignBlock;
@@ -175,8 +185,42 @@ public final class ScannerController {
 			if (coordinatesPressed) {
 				announceCoordinates(client, lockedEntity.blockPosition());
 			}
+			// Category/item cycling never touches rotation (tickLock owns that every tick
+			// regardless), so it's safe to let the player keep looking for something else to
+			// target next without first releasing the lock.
+			if (prevCategory) {
+				switchCategory(client, player, -1);
+			}
+			if (nextCategory) {
+				switchCategory(client, player, 1);
+			}
+			if (pageDown) {
+				if (ClientKeyBindings.isModifierDown(client)) {
+					stepItemSameType(client, player, 1);
+				} else {
+					stepItem(client, player, 1);
+				}
+			}
+			if (pageUp) {
+				if (ClientKeyBindings.isModifierDown(client)) {
+					stepItemSameType(client, player, -1);
+				} else {
+					stepItem(client, player, -1);
+				}
+			}
 			if (targetPressed) {
-				interactWithLocked(client, player);
+				// Cycling above may have moved focus onto something other than what's actually
+				// locked - in that case Enter/Shift+Enter should behave exactly as it would if
+				// nothing were locked: drop the old lock (silently - the new target's own
+				// narration below covers it) and dispatch normally. Only when focus is still the
+				// locked entity itself does a plain Enter mean "interact with what I'm locked on".
+				ScannerItem focused = currentItem();
+				if (focused != null && focused.entity() == lockedEntity) {
+					interactWithLocked(client, player);
+				} else {
+					lockedEntity = null;
+					target(client, player);
+				}
 			}
 			return;
 		}
@@ -376,7 +420,14 @@ public final class ScannerController {
 		}
 	}
 
-	private static void stopLock(Minecraft client) {
+	/**
+	 * Releases the lock (if any) and narrates it - the normal Delete/Stop-Lock action, and also
+	 * reused by {@link AccessibilityTickHandler} for Shift+B: releasing the lock here, before
+	 * that tick's rotation-ownership chain runs, is what lets a same-tick {@code
+	 * resetRotationToNorth} actually stick instead of being stomped by {@link #tickLock} the
+	 * moment it runs again - see the call site there for the full explanation.
+	 */
+	public static void stopLock(Minecraft client) {
 		if (lockedEntity == null) {
 			return;
 		}
@@ -393,6 +444,25 @@ public final class ScannerController {
 
 		ScannerCategory category = CATEGORIES[categoryIndex];
 		items = scan(category, player);
+
+		if (UnitedMinecraftConfig.get().scannerSkipEmptyCategories && isSkippablyEmpty(category, items)) {
+			// Keep advancing in the same direction, re-scanning each candidate, until one is
+			// non-empty or every other category has been tried once - the loop bound guards
+			// against spinning forever if genuinely everything is empty, in which case
+			// categoryIndex/category/items just stay on the original (still-empty) selection
+			// and fall through to narrate it as empty below, same as with the setting off.
+			for (int step = 1; step < CATEGORIES.length; step++) {
+				int candidateIndex = Math.floorMod(categoryIndex + direction * step, CATEGORIES.length);
+				ScannerCategory candidate = CATEGORIES[candidateIndex];
+				List<ScannerItem> candidateItems = scan(candidate, player);
+				if (!isSkippablyEmpty(candidate, candidateItems)) {
+					categoryIndex = candidateIndex;
+					category = candidate;
+					items = candidateItems;
+					break;
+				}
+			}
+		}
 		itemIndex = 0;
 
 		if (category == ScannerCategory.SEARCH && searchTerm.isBlank()) {
@@ -410,6 +480,16 @@ public final class ScannerController {
 				.append(Component.translatable("united_minecraft.narrate.scanner_count", items.size()))
 				.append(Component.literal(". "))
 				.append(describeItem(category, items.get(0), player)));
+	}
+
+	/**
+	 * Whether {@link #switchCategory} should treat {@code category} as skippable under {@code
+	 * scannerSkipEmptyCategories} - true empty results everywhere except Search, whose "no term
+	 * entered yet" state is its own valid narration (see {@link #openSearchPrompt}), not the
+	 * "None found" this setting exists to skip past.
+	 */
+	private static boolean isSkippablyEmpty(ScannerCategory category, List<ScannerItem> items) {
+		return category != ScannerCategory.SEARCH && items.isEmpty();
 	}
 
 	private static void stepItem(Minecraft client, LocalPlayer player, int direction) {
@@ -504,7 +584,15 @@ public final class ScannerController {
 					() -> {
 						if (entity.isAlive()) {
 							rescanAndRefocus(player, item -> item.entity() == entity);
-							lockOnto(client, player, entity);
+							// Whether walking up to a mob should then start a continuous lock-on
+							// (today's always-on behavior) or just face it once is now a setting -
+							// deliberately separate from targetBlock's own walk-then-face behavior,
+							// which this doesn't touch.
+							if (UnitedMinecraftConfig.get().scannerAutoLockAfterWalk) {
+								lockOnto(client, player, entity);
+							} else {
+								aimOnceAtEntity(client, player, entity);
+							}
 						}
 					});
 			return;
@@ -550,10 +638,25 @@ public final class ScannerController {
 	 * both without needing to special-case either.
 	 */
 	private static Component mobDisplayName(Entity entity) {
-		if (entity instanceof LivingEntity living && living.isBaby()) {
-			return Component.translatable("united_minecraft.narrate.baby_mob", entity.getDisplayName());
+		Component name = entity.getDisplayName();
+		if (entity instanceof Sheep sheep) {
+			// Color goes inside the baby wrap ("Baby White Sheep", not "White Baby Sheep") -
+			// build the colored name first, then let the baby check below wrap the whole thing.
+			name = Component.translatable("united_minecraft.narrate.sheep_colored", dyeColorName(sheep.getColor()), name);
+			if (sheep.isSheared()) {
+				// Still narrate the last-known color even once sheared - just flag the sheared
+				// state alongside it, rather than going silent on color entirely.
+				name = name.copy().append(Component.literal(", ")).append(Component.translatable("united_minecraft.narrate.sheep_sheared"));
+			}
 		}
-		return entity.getDisplayName();
+		if (entity instanceof LivingEntity living && living.isBaby()) {
+			return Component.translatable("united_minecraft.narrate.baby_mob", name);
+		}
+		return name;
+	}
+
+	private static Component dyeColorName(DyeColor color) {
+		return Component.translatable("united_minecraft.color." + color.getName());
 	}
 
 	private static void targetBlock(Minecraft client, LocalPlayer player, BlockPos pos, Component name, boolean walkThere) {
@@ -692,6 +795,14 @@ public final class ScannerController {
 			if (category == ScannerCategory.ITEMS && item.entity() instanceof ItemEntity itemEntity) {
 				return ItemDescriptions.describe(itemEntity.getItem(), player);
 			}
+			if (category == ScannerCategory.ENTITIES) {
+				if (item.entity() instanceof ItemFrame frame) {
+					return describeItemFrame(frame, player);
+				}
+				if (item.entity() instanceof Painting painting) {
+					return describePainting(painting);
+				}
+			}
 			return mobDisplayName(item.entity());
 		}
 		Level level = player.level();
@@ -714,9 +825,39 @@ public final class ScannerController {
 		Identifier id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
 		String path = id.getPath();
 		String trimmed = path.endsWith("_log") ? path.substring(0, path.length() - 4) : path;
+		return Component.literal(titleCaseWords(trimmed) + " Tree");
+	}
 
+	/** "Item Frame" alone if empty, "Item Frame, holding Diamond Sword" (full item narration) if not. */
+	private static Component describeItemFrame(ItemFrame frame, Player player) {
+		Component name = frame.getDisplayName();
+		ItemStack held = frame.getItem();
+		if (held.isEmpty()) {
+			return name;
+		}
+		return Component.translatable("united_minecraft.narrate.item_frame_holding", name, ItemDescriptions.describe(held, player));
+	}
+
+	/**
+	 * Narrates the painting's actual motif rather than the generic "Painting" - vanilla ships a
+	 * real player-facing title translation for every one of its own {@link PaintingVariant}s
+	 * (e.g. "Kebab", "Wanderer"), reached via {@link PaintingVariant#title()}. Falls back to
+	 * title-casing the variant's raw registry path (matching {@link #describeTree}'s fallback
+	 * for a block with no dedicated display name) for a datapack-added variant that skipped the
+	 * optional title field.
+	 */
+	private static Component describePainting(Painting painting) {
+		Holder<PaintingVariant> variantHolder = painting.getVariant();
+		PaintingVariant variant = variantHolder.value();
+		Component title = variant.title().<Component>map(t -> t).orElseGet(() -> Component.literal(
+				titleCaseWords(variantHolder.unwrapKey().map(key -> key.identifier().getPath()).orElse("unknown"))));
+		return Component.translatable("united_minecraft.narrate.painting_title", title);
+	}
+
+	/** "warped_stem" -> "Warped Stem" - shared by {@link #describeTree} and {@link #describePainting}'s fallback. */
+	private static String titleCaseWords(String path) {
 		StringBuilder name = new StringBuilder();
-		for (String word : trimmed.split("_")) {
+		for (String word : path.split("_")) {
 			if (word.isEmpty()) {
 				continue;
 			}
@@ -725,8 +866,7 @@ public final class ScannerController {
 			}
 			name.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
 		}
-		name.append(" Tree");
-		return Component.literal(name.toString());
+		return name.toString();
 	}
 
 	/** Joins a sign's non-blank lines (front first, falling back to back if the front is empty) - null if both sides are blank. */
@@ -774,12 +914,7 @@ public final class ScannerController {
 			// A door is two block positions (HALF=LOWER/UPPER) sharing one real-world object -
 			// only match the lower half so each door shows up once, the same fix already applied
 			// to beds and double chests above.
-			case MECHANISMS -> scanBlocks(player, (pos, state) -> {
-				if (state.getBlock() instanceof DoorBlock) {
-					return state.getValue(DoorBlock.HALF) == DoubleBlockHalf.LOWER;
-				}
-				return isMechanism(state.getBlock());
-			});
+			case MECHANISMS -> scanMechanisms(player);
 			case ITEMS -> scanEntities(player, entity -> entity instanceof ItemEntity);
 			case TREES -> scanTrees(player);
 			// Deliberately not x-ray: OreDetection.isExposed only counts ore already
@@ -798,8 +933,18 @@ public final class ScannerController {
 			case HOSTILE_MOBS -> scanEntities(player, entity -> entity instanceof Enemy);
 			case MARKERS -> scanMarkers(player);
 			case PLAYERS -> scanPlayers(player);
-			case VEHICLES -> scanEntities(player, entity ->
-					entity instanceof AbstractMinecart || entity instanceof Boat || entity instanceof ArmorStand);
+			// Deliberately not ItemEntity (that's exclusively the Items category), ExperienceOrb,
+			// EvokerFangs, AreaEffectCloud, LightningBolt, thrown projectiles, FallingBlockEntity,
+			// or PrimedTnt - none of those stick around long enough to be worth scanning for.
+			// GlowItemFrame extends ItemFrame, so instanceof ItemFrame covers both.
+			case ENTITIES -> scanEntities(player, entity ->
+					entity instanceof AbstractMinecart
+							|| entity instanceof Boat
+							|| entity instanceof ArmorStand
+							|| entity instanceof ItemFrame
+							|| entity instanceof EndCrystal
+							|| entity instanceof LeashFenceKnotEntity
+							|| entity instanceof Painting);
 		};
 	}
 
@@ -808,7 +953,96 @@ public final class ScannerController {
 				|| block instanceof ButtonBlock
 				|| block instanceof DoorBlock
 				|| block instanceof TrapDoorBlock
-				|| block instanceof FenceGateBlock;
+				|| block instanceof FenceGateBlock
+				|| block instanceof NetherPortalBlock
+				|| block instanceof EndPortalBlock
+				|| block instanceof EndPortalFrameBlock;
+	}
+
+	/**
+	 * Mechanisms plus nether/end portals, the latter clustered into one entry per structure
+	 * instead of one per block - a nether portal is a multi-block rectangle and an end portal
+	 * frame is a multi-block ring, and cycling through a dozen near-identical "Nether Portal"
+	 * entries for one structure would be pointless. Unlike Ores, these are the visible/
+	 * interactive surface itself, so there's no {@link OreDetection#isExposed} gating here.
+	 */
+	private static List<ScannerItem> scanMechanisms(LocalPlayer player) {
+		Level level = player.level();
+		Vec3 eye = player.getEyePosition();
+		BlockPos center = player.blockPosition();
+		int r = (int) scanRange();
+
+		Set<BlockPos> netherPortalPositions = new HashSet<>();
+		Set<BlockPos> endPortalPositions = new HashSet<>();
+		Set<BlockPos> endPortalFramePositions = new HashSet<>();
+		List<ScannerItem> results = new ArrayList<>();
+
+		for (BlockPos pos : BlockPos.betweenClosed(center.offset(-r, -r, -r), center.offset(r, r, r))) {
+			BlockState state = level.getBlockState(pos);
+			Block block = state.getBlock();
+			if (block instanceof NetherPortalBlock) {
+				netherPortalPositions.add(pos.immutable());
+				continue;
+			}
+			if (block instanceof EndPortalBlock) {
+				endPortalPositions.add(pos.immutable());
+				continue;
+			}
+			if (block instanceof EndPortalFrameBlock) {
+				endPortalFramePositions.add(pos.immutable());
+				continue;
+			}
+			boolean matches = block instanceof DoorBlock
+					? state.getValue(DoorBlock.HALF) == DoubleBlockHalf.LOWER
+					: isMechanism(block);
+			if (!matches) {
+				continue;
+			}
+			double distance = eye.distanceTo(Vec3.atCenterOf(pos));
+			if (distance <= scanRange()) {
+				BlockPos immutable = pos.immutable();
+				String label = NamedBlockController.findAt(level.dimension(), immutable);
+				results.add(new ScannerItem(immutable, null, distance, label));
+			}
+		}
+
+		addPortalClusters(eye, netherPortalPositions, results);
+		addPortalClusters(eye, endPortalPositions, results);
+		addPortalClusters(eye, endPortalFramePositions, results);
+		results.sort(Comparator.comparingDouble(ScannerItem::distance));
+		return results;
+	}
+
+	/**
+	 * Floods {@code positions} (one portal block type at a time, already range-limited) into
+	 * connected structures via {@link #floodFillCluster}, then reports each one once, at
+	 * whichever of its blocks is nearest the player - the same one-entry-per-structure approach
+	 * {@link #addLiquidClusters} uses for lakes, minus that method's exposure gating (a portal's
+	 * blocks are already the visible surface, not something that can be sealed behind stone).
+	 */
+	private static void addPortalClusters(Vec3 eye, Set<BlockPos> positions, List<ScannerItem> results) {
+		Set<BlockPos> visited = new HashSet<>();
+		for (BlockPos start : positions) {
+			if (visited.contains(start)) {
+				continue;
+			}
+			Set<BlockPos> cluster = new HashSet<>();
+			floodFillCluster(start, positions, visited, cluster);
+
+			BlockPos nearest = null;
+			double nearestDistSqr = Double.MAX_VALUE;
+			for (BlockPos pos : cluster) {
+				double distSqr = eye.distanceToSqr(Vec3.atCenterOf(pos));
+				if (distSqr < nearestDistSqr) {
+					nearestDistSqr = distSqr;
+					nearest = pos;
+				}
+			}
+			double distance = eye.distanceTo(Vec3.atCenterOf(nearest));
+			if (distance <= scanRange()) {
+				results.add(new ScannerItem(nearest, null, distance, null));
+			}
+		}
 	}
 
 	/**

@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
@@ -7,9 +8,12 @@ import java.util.function.Function;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractSliderButton;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.CycleButton;
+import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 
@@ -26,14 +30,38 @@ import net.minecraft.util.Mth;
  * toggle's built-in "Name: ON/OFF", or a slider's message rewritten on every change) -
  * deliberately not a separate label widget next to each control, so Tab visits exactly one
  * narrated element per setting instead of two.
+ *
+ * <p>The rows are laid out in one fixed vertical column that keeps growing as settings are
+ * added, so this screen also implements its own minimal scrolling rather than relying on a
+ * list-widget framework (which would make each row two narrated elements - a label plus a
+ * control - instead of one). {@link #rows} remembers each row's natural ("unscrolled") Y
+ * position; {@link #applyScroll()} offsets every row by {@link #scrollOffset} and hides
+ * ({@code visible = false}) any row that ends up entirely outside {@code [0, height]}. That
+ * last part isn't cosmetic: on a small logical GUI resolution (e.g. a high-DPI display with
+ * "Auto" GUI scale) this screen's rows can be taller than the screen itself, and vanilla's
+ * 26.2 renderer throws {@code IllegalArgumentException: Scissor size must be >0} if it's ever
+ * asked to draw a widget whose scissor rectangle doesn't intersect the screen at all -
+ * {@link AbstractWidget#extractRenderState} already skips extraction entirely when
+ * {@code visible} is false, which is exactly the guard we need. Tab/Shift+Tab
+ * ({@link #keyPressed}) and the mouse wheel ({@link #mouseScrolled}) both funnel through
+ * {@link #applyScroll()} so focus, narration, and rendering never disagree about what's
+ * on screen.
  */
 public final class SettingsScreen extends Screen {
 	private static final int ROW_WIDTH = 240;
 	private static final int ROW_HEIGHT = 20;
 	private static final int ROW_SPACING = 4;
+	private static final int SCROLL_STEP = ROW_HEIGHT + ROW_SPACING;
 	// 9 original setting rows + the Attack Ready Cue cycle + the glossary button + Done
-	// + 3 durability awareness rows (toggle + 2 sliders) + 1 tool harvest warning row.
-	private static final int ROW_COUNT = 16;
+	// + 3 durability awareness rows (toggle + 2 sliders) + 1 tool harvest warning row
+	// + 2 scanner rows (skip empty categories, auto-lock after walk).
+	private static final int ROW_COUNT = 18;
+
+	/** Every row widget, in visual order, alongside its unscrolled ("base") Y position. */
+	private final List<AbstractWidget> rows = new ArrayList<>();
+	private final List<Integer> rowBaseY = new ArrayList<>();
+	private int scrollOffset;
+	private int maxScrollOffset;
 
 	public SettingsScreen() {
 		super(Component.translatable("united_minecraft.settings_screen.title"));
@@ -41,6 +69,10 @@ public final class SettingsScreen extends Screen {
 
 	@Override
 	protected void init() {
+		rows.clear();
+		rowBaseY.clear();
+		scrollOffset = 0;
+
 		UnitedMinecraftConfig config = UnitedMinecraftConfig.get();
 		int x = this.width / 2 - ROW_WIDTH / 2;
 		int y = this.height / 2 - (ROW_HEIGHT + ROW_SPACING) * (ROW_COUNT / 2) - ROW_HEIGHT / 2;
@@ -79,40 +111,129 @@ public final class SettingsScreen extends Screen {
 				value -> config.durabilityCriticalThreshold = (int) Math.round(value));
 		y = addToggle(x, y, "united_minecraft.settings_screen.tool_harvest_warning_enabled",
 				config.toolHarvestWarningEnabled, value -> config.toolHarvestWarningEnabled = value);
+		y = addToggle(x, y, "united_minecraft.settings_screen.scanner_skip_empty_categories",
+				config.scannerSkipEmptyCategories, value -> config.scannerSkipEmptyCategories = value);
+		y = addToggle(x, y, "united_minecraft.settings_screen.scanner_auto_lock_after_walk",
+				config.scannerAutoLockAfterWalk, value -> config.scannerAutoLockAfterWalk = value);
 
-		addRenderableWidget(Button.builder(Component.translatable("united_minecraft.settings_screen.sound_glossary"),
+		registerRow(addRenderableWidget(Button.builder(Component.translatable("united_minecraft.settings_screen.sound_glossary"),
 				button -> Minecraft.getInstance().gui.setScreen(new SoundGlossaryScreen()))
 				.bounds(x, y, ROW_WIDTH, ROW_HEIGHT)
-				.build());
+				.build()), y);
 		y += ROW_HEIGHT + ROW_SPACING;
 
-		addRenderableWidget(Button.builder(Component.translatable("united_minecraft.settings_screen.done"),
+		registerRow(addRenderableWidget(Button.builder(Component.translatable("united_minecraft.settings_screen.done"),
 				button -> onClose())
 				.bounds(x, y + ROW_SPACING, ROW_WIDTH, ROW_HEIGHT)
-				.build());
+				.build()), y + ROW_SPACING);
+
+		// scrollOffset is subtracted directly from each row's absolute base Y (see applyScroll),
+		// not from a content-relative 0-based coordinate space - so the bound that brings the
+		// last row's bottom edge exactly to the screen's bottom is just its own base Y plus its
+		// height, minus the screen height. Also subtracting the first row's base Y here (an
+		// earlier version of this fix did, from conflating this with the content's total span)
+		// undercounts whenever that first row starts below y=0, permanently stranding the last
+		// few rows above the visible area even at maximum scroll - exactly the "Done button and
+		// Sound Glossary are missing" bug this replaces.
+		maxScrollOffset = rowBaseY.isEmpty() ? 0
+				: Math.max(0, (rowBaseY.get(rowBaseY.size() - 1) + ROW_HEIGHT) - this.height);
+		applyScroll();
+	}
+
+	/** Records a row's widget and its unscrolled Y position so scrolling can find it later. */
+	private <T extends AbstractWidget> T registerRow(T widget, int baseY) {
+		rows.add(widget);
+		rowBaseY.add(baseY);
+		return widget;
 	}
 
 	private <T> int addCycle(int x, int y, String labelKey, List<T> values, T initial,
 			Function<T, Component> valueLabel, Consumer<T> onChange) {
-		addRenderableWidget(CycleButton.<T>builder(valueLabel::apply, initial)
+		registerRow(addRenderableWidget(CycleButton.<T>builder(valueLabel::apply, initial)
 				.withValues(values)
 				.create(x, y, ROW_WIDTH, ROW_HEIGHT, Component.translatable(labelKey),
-						(button, value) -> onChange.accept(value)));
+						(button, value) -> onChange.accept(value))), y);
 		return y + ROW_HEIGHT + ROW_SPACING;
 	}
 
 	private int addToggle(int x, int y, String labelKey, boolean initial, Consumer<Boolean> onChange) {
-		addRenderableWidget(CycleButton.onOffBuilder(initial)
+		registerRow(addRenderableWidget(CycleButton.onOffBuilder(initial)
 				.create(x, y, ROW_WIDTH, ROW_HEIGHT, Component.translatable(labelKey),
-						(button, value) -> onChange.accept(value)));
+						(button, value) -> onChange.accept(value))), y);
 		return y + ROW_HEIGHT + ROW_SPACING;
 	}
 
 	private int addSlider(int x, int y, double min, double max, double step, double initial,
 			String labelKey, Consumer<Double> onChange) {
-		addRenderableWidget(new RangeSlider(x, y, ROW_WIDTH, ROW_HEIGHT, min, max, step, initial,
-				Component.translatable(labelKey), onChange));
+		registerRow(addRenderableWidget(new RangeSlider(x, y, ROW_WIDTH, ROW_HEIGHT, min, max, step, initial,
+				Component.translatable(labelKey), onChange)), y);
 		return y + ROW_HEIGHT + ROW_SPACING;
+	}
+
+	/**
+	 * Offsets every row by {@link #scrollOffset} from its recorded base position, and hides
+	 * (via {@code visible = false}) any row that ends up entirely above or below the screen so
+	 * it's skipped by rendering instead of handed to the scissor-clipping renderer with a
+	 * zero-area rectangle. Mouse focus/click hit-testing follows the same repositioned bounds,
+	 * so an off-screen row is also unreachable by mouse until it's scrolled into view.
+	 */
+	private void applyScroll() {
+		for (int i = 0; i < rows.size(); i++) {
+			AbstractWidget widget = rows.get(i);
+			int top = rowBaseY.get(i) - scrollOffset;
+			widget.setY(top);
+			widget.visible = top + widget.getHeight() > 0 && top < this.height;
+		}
+	}
+
+	/**
+	 * If Tab/Shift+Tab (handled by {@code super.keyPressed}) moved focus to a row that's
+	 * currently scrolled out of view, scrolls just enough to bring it fully into
+	 * {@code [0, height]} before this method returns - this mod's users navigate primarily by
+	 * keyboard, so auto-scroll can't depend on a mouse wheel or scrollbar ever being touched.
+	 *
+	 * <p>Every row is temporarily forced visible before delegating to {@code super.keyPressed}:
+	 * {@code AbstractWidget#nextFocusPath} - vanilla's own Tab-cycling target search - refuses
+	 * any widget whose {@code isActive()} is false, and {@code isActive()} itself requires
+	 * {@code visible} (confirmed via its bytecode), so a row {@link #applyScroll} had culled for
+	 * being off-screen would otherwise be permanently unreachable by Tab, not merely reachable
+	 * without auto-scrolling - Tab would silently skip straight past it to the next row vanilla
+	 * still considers a valid target, exactly the "Done/Sound Glossary/the row before it went
+	 * missing" bug this replaces. {@link #applyScroll} (called unconditionally below) restores
+	 * correct culling for rendering immediately afterward, using whatever scroll position this
+	 * method settles on.
+	 */
+	@Override
+	public boolean keyPressed(KeyEvent event) {
+		for (AbstractWidget row : rows) {
+			row.visible = true;
+		}
+		boolean handled = super.keyPressed(event);
+		GuiEventListener focused = getFocused();
+		int index = rows.indexOf(focused);
+		if (index >= 0) {
+			int baseY = rowBaseY.get(index);
+			int top = baseY - scrollOffset;
+			int bottom = top + rows.get(index).getHeight();
+			if (top < 0) {
+				scrollOffset += top;
+			} else if (bottom > this.height) {
+				scrollOffset += bottom - this.height;
+			}
+			scrollOffset = Mth.clamp(scrollOffset, 0, maxScrollOffset);
+		}
+		applyScroll();
+		return handled;
+	}
+
+	@Override
+	public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+		if (maxScrollOffset <= 0) {
+			return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+		}
+		scrollOffset = Mth.clamp(scrollOffset - (int) Math.round(scrollY * SCROLL_STEP), 0, maxScrollOffset);
+		applyScroll();
+		return true;
 	}
 
 	@Override

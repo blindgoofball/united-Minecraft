@@ -151,6 +151,13 @@ public final class ClientKeyBindings {
 	public static final KeyMapping OPEN_SETTINGS = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.open_settings", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_F6, CATEGORY));
 
+	public static final KeyMapping NARRATE_BOSS_BARS = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+			"key.united_minecraft.narrate_boss_bars", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_SEMICOLON, CATEGORY));
+
+	/** Alt instead narrates every scoreboard entry, not just the first 10. */
+	public static final KeyMapping NARRATE_SCOREBOARD = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+			"key.united_minecraft.narrate_scoreboard", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_APOSTROPHE, CATEGORY));
+
 	// Every KeyMapping declared above, discovered reflectively rather than hand-listed so a
 	// future keybinding automatically gets the same backlog-proof tracking below without
 	// anyone needing to remember to register it separately - forgetting would silently

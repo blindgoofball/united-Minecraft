@@ -46,6 +46,8 @@ public final class UnitedMinecraftConfig {
 	public int durabilityWarningThreshold = 25;
 	public int durabilityCriticalThreshold = 10;
 	public boolean toolHarvestWarningEnabled = true;
+	public boolean scannerSkipEmptyCategories = false;
+	public boolean scannerAutoLockAfterWalk = false;
 
 	/** Governs the audio cue for the weapon attack-strength meter refilling - see {@link CombatModeController#tickAttackCue}. */
 	public enum CombatCueMode {

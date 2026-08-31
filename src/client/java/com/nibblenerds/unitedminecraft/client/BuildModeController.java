@@ -30,8 +30,10 @@ import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.ComparatorMode;
+import net.minecraft.world.level.block.state.properties.Half;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.block.state.properties.SlabType;
+import net.minecraft.world.level.block.state.properties.StairsShape;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
@@ -245,6 +247,24 @@ public final class BuildModeController {
 		}
 	}
 
+	/**
+	 * Alt+I while Build Mode is already active (see {@link AccessibilityTickHandler}'s
+	 * {@link ClientKeyBindings#TOGGLE_BUILD_MODE} handling, which routes here instead of
+	 * {@link #toggle} specifically for that combination) - snaps the cursor straight to the
+	 * player's current position and re-anchors the {@link #GRID_RADIUS}-block movement grid
+	 * there too, so the cursor can still roam the full radius in every direction from
+	 * wherever the player has walked to since toggling Build Mode on, rather than staying
+	 * clamped to the original toggle-on location. Facing and any in-progress placement-facing
+	 * override are left untouched - this only ever moves the cursor/grid, never re-picks a
+	 * direction the way {@link #toggle} does.
+	 */
+	public static void recenterCursor(Minecraft client, LocalPlayer player) {
+		cursor = player.blockPosition();
+		anchorX = cursor.getX();
+		anchorZ = cursor.getZ();
+		client.getNarrator().saySystemNow(describeCursor(player));
+	}
+
 	public static void tick(Minecraft client, LocalPlayer player) {
 		if (pendingPlaceTicks < 0) {
 			// Re-lock the camera to facing every tick, the same way Scanner lock-on and Combat
@@ -451,7 +471,7 @@ public final class BuildModeController {
 		Level level = player.level();
 		BlockState cursorState = level.getBlockState(cursor);
 		if (player.getBoundingBox().intersects(cursor)) {
-			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_cannot_place"));
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_player_in_way"));
 			return;
 		}
 
@@ -474,7 +494,7 @@ public final class BuildModeController {
 			if ((isInteractable(cursorState.getBlock()) || placingBlock(player) == null) && interactWithCursor(client, player)) {
 				narrateAfterAction(client, player);
 			} else {
-				client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_cannot_place"));
+				client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_occupied"));
 			}
 			return;
 		}
@@ -737,15 +757,26 @@ public final class BuildModeController {
 		return null;
 	}
 
-	/** Tries every candidate face in {@link #faceTryOrder} against the real placement call. */
+	/**
+	 * Tries every candidate face in {@link #faceTryOrder} against the real placement call.
+	 *
+	 * <p>Distinguishes two distinct failure narrations if nothing works: {@code
+	 * build_no_support} when not even one non-replaceable neighbor face turned up to try
+	 * against in the first place, versus {@code build_placement_blocked} when at least one
+	 * was found but every real placement attempt against it still failed (usually an entity
+	 * occupying the space - see {@code build_placement_blocked}'s own doc in en_us.json for
+	 * why this doesn't bother confirming that specifically).
+	 */
 	private static void attemptPlacementSequence(Minecraft client, LocalPlayer player) {
 		Level level = player.level();
+		boolean foundSupportFace = false;
 		for (Direction face : faceTryOrder(placingBlock(player))) {
 			BlockPos neighborPos = cursor.relative(face);
 			BlockState neighborState = level.getBlockState(neighborPos);
 			if (neighborState.canBeReplaced()) {
 				continue;
 			}
+			foundSupportFace = true;
 			Vec3 hitLocation = Vec3.atCenterOf(cursor).add(
 					face.getStepX() * (0.5 - FACE_EPSILON),
 					face.getStepY() * (0.5 - FACE_EPSILON),
@@ -756,7 +787,9 @@ public final class BuildModeController {
 				return;
 			}
 		}
-		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_cannot_place"));
+		client.getNarrator().saySystemNow(Component.translatable(foundSupportFace
+				? "united_minecraft.narrate.build_placement_blocked"
+				: "united_minecraft.narrate.build_no_support"));
 	}
 
 	/**
@@ -985,6 +1018,16 @@ public final class BuildModeController {
 			message = message.append(Component.literal(" "))
 					.append(Component.translatable("united_minecraft.narrate.build_facing", directionName(facing)));
 		}
+		if (state.getBlock() instanceof StairBlock) {
+			String cornerKey = stairCornerDirectionKey(state);
+			if (cornerKey != null) {
+				message = message.append(Component.literal(" ")).append(Component.translatable(
+						"united_minecraft.narrate.build_stair_corner", Component.translatable(cornerKey)));
+			}
+			if (state.getValue(StairBlock.HALF) == Half.TOP) {
+				message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_upside_down"));
+			}
+		}
 		if (level.hasNeighborSignal(cursor)) {
 			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_powered"));
 		}
@@ -1011,6 +1054,13 @@ public final class BuildModeController {
 		message = message.append(Component.literal(" ")).append(Component.translatable(
 				"united_minecraft.narrate.build_cursor_position", cursor.getX(), cursor.getY(), cursor.getZ()));
 
+		if (cursor.equals(player.blockPosition())) {
+			// A positional fact about the cursor, same as the coordinates just appended - not a
+			// block-state fact and not actionability, so it belongs here, ahead of the
+			// reach/placeable tail below.
+			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_player_here"));
+		}
+
 		if (!isInReach(player, cursor)) {
 			// Not actionable yet either way, whatever the block - lead with that rather than
 			// also claiming "Placeable" for something you can't actually place at right now.
@@ -1019,6 +1069,68 @@ public final class BuildModeController {
 			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_placeable"));
 		}
 		return message;
+	}
+
+	// The four diagonal compass directions a stair's corner can land on, ordered by bearing
+	// (0 = north, 90 = east...) starting at 45 degrees - see #stairCornerDirectionKey.
+	private static final String[] DIAGONAL_DIRECTION_KEYS = {
+			"united_minecraft.direction.northeast",
+			"united_minecraft.direction.southeast",
+			"united_minecraft.direction.southwest",
+			"united_minecraft.direction.northwest",
+	};
+
+	/**
+	 * Which compass corner a non-{@code STRAIGHT} stair's diagonal edge actually forms - null
+	 * for {@code STRAIGHT} (no corner at all) or a non-stairs block.
+	 *
+	 * <p>Derived directly from vanilla's own {@code StairBlock.getShape()} bytecode (there's no
+	 * decompiled source to read instead - see this repo's CLAUDE.md on inspecting vanilla via
+	 * {@code javap}), not guessed: that method picks a canonical, direction-keyed {@link
+	 * net.minecraft.world.phys.shapes.VoxelShape} for each {@code (FACING, SHAPE)} pair, built
+	 * once at class-init time by rotating two base shapes - {@code SHAPE_OUTER} (a full bottom
+	 * slab plus a single raised quarter-post on top) and {@code SHAPE_INNER} (a full bottom
+	 * slab plus a raised top missing only one quarter) - around Y in 90-degree steps via {@code
+	 * Shapes.rotateHorizontal}, keyed starting at {@code NORTH} for the unrotated shape and
+	 * advancing clockwise (matching {@link Direction#getClockWise()}) for {@code EAST}/{@code
+	 * SOUTH}/{@code WEST}. The unrotated {@code SHAPE_OUTER}'s post - and the unrotated {@code
+	 * SHAPE_INNER}'s missing notch - both sit at the map key's northwest/southwest quarter
+	 * respectively (confirmed from the literal box coordinates passed to {@code Block.box} in
+	 * the class's static initializer), which works out to a fixed bearing offset from the map
+	 * key direction: a post (outer) at key-direction minus 45 degrees, a notch (inner) at
+	 * key-direction minus 135 degrees.
+	 *
+	 * <p>{@code getShape()}'s own map-key selection per shape (again read directly off its
+	 * bytecode, not vanilla source) is: {@code OUTER_LEFT} and {@code INNER_RIGHT} key on
+	 * {@code FACING} itself; {@code OUTER_RIGHT} keys on {@code FACING.getClockWise()}; {@code
+	 * INNER_LEFT} keys on {@code FACING.getCounterClockWise()}. Combining that with the offsets
+	 * above and simplifying to "degrees from FACING" gives the four constant offsets below -
+	 * always landing exactly on a diagonal (odd multiple of 45 degrees) since {@code FACING}
+	 * itself is always cardinal, hence the fixed 4-entry {@link #DIAGONAL_DIRECTION_KEYS}
+	 * lookup rather than reusing the cardinal {@link #directionName}.
+	 */
+	private static String stairCornerDirectionKey(BlockState state) {
+		StairsShape shape = state.getValue(StairBlock.SHAPE);
+		if (shape == StairsShape.STRAIGHT) {
+			return null;
+		}
+		int facingBearing = switch (state.getValue(StairBlock.FACING)) {
+			case NORTH -> 0;
+			case EAST -> 90;
+			case SOUTH -> 180;
+			case WEST -> 270;
+			// StairBlock's FACING is a HorizontalDirectionalBlock property - never UP/DOWN.
+			case UP, DOWN -> throw new IllegalStateException("Stair FACING can't be vertical");
+		};
+		int offsetDegrees = switch (shape) {
+			case OUTER_LEFT -> -45;
+			case OUTER_RIGHT -> 45;
+			case INNER_LEFT -> 135;
+			case INNER_RIGHT -> -135;
+			case STRAIGHT -> throw new IllegalStateException("STRAIGHT already returned above");
+		};
+		int bearing = Math.floorMod(facingBearing + offsetDegrees, 360);
+		return DIAGONAL_DIRECTION_KEYS[(bearing - 45) / 90];
 	}
 
 	/** The block's own {@code FACING}/{@code HORIZONTAL_FACING} value, whichever it has - null if neither. */

@@ -25,6 +25,7 @@ final class MarkerNameScreen extends Screen {
 	private final Component cancelled;
 	private final Component fieldLabel;
 	private final String initialValue;
+	private final Screen returnTo;
 	private EditBox nameBox;
 
 	MarkerNameScreen(Consumer<String> onConfirm) {
@@ -36,11 +37,23 @@ final class MarkerNameScreen extends Screen {
 	}
 
 	MarkerNameScreen(Component title, Component prompt, Component cancelled, Component fieldLabel, String initialValue, Consumer<String> onConfirm) {
+		this(title, prompt, cancelled, fieldLabel, initialValue, null, onConfirm);
+	}
+
+	/**
+	 * {@code returnTo} lets a caller reopen inside another screen instead of closing to the
+	 * game world - e.g. the recipe book's own search prompt (see {@link MenuAccessibilityController})
+	 * needs to reopen the crafting/furnace screen it was invoked from, not exit the container
+	 * entirely the way the Scanner's world-space search or a Map Marker name does (both pass
+	 * {@code null}, preserving the original behavior of closing to nothing).
+	 */
+	MarkerNameScreen(Component title, Component prompt, Component cancelled, Component fieldLabel, String initialValue, Screen returnTo, Consumer<String> onConfirm) {
 		super(title);
 		this.prompt = prompt;
 		this.cancelled = cancelled;
 		this.fieldLabel = fieldLabel;
 		this.initialValue = initialValue;
+		this.returnTo = returnTo;
 		this.onConfirm = onConfirm;
 	}
 
@@ -63,7 +76,7 @@ final class MarkerNameScreen extends Screen {
 	public boolean keyPressed(KeyEvent event) {
 		if (event.key() == GLFW.GLFW_KEY_ENTER || event.key() == GLFW.GLFW_KEY_KP_ENTER) {
 			onConfirm.accept(nameBox.getValue());
-			this.minecraft.gui.setScreen(null);
+			this.minecraft.gui.setScreen(returnTo);
 			return true;
 		}
 		return super.keyPressed(event);
@@ -72,6 +85,6 @@ final class MarkerNameScreen extends Screen {
 	@Override
 	public void onClose() {
 		this.minecraft.getNarrator().saySystemNow(cancelled);
-		super.onClose();
+		this.minecraft.gui.setScreen(returnTo);
 	}
 }

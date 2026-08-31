@@ -3,6 +3,7 @@ package com.nibblenerds.unitedminecraft.client;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Predicate;
 
@@ -12,6 +13,8 @@ import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 
 import com.nibblenerds.unitedminecraft.client.access.AnvilScreenAccess;
 import com.nibblenerds.unitedminecraft.client.access.CreativeModeInventoryScreenAccess;
+import com.nibblenerds.unitedminecraft.client.access.RecipeBookComponentAccess;
+import com.nibblenerds.unitedminecraft.client.access.RecipeBookScreenAccess;
 import com.nibblenerds.unitedminecraft.client.access.SlotWrapperAccess;
 
 import net.minecraft.client.KeyMapping;
@@ -25,10 +28,12 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.protocol.game.ServerboundSelectTradePacket;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.context.ContextMap;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.StackedItemContents;
@@ -46,6 +51,7 @@ import net.minecraft.world.inventory.RecipeBookMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.RecipeBookCategory;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.MerchantOffers;
 import net.minecraft.world.item.crafting.display.FurnaceRecipeDisplay;
@@ -93,8 +99,14 @@ import org.lwjgl.glfw.GLFW;
  * grid server-side - the same single call the vanilla button click makes, no coordinate
  * simulation involved. Up/Down move between recipe groups, Left/Right move between variants
  * within a group (vanilla bundles near-duplicate recipes, e.g. different colors, into one
- * button), F toggles showing only currently-craftable recipes, and Enter/Shift+Enter place
- * the focused recipe (Shift = fill to max stack size). Focusing a recipe also narrates its
+ * button), Home/End jump to the first/last visible group, Page Up/Down cycle vanilla's own
+ * recipe-book categories (derived from each recipe's real {@code RecipeBookCategory} rather
+ * than hardcoded per-screen tab lists, since furnace-family screens use a different subset than
+ * crafting does), Space opens a Scanner-style search prompt for a recipe name filter (mirrored
+ * into vanilla's own recipe-book search box too, when reachable - see {@link #applyRecipeSearch}),
+ * F toggles showing only currently-craftable recipes, and Enter/Shift+Enter place the focused
+ * recipe (Shift = fill to max stack size). All three filters (category, search, craftable-only)
+ * are independent and apply together. Focusing a recipe also narrates its
  * ingredients - see {@link #recipeIngredients} - since vanilla's own recipe book never says
  * what a recipe actually needs anywhere except by looking at the grid preview itself.
  *
@@ -165,6 +177,9 @@ public final class MenuAccessibilityController {
 	private static int recipeGroupIndex = -1;
 	private static int recipeVariantIndex = 0;
 	private static boolean recipeCraftableOnlyFilter = false;
+	// null = "All" - no category filter applied.
+	private static RecipeBookCategory currentRecipeCategory = null;
+	private static String recipeSearchTerm = "";
 
 	private static int enchantOptionIndex = 0;
 
@@ -185,16 +200,87 @@ public final class MenuAccessibilityController {
 	private MenuAccessibilityController() {
 	}
 
+	// Tracks whichever screen instance this class last set up for, so a redundant re-init of
+	// that *same* instance - e.g. the recipe-book search prompt's returnTo (see
+	// MarkerNameScreen), which calls Minecraft#setScreen on the screen it was opened from
+	// rather than a new instance, and vanilla's setScreen re-runs init() even when reusing the
+	// same instance - doesn't silently wipe the just-confirmed search term/section back to
+	// defaults. Registering the allowKeyPress listener, unlike that state, is NOT gated on this
+	// check - see the comment at that registration call for why.
+	private static AbstractContainerScreen<?> trackedScreen;
+
 	public static void register() {
 		ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
 			if (!(screen instanceof AbstractContainerScreen<?> containerScreen)) {
 				return;
 			}
-			onScreenOpened(containerScreen);
+			if (containerScreen != trackedScreen) {
+				trackedScreen = containerScreen;
+				onScreenOpened(containerScreen);
+			}
+			// Confirmed via ScreenMixin#beforeInit bytecode (fabric-screen-api-v1): vanilla's
+			// Screen.init(int,int) unconditionally reassigns this screen's Fabric key-press
+			// event to a brand-new, listener-less Event object at the HEAD of every single call
+			// - not just a screen's first-ever init. So this registration must run on every
+			// AFTER_INIT firing, including a same-instance re-init (e.g. returning from the
+			// recipe-book search prompt) - skipping it there (as an earlier version of this fix
+			// did, to avoid what looked like a double-registration risk) instead left the freshly
+			// recreated event with zero listeners, silently killing all key handling on this
+			// screen from that point on. Since the event is genuinely fresh each time, doing this
+			// unconditionally cannot double up a listener - there's nothing there yet to double.
 			ScreenKeyboardEvents.allowKeyPress(screen).register(
 					(scr, event) -> handleKey(containerScreen, event));
 		});
 		ClientTickEvents.END_CLIENT_TICK.register(MenuAccessibilityController::recheckInitialSlotNarration);
+		ClientTickEvents.END_CLIENT_TICK.register(MenuAccessibilityController::clearStrayFocus);
+		ClientTickEvents.END_CLIENT_TICK.register(MenuAccessibilityController::openPendingSearchPrompt);
+	}
+
+	private static AbstractContainerScreen<?> pendingSearchPromptScreen;
+	private static LocalPlayer pendingSearchPromptPlayer;
+
+	/**
+	 * Space, like any other printable key, fires both a key-press event (what this class
+	 * intercepts) and a separate character-typed event for the same physical keystroke - both
+	 * queued together and delivered back-to-back within the same input-polling pass, before any
+	 * client tick runs. Opening the search prompt screen synchronously from the key-press
+	 * handler would make that trailing character event land on the prompt's freshly-focused
+	 * text field instead of the (unfocused, so harmlessly ignored) crafting screen it was
+	 * actually meant for - typing a literal leading space into the term before the player's own
+	 * typing even starts. Deferring the actual screen swap to the next tick lets that trailing
+	 * character event get delivered and ignored first.
+	 */
+	private static void openPendingSearchPrompt(Minecraft client) {
+		if (pendingSearchPromptScreen == null) {
+			return;
+		}
+		AbstractContainerScreen<?> screen = pendingSearchPromptScreen;
+		LocalPlayer player = pendingSearchPromptPlayer;
+		pendingSearchPromptScreen = null;
+		pendingSearchPromptPlayer = null;
+		openRecipeSearchPrompt(screen, player);
+	}
+
+	/**
+	 * The virtual-index-driven sections (Recipe Book, Enchant Options, Trades) narrate purely
+	 * off their own tracked index, never real widget focus - so real focus should always be
+	 * null while one of them is current. Vanilla re-focuses a sensible default widget (confirmed
+	 * live - a screen reader announced a real, vanilla-narrated "button, press Enter to
+	 * activate") as an accessibility fallback so a narrator-mode screen never sits with nothing
+	 * focused for a sighted-navigation user; re-clearing every tick keeps that fallback from
+	 * ever winning against this class's own narration model, which needs real focus to stay out
+	 * of the way entirely (both so Enter/arrow keys aren't absorbed by whatever that fallback
+	 * focused, and so screen readers don't narrate a stray, unlabeled widget on top of this
+	 * class's own narration).
+	 */
+	private static void clearStrayFocus(Minecraft client) {
+		if (trackedScreen == null || trackedScreen.getFocused() == null) {
+			return;
+		}
+		if (currentSection == Section.RECIPE_BOOK || currentSection == Section.ENCHANT_OPTIONS
+				|| currentSection == Section.TRADES) {
+			trackedScreen.setFocused(null);
+		}
 	}
 
 	private static void recheckInitialSlotNarration(Minecraft client) {
@@ -232,6 +318,8 @@ public final class MenuAccessibilityController {
 			return;
 		}
 		recipeCraftableOnlyFilter = false;
+		currentRecipeCategory = null;
+		recipeSearchTerm = "";
 		currentSection = applicableSections(screen.getMenu())[0];
 		enterSection(screen, player, true);
 	}
@@ -542,9 +630,153 @@ public final class MenuAccessibilityController {
 			case GLFW.GLFW_KEY_DOWN -> moveRecipeGroup(player, 1);
 			case GLFW.GLFW_KEY_LEFT -> moveRecipeVariant(player, -1);
 			case GLFW.GLFW_KEY_RIGHT -> moveRecipeVariant(player, 1);
+			case GLFW.GLFW_KEY_HOME -> jumpRecipeGroup(player, true);
+			case GLFW.GLFW_KEY_END -> jumpRecipeGroup(player, false);
+			case GLFW.GLFW_KEY_PAGE_UP -> cycleRecipeCategory(player, -1);
+			case GLFW.GLFW_KEY_PAGE_DOWN -> cycleRecipeCategory(player, 1);
+			case GLFW.GLFW_KEY_SPACE -> {
+				// Deferred a tick rather than opened immediately - see pendingSearchPromptScreen's
+				// doc for why opening synchronously here leaks a literal space into the prompt.
+				pendingSearchPromptScreen = screen;
+				pendingSearchPromptPlayer = player;
+			}
 			case GLFW.GLFW_KEY_F -> toggleCraftableFilter(player);
 			case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> placeFocusedRecipe(screen.getMenu(), player, shiftHeld);
 			default -> {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** Home/End: jump straight to the first/last visible recipe group, respecting the active category/craftable/search filters. */
+	private static void jumpRecipeGroup(LocalPlayer player, boolean first) {
+		List<RecipeCollection> groups = visibleRecipeGroups();
+		if (groups.isEmpty()) {
+			return;
+		}
+		recipeGroupIndex = first ? 0 : groups.size() - 1;
+		recipeVariantIndex = 0;
+		narrateRecipeFocus(player, false);
+	}
+
+	/**
+	 * Page Up/Down cycle {@code [All] + distinct categories actually present among the current
+	 * recipe groups}, in a stable order (registration order in {@code RECIPE_BOOK_CATEGORY}) -
+	 * mirroring vanilla's own category tabs, which this class otherwise bypasses entirely (see
+	 * the class doc). Independent of - and applied on top of - the craftable-only filter and
+	 * search term, same as the craftable filter is independent of category.
+	 */
+	private static void cycleRecipeCategory(LocalPlayer player, int direction) {
+		List<RecipeBookCategory> options = new ArrayList<>();
+		options.add(null);
+		options.addAll(presentRecipeCategories());
+
+		int i = options.indexOf(currentRecipeCategory);
+		currentRecipeCategory = options.get(Math.floorMod((i < 0 ? 0 : i) + direction, options.size()));
+
+		List<RecipeCollection> groups = visibleRecipeGroups();
+		recipeGroupIndex = groups.isEmpty() ? -1 : 0;
+		recipeVariantIndex = 0;
+		Minecraft.getInstance().getNarrator().saySystemNow(recipeCategoryLabel(currentRecipeCategory));
+		narrateRecipeFocus(player, false);
+	}
+
+	/** Every {@link RecipeBookCategory} actually used by a recipe in {@link #recipeGroups} (unfiltered), registry order. */
+	private static List<RecipeBookCategory> presentRecipeCategories() {
+		List<RecipeBookCategory> result = new ArrayList<>();
+		for (RecipeCollection group : recipeGroups) {
+			for (RecipeDisplayEntry entry : group.getSelectedRecipes(RecipeCollection.CraftableStatus.ANY)) {
+				RecipeBookCategory category = entry.category();
+				if (!result.contains(category)) {
+					result.add(category);
+				}
+			}
+		}
+		result.sort(Comparator.comparingInt(BuiltInRegistries.RECIPE_BOOK_CATEGORY::getId));
+		return result;
+	}
+
+	/**
+	 * {@code RecipeBookCategory} is icon-only in vanilla - no display string of its own - so this
+	 * resolves one via the category's real registry key ({@code BuiltInRegistries.RECIPE_BOOK_CATEGORY.getKey})
+	 * rather than inventing per-menu-type labels.
+	 */
+	private static Component recipeCategoryLabel(RecipeBookCategory category) {
+		if (category == null) {
+			return Component.translatable("united_minecraft.menu.recipe_book.category.all");
+		}
+		Identifier id = BuiltInRegistries.RECIPE_BOOK_CATEGORY.getKey(category);
+		return Component.translatable("united_minecraft.menu.recipe_book.category." + id.getPath());
+	}
+
+	/**
+	 * Opens a Scanner-style search prompt (see {@link ScannerController}'s own Search category
+	 * prompt) for the recipe book's own search term. Reopens this same container screen
+	 * afterwards instead of closing to the game world, unlike the Scanner's or Map Marker's
+	 * prompts.
+	 */
+	private static void openRecipeSearchPrompt(AbstractContainerScreen<?> screen, LocalPlayer player) {
+		Minecraft.getInstance().gui.setScreen(new MarkerNameScreen(
+				Component.translatable("united_minecraft.search_screen.title"),
+				Component.translatable("united_minecraft.narrate.search_prompt"),
+				Component.translatable("united_minecraft.narrate.search_cancelled"),
+				Component.translatable("united_minecraft.search_screen.term"),
+				recipeSearchTerm,
+				screen,
+				term -> applyRecipeSearch(screen, player, term)));
+	}
+
+	/**
+	 * Applies a confirmed (possibly blank, e.g. Escape) search term: re-filters this class's own
+	 * recipe-group narration/navigation, then also mirrors the same term into vanilla's real
+	 * recipe-book search box (see {@link RecipeBookComponentAccess}) so the on-screen panel, if
+	 * the player has it open, shows the same filtered results a sighted user would see. Vanilla
+	 * re-checks that box's value against its own last-known search string once per tick on its
+	 * own (see {@code RecipeBookComponent.checkSearchStringUpdate}), so writing the value here is
+	 * enough - no need to also trigger its private re-filtering directly.
+	 */
+	private static void applyRecipeSearch(AbstractContainerScreen<?> screen, LocalPlayer player, String term) {
+		recipeSearchTerm = term == null ? "" : term.trim();
+
+		List<RecipeCollection> groups = visibleRecipeGroups();
+		recipeGroupIndex = groups.isEmpty() ? -1 : 0;
+		recipeVariantIndex = 0;
+
+		if (screen instanceof RecipeBookScreenAccess access
+				&& access.unitedMinecraft$getRecipeBookComponent() instanceof RecipeBookComponentAccess componentAccess) {
+			EditBox vanillaSearchBox = componentAccess.unitedMinecraft$getSearchBox();
+			if (vanillaSearchBox != null) {
+				vanillaSearchBox.setValue(recipeSearchTerm);
+			}
+		}
+
+		narrateRecipeFocus(player, false);
+	}
+
+	/**
+	 * Case-insensitive substring match against either the recipe's resolved result name OR any
+	 * one of its ingredients' names - vanilla's own recipe-book search matches both (e.g.
+	 * searching "log" surfaces every recipe that *uses* a log, not just ones literally named
+	 * "log"), and matching only the result name here would silently show far fewer matches than
+	 * the vanilla search box this class mirrors its term into, making navigation look broken
+	 * when it's really just a much narrower filter.
+	 */
+	private static boolean matchesRecipeSearch(RecipeDisplayEntry entry, LocalPlayer player) {
+		if (recipeSearchTerm.isBlank()) {
+			return true;
+		}
+		String term = recipeSearchTerm.toLowerCase(Locale.ROOT);
+		ContextMap context = SlotDisplayContext.fromLevel(player.level());
+
+		List<ItemStack> results = entry.resultItems(context);
+		for (ItemStack result : results) {
+			if (ItemDescriptions.describe(result, player).getString().toLowerCase(Locale.ROOT).contains(term)) {
+				return true;
+			}
+		}
+		for (ItemStack ingredient : recipeIngredients(entry.display(), context)) {
+			if (ItemDescriptions.describe(ingredient, player).getString().toLowerCase(Locale.ROOT).contains(term)) {
 				return true;
 			}
 		}
@@ -685,32 +917,51 @@ public final class MenuAccessibilityController {
 		return merged;
 	}
 
+	/**
+	 * Groups with at least one variant surviving all three independent filters (craftable-only,
+	 * category, search term) - each applied via {@link #matchingVariantsIn}, so a group mixing
+	 * matching and non-matching variants (e.g. oak planks craftable, jungle planks not; or only
+	 * some colors matching a search term) still shows up here as long as at least one survives.
+	 */
 	private static List<RecipeCollection> visibleRecipeGroups() {
-		if (!recipeCraftableOnlyFilter) {
-			return recipeGroups;
+		LocalPlayer player = Minecraft.getInstance().player;
+		if (player == null) {
+			return List.of();
 		}
-		List<RecipeCollection> craftableOnly = new ArrayList<>();
+		List<RecipeCollection> result = new ArrayList<>();
 		for (RecipeCollection group : recipeGroups) {
-			if (group.hasCraftable()) {
-				craftableOnly.add(group);
+			if (!matchingVariantsIn(group, player).isEmpty()) {
+				result.add(group);
 			}
 		}
-		return craftableOnly;
+		return result;
+	}
+
+	/** The variants of one group surviving the craftable-only filter, the category filter, and the search term - all independent of each other. */
+	private static List<RecipeDisplayEntry> matchingVariantsIn(RecipeCollection group, LocalPlayer player) {
+		List<RecipeDisplayEntry> result = new ArrayList<>();
+		for (RecipeDisplayEntry entry : group.getSelectedRecipes(RecipeCollection.CraftableStatus.ANY)) {
+			if (recipeCraftableOnlyFilter && !group.isCraftable(entry.id())) {
+				continue;
+			}
+			if (currentRecipeCategory != null && entry.category() != currentRecipeCategory) {
+				continue;
+			}
+			if (!matchesRecipeSearch(entry, player)) {
+				continue;
+			}
+			result.add(entry);
+		}
+		return result;
 	}
 
 	private static List<RecipeDisplayEntry> currentRecipeVariants() {
+		LocalPlayer player = Minecraft.getInstance().player;
 		List<RecipeCollection> groups = visibleRecipeGroups();
-		if (recipeGroupIndex < 0 || recipeGroupIndex >= groups.size()) {
+		if (player == null || recipeGroupIndex < 0 || recipeGroupIndex >= groups.size()) {
 			return List.of();
 		}
-		// A group can mix craftable and uncraftable variants (e.g. oak planks craftable,
-		// jungle planks not) - hasCraftable() above only filters out groups with none at
-		// all, so this still needs to drop the individual uncraftable variants within an
-		// otherwise-visible group when the filter is on.
-		RecipeCollection.CraftableStatus status = recipeCraftableOnlyFilter
-				? RecipeCollection.CraftableStatus.CRAFTABLE
-				: RecipeCollection.CraftableStatus.ANY;
-		return groups.get(recipeGroupIndex).getSelectedRecipes(status);
+		return matchingVariantsIn(groups.get(recipeGroupIndex), player);
 	}
 
 	private static void narrateRecipeFocus(LocalPlayer player, boolean announceSection) {

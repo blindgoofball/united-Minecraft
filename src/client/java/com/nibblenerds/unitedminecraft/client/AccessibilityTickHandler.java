@@ -1,14 +1,23 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
+
+import com.nibblenerds.unitedminecraft.client.access.BossHealthOverlayAccess;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.BossHealthOverlay;
+import net.minecraft.client.gui.components.LerpingBossEvent;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.Util;
@@ -18,6 +27,10 @@ import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.MoonPhase;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.scores.DisplaySlot;
+import net.minecraft.world.scores.Objective;
+import net.minecraft.world.scores.PlayerScoreEntry;
+import net.minecraft.world.scores.Scoreboard;
 
 /**
  * Drives United Minecraft's per-tick accessibility features: coordinate/health/bearing/
@@ -35,6 +48,10 @@ public final class AccessibilityTickHandler {
 	// Nudges snap-turn's floor/ceil so a press always moves at least one full 45-degree
 	// step, even when already sitting exactly on a marker.
 	private static final double SNAP_EPSILON = 1.0e-3;
+
+	// Narrate Scoreboard's default cap - matching the sighted HUD's own on-screen row limit.
+	// Hold Alt to hear the full sorted list instead (see ClientKeyBindings#isModifierDown).
+	private static final int SCOREBOARD_DEFAULT_LIMIT = 10;
 
 	// Ordered every 45 degrees starting at yaw 0 (south), matching Minecraft's yaw convention
 	// (0 = south, 90 = west, 180 = north, 270 = east).
@@ -116,6 +133,20 @@ public final class AccessibilityTickHandler {
 		// own doc for why the timing matters.
 		ClientKeyBindings.updateAll();
 
+		// Shift+B (reset facing to north) needs to release a Scanner lock-on *before* the
+		// rotation-ownership chain below runs this same tick - releasing it any later (e.g. down
+		// where this key is actually handled, after that chain) means ScannerController.tickLock
+		// would already have re-aimed at the locked entity this tick, and would do so again next
+		// tick before resetRotationToNorth's effect is ever visible, silently swallowing the
+		// reset entirely. isLocked() being false by the time the chain reads it below is what
+		// makes the reset actually stick. ClientKeyBindings.pressed/isShiftDown are plain reads
+		// (no consuming), so re-checking NARRATE_BEARING/Shift again down where it's normally
+		// handled is safe and unaffected by this early check.
+		if (ScannerController.isLocked() && ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_BEARING)
+				&& ClientKeyBindings.isShiftDown(client)) {
+			ScannerController.stopLock(client);
+		}
+
 		boolean snapLeftPressed = ClientKeyBindings.pressed(ClientKeyBindings.LOOK_LEFT);
 		boolean snapRightPressed = ClientKeyBindings.pressed(ClientKeyBindings.LOOK_RIGHT);
 		boolean snapUpPressed = ClientKeyBindings.pressed(ClientKeyBindings.LOOK_UP);
@@ -127,7 +158,15 @@ public final class AccessibilityTickHandler {
 		// toggling combat mode on already turns build mode off if it was running.
 		if (!ScannerController.isLocked() && !CombatModeController.isActive()
 				&& ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_BUILD_MODE)) {
-			BuildModeController.toggle(client, player);
+			// Alt+I while already active recenters the cursor/grid on the player instead of
+			// toggling off - see BuildModeController#recenterCursor. Without BuildModeController
+			// .isActive() here, Alt+I before ever turning Build Mode on would just silently do
+			// nothing instead of falling through to the normal toggle-on below.
+			if (ClientKeyBindings.isModifierDown(client) && BuildModeController.isActive()) {
+				BuildModeController.recenterCursor(client, player);
+			} else {
+				BuildModeController.toggle(client, player);
+			}
 		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_NAV_RADAR)) {
 			NavRadarController.toggle(client);
@@ -324,6 +363,12 @@ public final class AccessibilityTickHandler {
 			} else {
 				narrateTimeOfDay(client, player);
 			}
+		}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_BOSS_BARS)) {
+			narrateBossBars(client);
+		}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_SCOREBOARD)) {
+			narrateScoreboard(client, player, ClientKeyBindings.isModifierDown(client));
 		}
 	}
 
@@ -611,5 +656,53 @@ public final class AccessibilityTickHandler {
 		player.setOldRot();
 		player.setYHeadRot(180.0f);
 		narrateBearing(client, player);
+	}
+
+	/** Narrates every currently active boss bar in one burst, via {@link BossHealthOverlayAccess}. */
+	private static void narrateBossBars(Minecraft client) {
+		BossHealthOverlay overlay = client.gui.hud.getBossOverlay();
+		Collection<LerpingBossEvent> events = ((BossHealthOverlayAccess) overlay).unitedMinecraft$getEvents().values();
+		if (events.isEmpty()) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.boss_bar_none"));
+			return;
+		}
+		MutableComponent message = null;
+		for (LerpingBossEvent event : events) {
+			int percent = Math.round(event.getProgress() * 100.0f);
+			Component line = Component.translatable("united_minecraft.narrate.boss_bar", event.getName(), percent);
+			message = message == null ? line.copy() : message.append(Component.literal(". ")).append(line);
+		}
+		client.getNarrator().saySystemNow(message);
+	}
+
+	/**
+	 * Narrates the sidebar scoreboard, sorted descending by score value with alphabetical
+	 * tiebreak on owner name (vanilla's own sort comparator isn't public, so this reimplements
+	 * its well-known behavior). Only the first {@link #SCOREBOARD_DEFAULT_LIMIT} entries are read
+	 * by default; {@code full} (the mod's Alt modifier) reads every entry instead.
+	 */
+	private static void narrateScoreboard(Minecraft client, LocalPlayer player, boolean full) {
+		Scoreboard scoreboard = player.level().getScoreboard();
+		Objective objective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR);
+		if (objective == null) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.scoreboard_none"));
+			return;
+		}
+		List<PlayerScoreEntry> entries = new ArrayList<>(scoreboard.listPlayerScores(objective));
+		entries.sort(Comparator.comparingInt(PlayerScoreEntry::value).reversed()
+				.thenComparing(PlayerScoreEntry::owner, String.CASE_INSENSITIVE_ORDER));
+
+		int limit = full ? entries.size() : Math.min(SCOREBOARD_DEFAULT_LIMIT, entries.size());
+		MutableComponent message = Component.translatable("united_minecraft.narrate.scoreboard_header", objective.getDisplayName()).copy();
+		for (int i = 0; i < limit; i++) {
+			PlayerScoreEntry entry = entries.get(i);
+			message.append(Component.literal(". ")).append(Component.translatable(
+					"united_minecraft.narrate.scoreboard_line", entry.ownerName(), entry.value()));
+		}
+		if (!full && entries.size() > limit) {
+			message.append(Component.literal(". ")).append(Component.translatable(
+					"united_minecraft.narrate.scoreboard_more", entries.size() - limit));
+		}
+		client.getNarrator().saySystemNow(message);
 	}
 }

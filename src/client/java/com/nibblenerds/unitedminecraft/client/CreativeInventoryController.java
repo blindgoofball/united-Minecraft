@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 
@@ -50,10 +51,18 @@ import org.lwjgl.glfw.GLFW;
  * <p>An item-picker tab's own {@code ItemPickerMenu} only ever has two kinds of real slot:
  * the 45-slot item grid and the player's hotbar - vanilla itself doesn't show the main
  * inventory or armor there at all, on any tab but Inventory, mouse or otherwise. So Tab here
- * only ever toggles between those two ({@link Section}), not the full section list
- * {@link MenuAccessibilityController} offers elsewhere; reaching the main inventory or
- * equipment still means switching to the Inventory tab with Home/End, same as it would for
- * anyone clicking around with a mouse.
+ * only ever toggles between those ({@link Section}) - plus a third, Search, only present while
+ * the Search tab itself is selected, for vanilla's own search {@code EditBox} - not the full
+ * section list {@link MenuAccessibilityController} offers elsewhere; reaching the main
+ * inventory or equipment still means switching to the Inventory tab with Home/End, same as it
+ * would for anyone clicking around with a mouse.
+ *
+ * <p>The Search section exists because giving the search box real focus (see
+ * {@link #enterSearchSection}) is what actually lets it be typed into at all - see that
+ * method's doc for the concrete bug this fixes. Typed characters themselves are never handled
+ * here: vanilla's own {@code charTyped} dispatch (invisible to this mod's key-press-only Fabric
+ * hooks) filters the grid on its own; this class only polls the resulting item count once per
+ * tick (see {@link #recheckSearchResults}) to narrate a result-count summary.
  */
 public final class CreativeInventoryController {
 	private static int index;
@@ -62,21 +71,45 @@ public final class CreativeInventoryController {
 	private static Section section = Section.ITEM_GRID;
 	private static int hotbarIndex;
 
+	// -1 means "no baseline yet" - forces the first tick's count to always narrate rather than
+	// silently matching a leftover value from a previous screen/tab.
+	private static int lastSearchResultCount = -1;
+
 	private enum Section {
-		ITEM_GRID, HOTBAR
+		SEARCH, ITEM_GRID, HOTBAR
 	}
 
 	private CreativeInventoryController() {
 	}
+
+	// Vanilla's Minecraft#setScreen re-runs init() even when reusing the same screen instance
+	// (e.g. on a window resize) - gate the search-term/index reset on that so it doesn't
+	// silently fire again for a redundant re-init of the same screen.
+	private static CreativeModeInventoryScreen trackedScreen;
 
 	public static void register() {
 		ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
 			if (!(screen instanceof CreativeModeInventoryScreen creative)) {
 				return;
 			}
-			onScreenOpened(creative);
+			if (creative != trackedScreen) {
+				trackedScreen = creative;
+				onScreenOpened(creative);
+			}
+			// Confirmed via ScreenMixin#beforeInit bytecode (fabric-screen-api-v1): vanilla's
+			// Screen.init(int,int) reassigns this screen's Fabric key-press event to a
+			// brand-new, listener-less Event object at the HEAD of every single call, including
+			// a same-instance re-init - so this registration must run every time AFTER_INIT
+			// fires, not just on a screen's first-ever init, or a later re-init would silently
+			// leave zero listeners registered. The event being fresh each time means this can
+			// never double up a listener.
 			ScreenKeyboardEvents.allowKeyPress(screen).register((scr, event) -> handleKey(creative, event));
 		});
+		// Vanilla's own search filtering happens off charTyped, which this class never hooks
+		// (nor could - Fabric only exposes allow/before/after events for the key-press half of
+		// typing, not character input; see the class doc). Polling the resulting item count once
+		// per tick is what actually lets a result-count summary get narrated as the player types.
+		ClientTickEvents.END_CLIENT_TICK.register(CreativeInventoryController::recheckSearchResults);
 	}
 
 	private static CreativeModeInventoryScreenAccess access(CreativeModeInventoryScreen screen) {
@@ -87,26 +120,44 @@ public final class CreativeInventoryController {
 		return access(screen).unitedMinecraft$getSelectedTab().getType() != CreativeModeTab.Type.INVENTORY;
 	}
 
+	private static boolean isSearchTab(CreativeModeInventoryScreen screen) {
+		return access(screen).unitedMinecraft$getSelectedTab().getType() == CreativeModeTab.Type.SEARCH;
+	}
+
 	private static void onScreenOpened(CreativeModeInventoryScreen screen) {
 		index = 0;
 		lastItemCount = -1;
-		section = Section.ITEM_GRID;
 		hotbarIndex = 0;
-		if (isItemGridTab(screen)) {
+		lastSearchResultCount = -1;
+		if (!isItemGridTab(screen)) {
+			section = Section.ITEM_GRID;
+			return;
+		}
+		if (isSearchTab(screen)) {
+			section = Section.SEARCH;
+			enterSearchSection(screen, true);
+		} else {
+			section = Section.ITEM_GRID;
 			syncItems(screen);
 			narrateCurrent(screen, true);
 		}
 	}
 
+	/**
+	 * Real root cause this class used to get wrong: vanilla's {@code CreativeModeInventoryScreen}
+	 * never gives its search box actual {@code Screen}-level focus (it manages the box's own
+	 * internal focus flag and dispatches keys/chars to it directly whenever the Search tab is
+	 * selected, bypassing the normal {@code GuiEventListener} focus chain entirely) - so the old
+	 * {@code screen.getFocused() instanceof EditBox} check here was always false, and every key
+	 * this class's own switch statements claim (Left/Right/Up/Down/Page Up/Down/Enter) was
+	 * silently stolen from the search box instead of reaching it, with no way to tell the two
+	 * apart. This section makes that distinction explicit and real: entering it gives the box
+	 * genuine {@link net.minecraft.client.gui.screens.Screen#setFocused} focus (mirroring
+	 * {@code MenuAccessibilityController}'s anvil Rename section) and this class then gets out of
+	 * its way entirely except for Tab (leave it) and Home/End (still cycle tabs).
+	 */
 	private static boolean handleKey(CreativeModeInventoryScreen screen, KeyEvent event) {
 		int key = event.key();
-
-		// The search box eats most keys while focused (it's the only text field this screen
-		// has) - Home/End still get through below to switch tabs regardless.
-		boolean searchFocused = screen.getFocused() instanceof EditBox;
-		if (searchFocused && key != GLFW.GLFW_KEY_HOME && key != GLFW.GLFW_KEY_END) {
-			return true;
-		}
 
 		if (key == GLFW.GLFW_KEY_HOME) {
 			switchTab(screen, -1);
@@ -119,6 +170,30 @@ public final class CreativeInventoryController {
 
 		if (!isItemGridTab(screen)) {
 			return true; // Inventory tab: MenuAccessibilityController owns this instead.
+		}
+
+		if (section == Section.SEARCH) {
+			if (key == GLFW.GLFW_KEY_TAB) {
+				toggleSection(screen);
+				return false;
+			}
+			// Up/Down/Page Up/Page Down leave the text field and jump straight into the filtered
+			// results grid at its first item - matching the same "arrow down out of a search box"
+			// convention as this class's own recipe-book search prompt equivalent. Left/Right stay
+			// with vanilla's EditBox (text-cursor movement while still editing the term) since
+			// there's no grid concept of "previous" from a text field to move to.
+			if (key == GLFW.GLFW_KEY_UP || key == GLFW.GLFW_KEY_DOWN
+					|| key == GLFW.GLFW_KEY_PAGE_UP || key == GLFW.GLFW_KEY_PAGE_DOWN) {
+				leaveSearchSection(screen);
+				section = Section.ITEM_GRID;
+				syncItems(screen);
+				index = 0;
+				narrateCurrent(screen, false);
+				return false;
+			}
+			// Everything else - typing, Backspace, arrow-key cursor movement within the text,
+			// Escape - goes straight to vanilla's own EditBox handling.
+			return true;
 		}
 
 		if (key == GLFW.GLFW_KEY_TAB) {
@@ -160,15 +235,96 @@ public final class CreativeInventoryController {
 		return false;
 	}
 
+	/** Tab cycles Search (Search tab only) -> Item Grid -> Hotbar -> back around. */
 	private static void toggleSection(CreativeModeInventoryScreen screen) {
-		section = section == Section.ITEM_GRID ? Section.HOTBAR : Section.ITEM_GRID;
-		if (section == Section.HOTBAR) {
+		if (isSearchTab(screen)) {
+			section = switch (section) {
+				case SEARCH -> Section.ITEM_GRID;
+				case ITEM_GRID -> Section.HOTBAR;
+				case HOTBAR -> Section.SEARCH;
+			};
+		} else {
+			section = section == Section.ITEM_GRID ? Section.HOTBAR : Section.ITEM_GRID;
+		}
+
+		if (section == Section.SEARCH) {
+			enterSearchSection(screen, false);
+		} else if (section == Section.HOTBAR) {
+			leaveSearchSection(screen);
 			hotbarIndex = Math.min(hotbarIndex, 8);
 			narrateHotbarFocus(screen);
 		} else {
+			leaveSearchSection(screen);
 			syncItems(screen);
 			narrateCurrent(screen, false);
 		}
+	}
+
+	/**
+	 * Releases the search box's focus - both this class's own tracking of it ({@code
+	 * screen.setFocused(null)}, so {@link #handleKey}'s Section.SEARCH bypass stops swallowing
+	 * grid/hotbar keys) and vanilla's own internal {@code EditBox} focus flag ({@code
+	 * searchBox.setFocused(false)}) - since vanilla's {@code charTyped}/{@code keyPressed}
+	 * dispatch to the search box is keyed off the selected tab's type alone, not real screen
+	 * focus (see {@link #enterSearchSection}'s doc): without also clearing the box's own flag,
+	 * every keystroke would keep silently editing the search term even while this class's own
+	 * navigation has moved on to the item grid or hotbar.
+	 */
+	private static void leaveSearchSection(CreativeModeInventoryScreen screen) {
+		screen.setFocused(null);
+		access(screen).unitedMinecraft$getSearchBox().setFocused(false);
+	}
+
+	/**
+	 * Gives the search box real keyboard focus so typed characters both filter the grid and
+	 * narrate via the existing global {@code EditBoxMixin} echo, then narrates its current
+	 * contents. Establishes {@link #lastSearchResultCount} as a fresh baseline so the very next
+	 * tick doesn't immediately re-announce a count that hasn't actually changed yet.
+	 */
+	private static void enterSearchSection(CreativeModeInventoryScreen screen, boolean announceTab) {
+		EditBox searchBox = access(screen).unitedMinecraft$getSearchBox();
+		screen.setFocused(searchBox);
+		searchBox.setFocused(true);
+
+		CreativeModeTab tab = access(screen).unitedMinecraft$getSelectedTab();
+		MutableComponent message = Component.empty();
+		if (announceTab) {
+			message = message.append(tab.getDisplayName()).append(Component.literal(". "));
+		}
+		message = message.append(Component.translatable("united_minecraft.menu.section.search")).append(Component.literal(". "));
+		String text = searchBox.getValue();
+		message = message.append(text.isEmpty()
+				? Component.translatable("united_minecraft.narrate.hotbar_empty")
+				: Component.literal(text));
+		Minecraft.getInstance().getNarrator().saySystemNow(message);
+
+		syncItems(screen);
+		lastSearchResultCount = trackedItems.size();
+	}
+
+	/**
+	 * Polled once per client tick (see {@link #register}) rather than reacting to a specific key
+	 * event, since character input into the search box happens entirely through vanilla's own
+	 * charTyped dispatch, invisible to this class's key handling. Narrates a result-count summary
+	 * whenever the filtered item count actually changes.
+	 */
+	private static void recheckSearchResults(Minecraft client) {
+		if (!(client.gui.screen() instanceof CreativeModeInventoryScreen screen) || !isSearchTab(screen)) {
+			lastSearchResultCount = -1;
+			return;
+		}
+		int count = ((CreativeModeInventoryScreen.ItemPickerMenu) screen.getMenu()).items.size();
+		if (count == lastSearchResultCount) {
+			return;
+		}
+		lastSearchResultCount = count;
+		syncItems(screen);
+
+		Component summary = trackedItems.isEmpty()
+				? Component.translatable("united_minecraft.narrate.scanner_empty")
+				: Component.translatable("united_minecraft.narrate.creative_search_results", count)
+						.append(Component.literal(", ")).append(ItemDescriptions.describe(trackedItems.get(0), client.player));
+		client.getNarrator().saySystemNow(summary);
 	}
 
 	private static void moveHotbar(CreativeModeInventoryScreen screen, int delta) {
@@ -235,13 +391,18 @@ public final class CreativeInventoryController {
 		access(screen).unitedMinecraft$selectTab(next);
 		index = 0;
 		lastItemCount = -1;
-		section = Section.ITEM_GRID;
+		lastSearchResultCount = -1;
 
-		if (isItemGridTab(screen)) {
+		if (!isItemGridTab(screen)) {
+			section = Section.ITEM_GRID;
+			MenuAccessibilityController.reinitializeForScreen(screen);
+		} else if (isSearchTab(screen)) {
+			section = Section.SEARCH;
+			enterSearchSection(screen, true);
+		} else {
+			section = Section.ITEM_GRID;
 			syncItems(screen);
 			narrateCurrent(screen, true);
-		} else {
-			MenuAccessibilityController.reinitializeForScreen(screen);
 		}
 	}
 
@@ -251,7 +412,17 @@ public final class CreativeInventoryController {
 			return;
 		}
 		int next = index + delta;
-		if (next < 0 || next >= trackedItems.size()) {
+		if (next < 0) {
+			// Moving past the first item on the Search tab returns to the search field - the
+			// mirror image of Up/Down/Page Up/Page Down leaving the field to enter the grid
+			// (see handleKey's Section.SEARCH branch).
+			if (isSearchTab(screen)) {
+				section = Section.SEARCH;
+				enterSearchSection(screen, false);
+			}
+			return;
+		}
+		if (next >= trackedItems.size()) {
 			return;
 		}
 		index = next;

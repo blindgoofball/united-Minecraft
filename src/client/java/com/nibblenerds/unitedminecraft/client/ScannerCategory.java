@@ -17,7 +17,7 @@ public enum ScannerCategory {
 	BIOMES("united_minecraft.scanner.category.biomes"),
 	MARKERS("united_minecraft.scanner.category.markers"),
 	PLAYERS("united_minecraft.scanner.category.players"),
-	VEHICLES("united_minecraft.scanner.category.vehicles");
+	ENTITIES("united_minecraft.scanner.category.entities");
 
 	private final String translationKey;
 
