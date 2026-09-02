@@ -36,10 +36,10 @@ import net.minecraft.world.phys.AABB;
  * risk missing real catches at ordinary fishing range.
  */
 public final class FishingCatchController {
-	// How far from the player a candidate item can be and still count - generous, since the
-	// item search is keyed on being brand new rather than being close, and a cast can land
-	// well outside melee range.
-	private static final double CATCH_RADIUS = 64.0;
+	// How far from the player a candidate item can be and still count - generous enough to cover
+	// a full-power cast (well outside melee range), but not so wide it starts picking up
+	// unrelated drops/mob loot from other activity nearby.
+	private static final double CATCH_RADIUS = 32.0;
 
 	// How many ticks old a candidate item can be and still count as "just spawned by this
 	// catch" rather than something that merely happened to be nearby already.
@@ -66,12 +66,27 @@ public final class FishingCatchController {
 		}
 	}
 
+	/**
+	 * Narrates only the nearest candidate item, not every one found - {@code saySystemNow}
+	 * interrupts, so narrating each match in turn would just leave whichever one happened to be
+	 * last in iteration order as the only one actually heard, silently dropping the rest.
+	 */
 	private static void announceCatch(Minecraft client, LocalPlayer player) {
 		AABB box = player.getBoundingBox().inflate(CATCH_RADIUS);
+		ItemEntity nearest = null;
+		double nearestDistSqr = Double.MAX_VALUE;
 		for (Entity entity : player.level().getEntities((Entity) null, box,
 				e -> e instanceof ItemEntity item && item.tickCount <= MAX_CATCH_AGE_TICKS)) {
-			MutableComponent description = ItemDescriptions.describe(((ItemEntity) entity).getItem(), player);
-			client.getNarrator().saySystemNow(description);
+			double distSqr = entity.distanceToSqr(player);
+			if (distSqr < nearestDistSqr) {
+				nearestDistSqr = distSqr;
+				nearest = (ItemEntity) entity;
+			}
 		}
+		if (nearest == null) {
+			return;
+		}
+		MutableComponent description = ItemDescriptions.describe(nearest.getItem(), player);
+		client.getNarrator().saySystemNow(description);
 	}
 }
