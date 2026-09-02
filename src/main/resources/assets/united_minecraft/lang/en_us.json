@@ -191,6 +191,8 @@
 	"united_minecraft.narrate.autowalk_unreachable": "Can't find a path there",
 	"united_minecraft.narrate.autowalk_incomplete": "Stopped, still %s blocks from %s",
 	"united_minecraft.narrate.autowalk_incomplete_unnamed": "Stopped, still %s blocks from the target",
+	"united_minecraft.narrate.autowalk_stuck": "Stuck, still %s blocks from %s",
+	"united_minecraft.narrate.autowalk_stuck_unnamed": "Stuck, still %s blocks from the target",
 	"united_minecraft.narrate.water_exit_not_in_water": "Not in water",
 	"united_minecraft.narrate.water_exit_none": "Can't find a way out",
 	"united_minecraft.narrate.water_exit_direction": "%s blocks %s",

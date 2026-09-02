@@ -47,10 +47,22 @@ public final class AutoWalkController {
 	private static final int REACH_RANGE = 2;
 	private static final double NODE_ARRIVAL_DISTANCE_SQR = 0.5 * 0.5;
 
+	// See TrailController's identical pattern (and its own doc on STUCK_TICKS_THRESHOLD) for why
+	// "no real progress toward the next waypoint for a while" is the right thing to watch for -
+	// a mob being pushed off its path, a block placed mid-walk, or another player's build can all
+	// strand this exactly the same way a straight-line trail leg can clip an obstacle.
+	private static final int STUCK_TICKS_THRESHOLD = 40;
+	private static final double STUCK_PROGRESS_EPSILON = 0.05;
+
 	private static Path currentPath;
 	private static ClientInput previousInput;
 	private static Component targetName;
 	private static Runnable onArrival;
+	private static double bestDistanceToNext = Double.MAX_VALUE;
+	private static int stuckTicks;
+	// Whether this stuck episode has already tried recomputing the path once - only one retry
+	// per episode, so a genuinely unreachable spot still gives up instead of re-pathing forever.
+	private static boolean rePathAttempted;
 
 	private AutoWalkController() {
 	}
@@ -64,6 +76,9 @@ public final class AutoWalkController {
 		previousInput = null;
 		targetName = null;
 		onArrival = null;
+		bestDistanceToNext = Double.MAX_VALUE;
+		stuckTicks = 0;
+		rePathAttempted = false;
 	}
 
 	public static void start(Minecraft client, LocalPlayer player, BlockPos target, Component name) {
@@ -119,6 +134,9 @@ public final class AutoWalkController {
 
 		if (dx * dx + dz * dz < NODE_ARRIVAL_DISTANCE_SQR) {
 			currentPath.advance();
+			bestDistanceToNext = Double.MAX_VALUE;
+			stuckTicks = 0;
+			rePathAttempted = false;
 			if (currentPath.isDone()) {
 				// vanilla's pathfinder gives up and hands back its best-effort partial path
 				// (rather than null) both when the target is farther than MAX_PATH_LENGTH and
@@ -145,6 +163,25 @@ public final class AutoWalkController {
 					int remaining = Math.round(currentPath.getDistToTarget());
 					finishIncomplete(client, player, remaining);
 				}
+			}
+			return;
+		}
+
+		// No real progress toward the current waypoint for a while, despite actively walking -
+		// something's blocking the straight line the path assumed was clear (a mob shoved the
+		// player off course, a block got placed mid-walk, terrain changed). Try recomputing the
+		// path once from here before giving up outright.
+		double distanceToNext = Math.sqrt(dx * dx + dz * dz);
+		if (distanceToNext < bestDistanceToNext - STUCK_PROGRESS_EPSILON) {
+			bestDistanceToNext = distanceToNext;
+			stuckTicks = 0;
+		} else if (++stuckTicks > STUCK_TICKS_THRESHOLD) {
+			if (!rePathAttempted && tryRepath(player)) {
+				rePathAttempted = true;
+				bestDistanceToNext = Double.MAX_VALUE;
+				stuckTicks = 0;
+			} else {
+				finishStuck(client, player);
 			}
 			return;
 		}
@@ -188,6 +225,28 @@ public final class AutoWalkController {
 		client.getNarrator().saySystemNow(name != null
 				? Component.translatable("united_minecraft.narrate.autowalk_incomplete", remainingBlocks, name)
 				: Component.translatable("united_minecraft.narrate.autowalk_incomplete_unnamed", remainingBlocks));
+	}
+
+	/** Recomputes the path to the original target from the player's current position - true (and swaps {@link #currentPath}) only if one was actually found. */
+	private static boolean tryRepath(LocalPlayer player) {
+		BlockPos target = currentPath.getTarget();
+		Path fresh = ClientPathfinding.computePath(player, target, MAX_PATH_LENGTH, REACH_RANGE);
+		if (fresh == null || fresh.getNodeCount() == 0) {
+			return false;
+		}
+		currentPath = fresh;
+		return true;
+	}
+
+	/** Ends the walk after a re-path attempt also failed to make progress - same shape as {@link #finishIncomplete}. */
+	private static void finishStuck(Minecraft client, LocalPlayer player) {
+		int remaining = Math.round(currentPath.getDistToTarget());
+		Component name = targetName;
+		player.input = previousInput;
+		reset();
+		client.getNarrator().saySystemNow(name != null
+				? Component.translatable("united_minecraft.narrate.autowalk_stuck", remaining, name)
+				: Component.translatable("united_minecraft.narrate.autowalk_stuck_unnamed", remaining));
 	}
 
 	/**
