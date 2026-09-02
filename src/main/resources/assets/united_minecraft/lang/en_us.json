@@ -287,6 +287,7 @@
 	"united_minecraft.settings_screen.melee_range_alert_enabled": "Melee Range Alert",
 	"united_minecraft.settings_screen.fall_warning_enabled": "Fall Warning",
 	"united_minecraft.settings_screen.fall_warning_threshold": "Fall Warning Threshold",
+	"united_minecraft.settings_screen.fall_warning_lookahead_seconds": "Fall Warning Lookahead (Seconds)",
 	"united_minecraft.settings_screen.mining_radar_range": "Mining Radar Range",
 	"united_minecraft.settings_screen.nav_radar_range": "Navigation Radar Range",
 	"united_minecraft.settings_screen.scanner_range": "Scanner Range",

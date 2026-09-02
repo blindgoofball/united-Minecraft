@@ -28,7 +28,12 @@ import net.minecraft.world.phys.Vec3;
  * questions once someone wants a heads-up on shorter drops too) coming up in the direction
  * the player is actually moving (their current horizontal velocity, not just where they're
  * facing, since sprint-strafing can point those two different ways). Every fall past that
- * height gets a cue, not only damaging ones:
+ * height gets a cue, not only damaging ones. How far ahead to project is itself
+ * speed-based - faster travel looks further ahead, matching how much ground you'll actually
+ * cover - scaled by {@code UnitedMinecraftConfig.fallWarningLookaheadSeconds} (also a
+ * SettingsScreen slider; see {@link #MAX_LOOKAHEAD_PER_SECOND}), so someone who wants more
+ * reaction time than the ~1-second default can have it without losing the speed-scaling
+ * behavior itself:
  * a distinct sound and narration for "this will hurt" versus "this won't" (e.g. a cave lake
  * below), so a safe drop into water is useful information rather than a false alarm.
  *
@@ -53,10 +58,15 @@ public final class FallWarningController {
 	private static final double SAFE_FALL_DISTANCE = 3.0;
 
 	private static final double MIN_HORIZONTAL_SPEED_SQR = 0.02 * 0.02;
-	// ~1 second of travel at current speed, so there's actually time to react and stop.
-	private static final double LOOKAHEAD_TICKS = 20.0;
+	private static final double TICKS_PER_SECOND = 20.0;
+	// Floor stays fixed regardless of the reaction-time setting - even at a near-stationary
+	// (but above MIN_HORIZONTAL_SPEED_SQR) creep, there still needs to be *some* lookahead to
+	// warn at all. The ceiling instead scales with fallWarningLookaheadSeconds (see
+	// UnitedMinecraftConfig, SettingsScreen) - it's what that setting is actually for, so
+	// raising the reaction time has to raise the cap too, not just recompute the same 3-8 block
+	// range for a slower walk.
 	private static final double MIN_LOOKAHEAD = 3.0;
-	private static final double MAX_LOOKAHEAD = 8.0;
+	private static final double MAX_LOOKAHEAD_PER_SECOND = 8.0;
 	// Distance between samples along the lookahead line. Small enough that a staircase of
 	// single-block steps gets a sample on each tread, so a walkable descent updates the
 	// reference ground level gradually instead of being measured against the far endpoint.
@@ -98,8 +108,10 @@ public final class FallWarningController {
 			return;
 		}
 
+		double lookaheadSeconds = UnitedMinecraftConfig.get().fallWarningLookaheadSeconds;
 		double speed = Math.sqrt(speedSqr);
-		double lookahead = Mth.clamp(speed * LOOKAHEAD_TICKS, MIN_LOOKAHEAD, MAX_LOOKAHEAD);
+		double lookahead = Mth.clamp(
+				speed * lookaheadSeconds * TICKS_PER_SECOND, MIN_LOOKAHEAD, MAX_LOOKAHEAD_PER_SECOND * lookaheadSeconds);
 		double dirX = vx / speed;
 		double dirZ = vz / speed;
 

@@ -54,8 +54,9 @@ public final class SettingsScreen extends Screen {
 	private static final int SCROLL_STEP = ROW_HEIGHT + ROW_SPACING;
 	// 9 original setting rows + the Attack Ready Cue cycle + the glossary button + Done
 	// + 3 durability awareness rows (toggle + 2 sliders) + 1 tool harvest warning row
-	// + 2 scanner rows (skip empty categories, auto-lock after walk).
-	private static final int ROW_COUNT = 18;
+	// + 2 scanner rows (skip empty categories, auto-lock after walk)
+	// + 1 fall warning lookahead row.
+	private static final int ROW_COUNT = 19;
 
 	/** Every row widget, in visual order, alongside its unscrolled ("base") Y position. */
 	private final List<AbstractWidget> rows = new ArrayList<>();
@@ -87,6 +88,9 @@ public final class SettingsScreen extends Screen {
 				config.fallWarningEnabled, value -> config.fallWarningEnabled = value);
 		y = addSlider(x, y, 1.0, 10.0, 1.0, config.fallWarningThreshold,
 				"united_minecraft.settings_screen.fall_warning_threshold", value -> config.fallWarningThreshold = value);
+		y = addSlider(x, y, 0.5, 3.0, 0.5, config.fallWarningLookaheadSeconds,
+				"united_minecraft.settings_screen.fall_warning_lookahead_seconds",
+				value -> config.fallWarningLookaheadSeconds = value);
 		y = addSlider(x, y, 4.0, 16.0, 1.0, config.miningRadarRange,
 				"united_minecraft.settings_screen.mining_radar_range",
 				value -> config.miningRadarRange = (int) Math.round(value));

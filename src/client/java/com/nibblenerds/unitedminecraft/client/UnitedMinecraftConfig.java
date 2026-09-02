@@ -37,6 +37,7 @@ public final class UnitedMinecraftConfig {
 	public boolean meleeRangeAlertEnabled = true;
 	public boolean fallWarningEnabled = true;
 	public double fallWarningThreshold = 3.0;
+	public double fallWarningLookaheadSeconds = 1.0;
 	public int miningRadarRange = 8;
 	public int navRadarRange = 8;
 	public double scannerRange = 32.0;
