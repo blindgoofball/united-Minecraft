@@ -176,6 +176,8 @@
 	"united_minecraft.narrate.autowalk_arrived": "Arrived",
 	"united_minecraft.narrate.autowalk_cancelled": "Stopped walking",
 	"united_minecraft.narrate.autowalk_unreachable": "Can't find a path there",
+	"united_minecraft.narrate.autowalk_incomplete": "Stopped, still %s blocks from %s",
+	"united_minecraft.narrate.autowalk_incomplete_unnamed": "Stopped, still %s blocks from the target",
 	"united_minecraft.narrate.water_exit_none": "Can't find a way out",
 	"united_minecraft.narrate.water_exit_direction": "%s blocks %s",
 	"united_minecraft.narrate.water_exit_started": "Swimming to the nearest way out",

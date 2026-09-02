@@ -11,10 +11,15 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.level.pathfinder.PathFinder;
 import net.minecraft.world.level.pathfinder.WalkNodeEvaluator;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec2;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * The scanner's "walk to it" automation: computes a path with vanilla's own pathfinding
@@ -115,16 +120,30 @@ public final class AutoWalkController {
 		if (dx * dx + dz * dz < NODE_ARRIVAL_DISTANCE_SQR) {
 			currentPath.advance();
 			if (currentPath.isDone()) {
-				Runnable callback = onArrival;
-				client.getSoundManager().play(new SimpleSoundInstance(SoundEvents.NOTE_BLOCK_CHIME.value(),
-						SoundSource.MASTER, 0.7f, 1.4f, player.getRandom(), player.getX(), player.getY(), player.getZ()));
-				// A caller with its own onArrival callback narrates something more specific
-				// ("Facing X", a lock-on) - saying "Arrived" first would just be immediately
-				// talked over. Only narrate it here when there's no callback to say anything
-				// else (Build Mode's walk-to-cursor, say).
-				finish(client, player, callback != null ? null : "united_minecraft.narrate.autowalk_arrived");
-				if (callback != null) {
-					callback.run();
+				// vanilla's pathfinder gives up and hands back its best-effort partial path
+				// (rather than null) both when the target is farther than MAX_PATH_LENGTH and
+				// when it's blocked off entirely - canReach() is what actually distinguishes "got
+				// there" from "walked as far as it could and stopped". But canReach() alone isn't
+				// enough either: it's satisfied once the best walkable node found is within
+				// reachRange of the target's raw coordinates, with no check that anything solid
+				// sits between them - standing flush against a wall with a chest 1-2 blocks away
+				// on its far side counts as "reached" by that measure even though there's no way
+				// through. The line-of-sight check below catches that case.
+				if (currentPath.canReach() && hasClearLineToTarget(player.level(), player, currentPath.getTarget())) {
+					Runnable callback = onArrival;
+					client.getSoundManager().play(new SimpleSoundInstance(SoundEvents.NOTE_BLOCK_CHIME.value(),
+							SoundSource.MASTER, 0.7f, 1.4f, player.getRandom(), player.getX(), player.getY(), player.getZ()));
+					// A caller with its own onArrival callback narrates something more specific
+					// ("Facing X", a lock-on) - saying "Arrived" first would just be immediately
+					// talked over. Only narrate it here when there's no callback to say anything
+					// else (Build Mode's walk-to-cursor, say).
+					finish(client, player, callback != null ? null : "united_minecraft.narrate.autowalk_arrived");
+					if (callback != null) {
+						callback.run();
+					}
+				} else {
+					int remaining = Math.round(currentPath.getDistToTarget());
+					finishIncomplete(client, player, remaining);
 				}
 			}
 			return;
@@ -153,6 +172,35 @@ public final class AutoWalkController {
 		client.getNarrator().saySystemNow(name != null
 				? Component.translatable(messageKey, name)
 				: Component.translatable(messageKey));
+	}
+
+	/**
+	 * Ends the walk when the path never actually reached the target (see the {@code canReach()}
+	 * check above) - no arrival chime and no {@code onArrival} callback, since neither belongs
+	 * once the player didn't actually get there; just a plain narration of how much farther the
+	 * target still is, so it's clear more walking (or a different route) is needed rather than
+	 * this reading as a successful arrival.
+	 */
+	private static void finishIncomplete(Minecraft client, LocalPlayer player, int remainingBlocks) {
+		Component name = targetName;
+		player.input = previousInput;
+		reset();
+		client.getNarrator().saySystemNow(name != null
+				? Component.translatable("united_minecraft.narrate.autowalk_incomplete", remainingBlocks, name)
+				: Component.translatable("united_minecraft.narrate.autowalk_incomplete_unnamed", remainingBlocks));
+	}
+
+	/**
+	 * Whether anything solid actually sits between the player's eyes and the target block -
+	 * {@code canReach()} alone only checks raw distance, so this catches "reached" purely by
+	 * being close enough on the wrong side of a wall. A hit on the target block itself counts as
+	 * clear (that's the expected, desired hit for a solid target like a chest); a hit on
+	 * anything else first means something's in the way.
+	 */
+	private static boolean hasClearLineToTarget(Level level, LocalPlayer player, BlockPos target) {
+		BlockHitResult hit = level.clip(new ClipContext(
+				player.getEyePosition(), Vec3.atCenterOf(target), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
+		return hit.getType() == HitResult.Type.MISS || hit.getBlockPos().equals(target);
 	}
 
 	/** Reports "forward" (and "jump"/"sprint" as needed) as held, exactly like real keyboard input would. */
