@@ -118,7 +118,12 @@ public final class MapMarkerController {
 	}
 
 	private static void addMarker(Minecraft client, String name, String dimension, BlockPos pos) {
-		String finalName = name == null || name.isBlank() ? "Marker " + (markers.size() + 1) : name.trim();
+		// The marker's own name field is a plain String (it's saved to disk and narrated
+		// verbatim elsewhere), so the default name is resolved through the translation key
+		// once, right here, rather than storing a raw English literal.
+		String finalName = name == null || name.isBlank()
+				? Component.translatable("united_minecraft.narrate.marker_default_name", markers.size() + 1).getString()
+				: name.trim();
 		markers.add(new MapMarker(finalName, dimension, pos.getX(), pos.getY(), pos.getZ()));
 		save();
 		rebuildIndex();

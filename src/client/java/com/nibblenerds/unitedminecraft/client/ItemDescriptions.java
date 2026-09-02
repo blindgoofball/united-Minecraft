@@ -37,7 +37,7 @@ public final class ItemDescriptions {
 	 */
 	public static MutableComponent describe(ItemStack stack, Player player, boolean includeDurability) {
 		MutableComponent name = stack.getCount() > 1
-				? Component.literal(stack.getCount() + " ").append(stack.getHoverName())
+				? Component.translatable("united_minecraft.narrate.item_count", stack.getCount(), stack.getHoverName()).copy()
 				: stack.getHoverName().copy();
 
 		if (includeDurability && stack.isDamageableItem()) {

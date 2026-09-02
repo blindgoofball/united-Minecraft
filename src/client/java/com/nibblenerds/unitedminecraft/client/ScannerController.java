@@ -904,7 +904,7 @@ public final class ScannerController {
 		Identifier id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
 		String path = id.getPath();
 		String trimmed = path.endsWith("_log") ? path.substring(0, path.length() - 4) : path;
-		return Component.literal(titleCaseWords(trimmed) + " Tree");
+		return Component.translatable("united_minecraft.narrate.tree_name", titleCaseWords(trimmed));
 	}
 
 	/** "Item Frame" alone if empty, "Item Frame, holding Diamond Sword" (full item narration) if not. */
