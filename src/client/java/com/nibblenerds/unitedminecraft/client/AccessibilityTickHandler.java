@@ -86,7 +86,7 @@ public final class AccessibilityTickHandler {
 	private static boolean rotationOwnedLastTick;
 	private static int lastHotbarSlot = -1;
 	private static int lastTimePeriod = -1;
-	private static ItemStack lastOffhand = null;
+	private static Item lastOffhandItem = null;
 	private static Holder<Biome> lastBiome = null;
 
 	private AccessibilityTickHandler() {
@@ -104,7 +104,7 @@ public final class AccessibilityTickHandler {
 			rotationOwnedLastTick = false;
 			lastHotbarSlot = -1;
 			lastTimePeriod = -1;
-			lastOffhand = null;
+			lastOffhandItem = null;
 			lastBiome = null;
 			ClientKeyBindings.resetPressState();
 			BuildModeController.reset();
@@ -471,13 +471,20 @@ public final class AccessibilityTickHandler {
 		client.getNarrator().saySystemNow(name);
 	}
 
+	/**
+	 * Edge-triggered on the offhand's {@link Item} identity alone, not the full stack - {@link
+	 * ItemStack#matches} also compares count and components (durability, enchantments, etc.),
+	 * which would announce a false "swap" for something as ordinary as eating one item off an
+	 * offhand food stack or a shield/totem taking damage.
+	 */
 	private static void handleOffhandNarration(Minecraft client, LocalPlayer player) {
 		ItemStack offhand = player.getOffhandItem();
-		if (lastOffhand != null && !ItemStack.matches(offhand, lastOffhand)) {
+		Item offhandItem = offhand.getItem();
+		if (lastOffhandItem != null && offhandItem != lastOffhandItem) {
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.hands_swapped",
 					describeHand(player.getMainHandItem(), player), describeHand(offhand, player)));
 		}
-		lastOffhand = offhand.copy();
+		lastOffhandItem = offhandItem;
 	}
 
 	private static Component describeHand(ItemStack stack, LocalPlayer player) {
