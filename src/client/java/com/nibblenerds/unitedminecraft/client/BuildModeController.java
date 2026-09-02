@@ -242,6 +242,17 @@ public final class BuildModeController {
 				client.gameMode.stopDestroyBlock();
 				breakHeld = false;
 			}
+			if (pendingPlaceTicks >= 0) {
+				// Toggling off mid-sync-delay (see startRotatedPlacement/startBucketUse) would
+				// otherwise leave the player's rotation faked forever - tick() (the only place
+				// that normally restores it) never runs once active is false, so the pending
+				// action is abandoned and its saved rotation restored here instead.
+				pendingPlaceTicks = -1;
+				player.setYRot(pendingSavedYaw);
+				player.setXRot(pendingSavedPitch);
+				player.setOldRot();
+				player.setYHeadRot(pendingSavedYaw);
+			}
 			cursor = null;
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_mode_off"));
 		}
