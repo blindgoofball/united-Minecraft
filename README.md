@@ -211,15 +211,17 @@ Cancel a swim any time with the stop-lock key, same as Auto-Walk.
 Solves the other half of "I'm lost underground": as you walk, your actual
 positions are continuously recorded as a breadcrumb trail (no toggle needed -
 it's always running). A dedicated key reports the distance and direction back
-to the start of that trail, and Shift instead walks you back along it, one
-recorded step at a time, retracing the exact route you actually took rather
-than beelining through a wall. Since it's a literal reverse of ground you've
-already covered, it's always reachable. If retracing hits a spot where you
-fell or dropped down on the way in, it stops and tells you to place a block
-there instead of endlessly walking into the wall below it - place one, then
-retrace again to continue from there. A separate key clears the trail and
-marks your current spot as a fresh start, useful right as you enter a cave.
-Cancel a walk-back any time with the stop-lock key, same as Auto-Walk.
+to the start of that trail, Shift instead walks you back along it one
+recorded step at a time (retracing the exact route you actually took rather
+than beelining through a wall), and Alt clears the trail and marks your
+current spot as a fresh start, useful right as you enter a cave - folded
+behind Alt rather than its own bare key so it can't be triggered by
+accident. Since retracing is a literal reverse of ground you've already
+covered, it's always reachable. If retracing hits a spot where you fell or
+dropped down on the way in, it stops and tells you to place a block there
+instead of endlessly walking into the wall below it - place one, then
+retrace again to continue from there. Cancel a walk-back any time with the
+stop-lock key, same as Auto-Walk.
 
 ### Fall Warning
 
@@ -454,8 +456,7 @@ where noted.
 | M | Toggle Mining Radar |
 | K | Toggle Combat Mode |
 | Y (Shift = swim there) | Find the nearest way out of water |
-| X | Mark cave trail start (clears and restarts the recorded trail here) |
-| Z (Shift = walk there) | Find the way back along the recorded cave trail |
+| X (Shift = walk there, Alt = mark start) | Find the way back along the recorded cave trail |
 | Left/Right/Up/Down arrows | Turn camera (Alt = snap-turn 45 degrees), or move the Build Mode cursor relative to its own orientation (Alt+Left/Right = turn the cursor's orientation a quarter turn) |
 | Page Up/Down (Alt = jump to the next/previous item of the same kind) | Build Mode cursor up/down, or cycle the Scanner's nearest items |
 | Home/End | Cycle the Scanner's category |

@@ -189,16 +189,18 @@ public final class AccessibilityTickHandler {
 				WaterExitController.narrate(client, player);
 			}
 		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.MARK_TRAIL)) {
-			TrailController.markStart(client, player);
-		}
-		// Same rotation-owning modes WATER_ESCAPE is blocked against above, for the same reason.
-		if (!ScannerController.isLocked() && !CombatModeController.isActive() && !BuildModeController.isActive()
-				&& ClientKeyBindings.pressed(ClientKeyBindings.RETRACE_TRAIL)) {
-			if (ClientKeyBindings.isShiftDown(client)) {
-				TrailController.start(client, player);
-			} else {
-				TrailController.narrate(client, player);
+		if (ClientKeyBindings.pressed(ClientKeyBindings.TRAIL)) {
+			if (ClientKeyBindings.isModifierDown(client)) {
+				// Doesn't touch rotation or movement, so it isn't gated behind the rotation-owning
+				// modes check below - marking was never gated before this key was merged either.
+				TrailController.markStart(client, player);
+			} else if (!ScannerController.isLocked() && !CombatModeController.isActive() && !BuildModeController.isActive()) {
+				// Same rotation-owning modes WATER_ESCAPE is blocked against above, for the same reason.
+				if (ClientKeyBindings.isShiftDown(client)) {
+					TrailController.start(client, player);
+				} else {
+					TrailController.narrate(client, player);
+				}
 			}
 		}
 		MapMarkerController.tick(client);

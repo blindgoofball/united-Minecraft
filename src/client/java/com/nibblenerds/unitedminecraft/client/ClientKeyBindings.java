@@ -90,13 +90,14 @@ public final class ClientKeyBindings {
 	public static final KeyMapping WATER_ESCAPE = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.water_escape", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Y, CATEGORY));
 
-	/** Clears the recorded cave trail and starts recording fresh from the current position. */
-	public static final KeyMapping MARK_TRAIL = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.mark_trail", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_X, CATEGORY));
-
-	/** Narrates the way back along the recorded trail; Shift instead walks it automatically. */
-	public static final KeyMapping RETRACE_TRAIL = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.retrace_trail", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Z, CATEGORY));
+	/**
+	 * One key for all three cave trail actions, rather than a separate always-on mark key -
+	 * plain narrates the way back, Shift instead walks it automatically, and Alt clears the
+	 * trail and marks the current spot as a fresh start. Folding mark behind Alt (rather than a
+	 * bare keypress) also means it can no longer be triggered by accident, unlike before.
+	 */
+	public static final KeyMapping TRAIL = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+			"key.united_minecraft.trail", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_X, CATEGORY));
 
 
 	/**
@@ -223,7 +224,7 @@ public final class ClientKeyBindings {
 	/**
 	 * Whether the mod's own secondary-action modifier is held, for the handful of dual-purpose
 	 * keys where Shift genuinely isn't safe to use - see {@link #isShiftDown} for why Shift is
-	 * the default for most of this mod's other dual-purpose keys, and only these two are the
+	 * the default for most of this mod's other dual-purpose keys, and only these are the
 	 * exception:
 	 *
 	 * <ul>
@@ -234,6 +235,9 @@ public final class ClientKeyBindings {
 	 * occupies Right Shift as Build Mode's hold-to-mine key, so using Shift here too would mean
 	 * holding Right Shift to mine and tapping this key would silently reverse the cycle instead
 	 * of advancing it.
+	 * <li>{@link #TRAIL}'s mark action - Shift on this key already means "walk the trail back
+	 * automatically", a third, unrelated meaning; Alt keeps the destructive "clear and restart
+	 * the trail here" action off a plain tap and off Shift's already-claimed meaning both.
 	 * </ul>
 	 */
 	public static boolean isModifierDown(Minecraft client) {
@@ -244,7 +248,7 @@ public final class ClientKeyBindings {
 	/**
 	 * Whether Shift is held - the default modifier for this mod's dual-purpose keys ({@link
 	 * #NARRATE_COORDINATES}, {@link #NARRATE_HEALTH}, {@link #NARRATE_BEARING}, {@link
-	 * #NARRATE_TIME}, {@link #WATER_ESCAPE}, {@link #RETRACE_TRAIL}, {@link #SCANNER_TARGET},
+	 * #NARRATE_TIME}, {@link #WATER_ESCAPE}, {@link #TRAIL}, {@link #SCANNER_TARGET},
 	 * {@link #PLACE_MARKER}'s name-item layering), each a one-shot press rather than something
 	 * held during movement, so
 	 * a brief, incidental crouch while pressing it doesn't cost anything - and Shift sits right
