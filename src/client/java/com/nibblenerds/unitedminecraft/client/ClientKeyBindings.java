@@ -162,7 +162,11 @@ public final class ClientKeyBindings {
 	// Every KeyMapping declared above, discovered reflectively rather than hand-listed so a
 	// future keybinding automatically gets the same backlog-proof tracking below without
 	// anyone needing to remember to register it separately - forgetting would silently
-	// reintroduce the exact bug this class exists to prevent, for just that one key.
+	// reintroduce the exact bug this class exists to prevent, for just that one key. This has
+	// to stay the last KeyMapping-typed field in the class for that to actually work (static
+	// fields initialize top-to-bottom, so a field declared below this one would still be null
+	// at this point) - discoverMappings() skips a null rather than crash every tick on it, but
+	// a keybinding added below here still just silently wouldn't respond to input.
 	private static final KeyMapping[] ALL_MAPPINGS = discoverMappings();
 
 	private static final Map<KeyMapping, Boolean> heldLastTick = new IdentityHashMap<>();
@@ -180,7 +184,10 @@ public final class ClientKeyBindings {
 		for (Field field : ClientKeyBindings.class.getDeclaredFields()) {
 			if (KeyMapping.class.isAssignableFrom(field.getType())) {
 				try {
-					mappings.add((KeyMapping) field.get(null));
+					KeyMapping mapping = (KeyMapping) field.get(null);
+					if (mapping != null) {
+						mappings.add(mapping);
+					}
 				} catch (IllegalAccessException e) {
 					// Every KeyMapping field here is public static final and already initialized
 					// by the time this runs (it's assigned near the bottom of the class) - this
