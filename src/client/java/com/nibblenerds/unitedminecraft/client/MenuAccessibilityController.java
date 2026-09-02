@@ -767,14 +767,19 @@ public final class MenuAccessibilityController {
 		String term = recipeSearchTerm.toLowerCase(Locale.ROOT);
 		ContextMap context = SlotDisplayContext.fromLevel(player.level());
 
+		// Plain hover name, not ItemDescriptions.describe() - that builds the item's full
+		// tooltip (enchantments, attribute modifiers, potion effects, and so on via
+		// getTooltipLines), which this is called for on every candidate recipe on every
+		// keypress/filter change and never actually needed for a name match in the first
+		// place (see this method's own doc: matching is against names, not full descriptions).
 		List<ItemStack> results = entry.resultItems(context);
 		for (ItemStack result : results) {
-			if (ItemDescriptions.describe(result, player).getString().toLowerCase(Locale.ROOT).contains(term)) {
+			if (result.getHoverName().getString().toLowerCase(Locale.ROOT).contains(term)) {
 				return true;
 			}
 		}
 		for (ItemStack ingredient : recipeIngredients(entry.display(), context)) {
-			if (ItemDescriptions.describe(ingredient, player).getString().toLowerCase(Locale.ROOT).contains(term)) {
+			if (ingredient.getHoverName().getString().toLowerCase(Locale.ROOT).contains(term)) {
 				return true;
 			}
 		}
@@ -963,12 +968,18 @@ public final class MenuAccessibilityController {
 	}
 
 	private static void narrateRecipeFocus(LocalPlayer player, boolean announceSection) {
-		List<RecipeDisplayEntry> variants = currentRecipeVariants();
+		// visibleRecipeGroups() re-filters every recipe group against the search term (and thus
+		// re-runs matchesRecipeSearch over every candidate) - compute it once here rather than
+		// via currentRecipeVariants() and then again below for the group itself.
+		List<RecipeCollection> groups = visibleRecipeGroups();
+		List<RecipeDisplayEntry> variants = recipeGroupIndex >= 0 && recipeGroupIndex < groups.size()
+				? matchingVariantsIn(groups.get(recipeGroupIndex), player)
+				: List.of();
 		MutableComponent message;
 		if (variants.isEmpty()) {
 			message = Component.translatable("united_minecraft.menu.recipe_book.empty").copy();
 		} else {
-			RecipeCollection group = visibleRecipeGroups().get(recipeGroupIndex);
+			RecipeCollection group = groups.get(recipeGroupIndex);
 			RecipeDisplayEntry entry = variants.get(Math.min(recipeVariantIndex, variants.size() - 1));
 			ContextMap context = SlotDisplayContext.fromLevel(player.level());
 			List<ItemStack> results = entry.resultItems(context);
