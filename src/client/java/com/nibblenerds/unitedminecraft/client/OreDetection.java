@@ -45,7 +45,14 @@ final class OreDetection {
 		for (Direction direction : Direction.values()) {
 			BlockPos neighborPos = pos.relative(direction);
 			BlockState neighborState = level.getBlockState(neighborPos);
-			if (!neighborState.isAir() && neighborState.getFluidState().isEmpty()) {
+			// A torch, rail, slab, snow layer, or any other non-full-cube neighbor doesn't
+			// actually seal the face the way a real solid block does - only a genuinely solid,
+			// fully-opaque neighbor rules a face out here. isSolidRender() is the same check
+			// vanilla's own renderer uses to decide whether an adjacent face needs culling, so
+			// it's already exactly "does this neighbor visually block what's behind it". The
+			// real raycast below (hasLineOfSight) still has the final say either way - this is
+			// only a fast pre-filter, not the actual visibility test.
+			if (neighborState.isSolidRender() && neighborState.getFluidState().isEmpty()) {
 				continue;
 			}
 			Vec3 facePoint = center.add(
