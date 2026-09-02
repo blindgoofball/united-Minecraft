@@ -78,6 +78,8 @@ public final class CombatModeController {
 	}
 
 	public static void tick(Minecraft client, LocalPlayer player) {
+		boolean hadTarget = target != null;
+
 		// Also releases an Enderman target that's calmed back down since being locked onto -
 		// no sense continuing to stare (and risk re-provoking it) once it's not actually mad
 		// anymore.
@@ -91,6 +93,14 @@ public final class CombatModeController {
 			target = nearest;
 			client.getNarrator().saySystemNow(Component.translatable(
 					"united_minecraft.narrate.scanner_lock_started", target.getDisplayName()));
+		} else if (hadTarget && target == null) {
+			// The old target died, left, or calmed down and nothing else in range took its
+			// place - silence here would be indistinguishable from Combat Mode just not having
+			// found a new threat yet, when actually the fight it was tracking just ended. Only
+			// reached when nearest is null: shouldSwitchTo unconditionally accepts any candidate
+			// once target is already null, so a real nearest would already have been picked up
+			// by the branch above.
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.scanner_lock_lost"));
 		}
 
 		if (target != null) {
