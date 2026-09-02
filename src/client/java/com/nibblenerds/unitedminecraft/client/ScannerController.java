@@ -800,9 +800,6 @@ public final class ScannerController {
 		return items.get(itemIndex);
 	}
 
-	/** Beyond this many blocks of vertical separation, above/below is narrated alongside the compass heading. */
-	private static final double VERTICAL_DIRECTION_THRESHOLD = 5.0;
-
 	private static Component describeItem(ScannerCategory category, ScannerItem item, LocalPlayer player) {
 		Vec3 from = player.position();
 		Vec3 to = targetPosition(item);
@@ -811,11 +808,7 @@ public final class ScannerController {
 		// (or for Markers/Players, which are never range-limited and can sit scanned from far
 		// away) narrates the player's actual current distance instead of a stale one.
 		int distance = (int) Math.round(player.getEyePosition().distanceTo(to));
-		Component direction = CameraUtil.compassDirectionTo(from, to);
-		Component vertical = verticalDirection(from, to);
-		if (vertical != null) {
-			direction = direction.copy().append(Component.literal(", ")).append(vertical);
-		}
+		Component direction = CameraUtil.fullDirectionTo(from, to);
 		Component name = itemName(category, item, player);
 		if (category == ScannerCategory.CROPS) {
 			BlockState state = player.level().getBlockState(item.blockPos());
@@ -847,19 +840,6 @@ public final class ScannerController {
 		return describeItem(category, item, player).copy()
 				.append(Component.literal(", "))
 				.append(Component.translatable("united_minecraft.narrate.scanner_position", index + 1, total));
-	}
-
-	/** Null when {@code to} is within the normal vertical range for a plain compass heading. */
-	private static Component verticalDirection(Vec3 from, Vec3 to) {
-		double dy = to.y() - from.y();
-		if (Math.abs(dy) <= VERTICAL_DIRECTION_THRESHOLD) {
-			return null;
-		}
-		int blocks = (int) Math.round(Math.abs(dy));
-		Component word = Component.translatable(dy > 0
-				? "united_minecraft.direction.above"
-				: "united_minecraft.direction.below");
-		return Component.translatable("united_minecraft.narrate.scanner_vertical", word, blocks);
 	}
 
 	private static Vec3 targetPosition(ScannerItem item) {

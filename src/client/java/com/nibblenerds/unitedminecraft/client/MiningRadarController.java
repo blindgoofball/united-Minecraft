@@ -123,7 +123,7 @@ public final class MiningRadarController {
 				SoundEvents.PLAYER_LEVELUP, SoundSource.MASTER, 0.6f, 1.6f, random, center.x(), center.y(), center.z()));
 
 		int distance = (int) Math.round(player.getEyePosition().distanceTo(center));
-		Component direction = CameraUtil.compassDirectionTo(player.position(), center);
+		Component direction = CameraUtil.fullDirectionTo(player.position(), center);
 		client.getNarrator().saySystemNow(Component.translatable(
 				"united_minecraft.narrate.scanner_item", state.getBlock().getName(), distance, direction));
 	}

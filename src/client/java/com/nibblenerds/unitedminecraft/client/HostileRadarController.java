@@ -148,7 +148,7 @@ public final class HostileRadarController {
 				SoundEvents.NOTE_BLOCK_BELL.value(), SoundSource.MASTER, 0.7f, 1.0f, random, pos.x(), pos.y(), pos.z()));
 
 		int distance = (int) Math.round(player.getEyePosition().distanceTo(entity.position()));
-		Component direction = CameraUtil.compassDirectionTo(player.position(), pos);
+		Component direction = CameraUtil.fullDirectionTo(player.position(), pos);
 		client.getNarrator().saySystemNow(Component.translatable(
 				"united_minecraft.narrate.scanner_item", entity.getDisplayName(), distance, direction));
 	}

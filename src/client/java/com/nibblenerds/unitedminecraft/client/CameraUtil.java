@@ -169,4 +169,33 @@ public final class CameraUtil {
 		int octant = Math.floorMod(Math.round(bearing / 45.0f), 8);
 		return Component.translatable(COMPASS_DIRECTION_KEYS[octant]);
 	}
+
+	// Beyond this many blocks of vertical separation, above/below is narrated alongside the
+	// compass heading - shared by the Scanner and both radars (Mining, Hostile) rather than
+	// each keeping its own copy of this threshold and wording.
+	private static final double VERTICAL_DIRECTION_THRESHOLD = 5.0;
+
+	/** Null when {@code to} is within the normal vertical range of {@code from} for a plain compass heading to suffice. */
+	public static Component verticalDirectionTo(Vec3 from, Vec3 to) {
+		double dy = to.y() - from.y();
+		if (Math.abs(dy) <= VERTICAL_DIRECTION_THRESHOLD) {
+			return null;
+		}
+		int blocks = (int) Math.round(Math.abs(dy));
+		Component word = Component.translatable(dy > 0
+				? "united_minecraft.direction.above"
+				: "united_minecraft.direction.below");
+		return Component.translatable("united_minecraft.narrate.scanner_vertical", word, blocks);
+	}
+
+	/**
+	 * {@link #compassDirectionTo} plus {@link #verticalDirectionTo} folded in when it applies -
+	 * the combined "direction" fragment {@link ScannerController}, {@link HostileRadarController},
+	 * and {@link MiningRadarController} all narrate alongside a distance.
+	 */
+	public static Component fullDirectionTo(Vec3 from, Vec3 to) {
+		Component direction = compassDirectionTo(from, to);
+		Component vertical = verticalDirectionTo(from, to);
+		return vertical == null ? direction : direction.copy().append(Component.literal(", ")).append(vertical);
+	}
 }
