@@ -37,14 +37,12 @@ public final class MovementAssistController {
 	private static final double ROUTE_LATERAL_THRESHOLD = 0.75;
 
 	private static int stuckTicks = 0;
-	private static boolean narratedThisEpisode = false;
 
 	private MovementAssistController() {
 	}
 
 	public static void reset() {
 		stuckTicks = 0;
-		narratedThisEpisode = false;
 	}
 
 	public static void tick(Minecraft client, LocalPlayer player) {
@@ -53,12 +51,14 @@ public final class MovementAssistController {
 
 		if (!player.input.hasForwardImpulse() || !player.onGround() || horizontalSpeedSqr > STUCK_VELOCITY_THRESHOLD_SQR) {
 			stuckTicks = 0;
-			narratedThisEpisode = false;
 			return;
 		}
 
-		if (++stuckTicks == STUCK_TICKS_BEFORE_NARRATION && !narratedThisEpisode) {
-			narratedThisEpisode = true;
+		// stuckTicks only ever climbs while this branch keeps running (the block above resets
+		// it to 0 the moment movement resumes), so it can equal STUCK_TICKS_BEFORE_NARRATION
+		// exactly once per stuck episode - no separate "already narrated this episode" flag
+		// needed on top of that.
+		if (++stuckTicks == STUCK_TICKS_BEFORE_NARRATION) {
 			narrateObstacle(client, player);
 		}
 	}
