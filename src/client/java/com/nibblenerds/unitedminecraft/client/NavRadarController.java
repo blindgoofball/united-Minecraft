@@ -50,7 +50,6 @@ public final class NavRadarController {
 	private static final float JUMPABLE_PITCH = 2.0f;
 	private static final float BLOCKED_PITCH = 1.5f;
 
-	private static boolean enabled = false;
 	private static int ticks = 0;
 	private static int lastGlobalPlayTick = -PLAY_INTERVAL_TICKS;
 
@@ -61,20 +60,24 @@ public final class NavRadarController {
 	private NavRadarController() {
 	}
 
+	/** Persisted in {@link UnitedMinecraftConfig} - stays on/off across world/session boundaries, same as Mining Radar. */
 	public static boolean isEnabled() {
-		return enabled;
+		return UnitedMinecraftConfig.get().navRadarEnabled;
 	}
 
 	public static void toggle(Minecraft client) {
-		enabled = !enabled;
-		if (!enabled) {
+		UnitedMinecraftConfig config = UnitedMinecraftConfig.get();
+		config.navRadarEnabled = !config.navRadarEnabled;
+		UnitedMinecraftConfig.save();
+		if (!config.navRadarEnabled) {
 			reset();
 		}
-		client.getNarrator().saySystemNow(Component.translatable(enabled
+		client.getNarrator().saySystemNow(Component.translatable(config.navRadarEnabled
 				? "united_minecraft.narrate.nav_radar_on"
 				: "united_minecraft.narrate.nav_radar_off"));
 	}
 
+	/** Clears per-session scan state only - {@link #isEnabled()} is a persistent preference, not session state. */
 	public static void reset() {
 		lastState.clear();
 		lastPlayedTick.clear();
@@ -84,7 +87,7 @@ public final class NavRadarController {
 	}
 
 	public static void tick(Minecraft client, LocalPlayer player) {
-		if (!enabled) {
+		if (!isEnabled()) {
 			return;
 		}
 		ticks++;

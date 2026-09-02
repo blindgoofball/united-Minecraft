@@ -38,7 +38,6 @@ public final class MiningRadarController {
 	private static final int SCAN_INTERVAL_TICKS = 10;
 	private static final int ALERT_INTERVAL_TICKS = 5;
 
-	private static boolean enabled;
 	private static int ticksUntilScan;
 	private static int ticksUntilNextAlert;
 	private static final Set<BlockPos> alerted = new HashSet<>();
@@ -47,21 +46,24 @@ public final class MiningRadarController {
 	private MiningRadarController() {
 	}
 
+	/** Persisted in {@link UnitedMinecraftConfig} - stays on/off across world/session boundaries, same as Nav Radar. */
 	public static boolean isEnabled() {
-		return enabled;
+		return UnitedMinecraftConfig.get().miningRadarEnabled;
 	}
 
 	public static void toggle(Minecraft client) {
-		enabled = !enabled;
+		UnitedMinecraftConfig config = UnitedMinecraftConfig.get();
+		config.miningRadarEnabled = !config.miningRadarEnabled;
+		UnitedMinecraftConfig.save();
 		ticksUntilScan = 0;
 		pending.clear();
-		client.getNarrator().saySystemNow(Component.translatable(enabled
+		client.getNarrator().saySystemNow(Component.translatable(config.miningRadarEnabled
 				? "united_minecraft.narrate.mining_radar_on"
 				: "united_minecraft.narrate.mining_radar_off"));
 	}
 
+	/** Clears per-session scan state only - {@link #isEnabled()} is a persistent preference, not session state. */
 	public static void reset() {
-		enabled = false;
 		ticksUntilScan = 0;
 		ticksUntilNextAlert = 0;
 		alerted.clear();
@@ -69,7 +71,7 @@ public final class MiningRadarController {
 	}
 
 	public static void tick(Minecraft client, LocalPlayer player) {
-		if (!enabled) {
+		if (!isEnabled()) {
 			return;
 		}
 
