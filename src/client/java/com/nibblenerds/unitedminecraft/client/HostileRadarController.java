@@ -103,6 +103,14 @@ public final class HostileRadarController {
 	}
 
 	private static void scan(LocalPlayer player) {
+		// lastAlertTick otherwise only ever grows - an entity ID it's tracking never gets
+		// removed just because that mob wandered off, died, or unloaded. Once an entry's
+		// cooldown has fully elapsed it's dead weight either way (see the check just below,
+		// which already treats it as "eligible to re-alert" past this point), so purge it here
+		// rather than let the map accumulate one entry per hostile mob ever encountered all
+		// session.
+		lastAlertTick.entrySet().removeIf(entry -> ticks - entry.getValue() >= RE_ALERT_COOLDOWN_TICKS);
+
 		double range = UnitedMinecraftConfig.get().hostileRadarRange;
 		double meleeRange = player.entityInteractionRange();
 		Vec3 eye = player.getEyePosition();
