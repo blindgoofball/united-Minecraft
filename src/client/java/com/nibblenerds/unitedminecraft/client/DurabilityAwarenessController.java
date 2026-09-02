@@ -4,6 +4,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 /**
@@ -36,7 +37,30 @@ public final class DurabilityAwarenessController {
 
 	private static final boolean[] warnedWarning = new boolean[SLOT_COUNT];
 	private static final boolean[] warnedCritical = new boolean[SLOT_COUNT];
-	private static final ItemStack[] lastStack = new ItemStack[SLOT_COUNT];
+	private static final Snapshot[] lastSnapshot = new Snapshot[SLOT_COUNT];
+
+	/**
+	 * Just enough of a slot's previous-tick state to compare against the current one -
+	 * {@code checkSlot} used to call {@code ItemStack#copy()} every tick for every slot to keep
+	 * this around, which deep-copies the stack's full data component map (enchantments,
+	 * attribute modifiers, everything) for six slots a tick purely to compare an item identity
+	 * and a damage value against next tick's stack.
+	 */
+	private record Snapshot(Item item, int damageValue, int maxDamage, Component hoverName) {
+		private static final Snapshot EMPTY = new Snapshot(null, 0, 0, null);
+
+		private boolean isEmpty() {
+			return item == null;
+		}
+
+		private static Snapshot of(ItemStack stack) {
+			boolean damageable = stack.isDamageableItem() && stack.getMaxDamage() > 0;
+			return new Snapshot(stack.getItem(),
+					damageable ? stack.getDamageValue() : 0,
+					damageable ? stack.getMaxDamage() : 0,
+					stack.getHoverName());
+		}
+	}
 
 	static {
 		reset();
@@ -53,7 +77,7 @@ public final class DurabilityAwarenessController {
 		for (int i = 0; i < SLOT_COUNT; i++) {
 			warnedWarning[i] = false;
 			warnedCritical[i] = false;
-			lastStack[i] = ItemStack.EMPTY;
+			lastSnapshot[i] = Snapshot.EMPTY;
 		}
 	}
 
@@ -79,7 +103,7 @@ public final class DurabilityAwarenessController {
 	}
 
 	private static void checkSlot(Minecraft client, LocalPlayer player, int slot, ItemStack current) {
-		ItemStack previous = lastStack[slot];
+		Snapshot previous = lastSnapshot[slot];
 
 		// Minecraft can remove a broken stack before this poll ever observes damage == max - it
 		// can go from "1 use left" straight to gone within a single tick. Treat max - 1 as the
@@ -87,17 +111,15 @@ public final class DurabilityAwarenessController {
 		// (current.isEmpty()), never merely swapped for a different item - manually switching
 		// hotbar slots away from a still-intact item at 1 durability left must not be announced
 		// as a break; the old item is still sitting right there in inventory.
-		boolean previousWasNearlyBroken = !previous.isEmpty() && previous.isDamageableItem()
-				&& previous.getMaxDamage() > 0
-				&& previous.getDamageValue() >= previous.getMaxDamage() - 1;
+		boolean previousWasNearlyBroken = !previous.isEmpty() && previous.maxDamage() > 0
+				&& previous.damageValue() >= previous.maxDamage() - 1;
 		if (previousWasNearlyBroken && current.isEmpty()) {
-			Component itemName = previous.getHoverName();
 			client.getNarrator().saySystemNow(Component.translatable(
-					"united_minecraft.narrate.durability_broke", itemName));
+					"united_minecraft.narrate.durability_broke", previous.hoverName()));
 		}
 
 		// A newly equipped item must start with a fresh warning state.
-		if (!previous.isEmpty() && !current.isEmpty() && previous.getItem() != current.getItem()) {
+		if (!previous.isEmpty() && !current.isEmpty() && previous.item() != current.getItem()) {
 			warnedWarning[slot] = false;
 			warnedCritical[slot] = false;
 		}
@@ -105,20 +127,20 @@ public final class DurabilityAwarenessController {
 		if (current.isEmpty()) {
 			warnedWarning[slot] = false;
 			warnedCritical[slot] = false;
-			lastStack[slot] = ItemStack.EMPTY;
+			lastSnapshot[slot] = Snapshot.EMPTY;
 			return;
 		}
 
 		// Not damageable or no durability data — nothing to track.
 		if (!current.isDamageableItem() || current.getMaxDamage() <= 0) {
-			lastStack[slot] = current.copy();
+			lastSnapshot[slot] = Snapshot.of(current);
 			return;
 		}
 
 		int damage = current.getDamageValue();
 		int max = current.getMaxDamage();
 		if (max <= 0) {
-			lastStack[slot] = current.copy();
+			lastSnapshot[slot] = Snapshot.of(current);
 			return;
 		}
 
@@ -157,6 +179,6 @@ public final class DurabilityAwarenessController {
 					Component.translatable(SLOT_KEYS[slot])));
 		}
 
-		lastStack[slot] = current.copy();
+		lastSnapshot[slot] = Snapshot.of(current);
 	}
 }
