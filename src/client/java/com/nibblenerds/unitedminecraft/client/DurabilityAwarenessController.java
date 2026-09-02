@@ -81,15 +81,16 @@ public final class DurabilityAwarenessController {
 	private static void checkSlot(Minecraft client, LocalPlayer player, int slot, ItemStack current) {
 		ItemStack previous = lastStack[slot];
 
-		// Minecraft can remove or replace a broken stack before this poll observes damage == max.
-		// Treat max - 1 as the final observable state, but only announce it when the stack leaves
-		// the slot so manually switching away from a nearly-broken item is not announced as a break.
+		// Minecraft can remove a broken stack before this poll ever observes damage == max - it
+		// can go from "1 use left" straight to gone within a single tick. Treat max - 1 as the
+		// final observable state, but only announce it once the stack is actually *gone*
+		// (current.isEmpty()), never merely swapped for a different item - manually switching
+		// hotbar slots away from a still-intact item at 1 durability left must not be announced
+		// as a break; the old item is still sitting right there in inventory.
 		boolean previousWasNearlyBroken = !previous.isEmpty() && previous.isDamageableItem()
 				&& previous.getMaxDamage() > 0
 				&& previous.getDamageValue() >= previous.getMaxDamage() - 1;
-		boolean stackLeftSlot = current.isEmpty()
-				|| (!previous.isEmpty() && previous.getItem() != current.getItem());
-		if (previousWasNearlyBroken && stackLeftSlot) {
+		if (previousWasNearlyBroken && current.isEmpty()) {
 			Component itemName = previous.getHoverName();
 			client.getNarrator().saySystemNow(Component.translatable(
 					"united_minecraft.narrate.durability_broke", itemName));
