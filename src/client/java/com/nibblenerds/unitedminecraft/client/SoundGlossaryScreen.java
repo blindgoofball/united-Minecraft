@@ -41,6 +41,7 @@ public final class SoundGlossaryScreen extends Screen {
 			new GlossaryEntry("united_minecraft.glossary.melee_alert", SoundEvents.NOTE_BLOCK_HAT::value, 0.6f, 1.4f),
 			new GlossaryEntry("united_minecraft.glossary.fall_warning_safe", SoundEvents.NOTE_BLOCK_PLING::value, 1.5f, 1.3f),
 			new GlossaryEntry("united_minecraft.glossary.fall_warning_damaging", () -> SoundEvents.ANVIL_LAND, 1.0f, 0.8f),
+			new GlossaryEntry("united_minecraft.glossary.fall_warning_hazard", () -> SoundEvents.GENERIC_BURN, 1.0f, 0.8f),
 			new GlossaryEntry("united_minecraft.glossary.mining_radar_ore", () -> SoundEvents.PLAYER_LEVELUP, 0.6f, 1.6f),
 			new GlossaryEntry("united_minecraft.glossary.nav_radar_clear", () -> SoundEvents.EXPERIENCE_ORB_PICKUP, 0.6f, 1.0f),
 			new GlossaryEntry("united_minecraft.glossary.arrow_hit", () -> SoundEvents.ARROW_HIT_PLAYER, 1.0f, 1.0f),

@@ -14,6 +14,7 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HayBlock;
 import net.minecraft.world.level.block.SlimeBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -185,10 +186,11 @@ public final class FallWarningController {
 		lastWarnTick = ticks;
 
 		boolean damaging = landing == null || wouldDamage(player, level.getBlockState(landing), dropHeight);
+		Component hazardName = landing == null ? Component.translatable("united_minecraft.narrate.fall_hazard_void") : hazardNameOf(level.getBlockState(landing));
 		// Played at the edge itself, not the landing spot below - for anything but a short
 		// drop, the landing spot is far enough away (or, for a void fall, doesn't exist) that
 		// positional attenuation would make it inaudible right when it matters most.
-		warn(client, player, new Vec3(aheadX, referenceY, aheadZ), dropHeight, damaging);
+		warn(client, player, new Vec3(aheadX, referenceY, aheadZ), dropHeight, damaging, hazardName);
 	}
 
 	/**
@@ -219,6 +221,33 @@ public final class FallWarningController {
 		return null;
 	}
 
+	/**
+	 * A landing spot that hurts regardless of the fall-height math - worth calling out by name
+	 * (lava especially: {@link #wouldDamage} only ever weighs it as an ordinary, non-water
+	 * fluid, so a short drop into a lava pool could otherwise narrate as a perfectly "safe"
+	 * landing) rather than folding into the generic damaging/safe narration. Null for anything
+	 * {@link #wouldDamage}'s own height-based math already handles correctly.
+	 */
+	private static Component hazardNameOf(BlockState landingState) {
+		if (landingState.getFluidState().is(FluidTags.LAVA)) {
+			return Component.translatable("united_minecraft.narrate.fall_hazard_lava");
+		}
+		Block block = landingState.getBlock();
+		if (block == Blocks.MAGMA_BLOCK) {
+			return Component.translatable("united_minecraft.narrate.fall_hazard_magma");
+		}
+		if (block == Blocks.CACTUS) {
+			return Component.translatable("united_minecraft.narrate.fall_hazard_cactus");
+		}
+		if (block == Blocks.POWDER_SNOW) {
+			return Component.translatable("united_minecraft.narrate.fall_hazard_powder_snow");
+		}
+		if (block == Blocks.SWEET_BERRY_BUSH) {
+			return Component.translatable("united_minecraft.narrate.fall_hazard_sweet_berry_bush");
+		}
+		return null;
+	}
+
 	/** Mirrors vanilla's own fall-damage mitigations for the landing spot to decide whether this specific fall actually hurts. */
 	private static boolean wouldDamage(LocalPlayer player, BlockState landingState, double dropHeight) {
 		if (landingState.getFluidState().is(FluidTags.WATER)) {
@@ -244,8 +273,26 @@ public final class FallWarningController {
 		return damage > 0;
 	}
 
-	private static void warn(Minecraft client, LocalPlayer player, Vec3 pos, double dropHeight, boolean damaging) {
+	/**
+	 * {@code hazardName} (see {@link #hazardNameOf}), when non-null, always takes priority over
+	 * the plain damaging/safe narration below - landing in lava or the void is worth naming
+	 * specifically, not folding into a generic "will hurt" that reads identically to any other
+	 * damaging fall.
+	 */
+	private static void warn(Minecraft client, LocalPlayer player, Vec3 pos, double dropHeight, boolean damaging, Component hazardName) {
 		RandomSource random = player.getRandom();
+		int blocks = (int) Math.round(dropHeight);
+
+		if (hazardName != null) {
+			// Distinct from the plain "will hurt" anvil cue - a burn/singe sound reads as its
+			// own specific kind of bad, not just "damaging".
+			client.getSoundManager().play(new SimpleSoundInstance(
+					SoundEvents.GENERIC_BURN, SoundSource.MASTER, 1.0f, 0.8f, random, pos.x(), pos.y(), pos.z()));
+			client.getNarrator().saySystemNow(Component.translatable(
+					"united_minecraft.narrate.fall_warning_hazard", blocks, hazardName));
+			return;
+		}
+
 		// Note block tones (even at high volume) read as quiet/soft - an anvil landing is
 		// inherently loud and unmistakably "bad", a clear contrast against the bright pling
 		// for a safe drop.
@@ -253,7 +300,6 @@ public final class FallWarningController {
 				? new SimpleSoundInstance(SoundEvents.ANVIL_LAND, SoundSource.MASTER, 1.0f, 0.8f, random, pos.x(), pos.y(), pos.z())
 				: new SimpleSoundInstance(SoundEvents.NOTE_BLOCK_PLING.value(), SoundSource.MASTER, 1.5f, 1.3f, random, pos.x(), pos.y(), pos.z()));
 
-		int blocks = (int) Math.round(dropHeight);
 		client.getNarrator().saySystemNow(Component.translatable(damaging
 				? "united_minecraft.narrate.fall_warning_damaging"
 				: "united_minecraft.narrate.fall_warning_safe", blocks));
