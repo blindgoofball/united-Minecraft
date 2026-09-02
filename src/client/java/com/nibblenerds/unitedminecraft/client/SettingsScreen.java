@@ -54,11 +54,6 @@ public final class SettingsScreen extends Screen {
 	private static final int ROW_HEIGHT = 20;
 	private static final int ROW_SPACING = 4;
 	private static final int SCROLL_STEP = ROW_HEIGHT + ROW_SPACING;
-	// 9 original setting rows + the Attack Ready Cue cycle + the glossary button + Done
-	// + 3 durability awareness rows (toggle + 2 sliders) + 1 tool harvest warning row
-	// + 2 scanner rows (skip empty categories, auto-lock after walk)
-	// + 1 fall warning lookahead row.
-	private static final int ROW_COUNT = 19;
 
 	/** Every row widget, in visual order, alongside its unscrolled ("base") Y position. */
 	private final List<AbstractWidget> rows = new ArrayList<>();
@@ -78,7 +73,11 @@ public final class SettingsScreen extends Screen {
 
 		UnitedMinecraftConfig config = UnitedMinecraftConfig.get();
 		int x = this.width / 2 - ROW_WIDTH / 2;
-		int y = this.height / 2 - (ROW_HEIGHT + ROW_SPACING) * (ROW_COUNT / 2) - ROW_HEIGHT / 2;
+		// Laid out from an arbitrary y=0 first, then the whole block is shifted to actually
+		// center it once every row below has been added and its real total height is known
+		// (see the shift below) - rather than a hand-maintained row count computed up front,
+		// which silently goes stale the moment a row is added or removed without updating it.
+		int y = 0;
 
 		y = addToggle(x, y, "united_minecraft.settings_screen.hostile_radar_enabled",
 				config.hostileRadarEnabled, value -> config.hostileRadarEnabled = value);
@@ -132,6 +131,22 @@ public final class SettingsScreen extends Screen {
 				button -> onClose())
 				.bounds(x, y + ROW_SPACING, ROW_WIDTH, ROW_HEIGHT)
 				.build()), y + ROW_SPACING);
+
+		// Now that every row has been added and its real total height is known, shift the whole
+		// block (still anchored at y=0 above) down so it's actually centered vertically - the
+		// same vertical center the old ROW_COUNT-based formula aimed for, just derived from the
+		// real row count instead of one that had to be updated by hand.
+		if (!rowBaseY.isEmpty()) {
+			int contentHeight = rowBaseY.get(rowBaseY.size() - 1) + ROW_HEIGHT;
+			int shift = (this.height - contentHeight) / 2;
+			if (shift != 0) {
+				for (int i = 0; i < rows.size(); i++) {
+					int shiftedY = rowBaseY.get(i) + shift;
+					rows.get(i).setY(shiftedY);
+					rowBaseY.set(i, shiftedY);
+				}
+			}
+		}
 
 		// scrollOffset is subtracted directly from each row's absolute base Y (see applyScroll),
 		// not from a content-relative 0-based coordinate space - so the bound that brings the
