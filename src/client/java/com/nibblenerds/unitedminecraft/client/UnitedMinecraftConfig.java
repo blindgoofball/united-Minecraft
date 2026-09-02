@@ -58,6 +58,12 @@ public final class UnitedMinecraftConfig {
 	private UnitedMinecraftConfig() {
 	}
 
+	private void sanitize() {
+		durabilityWarningThreshold = Math.max(1, Math.min(50, durabilityWarningThreshold));
+		durabilityCriticalThreshold = Math.max(1,
+				Math.min(durabilityWarningThreshold, Math.min(50, durabilityCriticalThreshold)));
+	}
+
 	public static UnitedMinecraftConfig get() {
 		return instance;
 	}
@@ -74,6 +80,7 @@ public final class UnitedMinecraftConfig {
 		try (Reader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
 			UnitedMinecraftConfig loaded = GSON.fromJson(reader, UnitedMinecraftConfig.class);
 			if (loaded != null) {
+				loaded.sanitize();
 				instance = loaded;
 			}
 		} catch (IOException | JsonParseException e) {
@@ -82,6 +89,7 @@ public final class UnitedMinecraftConfig {
 	}
 
 	public static void save() {
+		instance.sanitize();
 		Path file = file();
 		try {
 			Files.createDirectories(file.getParent());

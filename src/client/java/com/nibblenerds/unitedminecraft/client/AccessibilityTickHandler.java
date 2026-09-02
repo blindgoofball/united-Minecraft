@@ -233,6 +233,9 @@ public final class AccessibilityTickHandler {
 			TrailController.cancel(client, player);
 		}
 
+		// Durability changes and break events must still be observed while a GUI is open.
+		DurabilityAwarenessController.tick(client, player);
+
 		if (client.gui.screen() == null) {
 			if (AutoWalkController.isActive()) {
 				// Owns rotation and movement input entirely until it finishes or is
@@ -294,9 +297,6 @@ public final class AccessibilityTickHandler {
 			// Same reasoning - the attack-strength meter keeps recharging regardless of what
 			// else is going on, and CombatCueMode.ALWAYS needs it tracked outside Combat Mode too.
 			CombatModeController.tickAttackCue(client, player);
-			// Same reasoning - durability loss on tools and armor matters regardless of what
-			// mode currently owns rotation.
-			DurabilityAwarenessController.tick(client, player);
 			// Proactive tool mismatch and mining waste prevention
 			ToolHarvestAwarenessController.tick(client, player);
 		}
