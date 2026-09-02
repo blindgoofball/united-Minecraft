@@ -11,7 +11,8 @@ import net.minecraft.world.item.TooltipFlag;
 
 /**
  * Shared "describe this stack for narration" logic: name, count (if more than one),
- * durability (if damageable), and every extra tooltip line vanilla itself would show -
+ * durability (if damageable and the caller wants it), and every extra tooltip line vanilla
+ * itself would show -
  * enchantments (on both enchanted books and enchanted gear), a music disc's actual song,
  * a goat horn's actual instrument, potion effects, attribute modifiers, and so on.
  *
@@ -26,11 +27,20 @@ public final class ItemDescriptions {
 	}
 
 	public static MutableComponent describe(ItemStack stack, Player player) {
+		return describe(stack, player, true);
+	}
+
+	/**
+	 * {@code includeDurability} exists for a mob's held/worn items (see {@code ScannerController}) -
+	 * a monster's sword or armor being at 40/59 durability isn't actionable information, unlike
+	 * the player's own hotbar or inventory, where it is.
+	 */
+	public static MutableComponent describe(ItemStack stack, Player player, boolean includeDurability) {
 		MutableComponent name = stack.getCount() > 1
 				? Component.literal(stack.getCount() + " ").append(stack.getHoverName())
 				: stack.getHoverName().copy();
 
-		if (stack.isDamageableItem()) {
+		if (includeDurability && stack.isDamageableItem()) {
 			int remaining = stack.getMaxDamage() - stack.getDamageValue();
 			name = name.append(Component.literal(", ")).append(Component.translatable(
 					"united_minecraft.narrate.hotbar_durability", remaining, stack.getMaxDamage()));

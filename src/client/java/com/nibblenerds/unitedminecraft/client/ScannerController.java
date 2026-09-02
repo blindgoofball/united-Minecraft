@@ -26,8 +26,13 @@ import net.minecraft.tags.BlockTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.Leashable;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.animal.allay.Allay;
 import net.minecraft.world.entity.animal.sheep.Sheep;
 import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
 import net.minecraft.world.entity.decoration.ArmorStand;
@@ -41,7 +46,9 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.vehicle.boat.Boat;
 import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
 import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.AttachedStemBlock;
@@ -579,7 +586,7 @@ public final class ScannerController {
 			// mid-walk. Also re-scans the category first, so Page Up/Down cycling afterward
 			// continues from wherever this entity now falls in the freshly re-sorted list,
 			// instead of a stale index computed before the player moved.
-			AutoWalkController.start(client, player, entity.blockPosition(), mobDisplayName(entity),
+			AutoWalkController.start(client, player, entity.blockPosition(), mobDisplayName(entity, player),
 					() -> {
 						if (entity.isAlive()) {
 							rescanAndRefocus(player, item -> item.entity() == entity);
@@ -603,7 +610,7 @@ public final class ScannerController {
 		lockedEntity = entity;
 		CameraUtil.aimAt(player, entity.getBoundingBox().getCenter());
 		client.getNarrator().saySystemNow(
-				Component.translatable("united_minecraft.narrate.scanner_lock_started", mobDisplayName(entity)));
+				Component.translatable("united_minecraft.narrate.scanner_lock_started", mobDisplayName(entity, player)));
 	}
 
 	private static void targetEntityOnce(Minecraft client, LocalPlayer player, Entity entity, boolean walkThere) {
@@ -612,7 +619,7 @@ public final class ScannerController {
 			return;
 		}
 		if (walkThere) {
-			AutoWalkController.start(client, player, entity.blockPosition(), mobDisplayName(entity),
+			AutoWalkController.start(client, player, entity.blockPosition(), mobDisplayName(entity, player),
 					() -> {
 						if (entity.isAlive()) {
 							rescanAndRefocus(player, item -> item.entity() == entity);
@@ -627,7 +634,7 @@ public final class ScannerController {
 	private static void aimOnceAtEntity(Minecraft client, LocalPlayer player, Entity entity) {
 		CameraUtil.aimAt(player, entity.getBoundingBox().getCenter());
 		client.getNarrator().saySystemNow(
-				Component.translatable("united_minecraft.narrate.scanner_facing", mobDisplayName(entity)));
+				Component.translatable("united_minecraft.narrate.scanner_facing", mobDisplayName(entity, player)));
 	}
 
 	/**
@@ -636,7 +643,7 @@ public final class ScannerController {
 	 * their own separate synced flag underneath - checking it on the base class here picks up
 	 * both without needing to special-case either.
 	 */
-	private static Component mobDisplayName(Entity entity) {
+	private static Component mobDisplayName(Entity entity, Player player) {
 		Component name = entity.getDisplayName();
 		if (entity instanceof Sheep sheep) {
 			// Color goes inside the baby wrap ("Baby White Sheep", not "White Baby Sheep") -
@@ -649,9 +656,71 @@ public final class ScannerController {
 			}
 		}
 		if (entity instanceof LivingEntity living && living.isBaby()) {
-			return Component.translatable("united_minecraft.narrate.baby_mob", name);
+			name = Component.translatable("united_minecraft.narrate.baby_mob", name);
+		}
+		// No comma before these, unlike the sheared/baby wrapping above - a screen reader pauses
+		// on a comma, and the mob's own name/species should be heard immediately, not after a
+		// beat waiting for whatever it's holding.
+		if (entity instanceof LivingEntity living) {
+			for (Component fragment : equipmentFragments(living, player)) {
+				name = name.copy().append(Component.literal(" ")).append(fragment);
+			}
+		}
+		if (entity instanceof Leashable leashable && leashable.isLeashed()) {
+			name = name.copy().append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.scanner_leashed"));
 		}
 		return name;
+	}
+
+	/**
+	 * Vanilla's fixed main-hand item for mobs that always spawn holding the same weapon (see
+	 * each type's {@code populateDefaultEquipmentSlots} - a skeleton's bow, a pillager's
+	 * crossbow, and so on aren't randomized or chance-based, unlike a zombie's rare weapon
+	 * pickup). Narrating that every time is just noise; the main hand is only worth calling out
+	 * when it differs from what the mob type always carries anyway.
+	 */
+	private static final Map<EntityType<?>, Item> DEFAULT_MAINHAND_ITEM = Map.of(
+			EntityTypes.SKELETON, Items.BOW,
+			EntityTypes.STRAY, Items.BOW,
+			EntityTypes.BOGGED, Items.BOW,
+			EntityTypes.PARCHED, Items.BOW,
+			EntityTypes.WITHER_SKELETON, Items.STONE_SWORD,
+			EntityTypes.PILLAGER, Items.CROSSBOW,
+			EntityTypes.PIGLIN_BRUTE, Items.GOLDEN_AXE,
+			EntityTypes.VINDICATOR, Items.IRON_AXE);
+
+	/**
+	 * Held/worn items worth calling out: an Allay's carried item (its own inventory, not
+	 * equipment), then whatever's in the main hand (skipped when it's just the mob's always-on
+	 * default weapon - see {@link #DEFAULT_MAINHAND_ITEM}), then any worn armor as one combined
+	 * "wearing" fragment. Generic across every {@link LivingEntity} rather than special-cased per
+	 * mob, so a zombie that picked up a helmet gets the same treatment as anything else.
+	 */
+	private static List<Component> equipmentFragments(LivingEntity living, Player player) {
+		List<Component> fragments = new ArrayList<>();
+		if (living instanceof Allay allay && allay.hasItemInHand()) {
+			fragments.add(Component.translatable("united_minecraft.narrate.mob_holding",
+					ItemDescriptions.describe(allay.getInventory().getItem(0), player, false)));
+		} else {
+			ItemStack mainHand = living.getItemBySlot(EquipmentSlot.MAINHAND);
+			if (!mainHand.isEmpty() && mainHand.getItem() != DEFAULT_MAINHAND_ITEM.get(living.getType())) {
+				fragments.add(Component.translatable(
+						"united_minecraft.narrate.mob_holding", ItemDescriptions.describe(mainHand, player, false)));
+			}
+		}
+		MutableComponent armor = null;
+		for (EquipmentSlot slot : new EquipmentSlot[] {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET}) {
+			ItemStack piece = living.getItemBySlot(slot);
+			if (piece.isEmpty()) {
+				continue;
+			}
+			Component described = ItemDescriptions.describe(piece, player, false);
+			armor = armor == null ? described.copy() : armor.append(Component.literal(", ")).append(described);
+		}
+		if (armor != null) {
+			fragments.add(Component.translatable("united_minecraft.narrate.mob_wearing", armor));
+		}
+		return fragments;
 	}
 
 	private static Component dyeColorName(DyeColor color) {
@@ -802,7 +871,7 @@ public final class ScannerController {
 					return describePainting(painting);
 				}
 			}
-			return mobDisplayName(item.entity());
+			return mobDisplayName(item.entity(), player);
 		}
 		Level level = player.level();
 		if (category == ScannerCategory.TREES) {
