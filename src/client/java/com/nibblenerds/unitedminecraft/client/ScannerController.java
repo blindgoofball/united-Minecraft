@@ -28,7 +28,6 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.animal.sheep.Sheep;
 import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
 import net.minecraft.world.entity.decoration.ArmorStand;
@@ -927,9 +926,11 @@ public final class ScannerController {
 			case BIOMES -> scanBiomes(player);
 			// instanceof Animal alone missed anything that isn't a beast - villagers, wandering
 			// traders, iron/snow/copper golems, bats, squids, allays - since none of those extend
-			// Animal. Classify by spawn MobCategory instead so any non-hostile Mob counts.
-			case PASSIVE_MOBS -> scanEntities(player, entity ->
-					entity instanceof Mob mob && !(entity instanceof Enemy) && mob.getType().getCategory() != MobCategory.MONSTER);
+			// Animal. Classify by Enemy instead of MobCategory: vanilla buckets some non-hostile
+			// mounts (zombie horse, zombie nautilus, camel husk) into MobCategory.MONSTER for
+			// spawn-rule reasons even though they never attack, so filtering on category as well
+			// as Enemy silently dropped them from every category.
+			case PASSIVE_MOBS -> scanEntities(player, entity -> entity instanceof Mob && !(entity instanceof Enemy));
 			case HOSTILE_MOBS -> scanEntities(player, entity -> entity instanceof Enemy);
 			case MARKERS -> scanMarkers(player);
 			case PLAYERS -> scanPlayers(player);
