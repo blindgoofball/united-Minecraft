@@ -452,19 +452,26 @@ public final class ScannerController {
 		items = scan(category, player);
 
 		if (UnitedMinecraftConfig.get().scannerSkipEmptyCategories && isSkippablyEmpty(category, items)) {
-			// Keep advancing in the same direction, re-scanning each candidate, until one is
-			// non-empty or every other category has been tried once - the loop bound guards
-			// against spinning forever if genuinely everything is empty, in which case
-			// categoryIndex/category/items just stay on the original (still-empty) selection
-			// and fall through to narrate it as empty below, same as with the setting off.
+			// Keep advancing in the same direction until one candidate is non-empty or every
+			// other category has been tried once - the loop bound guards against spinning
+			// forever if genuinely everything is empty, in which case categoryIndex/category/
+			// items just stay on the original (still-empty) selection and fall through to
+			// narrate it as empty below, same as with the setting off.
+			//
+			// categoryHasAny is a cheap existence probe, not a full scan() - a full scan of
+			// every block-cube category (Interactables, Mechanisms, Ores, Liquids, Crops,
+			// Search, Trees) in the same pass this loop can make up to CATEGORIES.length - 1
+			// times would mean hundreds of thousands of block reads on a single Home/End press.
+			// Only the category actually settled on below gets the real, full scan().
 			for (int step = 1; step < CATEGORIES.length; step++) {
 				int candidateIndex = Math.floorMod(categoryIndex + direction * step, CATEGORIES.length);
 				ScannerCategory candidate = CATEGORIES[candidateIndex];
-				List<ScannerItem> candidateItems = scan(candidate, player);
-				if (!isSkippablyEmpty(candidate, candidateItems)) {
+				// isSkippablyEmpty never treats Search as skippable regardless of its contents
+				// (see that method's doc) - mirror that here rather than probing it at all.
+				if (candidate == ScannerCategory.SEARCH || categoryHasAny(candidate, player)) {
 					categoryIndex = candidateIndex;
 					category = candidate;
-					items = candidateItems;
+					items = scan(candidate, player);
 					break;
 				}
 			}
@@ -971,18 +978,7 @@ public final class ScannerController {
 			// head half of a bed and the non-right half of a chest, so each shows up once.
 			// Signs have no menu either, but reading one is the same kind of "approach and get
 			// information from it" action as everything else here.
-			case INTERACTABLES -> scanBlocks(player, (pos, state) -> {
-				if (state.getBlock() instanceof BedBlock) {
-					return state.getValue(BedBlock.PART) == BedPart.HEAD;
-				}
-				if (state.hasProperty(ChestBlock.TYPE) && state.getValue(ChestBlock.TYPE) == ChestType.RIGHT) {
-					return false;
-				}
-				if (state.getBlock() instanceof SignBlock) {
-					return true;
-				}
-				return state.getMenuProvider(player.level(), pos) != null;
-			});
+			case INTERACTABLES -> scanBlocks(player, interactablesPredicate(player));
 			// A door is two block positions (HALF=LOWER/UPPER) sharing one real-world object -
 			// only match the lower half so each door shows up once, the same fix already applied
 			// to beds and double chests above.
@@ -1022,6 +1018,25 @@ public final class ScannerController {
 		};
 	}
 
+	/**
+	 * Shared between {@link #scan}'s INTERACTABLES case and {@link #categoryHasAny}'s cheap
+	 * existence probe for it, so the two can never quietly drift apart.
+	 */
+	private static BiPredicate<BlockPos, BlockState> interactablesPredicate(LocalPlayer player) {
+		return (pos, state) -> {
+			if (state.getBlock() instanceof BedBlock) {
+				return state.getValue(BedBlock.PART) == BedPart.HEAD;
+			}
+			if (state.hasProperty(ChestBlock.TYPE) && state.getValue(ChestBlock.TYPE) == ChestType.RIGHT) {
+				return false;
+			}
+			if (state.getBlock() instanceof SignBlock) {
+				return true;
+			}
+			return state.getMenuProvider(player.level(), pos) != null;
+		};
+	}
+
 	private static boolean isMechanism(Block block) {
 		return block instanceof LeverBlock
 				|| block instanceof ButtonBlock
@@ -1031,6 +1046,20 @@ public final class ScannerController {
 				|| block instanceof NetherPortalBlock
 				|| block instanceof EndPortalBlock
 				|| block instanceof EndPortalFrameBlock;
+	}
+
+	/**
+	 * Whether {@code state} belongs in Mechanisms - {@code isMechanism} plus the door-half
+	 * dedup, shared by {@link #scanMechanisms}'s real scan and {@link #categoryHasAny}'s probe.
+	 * {@code isMechanism} already covers the portal/frame block types too, so this alone is a
+	 * complete membership test even though {@link #scanMechanisms} branches those off earlier
+	 * for its own clustering purposes.
+	 */
+	private static boolean mechanismMatches(BlockState state) {
+		Block block = state.getBlock();
+		return block instanceof DoorBlock
+				? state.getValue(DoorBlock.HALF) == DoubleBlockHalf.LOWER
+				: isMechanism(block);
 	}
 
 	/**
@@ -1066,10 +1095,7 @@ public final class ScannerController {
 				endPortalFramePositions.add(pos.immutable());
 				continue;
 			}
-			boolean matches = block instanceof DoorBlock
-					? state.getValue(DoorBlock.HALF) == DoubleBlockHalf.LOWER
-					: isMechanism(block);
-			if (!matches) {
+			if (!mechanismMatches(state)) {
 				continue;
 			}
 			double distance = eye.distanceTo(Vec3.atCenterOf(pos));
@@ -1144,6 +1170,19 @@ public final class ScannerController {
 				|| block instanceof CaveVines
 				|| block == Blocks.PUMPKIN
 				|| block == Blocks.MELON;
+	}
+
+	/**
+	 * Full Crops-category membership, {@link #isCrop} plus the three stalk-clustered block
+	 * types {@link #scanCrops} branches off separately for its own clustering - used by {@link
+	 * #categoryHasAny}'s probe, which (unlike the real scan) doesn't need to tell those apart.
+	 */
+	private static boolean cropMatches(Block block) {
+		return block instanceof BambooStalkBlock
+				|| block instanceof SugarCaneBlock
+				|| block instanceof KelpBlock
+				|| block instanceof KelpPlantBlock
+				|| isCrop(block);
 	}
 
 	/**
@@ -1226,6 +1265,74 @@ public final class ScannerController {
 		}
 		results.sort(Comparator.comparingDouble(ScannerItem::distance));
 		return results;
+	}
+
+	/**
+	 * Same range/predicate as {@link #scanBlocks}, but stops at the first match instead of
+	 * collecting and sorting every one - used only by {@link #categoryHasAny}'s "is this
+	 * category worth switching to" probe, which never needs more than a yes/no answer.
+	 */
+	private static boolean scanBlocksAny(LocalPlayer player, BiPredicate<BlockPos, BlockState> predicate) {
+		Level level = player.level();
+		Vec3 eye = player.getEyePosition();
+		BlockPos center = player.blockPosition();
+		int r = (int) scanRange();
+
+		for (BlockPos pos : BlockPos.betweenClosed(center.offset(-r, -r, -r), center.offset(r, r, r))) {
+			BlockState state = level.getBlockState(pos);
+			if (!predicate.test(pos, state)) {
+				continue;
+			}
+			if (eye.distanceTo(Vec3.atCenterOf(pos)) <= scanRange()) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Cheap "does this category have anything at all" probe for {@link #switchCategory}'s
+	 * skip-empty-categories loop - unlike {@link #scan}, this never builds a list, sorts, or
+	 * clusters; for the categories that scan the full block cube (the expensive part, hundreds
+	 * of thousands of positions at a typical scanner range) it stops at the very first
+	 * qualifying block via {@link #scanBlocksAny}, reusing the exact same membership predicates
+	 * {@code scan} itself uses so the two can never disagree about what counts. Every other
+	 * category (entity-based, Markers, Players, Biomes) is already cheap enough that this just
+	 * runs the real scan and checks emptiness directly.
+	 */
+	private static boolean categoryHasAny(ScannerCategory category, LocalPlayer player) {
+		Level level = player.level();
+		Vec3 eye = player.getEyePosition();
+		return switch (category) {
+			case INTERACTABLES -> scanBlocksAny(player, interactablesPredicate(player));
+			case MECHANISMS -> scanBlocksAny(player, (pos, state) -> mechanismMatches(state));
+			// Deliberately not x-ray, matching scan()'s own ORES case.
+			case ORES -> scanBlocksAny(player, (pos, state) -> OreDetection.isValuableOre(state) && OreDetection.isExposed(level, pos, eye));
+			// isExposed is evaluated per-block here exactly as it is inside scanLiquids's own
+			// per-cluster search, so "any water/lava block passes" is exactly equivalent to
+			// "some cluster has an exposed member" for existence purposes - clustering only
+			// changes how many entries get reported, never whether any given block qualifies.
+			case LIQUIDS -> scanBlocksAny(player, (pos, state) ->
+					(state.is(Blocks.WATER) || state.is(Blocks.LAVA)) && OreDetection.isExposed(level, pos, eye));
+			case CROPS -> scanBlocksAny(player, (pos, state) -> cropMatches(state.getBlock()));
+			case SEARCH -> !searchTerm.isBlank() && scanBlocksAny(player, (pos, state) -> !state.isAir()
+					&& matchesSearchTerm(state, searchTerm.toLowerCase(Locale.ROOT))
+					&& OreDetection.isExposed(level, pos, eye));
+			case TREES -> scanBlocksAny(player, (pos, state) -> state.is(BlockTags.LOGS) && hasNearbyLeavesAt(level, pos));
+			default -> !scan(category, player).isEmpty();
+		};
+	}
+
+	/** Per-position version of {@link #hasNearbyLeaves}'s cluster-bbox search, for {@link #categoryHasAny}'s single-block probe. */
+	private static boolean hasNearbyLeavesAt(Level level, BlockPos pos) {
+		BlockPos from = pos.offset(-LEAF_SEARCH_MARGIN, -LEAF_SEARCH_MARGIN, -LEAF_SEARCH_MARGIN);
+		BlockPos to = pos.offset(LEAF_SEARCH_MARGIN, LEAF_SEARCH_MARGIN, LEAF_SEARCH_MARGIN);
+		for (BlockPos candidate : BlockPos.betweenClosed(from, to)) {
+			if (level.getBlockState(candidate).is(BlockTags.LEAVES)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
