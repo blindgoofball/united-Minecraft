@@ -17,6 +17,8 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 
+import org.lwjgl.glfw.GLFW;
+
 /**
  * United Minecraft's settings screen - hand-rolled from vanilla's own widgets rather than a
  * third-party config toolkit (Cloth Config, etc.), so it benefits "for free" from {@code
@@ -268,9 +270,22 @@ public final class SettingsScreen extends Screen {
 		private double currentValue() {
 			double raw = min + (max - min) * this.value;
 			if (step > 0) {
-				raw = Math.round(raw / step) * step;
+				raw = min + Math.round((raw - min) / step) * step;
 			}
 			return Mth.clamp(raw, min, max);
+		}
+
+		@Override
+		public boolean keyPressed(KeyEvent event) {
+			if (event.key() == GLFW.GLFW_KEY_LEFT || event.key() == GLFW.GLFW_KEY_RIGHT) {
+				double direction = event.key() == GLFW.GLFW_KEY_RIGHT ? 1.0 : -1.0;
+				double next = Mth.clamp(currentValue() + direction * step, min, max);
+				this.value = (next - min) / (max - min);
+				updateMessage();
+				applyValue();
+				return true;
+			}
+			return super.keyPressed(event);
 		}
 
 		@Override
@@ -288,7 +303,10 @@ public final class SettingsScreen extends Screen {
 		}
 
 		private static double normalize(double initial, double min, double max) {
-			return (initial - min) / (max - min);
+			if (max <= min) {
+				return 0.0;
+			}
+			return Mth.clamp((initial - min) / (max - min), 0.0, 1.0);
 		}
 	}
 }

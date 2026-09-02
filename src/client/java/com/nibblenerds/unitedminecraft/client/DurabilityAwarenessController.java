@@ -81,15 +81,27 @@ public final class DurabilityAwarenessController {
 	private static void checkSlot(Minecraft client, LocalPlayer player, int slot, ItemStack current) {
 		ItemStack previous = lastStack[slot];
 
-		// Slot emptied — detect break of the previous stack.
+		// Minecraft can remove or replace a broken stack before this poll observes damage == max.
+		// Treat max - 1 as the final observable state, but only announce it when the stack leaves
+		// the slot so manually switching away from a nearly-broken item is not announced as a break.
+		boolean previousWasNearlyBroken = !previous.isEmpty() && previous.isDamageableItem()
+				&& previous.getMaxDamage() > 0
+				&& previous.getDamageValue() >= previous.getMaxDamage() - 1;
+		boolean stackLeftSlot = current.isEmpty()
+				|| (!previous.isEmpty() && previous.getItem() != current.getItem());
+		if (previousWasNearlyBroken && stackLeftSlot) {
+			Component itemName = previous.getHoverName();
+			client.getNarrator().saySystemNow(Component.translatable(
+					"united_minecraft.narrate.durability_broke", itemName));
+		}
+
+		// A newly equipped item must start with a fresh warning state.
+		if (!previous.isEmpty() && !current.isEmpty() && previous.getItem() != current.getItem()) {
+			warnedWarning[slot] = false;
+			warnedCritical[slot] = false;
+		}
+
 		if (current.isEmpty()) {
-			if (!previous.isEmpty() && previous.isDamageableItem()
-					&& previous.getMaxDamage() > 0
-					&& previous.getDamageValue() >= previous.getMaxDamage()) {
-				Component itemName = previous.getHoverName();
-				client.getNarrator().saySystemNow(Component.translatable(
-						"united_minecraft.narrate.durability_broke", itemName));
-			}
 			warnedWarning[slot] = false;
 			warnedCritical[slot] = false;
 			lastStack[slot] = ItemStack.EMPTY;
