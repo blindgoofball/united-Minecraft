@@ -1634,9 +1634,11 @@ public final class ScannerController {
 	/**
 	 * Floods out from {@code start} through 26-connected members of {@code candidates},
 	 * collecting every position into {@code cluster} and returning the lowest one - the trunk
-	 * base for {@link #scanTrees}'s use, and the base of the stalk(s) for {@link
-	 * #addBambooClusters}'s; {@link #addLiquidClusters} ignores the return value and just uses
-	 * {@code cluster} itself.
+	 * base for {@link #scanTrees}'s use; {@link #addLiquidClusters} and {@link
+	 * #addPortalClusters} both ignore the return value and just use {@code cluster} itself.
+	 * {@link #addStalkClusters} clusters bamboo/sugar cane/kelp separately, without this - see
+	 * its own doc for why a straight vertical-only climb suits those better than a full
+	 * 26-connected flood fill.
 	 */
 	private static BlockPos floodFillCluster(BlockPos start, Set<BlockPos> candidates, Set<BlockPos> visited, Set<BlockPos> cluster) {
 		Deque<BlockPos> queue = new ArrayDeque<>();
