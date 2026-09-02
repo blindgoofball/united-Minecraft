@@ -171,12 +171,12 @@ public final class DurabilityAwarenessController {
 			warnedWarning[slot] = true; // supersedes — no need to also say "getting low"
 			client.getNarrator().saySystemNow(Component.translatable(
 					"united_minecraft.narrate.durability_critical",
-					Component.translatable(SLOT_KEYS[slot])));
+					Component.translatable(SLOT_KEYS[slot]), current.getHoverName(), remaining, max));
 		} else if (!warnedWarning[slot] && pctRemaining <= warningThreshold) {
 			warnedWarning[slot] = true;
 			client.getNarrator().saySystemNow(Component.translatable(
 					"united_minecraft.narrate.durability_warning",
-					Component.translatable(SLOT_KEYS[slot])));
+					Component.translatable(SLOT_KEYS[slot]), current.getHoverName(), remaining, max));
 		}
 
 		lastSnapshot[slot] = Snapshot.of(current);
