@@ -8,7 +8,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import com.google.gson.Gson;
@@ -43,6 +45,10 @@ public final class NamedBlockController {
 	}.getType();
 
 	private static List<NamedBlock> namedBlocks = new ArrayList<>();
+	// Mirrors namedBlocks, keyed for O(1) lookup - findAt is called once per matched block while
+	// scanning a Scanner category, so a linear scan (plus a fresh BlockPos allocation per
+	// comparison) there added up fast for a category with many results.
+	private static Map<DimPos, String> namedBlocksByPos = new HashMap<>();
 	private static String loadedWorldId;
 
 	private NamedBlockController() {
@@ -54,28 +60,37 @@ public final class NamedBlockController {
 		}
 	}
 
+	private record DimPos(String dimension, BlockPos pos) {
+	}
+
 	public static void tick(Minecraft client) {
 		String worldId = worldId(client);
 		if (!Objects.equals(worldId, loadedWorldId)) {
 			loadedWorldId = worldId;
 			namedBlocks = load(worldId);
+			rebuildIndex();
 		}
 	}
 
 	public static void reset() {
 		namedBlocks = new ArrayList<>();
+		namedBlocksByPos = new HashMap<>();
 		loadedWorldId = null;
+		lastWorldIdSource = null;
+		cachedWorldId = null;
 	}
 
 	/** The custom name assigned to the block at {@code pos} in {@code dimension}, or null if it has none. */
 	public static String findAt(ResourceKey<Level> dimension, BlockPos pos) {
-		String key = dimension.identifier().toString();
+		return namedBlocksByPos.get(new DimPos(dimension.identifier().toString(), pos));
+	}
+
+	private static void rebuildIndex() {
+		Map<DimPos, String> index = new HashMap<>();
 		for (NamedBlock named : namedBlocks) {
-			if (named.dimension().equals(key) && named.pos().equals(pos)) {
-				return named.name();
-			}
+			index.put(new DimPos(named.dimension(), named.pos()), named.name());
 		}
-		return null;
+		namedBlocksByPos = index;
 	}
 
 	/** {@code afterNamed} runs once the name is actually saved (not on cancel) - lets callers refresh anything depending on it. */
@@ -98,16 +113,35 @@ public final class NamedBlockController {
 		namedBlocks.removeIf(named -> named.dimension().equals(key) && named.pos().equals(pos));
 		if (name == null || name.isBlank()) {
 			save();
+			rebuildIndex();
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.named_block_cleared"));
 			return;
 		}
 		String finalName = name.trim();
 		namedBlocks.add(new NamedBlock(finalName, key, pos.getX(), pos.getY(), pos.getZ()));
 		save();
+		rebuildIndex();
 		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.named_block_set", finalName));
 	}
 
+	// Caches worldId() against the server/singleplayer-server object identity it was computed
+	// from - tick() calls worldId() every client tick, but that identity only actually changes
+	// once per world join/leave, so recomputing the Path#normalize()/getFileName() (or the
+	// ServerData lookup) 20 times a second for an answer that hasn't changed is pure waste.
+	private static Object lastWorldIdSource;
+	private static String cachedWorldId;
+
 	private static String worldId(Minecraft client) {
+		Object source = client.isLocalServer() ? client.getSingleplayerServer() : client.getCurrentServer();
+		if (cachedWorldId != null && source == lastWorldIdSource) {
+			return cachedWorldId;
+		}
+		lastWorldIdSource = source;
+		cachedWorldId = computeWorldId(client);
+		return cachedWorldId;
+	}
+
+	private static String computeWorldId(Minecraft client) {
 		if (client.isLocalServer() && client.getSingleplayerServer() != null) {
 			Path worldPath = client.getSingleplayerServer().getWorldPath(LevelResource.ROOT).normalize();
 			return "sp_" + worldPath.getFileName();

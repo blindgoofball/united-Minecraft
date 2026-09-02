@@ -8,7 +8,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import com.google.gson.Gson;
@@ -51,6 +53,9 @@ public final class MapMarkerController {
 	}.getType();
 
 	private static List<MapMarker> markers = new ArrayList<>();
+	// Mirrors markers, keyed for O(1) lookup - see NamedBlockController's identical index for
+	// why a linear scan (plus a fresh BlockPos allocation per comparison) doesn't scale here.
+	private static Map<DimPos, MapMarker> markersByPos = new HashMap<>();
 	private static String loadedWorldId;
 
 	private MapMarkerController() {
@@ -62,17 +67,24 @@ public final class MapMarkerController {
 		}
 	}
 
+	private record DimPos(String dimension, BlockPos pos) {
+	}
+
 	public static void tick(Minecraft client) {
 		String worldId = worldId(client);
 		if (!Objects.equals(worldId, loadedWorldId)) {
 			loadedWorldId = worldId;
 			markers = load(worldId);
+			rebuildIndex();
 		}
 	}
 
 	public static void reset() {
 		markers = new ArrayList<>();
+		markersByPos = new HashMap<>();
 		loadedWorldId = null;
+		lastWorldIdSource = null;
+		cachedWorldId = null;
 	}
 
 	/** All markers placed in {@code dimension}, oldest first - deliberately not distance-sorted or range-filtered. */
@@ -88,13 +100,15 @@ public final class MapMarkerController {
 	}
 
 	public static MapMarker findAt(ResourceKey<Level> dimension, BlockPos pos) {
-		String key = dimension.identifier().toString();
+		return markersByPos.get(new DimPos(dimension.identifier().toString(), pos));
+	}
+
+	private static void rebuildIndex() {
+		Map<DimPos, MapMarker> index = new HashMap<>();
 		for (MapMarker marker : markers) {
-			if (marker.dimension().equals(key) && marker.pos().equals(pos)) {
-				return marker;
-			}
+			index.put(new DimPos(marker.dimension(), marker.pos()), marker);
 		}
-		return null;
+		markersByPos = index;
 	}
 
 	public static void openNameScreen(Minecraft client, LocalPlayer player) {
@@ -107,17 +121,35 @@ public final class MapMarkerController {
 		String finalName = name == null || name.isBlank() ? "Marker " + (markers.size() + 1) : name.trim();
 		markers.add(new MapMarker(finalName, dimension, pos.getX(), pos.getY(), pos.getZ()));
 		save();
+		rebuildIndex();
 		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.marker_placed", finalName));
 	}
 
 	public static void remove(Minecraft client, MapMarker marker) {
 		if (markers.remove(marker)) {
 			save();
+			rebuildIndex();
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.marker_removed", marker.name()));
 		}
 	}
 
+	// Caches worldId() against the server/singleplayer-server object identity it was computed
+	// from - see NamedBlockController's identical cache for why tick() calling this every
+	// client tick otherwise means redoing the same Path/ServerData lookup 20 times a second.
+	private static Object lastWorldIdSource;
+	private static String cachedWorldId;
+
 	private static String worldId(Minecraft client) {
+		Object source = client.isLocalServer() ? client.getSingleplayerServer() : client.getCurrentServer();
+		if (cachedWorldId != null && source == lastWorldIdSource) {
+			return cachedWorldId;
+		}
+		lastWorldIdSource = source;
+		cachedWorldId = computeWorldId(client);
+		return cachedWorldId;
+	}
+
+	private static String computeWorldId(Minecraft client) {
 		if (client.isLocalServer() && client.getSingleplayerServer() != null) {
 			// LevelResource.ROOT's id is literally "." - getWorldPath resolves to
 			// ".../saves/<world>/.", and Path#resolve doesn't normalize away that trailing
