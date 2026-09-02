@@ -1002,11 +1002,13 @@ public final class BuildModeController {
 	}
 
 	/**
-	 * Block name, then any extra state (facing, powered, ripe, and so on), then the
-	 * coordinates, then whether it's actionable right now - state describes the block itself
-	 * so it belongs right after naming it, not after the coordinates that just happen to be
-	 * read next; "Out of reach"/"Placeable" describe the cursor's current actionability rather
-	 * than the block, so they stay last regardless.
+	 * Block name, then any extra state (facing, powered, ripe, and so on), then whether the
+	 * player is standing in the cursor's way, then the coordinates, then whether it's actionable
+	 * right now - state describes the block itself so it belongs right after naming it, not
+	 * after the coordinates that just happen to be read next; "you're standing here" is worth
+	 * knowing before sitting through the coordinates, not after; "Out of reach"/"Placeable"
+	 * describe the cursor's current actionability rather than the block, so they stay last
+	 * regardless.
 	 */
 	private static Component describeCursor(LocalPlayer player) {
 		Level level = player.level();
@@ -1051,15 +1053,14 @@ public final class BuildModeController {
 			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_daylight_inverted"));
 		}
 
-		message = message.append(Component.literal(" ")).append(Component.translatable(
-				"united_minecraft.narrate.build_cursor_position", cursor.getX(), cursor.getY(), cursor.getZ()));
-
 		if (cursor.equals(player.blockPosition())) {
-			// A positional fact about the cursor, same as the coordinates just appended - not a
-			// block-state fact and not actionability, so it belongs here, ahead of the
-			// reach/placeable tail below.
+			// Ahead of the coordinates, not after - a player standing in the cursor's way wants
+			// to know that immediately, not only after sitting through the X/Y/Z readout.
 			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_player_here"));
 		}
+
+		message = message.append(Component.literal(" ")).append(Component.translatable(
+				"united_minecraft.narrate.build_cursor_position", cursor.getX(), cursor.getY(), cursor.getZ()));
 
 		if (!isInReach(player, cursor)) {
 			// Not actionable yet either way, whatever the block - lead with that rather than
