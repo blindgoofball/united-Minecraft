@@ -967,6 +967,12 @@ public final class BuildModeController {
 			return;
 		}
 
+		// Bypasses client.hitResult entirely (the cursor is rarely what the player's actually
+		// looking at), so ToolHarvestAwarenessController's own raycast-based tick() never sees
+		// this - without this call, the whole feature silently didn't apply while mining
+		// through Build Mode at all.
+		ToolHarvestAwarenessController.checkAt(client, player, cursor);
+
 		if (justStarted) {
 			client.gameMode.startDestroyBlock(cursor, Direction.UP);
 		} else {

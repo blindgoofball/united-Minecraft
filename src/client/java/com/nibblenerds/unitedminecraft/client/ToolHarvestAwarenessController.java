@@ -57,7 +57,25 @@ public final class ToolHarvestAwarenessController {
 			return;
 		}
 
-		BlockPos pos = blockHit.getBlockPos();
+		checkAt(client, player, blockHit.getBlockPos());
+	}
+
+	/**
+	 * Same warning {@link #tick} narrates off vanilla's own crosshair raycast, but for a
+	 * position given directly - {@link BuildModeController#breakBlock} mines through the
+	 * virtual cursor, which is very often not whatever {@code client.hitResult} happens to be
+	 * aimed at, so {@link #tick} alone would never see it. Guarded the same way {@link #tick}
+	 * guards itself (setting enabled, not creative/spectator, level actually loaded) since this
+	 * skips straight past all of that.
+	 */
+	public static void checkAt(Minecraft client, LocalPlayer player, BlockPos pos) {
+		if (!UnitedMinecraftConfig.get().toolHarvestWarningEnabled) {
+			return;
+		}
+		if (client.level == null || client.level != player.level() || player.isSpectator() || player.isCreative()) {
+			return;
+		}
+
 		Level level = player.level();
 		BlockState state = level.getBlockState(pos);
 		ItemStack held = player.getMainHandItem();
