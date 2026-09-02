@@ -5,10 +5,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.ClientInput;
@@ -71,6 +69,10 @@ public final class WaterExitController {
 
 	/** Reports distance and direction to the nearest reachable way out, without moving the player. */
 	public static void narrate(Minecraft client, LocalPlayer player) {
+		if (!player.isInWater()) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.water_exit_not_in_water"));
+			return;
+		}
 		List<BlockPos> path = findRoute(player);
 		if (path == null || path.isEmpty()) {
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.water_exit_none"));
@@ -94,6 +96,10 @@ public final class WaterExitController {
 
 	/** Swims the player along the found route, one waypoint at a time, until it reaches dry land. */
 	public static void start(Minecraft client, LocalPlayer player) {
+		if (!player.isInWater()) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.water_exit_not_in_water"));
+			return;
+		}
 		if (isActive()) {
 			cancel(client, player);
 		}
@@ -157,21 +163,15 @@ public final class WaterExitController {
 	 * reachable within {@link #SEARCH_RADIUS} qualifies. BFS order (not distance) decides which
 	 * exit wins, since that's what "reachable by the shortest swim" actually means; a closer
 	 * exit by straight-line distance could still require a much longer swim around obstacles.
+	 *
+	 * <p>{@code isSwimmable} is checked lazily per neighbor actually reached by the flood, not
+	 * pre-built into a set over the entire {@link #SEARCH_RADIUS} cube up front - in the common
+	 * case (a lake or river, not the open ocean), the real reachable region is far smaller than
+	 * that whole cube, and a nearby exit stops the flood well before it ever would be.
 	 */
 	private static List<BlockPos> findRoute(LocalPlayer player) {
 		Level level = player.level();
 		BlockPos start = player.blockPosition();
-		int r = SEARCH_RADIUS;
-
-		Set<BlockPos> passable = new HashSet<>();
-		for (BlockPos pos : BlockPos.betweenClosed(start.offset(-r, -r, -r), start.offset(r, r, r))) {
-			if (isSwimmable(level.getBlockState(pos))) {
-				passable.add(pos.immutable());
-			}
-		}
-		if (!passable.contains(start)) {
-			passable.add(start.immutable());
-		}
 
 		Map<BlockPos, BlockPos> cameFrom = new HashMap<>();
 		Deque<BlockPos> queue = new ArrayDeque<>();
@@ -192,7 +192,10 @@ public final class WaterExitController {
 							continue;
 						}
 						BlockPos neighbor = current.offset(dx, dy, dz);
-						if (passable.contains(neighbor) && !cameFrom.containsKey(neighbor)) {
+						if (cameFrom.containsKey(neighbor) || !withinSearchRadius(start, neighbor)) {
+							continue;
+						}
+						if (isSwimmable(level.getBlockState(neighbor))) {
 							cameFrom.put(neighbor, current);
 							queue.add(neighbor);
 						}
@@ -212,6 +215,12 @@ public final class WaterExitController {
 		}
 		Collections.reverse(path);
 		return path;
+	}
+
+	private static boolean withinSearchRadius(BlockPos start, BlockPos pos) {
+		return Math.abs(pos.getX() - start.getX()) <= SEARCH_RADIUS
+				&& Math.abs(pos.getY() - start.getY()) <= SEARCH_RADIUS
+				&& Math.abs(pos.getZ() - start.getZ()) <= SEARCH_RADIUS;
 	}
 
 	/** Water (never lava - this is deliberately an escape-a-lake tool, not a general swim aid) or open air. */
