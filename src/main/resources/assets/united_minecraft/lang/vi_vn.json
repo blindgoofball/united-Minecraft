@@ -187,7 +187,7 @@
 	"united_minecraft.menu.slot.output": "Đầu ra",
 	"united_minecraft.menu.slot.fuel": "Nhiên liệu",
 	"united_minecraft.menu.slot.material": "Nguyên liệu",
-	"united_minecraft.menu.slot.crafting_grid": "Chế tạo",
+	"united_minecraft.menu.slot.crafting_grid_position": "Chế tạo %s, %s",
 	"united_minecraft.menu.slot.helmet": "Mũ giáp",
 	"united_minecraft.menu.slot.chestplate": "Áo giáp",
 	"united_minecraft.menu.slot.leggings": "Quần giáp",

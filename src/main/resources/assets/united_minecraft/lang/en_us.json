@@ -220,7 +220,7 @@
 	"united_minecraft.menu.slot.output": "Output",
 	"united_minecraft.menu.slot.fuel": "Fuel",
 	"united_minecraft.menu.slot.material": "Material",
-	"united_minecraft.menu.slot.crafting_grid": "Crafting",
+	"united_minecraft.menu.slot.crafting_grid_position": "Crafting %s, %s",
 	"united_minecraft.menu.slot.helmet": "Helmet",
 	"united_minecraft.menu.slot.chestplate": "Chestplate",
 	"united_minecraft.menu.slot.leggings": "Leggings",

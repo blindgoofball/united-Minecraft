@@ -43,9 +43,7 @@ import net.minecraft.world.inventory.AbstractFurnaceMenu;
 import net.minecraft.world.inventory.AnvilMenu;
 import net.minecraft.world.inventory.BrewingStandMenu;
 import net.minecraft.world.inventory.ContainerInput;
-import net.minecraft.world.inventory.CraftingMenu;
 import net.minecraft.world.inventory.EnchantmentMenu;
-import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.inventory.MerchantMenu;
 import net.minecraft.world.inventory.RecipeBookMenu;
 import net.minecraft.world.inventory.Slot;
@@ -1343,17 +1341,20 @@ public final class MenuAccessibilityController {
 			}
 			return Component.translatable("united_minecraft.menu.slot.input");
 		}
-		if (menu instanceof CraftingMenu) {
-			return slot.index == CraftingMenu.RESULT_SLOT
-					? Component.translatable("united_minecraft.menu.slot.output")
-					: Component.translatable("united_minecraft.menu.slot.crafting_grid");
-		}
-		if (menu instanceof InventoryMenu) {
-			if (slot.index == InventoryMenu.RESULT_SLOT) {
+		// Covers both the crafting table's 3x3 grid and the player inventory's own 2x2 one.
+		// getInputGridSlots() lists slots in the same left-to-right, top-to-bottom order they're
+		// added in (see AbstractCraftingMenu#addCraftingGridSlots), so its list index converts
+		// straight to a 1-based column/row - "Crafting 2, 1" for the second slot from the left on
+		// the top row - instead of every grid slot narrating as the same bare "Crafting".
+		if (menu instanceof AbstractCraftingMenu craftingMenu) {
+			if (slot == craftingMenu.getResultSlot()) {
 				return Component.translatable("united_minecraft.menu.slot.output");
 			}
-			if (slot.index >= 1 && slot.index <= 4) {
-				return Component.translatable("united_minecraft.menu.slot.crafting_grid");
+			int gridIndex = craftingMenu.getInputGridSlots().indexOf(slot);
+			if (gridIndex >= 0) {
+				int width = craftingMenu.getGridWidth();
+				return Component.translatable(
+						"united_minecraft.menu.slot.crafting_grid_position", gridIndex % width + 1, gridIndex / width + 1);
 			}
 			// Armor/offhand slots are handled above (their container is the player's own
 			// Inventory), so nothing else in this menu falls through to here in practice.
