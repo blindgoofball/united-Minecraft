@@ -797,9 +797,13 @@ public final class ScannerController {
 	private static final double VERTICAL_DIRECTION_THRESHOLD = 5.0;
 
 	private static Component describeItem(ScannerCategory category, ScannerItem item, LocalPlayer player) {
-		int distance = (int) Math.round(item.distance());
 		Vec3 from = player.position();
 		Vec3 to = targetPosition(item);
+		// item.distance() is frozen at scan time (used only for sorting) - recompute live here,
+		// the same eye-to-target measurement the scan itself used, so cycling after walking
+		// (or for Markers/Players, which are never range-limited and can sit scanned from far
+		// away) narrates the player's actual current distance instead of a stale one.
+		int distance = (int) Math.round(player.getEyePosition().distanceTo(to));
 		Component direction = CameraUtil.compassDirectionTo(from, to);
 		Component vertical = verticalDirection(from, to);
 		if (vertical != null) {
