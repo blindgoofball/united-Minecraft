@@ -22,6 +22,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.Util;
 import net.minecraft.world.attribute.EnvironmentAttributes;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.LightLayer;
@@ -335,7 +336,9 @@ public final class AccessibilityTickHandler {
 			}
 		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_HEALTH)) {
-			if (ClientKeyBindings.isShiftDown(client)) {
+			if (ClientKeyBindings.isModifierDown(client)) {
+				narrateArmorAndEffects(client, player);
+			} else if (ClientKeyBindings.isShiftDown(client)) {
 				narrateExperienceLevel(client, player);
 			} else {
 				narrateHealth(client, player);
@@ -648,6 +651,45 @@ public final class AccessibilityTickHandler {
 		int progress = Math.round(player.experienceProgress * 100);
 		client.getNarrator().saySystemNow(Component.translatable(
 				"united_minecraft.narrate.experience_level", level, progress));
+	}
+
+	/**
+	 * Alt on the Narrate Health key: armor value (the same number the sighted armor bar shows),
+	 * then every currently active status effect - name, level (only stated once it's actually
+	 * above the base level, matching how a sighted player wouldn't see a roman numeral for a
+	 * level 1 effect either), and remaining duration, or that it doesn't expire on its own
+	 * (Bad Omen, most commonly) for one with no timer.
+	 */
+	private static void narrateArmorAndEffects(Minecraft client, LocalPlayer player) {
+		MutableComponent message = Component.translatable(
+				"united_minecraft.narrate.armor_value", player.getArmorValue()).copy();
+
+		Collection<MobEffectInstance> effects = player.getActiveEffects();
+		if (effects.isEmpty()) {
+			message = message.append(Component.literal(". ")).append(
+					Component.translatable("united_minecraft.narrate.status_no_effects"));
+		} else {
+			for (MobEffectInstance effect : effects) {
+				message = message.append(Component.literal(". ")).append(describeStatusEffect(effect));
+			}
+		}
+		client.getNarrator().saySystemNow(message);
+	}
+
+	private static Component describeStatusEffect(MobEffectInstance effect) {
+		Component name = effect.getEffect().value().getDisplayName();
+		if (effect.getAmplifier() > 0) {
+			name = Component.translatable("united_minecraft.narrate.status_effect_level", name, effect.getAmplifier() + 1);
+		}
+		if (effect.isInfiniteDuration()) {
+			return name.copy().append(Component.literal(", ")).append(
+					Component.translatable("united_minecraft.narrate.status_effect_no_timer"));
+		}
+		int totalSeconds = effect.getDuration() / 20;
+		int minutes = totalSeconds / 60;
+		int seconds = totalSeconds % 60;
+		return name.copy().append(Component.literal(", ")).append(Component.translatable(
+				"united_minecraft.narrate.status_effect_duration", minutes, String.format(Locale.ROOT, "%02d", seconds)));
 	}
 
 	private static void narrateBearing(Minecraft client, LocalPlayer player) {

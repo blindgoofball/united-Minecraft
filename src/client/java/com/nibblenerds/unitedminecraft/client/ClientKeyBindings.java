@@ -44,6 +44,7 @@ public final class ClientKeyBindings {
 	public static final KeyMapping NARRATE_COORDINATES = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.narrate_coordinates", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_C, CATEGORY));
 
+	/** Shift instead narrates experience level; Alt instead narrates armor value and active status effects. */
 	public static final KeyMapping NARRATE_HEALTH = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.united_minecraft.narrate_health", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_H, CATEGORY));
 
