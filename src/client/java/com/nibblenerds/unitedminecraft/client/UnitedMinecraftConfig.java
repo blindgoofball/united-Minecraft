@@ -51,6 +51,7 @@ public final class UnitedMinecraftConfig {
 	public boolean scannerAutoLockAfterWalk = false;
 	public boolean navRadarEnabled = false;
 	public boolean miningRadarEnabled = false;
+	public boolean autoCrosshairNarrationEnabled = false;
 
 	/** Governs the audio cue for the weapon attack-strength meter refilling - see {@link CombatModeController#tickAttackCue}. */
 	public enum CombatCueMode {

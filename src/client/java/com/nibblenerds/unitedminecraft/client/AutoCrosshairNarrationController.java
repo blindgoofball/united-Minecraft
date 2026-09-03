@@ -30,27 +30,33 @@ import net.minecraft.world.phys.Vec3;
 public final class AutoCrosshairNarrationController {
 	private static final double RANGE_BLOCKS = 6.0;
 
-	private static boolean enabled;
 	private static Block lastNarratedBlock;
 
 	private AutoCrosshairNarrationController() {
 	}
 
+	/** Persisted in {@link UnitedMinecraftConfig} - stays on/off across world/session boundaries, same as Nav/Mining Radar. */
+	public static boolean isEnabled() {
+		return UnitedMinecraftConfig.get().autoCrosshairNarrationEnabled;
+	}
+
 	public static void toggle(Minecraft client) {
-		enabled = !enabled;
+		UnitedMinecraftConfig config = UnitedMinecraftConfig.get();
+		config.autoCrosshairNarrationEnabled = !config.autoCrosshairNarrationEnabled;
+		UnitedMinecraftConfig.save();
 		lastNarratedBlock = null;
-		client.getNarrator().saySystemNow(Component.translatable(enabled
+		client.getNarrator().saySystemNow(Component.translatable(config.autoCrosshairNarrationEnabled
 				? "united_minecraft.narrate.auto_crosshair_narration_on"
 				: "united_minecraft.narrate.auto_crosshair_narration_off"));
 	}
 
+	/** Clears per-session narration state only - {@link #isEnabled()} is a persistent preference, not session state. */
 	public static void reset() {
-		enabled = false;
 		lastNarratedBlock = null;
 	}
 
 	public static void tick(Minecraft client, LocalPlayer player) {
-		if (!enabled) {
+		if (!isEnabled()) {
 			return;
 		}
 		Block current = lookedAtBlock(player);
