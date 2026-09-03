@@ -48,6 +48,15 @@ public final class ToolHarvestAwarenessController {
 			return;
 		}
 
+		// Build Mode drives its own mining through checkAt() below, on its own break key and its
+		// virtual cursor rather than client.hitResult - if this raycast-based path kept running
+		// underneath it, it would see keyAttack not held (Build Mode uses a different key) and
+		// reset wasMining/lastWarnedPos every tick right after checkAt just set them, undoing the
+		// dedup and making the warning repeat every tick instead of narrating once.
+		if (BuildModeController.isActive()) {
+			return;
+		}
+
 		boolean isMiningKey = client.options.keyAttack.isDown();
 		HitResult hit = client.hitResult;
 
