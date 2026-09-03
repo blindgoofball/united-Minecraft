@@ -117,8 +117,8 @@ import net.minecraft.world.phys.Vec3;
  * want, see {@link CombatModeController} instead.
  *
  * <p>The Markers category ({@link MapMarkerController}) is one exception to almost
- * everything above: it isn't range-limited or distance-sorted like every other category
- * (oldest-placed first instead), and Delete removes the focused marker outright rather than
+ * everything above: it isn't range-limited like every other category (still distance-sorted,
+ * same as everything else), and Delete removes the focused marker outright rather than
  * meaning "stop lock" - which otherwise does nothing while nothing's locked. Players is a
  * second exception to the range limit only (still distance-sorted like a normal category) -
  * vanilla always syncs every other player in the dimension to the client regardless of
@@ -1605,7 +1605,7 @@ public final class ScannerController {
 		return results;
 	}
 
-	/** Every marker in the player's current dimension, oldest first - not distance-filtered or sorted, unlike every other category. */
+	/** Every marker in the player's current dimension, distance-sorted but never range-filtered - the whole point of a marker is reaching something you already know is far away. */
 	private static List<ScannerItem> scanMarkers(LocalPlayer player) {
 		Vec3 eye = player.getEyePosition();
 		List<ScannerItem> results = new ArrayList<>();
@@ -1614,6 +1614,7 @@ public final class ScannerController {
 			double distance = eye.distanceTo(Vec3.atCenterOf(pos));
 			results.add(new ScannerItem(pos, null, distance, marker.name()));
 		}
+		results.sort(Comparator.comparingDouble(ScannerItem::distance));
 		return results;
 	}
 
