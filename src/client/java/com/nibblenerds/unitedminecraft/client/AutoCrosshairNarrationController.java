@@ -19,7 +19,10 @@ import net.minecraft.world.phys.Vec3;
  * stretch of the same block (a stone wall, say) doesn't repeat its name for every step - only an
  * actual change to a different block narrates. Air is never narrated (just treated as "nothing
  * targeted", same as being out of range entirely), since that's the common case while simply
- * looking around and would itself become the spam this feature exists to avoid.
+ * looking around and would itself become the spam this feature exists to avoid - and, since
+ * {@link #lastNarratedBlock} is only ever updated on an actual narration (not on every hit,
+ * air included), briefly passing over a doorway or other gap and landing back on the same block
+ * type stays silent too, rather than re-announcing something that was just said a moment ago.
  *
  * <p>Shares {@link SurroundingsScanner}'s fixed-range, gamemode-reach-independent raycast so both
  * features agree on what "looking at" means.
@@ -28,14 +31,14 @@ public final class AutoCrosshairNarrationController {
 	private static final double RANGE_BLOCKS = 6.0;
 
 	private static boolean enabled;
-	private static Block lastBlock;
+	private static Block lastNarratedBlock;
 
 	private AutoCrosshairNarrationController() {
 	}
 
 	public static void toggle(Minecraft client) {
 		enabled = !enabled;
-		lastBlock = null;
+		lastNarratedBlock = null;
 		client.getNarrator().saySystemNow(Component.translatable(enabled
 				? "united_minecraft.narrate.auto_crosshair_narration_on"
 				: "united_minecraft.narrate.auto_crosshair_narration_off"));
@@ -43,7 +46,7 @@ public final class AutoCrosshairNarrationController {
 
 	public static void reset() {
 		enabled = false;
-		lastBlock = null;
+		lastNarratedBlock = null;
 	}
 
 	public static void tick(Minecraft client, LocalPlayer player) {
@@ -51,13 +54,11 @@ public final class AutoCrosshairNarrationController {
 			return;
 		}
 		Block current = lookedAtBlock(player);
-		if (current == lastBlock) {
+		if (current == null || current == lastNarratedBlock) {
 			return;
 		}
-		if (current != null) {
-			client.getNarrator().saySystemNow(current.getName());
-		}
-		lastBlock = current;
+		client.getNarrator().saySystemNow(current.getName());
+		lastNarratedBlock = current;
 	}
 
 	/** Null for air, a fluid-only hit, or nothing within range - all narrated the same way: not at all. */
