@@ -127,6 +127,30 @@ public final class SettingsScreen extends Screen {
 				.build()), y);
 		y += ROW_HEIGHT + ROW_SPACING;
 
+		int transferButtonWidth = (ROW_WIDTH - ROW_SPACING) / 2;
+		registerRow(addRenderableWidget(Button.builder(Component.translatable("united_minecraft.settings_screen.export"),
+				button -> {
+					boolean exported = UnitedMinecraftConfig.exportSettings();
+					showTransferResult(exported, exported
+							? "united_minecraft.settings_screen.exported"
+							: "united_minecraft.settings_screen.export_failed");
+				})
+				.bounds(x, y, transferButtonWidth, ROW_HEIGHT)
+				.build()), y);
+		registerRow(addRenderableWidget(Button.builder(Component.translatable("united_minecraft.settings_screen.import"),
+				button -> {
+					boolean imported = UnitedMinecraftConfig.importSettings();
+					showTransferResult(imported, imported
+							? "united_minecraft.settings_screen.imported"
+							: "united_minecraft.settings_screen.import_missing_or_invalid");
+					if (imported) {
+						Minecraft.getInstance().gui.setScreen(new SettingsScreen());
+					}
+				})
+				.bounds(x + transferButtonWidth + ROW_SPACING, y, transferButtonWidth, ROW_HEIGHT)
+				.build()), y);
+		y += ROW_HEIGHT + ROW_SPACING;
+
 		registerRow(addRenderableWidget(Button.builder(Component.translatable("united_minecraft.settings_screen.done"),
 				button -> onClose())
 				.bounds(x, y + ROW_SPACING, ROW_WIDTH, ROW_HEIGHT)
@@ -255,6 +279,10 @@ public final class SettingsScreen extends Screen {
 		scrollOffset = Mth.clamp(scrollOffset - (int) Math.round(scrollY * SCROLL_STEP), 0, maxScrollOffset);
 		applyScroll();
 		return true;
+	}
+
+	private void showTransferResult(boolean success, String messageKey) {
+		Minecraft.getInstance().gui.setOverlayMessage(Component.translatable(messageKey), false);
 	}
 
 	@Override

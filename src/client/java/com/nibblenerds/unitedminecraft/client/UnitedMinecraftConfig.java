@@ -75,6 +75,47 @@ public final class UnitedMinecraftConfig {
 		return FabricLoader.getInstance().getConfigDir().resolve("united_minecraft.json");
 	}
 
+	private static Path transferFile() {
+		return FabricLoader.getInstance().getConfigDir().resolve("united_minecraft_settings.json");
+	}
+
+	/** Exports the current player preferences to a shareable file in the config directory. */
+	public static boolean exportSettings() {
+		instance.sanitize();
+		Path file = transferFile();
+		try {
+			Files.createDirectories(file.getParent());
+			try (Writer writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
+				GSON.toJson(instance, writer);
+			}
+			return true;
+		} catch (IOException e) {
+			LOGGER.warn("Failed to export settings to {}", file, e);
+			return false;
+		}
+	}
+
+	/** Imports player preferences from the shareable file, leaving the current settings untouched on failure. */
+	public static boolean importSettings() {
+		Path file = transferFile();
+		if (!Files.exists(file)) {
+			return false;
+		}
+		try (Reader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
+			UnitedMinecraftConfig loaded = GSON.fromJson(reader, UnitedMinecraftConfig.class);
+			if (loaded == null) {
+				return false;
+			}
+			loaded.sanitize();
+			instance = loaded;
+			save();
+			return true;
+		} catch (IOException | JsonParseException e) {
+			LOGGER.warn("Failed to import settings from {}", file, e);
+			return false;
+		}
+	}
+
 	public static void load() {
 		Path file = file();
 		if (!Files.exists(file)) {
