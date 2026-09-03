@@ -284,10 +284,12 @@ public final class FallWarningController {
 		int blocks = (int) Math.round(dropHeight);
 
 		if (hazardName != null) {
-			// Distinct from the plain "will hurt" anvil cue - a burn/singe sound reads as its
-			// own specific kind of bad, not just "damaging".
+			// Distinct from the plain "will hurt" anvil cue and short enough not to grate on
+			// repeat warnings (unlike GENERIC_BURN's sizzle, which this replaced) - a low note
+			// block tone reads as its own specific kind of bad while staying in the same
+			// note-block sonic family as this mod's other cues (safe/mining/nav radar).
 			client.getSoundManager().play(new SimpleSoundInstance(
-					SoundEvents.GENERIC_BURN, SoundSource.MASTER, 1.0f, 0.8f, random, pos.x(), pos.y(), pos.z()));
+					SoundEvents.NOTE_BLOCK_DIDGERIDOO.value(), SoundSource.MASTER, 1.0f, 0.7f, random, pos.x(), pos.y(), pos.z()));
 			client.getNarrator().saySystemNow(Component.translatable(
 					"united_minecraft.narrate.fall_warning_hazard", blocks, hazardName));
 			return;
