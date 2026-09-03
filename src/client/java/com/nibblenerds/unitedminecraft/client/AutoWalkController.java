@@ -250,15 +250,22 @@ public final class AutoWalkController {
 	}
 
 	/**
-	 * Whether anything solid actually sits between the player's eyes and the target block -
+	 * Whether anything solid actually sits between the player and the target block -
 	 * {@code canReach()} alone only checks raw distance, so this catches "reached" purely by
 	 * being close enough on the wrong side of a wall. A hit on the target block itself counts as
 	 * clear (that's the expected, desired hit for a solid target like a chest); a hit on
 	 * anything else first means something's in the way.
+	 *
+	 * <p>The ray starts level with the target's own height rather than the player's eye height:
+	 * casting from eye height means, at close range, a steep downward angle into the target's
+	 * block column - which clips whatever's stacked above the target (a door's top half, a
+	 * tree's canopy overhanging its trunk) before the ray ever reaches the target itself, wrongly
+	 * reporting "blocked" while standing right next to it.
 	 */
 	private static boolean hasClearLineToTarget(Level level, LocalPlayer player, BlockPos target) {
+		Vec3 from = new Vec3(player.getX(), target.getY() + 0.5, player.getZ());
 		BlockHitResult hit = level.clip(new ClipContext(
-				player.getEyePosition(), Vec3.atCenterOf(target), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
+				from, Vec3.atCenterOf(target), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
 		return hit.getType() == HitResult.Type.MISS || hit.getBlockPos().equals(target);
 	}
 
