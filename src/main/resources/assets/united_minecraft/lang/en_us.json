@@ -328,6 +328,7 @@
 	"united_minecraft.glossary.nav_radar_clear": "The navigation radar's aimed direction is clear to walk",
 	"united_minecraft.glossary.arrow_hit": "A fired arrow has hit something",
 	"united_minecraft.glossary.autowalk_arrived": "Auto-Walk has arrived at its destination",
+	"united_minecraft.glossary.autowalk_stopped": "Auto-Walk has stopped short of its destination",
 	"united_minecraft.glossary.combat_cue": "Your weapon has fully recharged and is ready to swing at full strength",
 	"united_minecraft.narrate.durability_warning": "Your %s, %s, is getting low: %s of %s durability remaining",
 	"united_minecraft.narrate.durability_critical": "Your %s, %s, is about to break: %s of %s durability remaining",

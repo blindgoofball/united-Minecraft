@@ -222,6 +222,7 @@ public final class AutoWalkController {
 		Component name = targetName;
 		player.input = previousInput;
 		reset();
+		playStoppedCue(client, player);
 		client.getNarrator().saySystemNow(name != null
 				? Component.translatable("united_minecraft.narrate.autowalk_incomplete", remainingBlocks, name)
 				: Component.translatable("united_minecraft.narrate.autowalk_incomplete_unnamed", remainingBlocks));
@@ -244,9 +245,19 @@ public final class AutoWalkController {
 		Component name = targetName;
 		player.input = previousInput;
 		reset();
+		playStoppedCue(client, player);
 		client.getNarrator().saySystemNow(name != null
 				? Component.translatable("united_minecraft.narrate.autowalk_stuck", remaining, name)
 				: Component.translatable("united_minecraft.narrate.autowalk_stuck_unnamed", remaining));
+	}
+
+	/** Low "stopped short" thud for both {@link #finishIncomplete} and {@link #finishStuck} - deliberately
+	 * a dull, low tone rather than a musical one, so it reads as a failure distinct from the bright
+	 * ascending {@link SoundEvents#NOTE_BLOCK_CHIME} arrival cue and from every other note-block cue
+	 * this mod already uses elsewhere. */
+	private static void playStoppedCue(Minecraft client, LocalPlayer player) {
+		client.getSoundManager().play(new SimpleSoundInstance(SoundEvents.NOTE_BLOCK_BASS.value(),
+				SoundSource.MASTER, 0.7f, 0.7f, player.getRandom(), player.getX(), player.getY(), player.getZ()));
 	}
 
 	/**
