@@ -645,6 +645,27 @@ public final class ScannerController {
 	}
 
 	/**
+	 * How the Scanner would narrate {@code entity}, entity-type dispatch only (no category
+	 * context, unlike {@link #itemName}) - package-private so {@link SurroundingsScanner} can
+	 * reuse the exact same naming (dropped items, item frames holding something, painting
+	 * titles, and the sheep-color/baby/equipment/leashed handling {@link #mobDisplayName}
+	 * already does for everything else) instead of falling back to a bare {@code
+	 * getDisplayName()} for anything past a living entity.
+	 */
+	static Component describeEntity(Entity entity, Player player) {
+		if (entity instanceof ItemEntity itemEntity) {
+			return ItemDescriptions.describe(itemEntity.getItem(), player);
+		}
+		if (entity instanceof ItemFrame frame) {
+			return describeItemFrame(frame, player);
+		}
+		if (entity instanceof Painting painting) {
+			return describePainting(painting);
+		}
+		return mobDisplayName(entity, player);
+	}
+
+	/**
 	 * {@code LivingEntity.isBaby()} covers both breedable animals ({@link
 	 * net.minecraft.world.entity.AgeableMob}) and baby-capable hostiles like zombies, each with
 	 * their own separate synced flag underneath - checking it on the base class here picks up

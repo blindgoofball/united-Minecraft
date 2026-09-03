@@ -5,7 +5,16 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
+import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.entity.decoration.ItemFrame;
+import net.minecraft.world.entity.decoration.LeashFenceKnotEntity;
+import net.minecraft.world.entity.decoration.painting.Painting;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.vehicle.boat.Boat;
+import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
@@ -19,8 +28,12 @@ import net.minecraft.world.phys.Vec3;
  * fixed-range raycast (like the vanilla crosshair, but independent of gamemode
  * reach). Entities use a wider forward cone instead of an exact ray, since
  * requiring a screen-reader user to aim their exact, invisible crosshair at a
- * mob's hitbox isn't practical - the nearest living thing roughly ahead of you
- * is what's actually useful to know about.
+ * mob's hitbox isn't practical - the nearest noteworthy one roughly ahead of you
+ * is what's actually useful to know about. "Noteworthy" is the same set the
+ * Scanner's own ITEMS/PASSIVE_MOBS/HOSTILE_MOBS/PLAYERS/ENTITIES categories
+ * cover between them (see {@link #isNoteworthy}), not just living things - a
+ * minecart, boat, item frame, or dropped item directly ahead used to read as
+ * "clear" here even though the Scanner would happily find it.
  */
 public final class SurroundingsScanner {
 	private static final double RANGE_BLOCKS = 6.0;
@@ -91,10 +104,9 @@ public final class SurroundingsScanner {
 		double cosThreshold = Math.cos(Math.toRadians(ENTITY_CONE_HALF_ANGLE_DEG));
 
 		AABB searchBox = player.getBoundingBox().inflate(RANGE_BLOCKS);
-		LivingEntity nearest = null;
+		Entity nearest = null;
 		double nearestDistance = Double.MAX_VALUE;
-		for (LivingEntity candidate : player.level().getEntitiesOfClass(LivingEntity.class, searchBox,
-				candidateEntity -> candidateEntity != player && candidateEntity.isAlive())) {
+		for (Entity candidate : player.level().getEntities(player, searchBox, SurroundingsScanner::isNoteworthy)) {
 			Vec3 toEntity = candidate.getBoundingBox().getCenter().subtract(eye);
 			double distance = toEntity.length();
 			if (distance > RANGE_BLOCKS || distance < 1.0e-4) {
@@ -113,7 +125,23 @@ public final class SurroundingsScanner {
 		if (nearest == null) {
 			return null;
 		}
-		return new EntityHit(nearest.getDisplayName(), (int) Math.round(nearestDistance));
+		return new EntityHit(ScannerController.describeEntity(nearest, player), (int) Math.round(nearestDistance));
+	}
+
+	/** The same set of "worth mentioning" entities the Scanner's own categories cover between them. */
+	private static boolean isNoteworthy(Entity entity) {
+		if (!entity.isAlive()) {
+			return false;
+		}
+		return entity instanceof LivingEntity
+				|| entity instanceof ItemEntity
+				|| entity instanceof AbstractMinecart
+				|| entity instanceof Boat
+				|| entity instanceof ArmorStand
+				|| entity instanceof ItemFrame
+				|| entity instanceof EndCrystal
+				|| entity instanceof LeashFenceKnotEntity
+				|| entity instanceof Painting;
 	}
 
 	private record BlockHit(Component name, int distance) {
