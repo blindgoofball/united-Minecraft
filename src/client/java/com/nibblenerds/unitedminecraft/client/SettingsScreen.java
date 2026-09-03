@@ -282,7 +282,7 @@ public final class SettingsScreen extends Screen {
 	}
 
 	private void showTransferResult(boolean success, String messageKey) {
-		Minecraft.getInstance().gui.setOverlayMessage(Component.translatable(messageKey), false);
+		Minecraft.getInstance().getNarrator().saySystemNow(Component.translatable(messageKey));
 	}
 
 	@Override
