@@ -539,5 +539,26 @@
 	"united_minecraft.narrate.material.mud": "A dark, murky grayish-brown block with a wet, matte texture.",
 	"united_minecraft.narrate.material.packed_mud": "A warm tan-brown block of compacted, dried earth.",
 	"united_minecraft.narrate.material.mud_bricks": "A warm tan-brown brick with visible mortar seams.",
-	"united_minecraft.narrate.material.muddy_mangrove_roots": "A dark grayish-brown, root-covered block with a murky texture."
+	"united_minecraft.narrate.material.muddy_mangrove_roots": "A dark grayish-brown, root-covered block with a murky texture.",
+
+	"united_minecraft.narrate.material.dirt": "A mottled, warm brown block of loose earth.",
+	"united_minecraft.narrate.material.coarse_dirt": "A mottled, warm brown block of loose, gritty earth.",
+	"united_minecraft.narrate.material.podzol": "A dark, murky olive-brown block of ashy forest soil.",
+	"united_minecraft.narrate.material.mycelium": "A purple-gray block of soil speckled with tiny orange fungal flecks.",
+	"united_minecraft.narrate.material.rooted_dirt": "A warm brown block of earth threaded with pale, tangled roots.",
+	"united_minecraft.narrate.material.grass_block": "A block of green, grassy earth.",
+	"united_minecraft.narrate.material.farmland": "A warm brown block of tilled soil with visible furrowed rows.",
+	"united_minecraft.narrate.material.dirt_path": "A warm tan-brown block of packed, flattened earth.",
+	"united_minecraft.narrate.material.sand": "A pale tan-yellow block of loose, sandy grains.",
+	"united_minecraft.narrate.material.red_sand": "A deep orange-red block of loose, sandy grains.",
+	"united_minecraft.narrate.material.gravel": "A gray block of loose pebbles flecked with pink and tan.",
+	"united_minecraft.narrate.material.clay": "A pale, cool blue-gray block of smooth clay.",
+	"united_minecraft.narrate.material.snow": "A thin, near-white layer of powdery snow.",
+	"united_minecraft.narrate.material.snow_block": "A solid, near-white block of packed snow.",
+	"united_minecraft.narrate.material.ice": "A pale, translucent blue block of frozen water.",
+	"united_minecraft.narrate.material.packed_ice": "A light blue, opaque block of densely packed ice.",
+	"united_minecraft.narrate.material.blue_ice": "A deep, saturated blue block of extremely dense ice.",
+	"united_minecraft.narrate.material.powder_snow": "A near-white, extremely fine and powdery snow.",
+	"united_minecraft.narrate.material.moss_block": "A vivid green block of soft, mottled moss.",
+	"united_minecraft.narrate.material.moss_carpet": "A thin, flat layer of the same soft green moss."
 }
