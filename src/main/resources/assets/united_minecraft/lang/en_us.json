@@ -476,5 +476,23 @@
 	"united_minecraft.narrate.material.basalt": "A dark gray-purple volcanic rock with rough vertical striations.",
 	"united_minecraft.narrate.material.polished_basalt": "A dark gray volcanic rock with smooth vertical striations.",
 	"united_minecraft.narrate.material.smooth_basalt": "A dark gray volcanic rock with a flat, uniform matte surface.",
-	"united_minecraft.narrate.material.calcite": "A pale, near-white crystalline rock with a faint bluish-gray tint."
+	"united_minecraft.narrate.material.calcite": "A pale, near-white crystalline rock with a faint bluish-gray tint.",
+
+	"united_minecraft.narrate.material.wool": "A soft, woven fabric with a subtle checkered weave pattern.",
+	"united_minecraft.narrate.material.carpet": "A thin, flat layer of the same woven fabric as wool.",
+	"united_minecraft.narrate.material.concrete": "A smooth, solid block with fine horizontal streaks.",
+	"united_minecraft.narrate.material.concrete_powder": "A loose, sandy powder with a fine speckled, grainy texture.",
+	"united_minecraft.narrate.material.stained_glass": "A smooth, translucent pane of colored glass.",
+	"united_minecraft.narrate.material.stained_glass_pane": "A thin, translucent sheet of colored glass framed by a slim border.",
+	"united_minecraft.narrate.material.banner": "A tall hanging cloth banner on a wooden pole.",
+	"united_minecraft.narrate.material.candle": "A short wax candle with a dark wick, in its natural cream-tan color.",
+	"united_minecraft.narrate.material.dyed_candle": "A short wax candle with a dark wick, tinted a solid color.",
+	"united_minecraft.narrate.material.candle_cake": "A frosted cake topped with a single short candle, in its natural cream-tan color.",
+	"united_minecraft.narrate.material.dyed_candle_cake": "A frosted cake topped with a single short candle, tinted a solid color.",
+	"united_minecraft.narrate.material.shulker_box": "A mottled grayish-purple box with a faint checkered pattern.",
+	"united_minecraft.narrate.material.dyed_shulker_box": "A box with a faint checkered pattern, tinted a solid color.",
+	"united_minecraft.narrate.material.glazed_terracotta": "A glossy ceramic tile printed with a bold, colorful geometric pattern.",
+	"united_minecraft.narrate.material.terracotta": "A matte, solid orange-brown fired clay with a fine speckled texture.",
+	"united_minecraft.narrate.material.dyed_terracotta": "A matte fired clay with a mottled, muted color-streaked texture.",
+	"united_minecraft.narrate.material.bed": "A fabric mattress with a pale pillow at one end."
 }
