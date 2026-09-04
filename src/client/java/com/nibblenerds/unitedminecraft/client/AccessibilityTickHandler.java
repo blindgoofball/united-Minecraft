@@ -52,7 +52,7 @@ public final class AccessibilityTickHandler {
 	private static final double SNAP_EPSILON = 1.0e-3;
 
 	// Narrate Scoreboard's default cap - matching the sighted HUD's own on-screen row limit.
-	// Hold Alt to hear the full sorted list instead (see ClientKeyBindings#isModifierDown).
+	// See ClientKeyBindings#NARRATE_SCOREBOARD_FULL for the full-list alternative.
 	private static final int SCOREBOARD_DEFAULT_LIMIT = 10;
 
 	// Ordered every 45 degrees starting at yaw 0 (south), matching Minecraft's yaw convention
@@ -135,40 +135,37 @@ public final class AccessibilityTickHandler {
 		// own doc for why the timing matters.
 		ClientKeyBindings.updateAll();
 
-		// Shift+B (reset facing to north) needs to release a Scanner lock-on *before* the
+		// Reset Rotation to North needs to release a Scanner lock-on *before* the
 		// rotation-ownership chain below runs this same tick - releasing it any later (e.g. down
 		// where this key is actually handled, after that chain) means ScannerController.tickLock
 		// would already have re-aimed at the locked entity this tick, and would do so again next
 		// tick before resetRotationToNorth's effect is ever visible, silently swallowing the
 		// reset entirely. isLocked() being false by the time the chain reads it below is what
-		// makes the reset actually stick. ClientKeyBindings.pressed/isShiftDown are plain reads
-		// (no consuming), so re-checking NARRATE_BEARING/Shift again down where it's normally
-		// handled is safe and unaffected by this early check.
-		if (ScannerController.isLocked() && ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_BEARING)
-				&& ClientKeyBindings.isShiftDown(client)) {
+		// makes the reset actually stick. ClientKeyBindings.pressed is a plain read (no
+		// consuming), so re-checking it again down where it's normally handled is safe and
+		// unaffected by this early check.
+		if (ScannerController.isLocked() && ClientKeyBindings.pressed(ClientKeyBindings.RESET_ROTATION_TO_NORTH)) {
 			ScannerController.stopLock(client);
 		}
 
-		boolean snapLeftPressed = ClientKeyBindings.pressed(ClientKeyBindings.LOOK_LEFT);
-		boolean snapRightPressed = ClientKeyBindings.pressed(ClientKeyBindings.LOOK_RIGHT);
-		boolean snapUpPressed = ClientKeyBindings.pressed(ClientKeyBindings.LOOK_UP);
-		boolean snapDownPressed = ClientKeyBindings.pressed(ClientKeyBindings.LOOK_DOWN);
+		boolean snapLeftPressed = ClientKeyBindings.pressed(ClientKeyBindings.SNAP_TURN_LEFT);
+		boolean snapRightPressed = ClientKeyBindings.pressed(ClientKeyBindings.SNAP_TURN_RIGHT);
+		boolean snapUpPressed = ClientKeyBindings.pressed(ClientKeyBindings.SNAP_TURN_UP);
+		boolean snapDownPressed = ClientKeyBindings.pressed(ClientKeyBindings.SNAP_TURN_DOWN);
 
 		// Blocked while locked: lock-on owns rotation until Stop Lock is pressed, and
 		// combining it with the build cursor's own rotation-override would just fight it.
 		// Combat Mode owns rotation the same way, so it blocks entering build mode too -
 		// toggling combat mode on already turns build mode off if it was running.
+		// BUILD_MODE_RECENTER_CURSOR's own KeybindContext already means it can only fire while
+		// Build Mode is active, so - unlike the old Alt+I-while-active check this replaces -
+		// there's no need to guard against it firing before Build Mode was ever turned on.
 		if (!ScannerController.isLocked() && !CombatModeController.isActive()
+				&& ClientKeyBindings.pressed(ClientKeyBindings.BUILD_MODE_RECENTER_CURSOR)) {
+			BuildModeController.recenterCursor(client, player);
+		} else if (!ScannerController.isLocked() && !CombatModeController.isActive()
 				&& ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_BUILD_MODE)) {
-			// Alt+I while already active recenters the cursor/grid on the player instead of
-			// toggling off - see BuildModeController#recenterCursor. Without BuildModeController
-			// .isActive() here, Alt+I before ever turning Build Mode on would just silently do
-			// nothing instead of falling through to the normal toggle-on below.
-			if (ClientKeyBindings.isModifierDown(client) && BuildModeController.isActive()) {
-				BuildModeController.recenterCursor(client, player);
-			} else {
-				BuildModeController.toggle(client, player);
-			}
+			BuildModeController.toggle(client, player);
 		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_NAV_RADAR)) {
 			NavRadarController.toggle(client);
@@ -183,36 +180,28 @@ public final class AccessibilityTickHandler {
 		// swim while one of them already owns rotation would just fight it. Auto-Walk itself
 		// isn't in that list - starting a swim cancels it outright instead (see
 		// WaterExitController#start), since the two are never useful to run at once anyway.
-		if (!ScannerController.isLocked() && !CombatModeController.isActive() && !BuildModeController.isActive()
-				&& ClientKeyBindings.pressed(ClientKeyBindings.WATER_ESCAPE)) {
-			if (ClientKeyBindings.isShiftDown(client)) {
-				WaterExitController.start(client, player);
-			} else {
-				WaterExitController.narrate(client, player);
-			}
+		boolean rotationFree = !ScannerController.isLocked() && !CombatModeController.isActive() && !BuildModeController.isActive();
+		if (rotationFree && ClientKeyBindings.pressed(ClientKeyBindings.WATER_ESCAPE_AUTO_SWIM)) {
+			WaterExitController.start(client, player);
+		} else if (rotationFree && ClientKeyBindings.pressed(ClientKeyBindings.WATER_ESCAPE)) {
+			WaterExitController.narrate(client, player);
 		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.TRAIL)) {
-			if (ClientKeyBindings.isModifierDown(client)) {
-				// Doesn't touch rotation or movement, so it isn't gated behind the rotation-owning
-				// modes check below - marking was never gated before this key was merged either.
-				TrailController.markStart(client, player);
-			} else if (!ScannerController.isLocked() && !CombatModeController.isActive() && !BuildModeController.isActive()) {
-				// Same rotation-owning modes WATER_ESCAPE is blocked against above, for the same reason.
-				if (ClientKeyBindings.isShiftDown(client)) {
-					TrailController.start(client, player);
-				} else {
-					TrailController.narrate(client, player);
-				}
-			}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.TRAIL_MARK_START)) {
+			// Doesn't touch rotation or movement, so it isn't gated behind the rotation-owning
+			// modes check below - marking was never gated before this key was merged either.
+			TrailController.markStart(client, player);
+		} else if (rotationFree && ClientKeyBindings.pressed(ClientKeyBindings.TRAIL_WALK_BACK)) {
+			// Same rotation-owning modes WATER_ESCAPE is blocked against above, for the same reason.
+			TrailController.start(client, player);
+		} else if (rotationFree && ClientKeyBindings.pressed(ClientKeyBindings.TRAIL)) {
+			TrailController.narrate(client, player);
 		}
 		MapMarkerController.tick(client);
 		NamedBlockController.tick(client);
-		if (client.gui.screen() == null && ClientKeyBindings.pressed(ClientKeyBindings.PLACE_MARKER)) {
-			if (ClientKeyBindings.isShiftDown(client)) {
-				ScannerController.nameFocusedItem(client, player);
-			} else {
-				MapMarkerController.openNameScreen(client, player);
-			}
+		if (client.gui.screen() == null && ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_NAME_FOCUSED_ITEM)) {
+			ScannerController.nameFocusedItem(client, player);
+		} else if (client.gui.screen() == null && ClientKeyBindings.pressed(ClientKeyBindings.PLACE_MARKER)) {
+			MapMarkerController.openNameScreen(client, player);
 		}
 		if (client.gui.screen() == null && ClientKeyBindings.pressed(ClientKeyBindings.OPEN_SETTINGS)) {
 			client.gui.setScreen(new SettingsScreen());
@@ -268,10 +257,14 @@ public final class AccessibilityTickHandler {
 				MiningRadarController.tick(client, player);
 				FallWarningController.tick(client, player);
 			} else {
-				if (ClientKeyBindings.isModifierDown(client)) {
+				// Always safe to run both: ClientKeyBindings.updateAll() already resolved which
+				// of LOOK_LEFT/RIGHT/UP/DOWN (GLOBAL, no modifiers) vs. SNAP_TURN_LEFT/RIGHT/UP/
+				// DOWN (NORMAL_LOOK, Alt) wins a given tick when both are bound to the same key,
+				// so handleCameraLook's isDown() reads are already false on any axis a snap-turn
+				// just won - see ClientKeyBindings#updateAll's own doc.
+				handleCameraLook(player);
+				if (snapLeftPressed || snapRightPressed || snapUpPressed || snapDownPressed) {
 					handleSnapTurn(client, player, snapLeftPressed, snapRightPressed, snapUpPressed, snapDownPressed);
-				} else {
-					handleCameraLook(player);
 				}
 				TreeChoppingAssist.tick(client, player);
 				ScannerController.tick(client, player);
@@ -328,53 +321,45 @@ public final class AccessibilityTickHandler {
 			handleOffhandNarration(client, player);
 		}
 
-		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_COORDINATES)) {
-			if (ClientKeyBindings.isShiftDown(client)) {
-				narrateLightLevel(client, player);
-			} else {
-				narrateCoordinates(client, player);
-			}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_LIGHT_LEVEL)) {
+			narrateLightLevel(client, player);
+		} else if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_COORDINATES)) {
+			narrateCoordinates(client, player);
 		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_HEALTH)) {
-			if (ClientKeyBindings.isModifierDown(client)) {
-				narrateArmorAndEffects(client, player);
-			} else if (ClientKeyBindings.isShiftDown(client)) {
-				narrateExperienceLevel(client, player);
-			} else {
-				narrateHealth(client, player);
-			}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_ARMOR_AND_EFFECTS)) {
+			narrateArmorAndEffects(client, player);
+		} else if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_EXPERIENCE)) {
+			narrateExperienceLevel(client, player);
+		} else if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_HEALTH)) {
+			narrateHealth(client, player);
 		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_BEARING)) {
-			if (ClientKeyBindings.isShiftDown(client)) {
-				// Build Mode locks the player's yaw to its own facing (see BuildModeController) -
-				// snapping it to north here would silently desync the two and jerk the camera off
-				// whatever facing the cursor is actually keyed to.
-				if (!BuildModeController.isActive()) {
-					resetRotationToNorth(client, player);
-				}
-			} else {
-				narrateBearing(client, player);
+		if (ClientKeyBindings.pressed(ClientKeyBindings.RESET_ROTATION_TO_NORTH)) {
+			// Build Mode locks the player's yaw to its own facing (see BuildModeController) -
+			// snapping it to north here would silently desync the two and jerk the camera off
+			// whatever facing the cursor is actually keyed to.
+			if (!BuildModeController.isActive()) {
+				resetRotationToNorth(client, player);
 			}
+		} else if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_BEARING)) {
+			narrateBearing(client, player);
 		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.SCAN_SURROUNDINGS)) {
-			if (ClientKeyBindings.isShiftDown(client)) {
-				AutoCrosshairNarrationController.toggle(client);
-			} else {
-				SurroundingsScanner.narrateFront(client, player);
-			}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_AUTO_CROSSHAIR_NARRATION)) {
+			AutoCrosshairNarrationController.toggle(client);
+		} else if (ClientKeyBindings.pressed(ClientKeyBindings.SCAN_SURROUNDINGS)) {
+			SurroundingsScanner.narrateFront(client, player);
 		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_TIME)) {
-			if (ClientKeyBindings.isShiftDown(client)) {
-				narrateWeatherAndMoon(client, player);
-			} else {
-				narrateTimeOfDay(client, player);
-			}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_WEATHER_AND_MOON)) {
+			narrateWeatherAndMoon(client, player);
+		} else if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_TIME)) {
+			narrateTimeOfDay(client, player);
 		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_BOSS_BARS)) {
 			narrateBossBars(client);
 		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_SCOREBOARD)) {
-			narrateScoreboard(client, player, ClientKeyBindings.isModifierDown(client));
+		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_SCOREBOARD_FULL)) {
+			narrateScoreboard(client, player, true);
+		} else if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_SCOREBOARD)) {
+			narrateScoreboard(client, player, false);
 		}
 	}
 

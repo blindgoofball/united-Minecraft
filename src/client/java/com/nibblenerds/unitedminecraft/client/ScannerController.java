@@ -184,8 +184,11 @@ public final class ScannerController {
 		boolean prevCategory = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_PREV_CATEGORY);
 		boolean nextCategory = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_NEXT_CATEGORY);
 		boolean pageDown = ClientKeyBindings.pressed(ClientKeyBindings.PAGE_DOWN);
+		boolean pageDownSameType = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_PAGE_DOWN_SAME_TYPE);
 		boolean pageUp = ClientKeyBindings.pressed(ClientKeyBindings.PAGE_UP);
+		boolean pageUpSameType = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_PAGE_UP_SAME_TYPE);
 		boolean targetPressed = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_TARGET);
+		boolean targetWalkTherePressed = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_TARGET_WALK_THERE);
 		boolean stopPressed = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_STOP_LOCK);
 		boolean coordinatesPressed = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_COORDINATES);
 
@@ -205,21 +208,17 @@ public final class ScannerController {
 			if (nextCategory) {
 				switchCategory(client, player, 1);
 			}
-			if (pageDown) {
-				if (ClientKeyBindings.isModifierDown(client)) {
-					stepItemSameType(client, player, 1);
-				} else {
-					stepItem(client, player, 1);
-				}
+			if (pageDownSameType) {
+				stepItemSameType(client, player, 1);
+			} else if (pageDown) {
+				stepItem(client, player, 1);
 			}
-			if (pageUp) {
-				if (ClientKeyBindings.isModifierDown(client)) {
-					stepItemSameType(client, player, -1);
-				} else {
-					stepItem(client, player, -1);
-				}
+			if (pageUpSameType) {
+				stepItemSameType(client, player, -1);
+			} else if (pageUp) {
+				stepItem(client, player, -1);
 			}
-			if (targetPressed) {
+			if (targetPressed || targetWalkTherePressed) {
 				// Cycling above may have moved focus onto something other than what's actually
 				// locked - in that case Enter/Shift+Enter should behave exactly as it would if
 				// nothing were locked: drop the old lock (silently - the new target's own
@@ -245,21 +244,17 @@ public final class ScannerController {
 		if (nextCategory) {
 			switchCategory(client, player, 1);
 		}
-		if (pageDown) {
-			if (ClientKeyBindings.isModifierDown(client)) {
-				stepItemSameType(client, player, 1);
-			} else {
-				stepItem(client, player, 1);
-			}
+		if (pageDownSameType) {
+			stepItemSameType(client, player, 1);
+		} else if (pageDown) {
+			stepItem(client, player, 1);
 		}
-		if (pageUp) {
-			if (ClientKeyBindings.isModifierDown(client)) {
-				stepItemSameType(client, player, -1);
-			} else {
-				stepItem(client, player, -1);
-			}
+		if (pageUpSameType) {
+			stepItemSameType(client, player, -1);
+		} else if (pageUp) {
+			stepItem(client, player, -1);
 		}
-		if (targetPressed) {
+		if (targetPressed || targetWalkTherePressed) {
 			target(client, player);
 		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_REMOVE_MARKER)
@@ -572,7 +567,7 @@ public final class ScannerController {
 			return;
 		}
 
-		boolean walkThere = ClientKeyBindings.isShiftDown(client);
+		boolean walkThere = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_TARGET_WALK_THERE);
 		ScannerCategory category = CATEGORIES[categoryIndex];
 		if (item.entity() != null) {
 			if (category == ScannerCategory.ITEMS) {

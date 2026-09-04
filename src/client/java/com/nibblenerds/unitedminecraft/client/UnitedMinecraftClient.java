@@ -10,6 +10,7 @@ public class UnitedMinecraftClient implements ClientModInitializer {
 		UnitedMinecraftConfig.load();
 		PrismController.register();
 		ClientKeyBindings.register();
+		KeybindConfig.load();
 		AccessibilityTickHandler.register();
 		MenuAccessibilityController.register();
 		CreativeInventoryController.register();

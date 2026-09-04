@@ -127,6 +127,12 @@ public final class SettingsScreen extends Screen {
 				.build()), y);
 		y += ROW_HEIGHT + ROW_SPACING;
 
+		registerRow(addRenderableWidget(Button.builder(Component.translatable("united_minecraft.settings_screen.keybindings"),
+				button -> Minecraft.getInstance().gui.setScreen(new KeybindScreen()))
+				.bounds(x, y, ROW_WIDTH, ROW_HEIGHT)
+				.build()), y);
+		y += ROW_HEIGHT + ROW_SPACING;
+
 		registerRow(addRenderableWidget(Button.builder(Component.translatable("united_minecraft.settings_screen.done"),
 				button -> onClose())
 				.bounds(x, y + ROW_SPACING, ROW_WIDTH, ROW_HEIGHT)

@@ -2,270 +2,371 @@ package com.nibblenerds.unitedminecraft.client;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
-import java.util.IdentityHashMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import com.nibblenerds.unitedminecraft.UnitedMinecraft;
+import com.mojang.blaze3d.platform.Window;
 
-import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
-import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 
 import org.lwjgl.glfw.GLFW;
 
 /**
- * Keybindings for United Minecraft's accessibility features.
+ * United Minecraft's rebindable actions. Every action here is a {@link KeybindAction} - an
+ * arbitrary key + modifier chord (see {@link Keybind}), entirely independent of vanilla
+ * {@link net.minecraft.client.KeyMapping} and vanilla's own Controls screen; rebinding happens
+ * through {@link KeybindScreen} instead, and current bindings persist via {@link KeybindConfig}.
  *
- * <p>{@code C} defaults to unbound during normal gameplay - vanilla only wires it
- * up to "Save Toolbar Activator" while the creative inventory screen is open, so
- * there's no practical clash with narrating coordinates in-game (Minecraft's
- * controls menu may still show them as a cosmetic duplicate, since it compares
- * raw keys across contexts).
+ * <p>Several of this mod's older dual-purpose keys (e.g. plain H narrating health, Shift+H
+ * narrating XP, Alt+H narrating armor/effects) have each become fully independent actions -
+ * see each action's own doc comment for what it used to be layered onto.
  *
- * <p>The arrow keys are entirely unbound by default in vanilla.
- *
- * <p><b>Never call {@code KeyMapping.consumeClick()} on any keybinding declared here -
- * call {@link #pressed} instead.</b> {@code consumeClick()} drains a click queue that
- * keeps piling up for as long as nothing reads it, which is exactly what happens every
- * time this mod's own guard conditions skip a key's handling for a tick (a mode that
- * blocks it, a menu that's open, a different mode's tick() running instead of this one)
- * - the queued click doesn't vanish, it just fires the next time that code path happens
- * to run again, often well after the key was actually released (e.g. toggling Build Mode
- * on right after leaving Combat Mode, with no Build Mode key pressed in between). {@link
- * #pressed} sidesteps the queue entirely via {@link #updateAll}, the same {@code isDown()}
- * plus tracked-held-state approach this mod already used piecemeal for a few keys
- * (movement/look, Build Mode's cursor) before this was generalized to every keybinding.
+ * <p><b>Never poll a key's own held state directly - call {@link #pressed} or
+ * {@link KeybindAction#isDown()} instead.</b> Resolution against every other action sharing the
+ * same primary key (context eligibility, modifier-subset matching, most-specific-wins) happens
+ * centrally in {@link #updateAll()}; a raw {@code InputConstants.isKeyDown} poll anywhere else
+ * would bypass that and could fire alongside an action that's supposed to be more specific.
  */
 public final class ClientKeyBindings {
-	public static final KeyMapping.Category CATEGORY = KeyMapping.Category.register(UnitedMinecraft.id("keys"));
+	public static final KeybindAction NARRATE_COORDINATES =
+			new KeybindAction("narrate_coordinates", new Keybind(GLFW.GLFW_KEY_C, 0));
+	/** Was Shift+C - see {@link #NARRATE_LIGHT_LEVEL}. */
+	public static final KeybindAction NARRATE_LIGHT_LEVEL =
+			new KeybindAction("narrate_light_level", new Keybind(GLFW.GLFW_KEY_C, GLFW.GLFW_MOD_SHIFT));
 
-	public static final KeyMapping NARRATE_COORDINATES = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.narrate_coordinates", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_C, CATEGORY));
+	public static final KeybindAction NARRATE_HEALTH =
+			new KeybindAction("narrate_health", new Keybind(GLFW.GLFW_KEY_H, 0));
+	/** Was Shift+H - see {@link #NARRATE_EXPERIENCE}; was Alt+H - see {@link #NARRATE_ARMOR_AND_EFFECTS}. */
+	public static final KeybindAction NARRATE_EXPERIENCE =
+			new KeybindAction("narrate_experience", new Keybind(GLFW.GLFW_KEY_H, GLFW.GLFW_MOD_SHIFT));
+	public static final KeybindAction NARRATE_ARMOR_AND_EFFECTS =
+			new KeybindAction("narrate_armor_and_effects", new Keybind(GLFW.GLFW_KEY_H, GLFW.GLFW_MOD_ALT));
 
-	/** Shift instead narrates experience level; Alt instead narrates armor value and active status effects. */
-	public static final KeyMapping NARRATE_HEALTH = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.narrate_health", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_H, CATEGORY));
+	public static final KeybindAction NARRATE_BEARING =
+			new KeybindAction("narrate_bearing", new Keybind(GLFW.GLFW_KEY_B, 0));
+	/** Was Shift+B - see {@link #RESET_ROTATION_TO_NORTH}. */
+	public static final KeybindAction RESET_ROTATION_TO_NORTH =
+			new KeybindAction("reset_rotation_to_north", new Keybind(GLFW.GLFW_KEY_B, GLFW.GLFW_MOD_SHIFT));
 
-	public static final KeyMapping NARRATE_BEARING = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.narrate_bearing", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_B, CATEGORY));
+	public static final KeybindAction SCAN_SURROUNDINGS =
+			new KeybindAction("scan_surroundings", new Keybind(GLFW.GLFW_KEY_R, 0));
+	/** Was Shift+R - see {@link #TOGGLE_AUTO_CROSSHAIR_NARRATION}. */
+	public static final KeybindAction TOGGLE_AUTO_CROSSHAIR_NARRATION =
+			new KeybindAction("toggle_auto_crosshair_narration", new Keybind(GLFW.GLFW_KEY_R, GLFW.GLFW_MOD_SHIFT));
 
-	/** Shift instead toggles {@link AutoCrosshairNarrationController}, narrating the crosshair's target as it changes rather than only on demand. */
-	public static final KeyMapping SCAN_SURROUNDINGS = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.scan_surroundings", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R, CATEGORY));
+	public static final KeybindAction NARRATE_TIME =
+			new KeybindAction("narrate_time", new Keybind(GLFW.GLFW_KEY_V, 0));
+	/** Was Shift+V - see {@link #NARRATE_WEATHER_AND_MOON}. */
+	public static final KeybindAction NARRATE_WEATHER_AND_MOON =
+			new KeybindAction("narrate_weather_and_moon", new Keybind(GLFW.GLFW_KEY_V, GLFW.GLFW_MOD_SHIFT));
 
-	/** Shift instead narrates current weather and, at night, moon phase. */
-	public static final KeyMapping NARRATE_TIME = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.narrate_time", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, CATEGORY));
+	public static final KeybindAction PLACE_MARKER =
+			new KeybindAction("place_marker", new Keybind(GLFW.GLFW_KEY_U, 0));
+	/** Was Shift+U - see {@link #SCANNER_NAME_FOCUSED_ITEM}. */
+	public static final KeybindAction SCANNER_NAME_FOCUSED_ITEM =
+			new KeybindAction("scanner_name_focused_item", new Keybind(GLFW.GLFW_KEY_U, GLFW.GLFW_MOD_SHIFT));
 
-	/** Shift instead opens a name prompt for the Scanner's currently focused block item (see {@link ScannerController#nameFocusedItem}). */
-	public static final KeyMapping PLACE_MARKER = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.place_marker", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_U, CATEGORY));
+	public static final KeybindAction TOGGLE_BUILD_MODE =
+			new KeybindAction("toggle_build_mode", new Keybind(GLFW.GLFW_KEY_I, 0));
+	/** Was Alt+I while already active - see {@link #BUILD_MODE_RECENTER_CURSOR}. */
+	public static final KeybindAction BUILD_MODE_RECENTER_CURSOR = new KeybindAction(
+			"build_mode_recenter_cursor", new Keybind(GLFW.GLFW_KEY_I, GLFW.GLFW_MOD_ALT), KeybindContext.BUILD_MODE);
 
-	public static final KeyMapping TOGGLE_BUILD_MODE = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.toggle_build_mode", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_I, CATEGORY));
+	/** Bare Right Ctrl by default - a deliberate hold-to-place trigger, not a chord's primary key. */
+	public static final KeybindAction BUILD_PLACE =
+			new KeybindAction("build_place", new Keybind(GLFW.GLFW_KEY_RIGHT_CONTROL, 0));
+	/** Bare Right Shift by default - a deliberate hold-to-mine trigger, not a chord's primary key. */
+	public static final KeybindAction BUILD_BREAK =
+			new KeybindAction("build_break", new Keybind(GLFW.GLFW_KEY_RIGHT_SHIFT, 0));
 
-	public static final KeyMapping BUILD_PLACE = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.build_place", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_CONTROL, CATEGORY));
-	public static final KeyMapping BUILD_BREAK = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.build_break", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT, CATEGORY));
+	public static final KeybindAction BUILD_WALK_TO_CURSOR =
+			new KeybindAction("build_walk_to_cursor", new Keybind(GLFW.GLFW_KEY_G, 0));
 
-	public static final KeyMapping BUILD_WALK_TO_CURSOR = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.build_walk_to_cursor", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G, CATEGORY));
+	public static final KeybindAction BUILD_CYCLE_FACING =
+			new KeybindAction("build_cycle_facing", new Keybind(GLFW.GLFW_KEY_J, 0), KeybindContext.BUILD_MODE);
+	/** Was Alt+J - see {@link #BUILD_CYCLE_FACING_REVERSE}. */
+	public static final KeybindAction BUILD_CYCLE_FACING_REVERSE = new KeybindAction(
+			"build_cycle_facing_reverse", new Keybind(GLFW.GLFW_KEY_J, GLFW.GLFW_MOD_ALT), KeybindContext.BUILD_MODE);
 
-	/** Cycles Build Mode's placement facing forward; Alt reverses it. */
-	public static final KeyMapping BUILD_CYCLE_FACING = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.build_cycle_facing", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_J, CATEGORY));
+	public static final KeybindAction TOGGLE_NAV_RADAR =
+			new KeybindAction("toggle_nav_radar", new Keybind(GLFW.GLFW_KEY_N, 0));
 
-	public static final KeyMapping TOGGLE_NAV_RADAR = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.toggle_nav_radar", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_N, CATEGORY));
+	public static final KeybindAction TOGGLE_MINING_RADAR =
+			new KeybindAction("toggle_mining_radar", new Keybind(GLFW.GLFW_KEY_M, 0));
 
-	public static final KeyMapping TOGGLE_MINING_RADAR = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.toggle_mining_radar", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_M, CATEGORY));
+	public static final KeybindAction TOGGLE_COMBAT_MODE =
+			new KeybindAction("toggle_combat_mode", new Keybind(GLFW.GLFW_KEY_K, 0));
 
-	public static final KeyMapping TOGGLE_COMBAT_MODE = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.toggle_combat_mode", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_K, CATEGORY));
+	public static final KeybindAction WATER_ESCAPE =
+			new KeybindAction("water_escape", new Keybind(GLFW.GLFW_KEY_Y, 0));
+	/** Was Shift+Y - see {@link #WATER_ESCAPE_AUTO_SWIM}. */
+	public static final KeybindAction WATER_ESCAPE_AUTO_SWIM =
+			new KeybindAction("water_escape_auto_swim", new Keybind(GLFW.GLFW_KEY_Y, GLFW.GLFW_MOD_SHIFT));
 
-	/** Narrates the nearest reachable way out of water; Shift instead swims there automatically. */
-	public static final KeyMapping WATER_ESCAPE = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.water_escape", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Y, CATEGORY));
-
-	/**
-	 * One key for all three cave trail actions, rather than a separate always-on mark key -
-	 * plain narrates the way back, Shift instead walks it automatically, and Alt clears the
-	 * trail and marks the current spot as a fresh start. Folding mark behind Alt (rather than a
-	 * bare keypress) also means it can no longer be triggered by accident, unlike before.
-	 */
-	public static final KeyMapping TRAIL = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.trail", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_X, CATEGORY));
-
-
-	/**
-	 * The arrow keys are dual-purpose: continuous camera turning normally (see
-	 * {@code handleCameraLook}), but discrete one-block cursor steps while build
-	 * mode is active (see {@link BuildModeController}).
-	 *
-	 * <p>Page Up/Down are triple-purpose: build mode's cursor Y level, or the
-	 * scanner's item cycling (see {@link ScannerController}) when build mode
-	 * isn't active - Alt held during scanner item cycling jumps to the next/previous
-	 * item of the same type instead of the next item overall. Home/End cycle the
-	 * scanner's category instead.
-	 */
-	public static final KeyMapping LOOK_LEFT = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.look_left", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT, CATEGORY));
-	public static final KeyMapping LOOK_RIGHT = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.look_right", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT, CATEGORY));
-	public static final KeyMapping LOOK_UP = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.look_up", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UP, CATEGORY));
-	public static final KeyMapping LOOK_DOWN = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.look_down", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_DOWN, CATEGORY));
-
-	public static final KeyMapping PAGE_UP = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.page_up", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_PAGE_UP, CATEGORY));
-	public static final KeyMapping PAGE_DOWN = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.page_down", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_PAGE_DOWN, CATEGORY));
-
-	public static final KeyMapping SCANNER_PREV_CATEGORY = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.scanner_prev_category", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_HOME, CATEGORY));
-	public static final KeyMapping SCANNER_NEXT_CATEGORY = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.scanner_next_category", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_END, CATEGORY));
+	public static final KeybindAction TRAIL =
+			new KeybindAction("trail", new Keybind(GLFW.GLFW_KEY_X, 0));
+	/** Was Shift+X - see {@link #TRAIL_WALK_BACK}; was Alt+X - see {@link #TRAIL_MARK_START}. */
+	public static final KeybindAction TRAIL_WALK_BACK =
+			new KeybindAction("trail_walk_back", new Keybind(GLFW.GLFW_KEY_X, GLFW.GLFW_MOD_SHIFT));
+	public static final KeybindAction TRAIL_MARK_START =
+			new KeybindAction("trail_mark_start", new Keybind(GLFW.GLFW_KEY_X, GLFW.GLFW_MOD_ALT));
 
 	/**
-	 * Targets the Scanner's focused item normally - but while already locked onto a mob (where
-	 * targeting doesn't apply, so this would otherwise do nothing), interacts with the locked
-	 * entity directly instead, the same as right-clicking it but without needing an actual
-	 * crosshair hit. Meant for when another entity is physically in the way of the one actually
-	 * locked on (two chickens crowded together while trying to breed them, say), where camera
-	 * aim alone can't tell them apart.
+	 * Continuous camera-look keys, GLOBAL - {@code handleCameraLook} only ever runs outside
+	 * Build Mode (a separate branch of the tick handler's own mutually-exclusive priority
+	 * chain), so these no longer double as the Build Mode cursor's own movement the way they
+	 * used to - see {@link #BUILD_CURSOR_LEFT} etc. below for that, now a fully separate,
+	 * independently rebindable action. Kept sharing these same default keys is still safe:
+	 * {@link #updateAll}'s specificity resolution prefers a narrower ({@link
+	 * KeybindContext#BUILD_MODE}) context over {@link KeybindContext#GLOBAL} on an otherwise-tied
+	 * match, so {@link #BUILD_CURSOR_LEFT} still wins over this one while Build Mode is active.
 	 */
-	public static final KeyMapping SCANNER_TARGET = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.scanner_target", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_ENTER, CATEGORY));
-	/** Stops Scanner lock-on, or cancels Auto-Walk/a swim/a trail retrace - kept off Delete so it can't be hit by accident while reaching for Remove Marker. */
-	public static final KeyMapping SCANNER_STOP_LOCK = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.scanner_stop_lock", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_BACKSPACE, CATEGORY));
-	/** Removes the focused marker, Markers category only - deliberately a separate key from SCANNER_STOP_LOCK. */
-	public static final KeyMapping SCANNER_REMOVE_MARKER = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.scanner_remove_marker", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_DELETE, CATEGORY));
-	public static final KeyMapping SCANNER_COORDINATES = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.scanner_coordinates", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_BACKSLASH, CATEGORY));
+	public static final KeybindAction LOOK_LEFT =
+			new KeybindAction("look_left", new Keybind(GLFW.GLFW_KEY_LEFT, 0));
+	public static final KeybindAction LOOK_RIGHT =
+			new KeybindAction("look_right", new Keybind(GLFW.GLFW_KEY_RIGHT, 0));
+	public static final KeybindAction LOOK_UP =
+			new KeybindAction("look_up", new Keybind(GLFW.GLFW_KEY_UP, 0));
+	public static final KeybindAction LOOK_DOWN =
+			new KeybindAction("look_down", new Keybind(GLFW.GLFW_KEY_DOWN, 0));
 
-	public static final KeyMapping OPEN_SETTINGS = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.open_settings", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_F6, CATEGORY));
+	/** Was Alt held during normal camera look - see {@link #SNAP_TURN_RIGHT}/{@link #SNAP_TURN_UP}/{@link #SNAP_TURN_DOWN}. */
+	public static final KeybindAction SNAP_TURN_LEFT = new KeybindAction(
+			"snap_turn_left", new Keybind(GLFW.GLFW_KEY_LEFT, GLFW.GLFW_MOD_ALT), KeybindContext.NORMAL_LOOK);
+	public static final KeybindAction SNAP_TURN_RIGHT = new KeybindAction(
+			"snap_turn_right", new Keybind(GLFW.GLFW_KEY_RIGHT, GLFW.GLFW_MOD_ALT), KeybindContext.NORMAL_LOOK);
+	public static final KeybindAction SNAP_TURN_UP = new KeybindAction(
+			"snap_turn_up", new Keybind(GLFW.GLFW_KEY_UP, GLFW.GLFW_MOD_ALT), KeybindContext.NORMAL_LOOK);
+	public static final KeybindAction SNAP_TURN_DOWN = new KeybindAction(
+			"snap_turn_down", new Keybind(GLFW.GLFW_KEY_DOWN, GLFW.GLFW_MOD_ALT), KeybindContext.NORMAL_LOOK);
 
-	public static final KeyMapping NARRATE_BOSS_BARS = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.narrate_boss_bars", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_SEMICOLON, CATEGORY));
+	/** Was LOOK_LEFT/RIGHT/UP/DOWN reused for Build Mode's own cursor movement - now its own action, independently rebindable. */
+	public static final KeybindAction BUILD_CURSOR_LEFT = new KeybindAction(
+			"build_cursor_left", new Keybind(GLFW.GLFW_KEY_LEFT, 0), KeybindContext.BUILD_MODE);
+	public static final KeybindAction BUILD_CURSOR_RIGHT = new KeybindAction(
+			"build_cursor_right", new Keybind(GLFW.GLFW_KEY_RIGHT, 0), KeybindContext.BUILD_MODE);
+	public static final KeybindAction BUILD_CURSOR_UP = new KeybindAction(
+			"build_cursor_up", new Keybind(GLFW.GLFW_KEY_UP, 0), KeybindContext.BUILD_MODE);
+	public static final KeybindAction BUILD_CURSOR_DOWN = new KeybindAction(
+			"build_cursor_down", new Keybind(GLFW.GLFW_KEY_DOWN, 0), KeybindContext.BUILD_MODE);
 
-	/** Alt instead narrates every scoreboard entry, not just the first 10. */
-	public static final KeyMapping NARRATE_SCOREBOARD = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-			"key.united_minecraft.narrate_scoreboard", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_APOSTROPHE, CATEGORY));
+	/** Was Alt held while steering the Build Mode cursor - see {@link #BUILD_REORIENT_RIGHT}. */
+	public static final KeybindAction BUILD_REORIENT_LEFT = new KeybindAction(
+			"build_reorient_left", new Keybind(GLFW.GLFW_KEY_LEFT, GLFW.GLFW_MOD_ALT), KeybindContext.BUILD_MODE);
+	public static final KeybindAction BUILD_REORIENT_RIGHT = new KeybindAction(
+			"build_reorient_right", new Keybind(GLFW.GLFW_KEY_RIGHT, GLFW.GLFW_MOD_ALT), KeybindContext.BUILD_MODE);
 
-	// Every KeyMapping declared above, discovered reflectively rather than hand-listed so a
-	// future keybinding automatically gets the same backlog-proof tracking below without
-	// anyone needing to remember to register it separately - forgetting would silently
-	// reintroduce the exact bug this class exists to prevent, for just that one key. This has
-	// to stay the last KeyMapping-typed field in the class for that to actually work (static
-	// fields initialize top-to-bottom, so a field declared below this one would still be null
-	// at this point) - discoverMappings() skips a null rather than crash every tick on it, but
-	// a keybinding added below here still just silently wouldn't respond to input.
-	private static final KeyMapping[] ALL_MAPPINGS = discoverMappings();
+	public static final KeybindAction PAGE_UP =
+			new KeybindAction("page_up", new Keybind(GLFW.GLFW_KEY_PAGE_UP, 0));
+	public static final KeybindAction PAGE_DOWN =
+			new KeybindAction("page_down", new Keybind(GLFW.GLFW_KEY_PAGE_DOWN, 0));
+	/** Was Alt+Page Up/Down during Scanner item cycling - jumps to the next/previous item of the same type. */
+	public static final KeybindAction SCANNER_PAGE_UP_SAME_TYPE =
+			new KeybindAction("scanner_page_up_same_type", new Keybind(GLFW.GLFW_KEY_PAGE_UP, GLFW.GLFW_MOD_ALT));
+	public static final KeybindAction SCANNER_PAGE_DOWN_SAME_TYPE =
+			new KeybindAction("scanner_page_down_same_type", new Keybind(GLFW.GLFW_KEY_PAGE_DOWN, GLFW.GLFW_MOD_ALT));
 
-	private static final Map<KeyMapping, Boolean> heldLastTick = new IdentityHashMap<>();
-	private static final Map<KeyMapping, Boolean> justPressed = new IdentityHashMap<>();
+	public static final KeybindAction SCANNER_PREV_CATEGORY =
+			new KeybindAction("scanner_prev_category", new Keybind(GLFW.GLFW_KEY_HOME, 0));
+	public static final KeybindAction SCANNER_NEXT_CATEGORY =
+			new KeybindAction("scanner_next_category", new Keybind(GLFW.GLFW_KEY_END, 0));
+
+	public static final KeybindAction SCANNER_TARGET =
+			new KeybindAction("scanner_target", new Keybind(GLFW.GLFW_KEY_ENTER, 0));
+	/** Was Shift+Enter - see {@link #SCANNER_TARGET_WALK_THERE}. */
+	public static final KeybindAction SCANNER_TARGET_WALK_THERE =
+			new KeybindAction("scanner_target_walk_there", new Keybind(GLFW.GLFW_KEY_ENTER, GLFW.GLFW_MOD_SHIFT));
+
+	public static final KeybindAction SCANNER_STOP_LOCK =
+			new KeybindAction("scanner_stop_lock", new Keybind(GLFW.GLFW_KEY_BACKSPACE, 0));
+	public static final KeybindAction SCANNER_REMOVE_MARKER =
+			new KeybindAction("scanner_remove_marker", new Keybind(GLFW.GLFW_KEY_DELETE, 0));
+	public static final KeybindAction SCANNER_COORDINATES =
+			new KeybindAction("scanner_coordinates", new Keybind(GLFW.GLFW_KEY_BACKSLASH, 0));
+
+	public static final KeybindAction OPEN_SETTINGS =
+			new KeybindAction("open_settings", new Keybind(GLFW.GLFW_KEY_F6, 0));
+
+	public static final KeybindAction NARRATE_BOSS_BARS =
+			new KeybindAction("narrate_boss_bars", new Keybind(GLFW.GLFW_KEY_SEMICOLON, 0));
+
+	public static final KeybindAction NARRATE_SCOREBOARD =
+			new KeybindAction("narrate_scoreboard", new Keybind(GLFW.GLFW_KEY_APOSTROPHE, 0));
+	/** Was Alt+' - see {@link #NARRATE_SCOREBOARD_FULL}. */
+	public static final KeybindAction NARRATE_SCOREBOARD_FULL =
+			new KeybindAction("narrate_scoreboard_full", new Keybind(GLFW.GLFW_KEY_APOSTROPHE, GLFW.GLFW_MOD_ALT));
+
+	// Every KeybindAction declared above, discovered reflectively rather than hand-listed so a
+	// future action automatically gets the same tracking below without anyone needing to
+	// remember to register it separately - see ClientKeyBindings' historical doc for why that
+	// matters (this class used to do the same thing for vanilla KeyMapping before it became
+	// the owner of the binding type itself). Has to stay the last KeybindAction-typed field for
+	// that to actually work (static fields initialize top-to-bottom).
+	private static final KeybindAction[] ALL_ACTIONS = discoverActions();
+
+	private static final Map<Integer, List<KeybindAction>> BY_PRIMARY_KEY = new HashMap<>();
+
+	private static final int[] MODIFIER_KEYS = {
+			GLFW.GLFW_KEY_LEFT_SHIFT, GLFW.GLFW_KEY_RIGHT_SHIFT,
+			GLFW.GLFW_KEY_LEFT_CONTROL, GLFW.GLFW_KEY_RIGHT_CONTROL,
+			GLFW.GLFW_KEY_LEFT_ALT, GLFW.GLFW_KEY_RIGHT_ALT,
+			GLFW.GLFW_KEY_LEFT_SUPER, GLFW.GLFW_KEY_RIGHT_SUPER,
+	};
 
 	private ClientKeyBindings() {
 	}
 
 	/** No-op call that forces the static initializers above to run. */
 	public static void register() {
+		rebuildIndex();
 	}
 
-	private static KeyMapping[] discoverMappings() {
-		List<KeyMapping> mappings = new ArrayList<>();
+	public static KeybindAction[] allActions() {
+		return ALL_ACTIONS.clone();
+	}
+
+	public static KeybindAction byId(String id) {
+		for (KeybindAction action : ALL_ACTIONS) {
+			if (action.id().equals(id)) {
+				return action;
+			}
+		}
+		return null;
+	}
+
+	private static KeybindAction[] discoverActions() {
+		List<KeybindAction> actions = new ArrayList<>();
 		for (Field field : ClientKeyBindings.class.getDeclaredFields()) {
-			if (KeyMapping.class.isAssignableFrom(field.getType())) {
+			if (KeybindAction.class.isAssignableFrom(field.getType())) {
 				try {
-					KeyMapping mapping = (KeyMapping) field.get(null);
-					if (mapping != null) {
-						mappings.add(mapping);
+					KeybindAction action = (KeybindAction) field.get(null);
+					if (action != null) {
+						actions.add(action);
 					}
 				} catch (IllegalAccessException e) {
-					// Every KeyMapping field here is public static final and already initialized
-					// by the time this runs (it's assigned near the bottom of the class) - this
-					// can't actually happen.
+					// Every KeybindAction field here is public static final and already
+					// initialized by the time this runs - this can't actually happen.
 					throw new AssertionError(e);
 				}
 			}
 		}
-		return mappings.toArray(new KeyMapping[0]);
+		return actions.toArray(new KeybindAction[0]);
 	}
 
 	/**
-	 * Refreshes every keybinding's "was it just pressed" state for this tick - {@link
-	 * AccessibilityTickHandler#onEndTick} calls this exactly once per tick, unconditionally,
-	 * before anything branches on mode or screen state. That unconditional timing is what
-	 * makes {@link #pressed} immune to the backlog {@code consumeClick()} suffers: every
-	 * key's held/not-held state gets updated every tick no matter what else is going on, so a
-	 * key pressed while something was blocking it is already accounted for (not a "fresh"
-	 * press) by the time whatever was blocking it stops.
+	 * Rebuilds the primary-key index {@link #updateAll} resolves against, and clears every
+	 * action's held/just-pressed state. Called once at startup ({@link #register}), once more
+	 * after {@link KeybindConfig#load} overlays saved bindings onto the defaults, and after any
+	 * rebind/unbind/reset made through {@link KeybindScreen} - all rare enough that rebuilding
+	 * the whole index each time is simpler than patching it incrementally, and clearing press
+	 * state alongside it avoids a stale "held" flag surviving a binding change (harmless in
+	 * practice regardless, since nothing reads {@link #pressed}/{@code isDown()} while a screen
+	 * is open - see {@link KeybindScreen}).
 	 */
-	public static void updateAll() {
-		for (KeyMapping mapping : ALL_MAPPINGS) {
-			boolean down = mapping.isDown();
-			boolean wasDown = heldLastTick.getOrDefault(mapping, false);
-			justPressed.put(mapping, down && !wasDown);
-			heldLastTick.put(mapping, down);
+	public static void rebuildIndex() {
+		BY_PRIMARY_KEY.clear();
+		for (KeybindAction action : ALL_ACTIONS) {
+			action.resetPressState();
+			if (!action.current().isUnbound()) {
+				BY_PRIMARY_KEY.computeIfAbsent(action.current().key(), key -> new ArrayList<>()).add(action);
+			}
 		}
 	}
 
-	/** True only on the tick {@code mapping} transitioned from up to down - see {@link #updateAll}. */
-	public static boolean pressed(KeyMapping mapping) {
-		return justPressed.getOrDefault(mapping, false);
+	/**
+	 * Refreshes every action's "was it just pressed" state for this tick - {@link
+	 * AccessibilityTickHandler#onEndTick} calls this exactly once per tick, unconditionally,
+	 * matching the old vanilla-{@code KeyMapping}-based version's own backlog-proofing timing.
+	 *
+	 * <p>For each primary key currently held down, every action bound to it is a candidate only
+	 * if its {@link KeybindContext} is presently eligible and every modifier bit it requires is
+	 * currently held (a subset check - a plain, unmodified binding is trivially satisfied by any
+	 * held-modifier state). Among the candidates, {@link #isMoreSpecific} picks the winner - most
+	 * modifier bits first, then (on a tie) a narrower, non-GLOBAL context beats GLOBAL; every
+	 * other action sharing that key is held false for the tick. The modifier-bits rule is what
+	 * lets e.g. a plain {@link #LOOK_LEFT} (GLOBAL, no modifiers) and a chorded {@link
+	 * #SNAP_TURN_LEFT} (NORMAL_LOOK, Alt) share the same default key without one having to know
+	 * the other exists; the context tiebreak is what lets two equally-unmodified actions share a
+	 * key too, e.g. {@link #LOOK_LEFT} (GLOBAL) and {@link #BUILD_CURSOR_LEFT} (BUILD_MODE) -
+	 * without it, which of two zero-modifier bindings on the same key wins would depend on
+	 * {@link #ALL_ACTIONS} declaration order instead of which one is actually the narrower,
+	 * more-specific match for the current context. See {@link KeybindContext}'s own doc for the
+	 * full reasoning.
+	 */
+	public static void updateAll() {
+		Minecraft client = Minecraft.getInstance();
+		Window window = client.getWindow();
+		int heldMods = currentModifierBitmask(window);
+		for (Map.Entry<Integer, List<KeybindAction>> entry : BY_PRIMARY_KEY.entrySet()) {
+			boolean keyDown = InputConstants.isKeyDown(window, entry.getKey());
+			KeybindAction winner = null;
+			if (keyDown) {
+				for (KeybindAction action : entry.getValue()) {
+					Keybind keybind = action.current();
+					if (!action.isEligibleNow()) {
+						continue;
+					}
+					if ((keybind.modifiers() & heldMods) != keybind.modifiers()) {
+						continue;
+					}
+					if (winner == null || isMoreSpecific(action, winner)) {
+						winner = action;
+					}
+				}
+			}
+			for (KeybindAction action : entry.getValue()) {
+				action.updateHeld(action == winner);
+			}
+		}
+	}
+
+	/** Whether {@code candidate} should win over {@code current} for the same primary key - see {@link #updateAll}. */
+	private static boolean isMoreSpecific(KeybindAction candidate, KeybindAction current) {
+		int candidateBits = Integer.bitCount(candidate.current().modifiers());
+		int currentBits = Integer.bitCount(current.current().modifiers());
+		if (candidateBits != currentBits) {
+			return candidateBits > currentBits;
+		}
+		return candidate.context() != KeybindContext.GLOBAL && current.context() == KeybindContext.GLOBAL;
+	}
+
+	/** True only on the tick {@code action} transitioned from up to down - see {@link #updateAll}. */
+	public static boolean pressed(KeybindAction action) {
+		return action.isJustPressed();
 	}
 
 	/** Called when the player unloads, so a key held across a world/session boundary doesn't leak in as a stale state. */
 	public static void resetPressState() {
-		heldLastTick.clear();
-		justPressed.clear();
+		for (KeybindAction action : ALL_ACTIONS) {
+			action.resetPressState();
+		}
 	}
 
-	/**
-	 * Whether the mod's own secondary-action modifier is held, for the handful of dual-purpose
-	 * keys where Shift genuinely isn't safe to use - see {@link #isShiftDown} for why Shift is
-	 * the default for most of this mod's other dual-purpose keys, and only these are the
-	 * exception:
-	 *
-	 * <ul>
-	 * <li>Snap-turn ({@link #LOOK_LEFT}/{@link #LOOK_RIGHT}/{@link #LOOK_UP}/{@link #LOOK_DOWN}) -
-	 * held continuously while turning, often while also walking, so Shift here would mean
-	 * crouching for as long as you're turning.
-	 * <li>{@link #BUILD_CYCLE_FACING}'s reverse - {@link #BUILD_BREAK} already permanently
-	 * occupies Right Shift as Build Mode's hold-to-mine key, so using Shift here too would mean
-	 * holding Right Shift to mine and tapping this key would silently reverse the cycle instead
-	 * of advancing it.
-	 * <li>{@link #TRAIL}'s mark action - Shift on this key already means "walk the trail back
-	 * automatically", a third, unrelated meaning; Alt keeps the destructive "clear and restart
-	 * the trail here" action off a plain tap and off Shift's already-claimed meaning both.
-	 * </ul>
-	 */
-	public static boolean isModifierDown(Minecraft client) {
-		return InputConstants.isKeyDown(client.getWindow(), GLFW.GLFW_KEY_LEFT_ALT)
-				|| InputConstants.isKeyDown(client.getWindow(), GLFW.GLFW_KEY_RIGHT_ALT);
+	private static int currentModifierBitmask(Window window) {
+		int mods = 0;
+		if (InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT_SHIFT) || InputConstants.isKeyDown(window, GLFW.GLFW_KEY_RIGHT_SHIFT)) {
+			mods |= GLFW.GLFW_MOD_SHIFT;
+		}
+		if (InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT_CONTROL) || InputConstants.isKeyDown(window, GLFW.GLFW_KEY_RIGHT_CONTROL)) {
+			mods |= GLFW.GLFW_MOD_CONTROL;
+		}
+		if (InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT_ALT) || InputConstants.isKeyDown(window, GLFW.GLFW_KEY_RIGHT_ALT)) {
+			mods |= GLFW.GLFW_MOD_ALT;
+		}
+		if (InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT_SUPER) || InputConstants.isKeyDown(window, GLFW.GLFW_KEY_RIGHT_SUPER)) {
+			mods |= GLFW.GLFW_MOD_SUPER;
+		}
+		return mods;
 	}
 
-	/**
-	 * Whether Shift is held - the default modifier for this mod's dual-purpose keys ({@link
-	 * #NARRATE_COORDINATES}, {@link #NARRATE_HEALTH}, {@link #NARRATE_BEARING}, {@link
-	 * #NARRATE_TIME}, {@link #WATER_ESCAPE}, {@link #TRAIL}, {@link #SCANNER_TARGET},
-	 * {@link #PLACE_MARKER}'s name-item layering), each a one-shot press rather than something
-	 * held during movement, so
-	 * a brief, incidental crouch while pressing it doesn't cost anything - and Shift sits right
-	 * next to several of these keys (Enter especially), which is more comfortable to reach than
-	 * Alt. See {@link #isModifierDown} for the couple of keys where that incidental crouch
-	 * actually matters and Alt is used instead.
-	 */
-	public static boolean isShiftDown(Minecraft client) {
-		return InputConstants.isKeyDown(client.getWindow(), GLFW.GLFW_KEY_LEFT_SHIFT)
-				|| InputConstants.isKeyDown(client.getWindow(), GLFW.GLFW_KEY_RIGHT_SHIFT);
+	public static boolean isModifierKeycode(int key) {
+		for (int modifierKey : MODIFIER_KEYS) {
+			if (modifierKey == key) {
+				return true;
+			}
+		}
+		return false;
 	}
 }

@@ -259,9 +259,8 @@ public final class BuildModeController {
 	}
 
 	/**
-	 * Alt+I while Build Mode is already active (see {@link AccessibilityTickHandler}'s
-	 * {@link ClientKeyBindings#TOGGLE_BUILD_MODE} handling, which routes here instead of
-	 * {@link #toggle} specifically for that combination) - snaps the cursor straight to the
+	 * {@link ClientKeyBindings#BUILD_MODE_RECENTER_CURSOR} (Alt+I by default, only rebindable
+	 * within Build Mode - see its {@link KeybindContext#BUILD_MODE}) - snaps the cursor straight to the
 	 * player's current position and re-anchors the {@link #GRID_RADIUS}-block movement grid
 	 * there too, so the cursor can still roam the full radius in every direction from
 	 * wherever the player has walked to since toggling Build Mode on, rather than staying
@@ -288,16 +287,21 @@ public final class BuildModeController {
 			snapYawTo(player, facing);
 		}
 
-		boolean leftPressed = ClientKeyBindings.pressed(ClientKeyBindings.LOOK_LEFT);
-		boolean rightPressed = ClientKeyBindings.pressed(ClientKeyBindings.LOOK_RIGHT);
+		boolean leftPressed = ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_LEFT);
+		boolean rightPressed = ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_RIGHT);
+		boolean reorientLeftPressed = ClientKeyBindings.pressed(ClientKeyBindings.BUILD_REORIENT_LEFT);
+		boolean reorientRightPressed = ClientKeyBindings.pressed(ClientKeyBindings.BUILD_REORIENT_RIGHT);
 
 		boolean moved = false;
-		if (ClientKeyBindings.isModifierDown(client) && (leftPressed || rightPressed)) {
-			// Alt+Left/Right reorients instead of moving - see cycleOrientation.
-			if (leftPressed) {
+		if (reorientLeftPressed || reorientRightPressed) {
+			// BUILD_REORIENT_LEFT/RIGHT reorients instead of moving - see cycleOrientation. Their
+			// own KeybindContext.BUILD_MODE plus ClientKeyBindings.updateAll()'s specificity
+			// resolution already keeps BUILD_CURSOR_LEFT/RIGHT (leftPressed/rightPressed above)
+			// from also firing on the same default Alt+Left/Right press - see that method's doc.
+			if (reorientLeftPressed) {
 				cycleOrientation(client, player, -1);
 			}
-			if (rightPressed) {
+			if (reorientRightPressed) {
 				cycleOrientation(client, player, 1);
 			}
 		} else {
@@ -308,10 +312,10 @@ public final class BuildModeController {
 				moved |= tryMove(client, player, cursor.relative(facing.getClockWise()));
 			}
 		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.LOOK_UP)) {
+		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_UP)) {
 			moved |= tryMove(client, player, cursor.relative(facing));
 		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.LOOK_DOWN)) {
+		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_DOWN)) {
 			moved |= tryMove(client, player, cursor.relative(facing.getOpposite()));
 		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.PAGE_UP)) {
@@ -331,8 +335,10 @@ public final class BuildModeController {
 			place(client, player);
 		}
 
-		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CYCLE_FACING)) {
-			cyclePlacementFacing(client, ClientKeyBindings.isModifierDown(client) ? -1 : 1);
+		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CYCLE_FACING_REVERSE)) {
+			cyclePlacementFacing(client, -1);
+		} else if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CYCLE_FACING)) {
+			cyclePlacementFacing(client, 1);
 		}
 
 		boolean breakDown = ClientKeyBindings.BUILD_BREAK.isDown();
