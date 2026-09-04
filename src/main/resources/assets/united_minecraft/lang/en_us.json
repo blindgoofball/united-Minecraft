@@ -712,5 +712,14 @@
 	"united_minecraft.narrate.material.tube_coral_fan": "A fan-shaped cluster of deep blue coral.",
 	"united_minecraft.narrate.material.dead_tube_coral_block": "A solid block of bleached, grayish-tan coral with a mottled texture.",
 	"united_minecraft.narrate.material.dead_tube_coral": "A cluster of tall, tube-like coral stalks, bleached to a grayish tan.",
-	"united_minecraft.narrate.material.dead_tube_coral_fan": "A fan-shaped cluster of coral, bleached to a grayish tan."
+	"united_minecraft.narrate.material.dead_tube_coral_fan": "A fan-shaped cluster of coral, bleached to a grayish tan.",
+
+	"united_minecraft.narrate.material.cinnabar": "A deep brick-red stone with a mottled texture, cut plain or into bricks.",
+	"united_minecraft.narrate.material.chiseled_cinnabar": "A deep brick-red stone carved with a decorative concentric-square border pattern.",
+	"united_minecraft.narrate.material.polished_cinnabar": "A deep brick-red stone, cut smooth and even.",
+	"united_minecraft.narrate.material.sulfur": "A warm mustard-yellow stone with a mottled texture, cut plain or into bricks.",
+	"united_minecraft.narrate.material.potent_sulfur": "A bright, saturated yellow stone with a mottled texture.",
+	"united_minecraft.narrate.material.chiseled_sulfur": "A warm mustard-yellow stone carved with a decorative concentric-square border pattern.",
+	"united_minecraft.narrate.material.polished_sulfur": "A warm mustard-yellow stone, cut smooth and even.",
+	"united_minecraft.narrate.material.sulfur_spike": "A tall, tapering yellow crystal spike."
 }
