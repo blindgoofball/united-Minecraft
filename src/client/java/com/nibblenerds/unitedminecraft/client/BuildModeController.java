@@ -487,6 +487,17 @@ public final class BuildModeController {
 
 		InteractionHand bucketHand = bucketHand(player);
 		if (bucketHand != null) {
+			// Real right-clicks let the target block react first (a cauldron filling/emptying via
+			// CauldronInteraction, a campfire hissing out) before ever falling back to the item's
+			// own generic behavior - see interactWithCursor's doc. Buckets went straight to the
+			// untargeted fill/scoop path below and skipped that entirely, so a bucket could never
+			// interact with anything whose bucket behavior lives in its own useItemOn rather than
+			// vanilla's generic LiquidBlockContainer/BucketPickup placement rules - a cauldron
+			// being the main one, since it's neither.
+			if (!player.level().getBlockState(cursor).canBeReplaced() && interactWithCursor(client, player)) {
+				narrateAfterAction(client, player);
+				return;
+			}
 			startBucketUse(client, player, bucketHand);
 			return;
 		}
