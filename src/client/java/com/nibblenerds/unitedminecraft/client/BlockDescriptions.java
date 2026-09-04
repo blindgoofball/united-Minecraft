@@ -105,6 +105,13 @@ public final class BlockDescriptions {
 		if (path.endsWith("_sapling") || path.endsWith("_propagule")) {
 			return "sapling";
 		}
+		// Unlike stone/stone_bricks or tuff/tuff_bricks (same material, just a different cut -
+		// fine to share one description), mud_bricks is a dried, warm tan brick while plain mud
+		// is a dark, wet block - different enough in color that collapsing them into one "mud"
+		// key the way the generic _bricks suffix normally would is actually wrong here.
+		if (path.startsWith("mud_brick")) {
+			return "mud_bricks";
+		}
 
 		// Checked against the untouched registry path, not the partially-reduced key: by the
 		// time a shape suffix like "_bricks" has already been stripped from e.g.
