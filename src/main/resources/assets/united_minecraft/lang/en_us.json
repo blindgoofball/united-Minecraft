@@ -435,5 +435,25 @@
 	"united_minecraft.narrate.material.diorite": "A light gray stone speckled with dark salt-and-pepper flecks.",
 	"united_minecraft.narrate.material.polished_diorite": "A pale gray stone speckled with dark flecks, cut smooth and even.",
 	"united_minecraft.narrate.material.andesite": "A muted gray-brown stone with a fine speckled texture.",
-	"united_minecraft.narrate.material.polished_andesite": "A muted gray-brown stone, cut smooth and even, with a fine speckled texture."
+	"united_minecraft.narrate.material.polished_andesite": "A muted gray-brown stone, cut smooth and even, with a fine speckled texture.",
+
+	"united_minecraft.narrate.material.gold_ore": "Gray stone flecked with bright golden-yellow ore clusters.",
+	"united_minecraft.narrate.material.deepslate_gold_ore": "Dark bluish-gray deepslate flecked with bright golden-yellow ore clusters.",
+	"united_minecraft.narrate.material.iron_ore": "Gray stone flecked with pale peach-tan ore clusters.",
+	"united_minecraft.narrate.material.deepslate_iron_ore": "Dark bluish-gray deepslate flecked with pale peach-tan ore clusters.",
+	"united_minecraft.narrate.material.coal_ore": "Gray stone flecked with dark, sooty black clusters.",
+	"united_minecraft.narrate.material.deepslate_coal_ore": "Dark bluish-gray deepslate flecked with sooty black clusters.",
+	"united_minecraft.narrate.material.diamond_ore": "Gray stone flecked with bright cyan-white crystal clusters.",
+	"united_minecraft.narrate.material.deepslate_diamond_ore": "Dark bluish-gray deepslate flecked with bright cyan-white crystal clusters.",
+	"united_minecraft.narrate.material.emerald_ore": "Gray stone flecked with vivid green gem clusters.",
+	"united_minecraft.narrate.material.deepslate_emerald_ore": "Dark bluish-gray deepslate flecked with vivid green gem clusters.",
+	"united_minecraft.narrate.material.lapis_ore": "Gray stone flecked with deep blue mineral clusters.",
+	"united_minecraft.narrate.material.deepslate_lapis_ore": "Dark bluish-gray deepslate flecked with deep blue mineral clusters.",
+	"united_minecraft.narrate.material.redstone_ore": "Gray stone flecked with bright red mineral clusters.",
+	"united_minecraft.narrate.material.deepslate_redstone_ore": "Dark bluish-gray deepslate flecked with bright red mineral clusters.",
+	"united_minecraft.narrate.material.copper_ore": "Gray stone flecked with orange and pale teal-green clusters.",
+	"united_minecraft.narrate.material.deepslate_copper_ore": "Dark bluish-gray deepslate flecked with orange and pale teal-green clusters.",
+	"united_minecraft.narrate.material.nether_gold_ore": "Dark reddish-brown netherrack flecked with bright golden-yellow clusters.",
+	"united_minecraft.narrate.material.nether_quartz_ore": "Dark reddish-brown netherrack flecked with streaks of pale cream-white quartz.",
+	"united_minecraft.narrate.material.ancient_debris": "A dark brownish-purple metallic block marbled with lighter tan streaks."
 }
