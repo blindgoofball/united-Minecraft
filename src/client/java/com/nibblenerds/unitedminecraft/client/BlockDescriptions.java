@@ -112,14 +112,19 @@ public final class BlockDescriptions {
 		if (path.startsWith("mud_brick")) {
 			return "mud_bricks";
 		}
+		// Waxing a copper block (or lightning rod) is purely a gameplay flag that stops further
+		// oxidation - it never changes the texture (confirmed: there's no separate waxed_*
+		// texture file for any of them), so a waxed and unwaxed block of the same oxidation
+		// stage should share the exact same description.
+		String unwaxedPath = path.startsWith("waxed_") ? path.substring("waxed_".length()) : path;
 
-		// Checked against the untouched registry path, not the partially-reduced key: by the
-		// time a shape suffix like "_bricks" has already been stripped from e.g.
+		// Checked against the untouched (but de-waxed) registry path, not the partially-reduced
+		// key: by the time a shape suffix like "_bricks" has already been stripped from e.g.
 		// "red_nether_bricks", there's nothing left for a "starts with red_nether_brick" check
 		// to match against, and the exception would silently stop working.
-		boolean skipColorStrip = COLOR_STRIP_EXCEPTIONS.stream().anyMatch(path::startsWith);
+		boolean skipColorStrip = COLOR_STRIP_EXCEPTIONS.stream().anyMatch(unwaxedPath::startsWith);
 
-		String key = normalizeWallInfix(path);
+		String key = normalizeWallInfix(unwaxedPath);
 		key = normalizeIrregularPlural(key);
 		key = stripShapeSuffix(key);
 
