@@ -2,6 +2,7 @@ package com.nibblenerds.unitedminecraft.client;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
@@ -9,6 +10,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
@@ -16,6 +18,7 @@ import java.util.function.Predicate;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -83,6 +86,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BedPart;
 import net.minecraft.world.level.block.state.properties.ChestType;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
+import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
@@ -987,9 +992,16 @@ public final class ScannerController {
 			case ITEMS -> scanEntities(player, entity -> entity instanceof ItemEntity);
 			case TREES -> scanTrees(player);
 			// Deliberately not x-ray: OreDetection.isExposed only counts ore already
-			// bordering air or a fluid, i.e. actually visible through a gap, not buried.
-			case ORES -> scanBlocks(player, (pos, state) ->
-					OreDetection.isValuableOre(state) && OreDetection.isExposed(player.level(), pos, player.getEyePosition()));
+			// bordering air or a fluid, i.e. actually visible through a gap, not buried. Routed
+			// through a FastBlockAccess (see its own doc) rather than Level#getBlockState
+			// directly - isExposed's six-neighbor check adds up fast across every valuable-ore
+			// block in a large scanRange.
+			case ORES -> {
+				FastBlockAccess fastAccess = new FastBlockAccess(player.level());
+				Vec3 eye = player.getEyePosition();
+				yield scanBlocks(player, (pos, state) ->
+						OreDetection.isValuableOre(state) && OreDetection.isExposed(player.level(), fastAccess::getBlockState, pos, eye));
+			}
 			case LIQUIDS -> scanLiquids(player);
 			case CROPS -> scanCrops(player);
 			case SEARCH -> scanSearch(player);
@@ -1081,23 +1093,22 @@ public final class ScannerController {
 		Set<BlockPos> endPortalFramePositions = new HashSet<>();
 		List<ScannerItem> results = new ArrayList<>();
 
-		for (BlockPos pos : BlockPos.betweenClosed(center.offset(-r, -r, -r), center.offset(r, r, r))) {
-			BlockState state = level.getBlockState(pos);
+		forEachBlockInRange(level, center, r, (pos, state) -> {
 			Block block = state.getBlock();
 			if (block instanceof NetherPortalBlock) {
 				netherPortalPositions.add(pos.immutable());
-				continue;
+				return true;
 			}
 			if (block instanceof EndPortalBlock) {
 				endPortalPositions.add(pos.immutable());
-				continue;
+				return true;
 			}
 			if (block instanceof EndPortalFrameBlock) {
 				endPortalFramePositions.add(pos.immutable());
-				continue;
+				return true;
 			}
 			if (!mechanismMatches(state)) {
-				continue;
+				return true;
 			}
 			double distance = eye.distanceTo(Vec3.atCenterOf(pos));
 			if (distance <= scanRange()) {
@@ -1105,7 +1116,8 @@ public final class ScannerController {
 				String label = NamedBlockController.findAt(level.dimension(), immutable);
 				results.add(new ScannerItem(immutable, null, distance, label));
 			}
-		}
+			return true;
+		});
 
 		addPortalClusters(eye, netherPortalPositions, results);
 		addPortalClusters(eye, endPortalPositions, results);
@@ -1245,25 +1257,95 @@ public final class ScannerController {
 		return Component.translatable("united_minecraft.narrate.scanner_height", height);
 	}
 
+	/** Returns {@code true} to keep {@link #forEachBlockInRange} scanning, {@code false} to stop immediately. */
+	@FunctionalInterface
+	private interface BlockVisitor {
+		boolean visit(BlockPos pos, BlockState state);
+	}
+
+	/**
+	 * Visits every block position within the cube spanning {@code r} of {@code center},
+	 * skipping whole chunk sections already known to contain nothing but air ({@link
+	 * LevelChunkSection#hasOnlyAir()}) instead of reading each of their 4096 positions one at
+	 * a time via {@link Level#getBlockState} - at a large {@link #scanRange()}, the
+	 * overwhelming majority of the cube is sky or cave-air sections, and the naive per-position
+	 * {@code getBlockState} scan this replaced scaled with the cube of the range (doubling
+	 * scanRange meant 8x the work). {@code visitor} returns {@code false} to stop scanning
+	 * immediately, used by {@link #scanBlocksAny}'s first-match probe. Chunks outside the
+	 * client's loaded area are silently skipped rather than triggering a load.
+	 */
+	private static void forEachBlockInRange(Level level, BlockPos center, int r, BlockVisitor visitor) {
+		int minX = center.getX() - r;
+		int maxX = center.getX() + r;
+		int minY = center.getY() - r;
+		int maxY = center.getY() + r;
+		int minZ = center.getZ() - r;
+		int maxZ = center.getZ() + r;
+
+		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+		FastBlockAccess fastAccess = new FastBlockAccess(level);
+		for (int cx = minX >> 4; cx <= maxX >> 4; cx++) {
+			for (int cz = minZ >> 4; cz <= maxZ >> 4; cz++) {
+				ChunkAccess chunk = fastAccess.chunkAt(cx, cz);
+				if (chunk == null) {
+					continue;
+				}
+				int chunkMinX = Math.max(minX, cx << 4);
+				int chunkMaxX = Math.min(maxX, (cx << 4) + 15);
+				int chunkMinZ = Math.max(minZ, cz << 4);
+				int chunkMaxZ = Math.min(maxZ, (cz << 4) + 15);
+
+				LevelChunkSection[] sections = chunk.getSections();
+				int minSection = Math.max(chunk.getSectionIndex(minY), 0);
+				int maxSection = Math.min(chunk.getSectionIndex(maxY), sections.length - 1);
+				for (int si = minSection; si <= maxSection; si++) {
+					LevelChunkSection section = sections[si];
+					if (section.hasOnlyAir()) {
+						continue;
+					}
+					int baseY = chunk.getSectionYFromSectionIndex(si) << 4;
+					int sectionMinY = Math.max(minY, baseY);
+					int sectionMaxY = Math.min(maxY, baseY + 15);
+					for (int y = sectionMinY; y <= sectionMaxY; y++) {
+						for (int x = chunkMinX; x <= chunkMaxX; x++) {
+							for (int z = chunkMinZ; z <= chunkMaxZ; z++) {
+								BlockState state = section.getBlockState(x & 15, y & 15, z & 15);
+								if (!visitor.visit(pos.set(x, y, z), state)) {
+									return;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
 	private static List<ScannerItem> scanBlocks(LocalPlayer player, BiPredicate<BlockPos, BlockState> predicate) {
 		Level level = player.level();
 		Vec3 eye = player.getEyePosition();
 		BlockPos center = player.blockPosition();
 		int r = (int) scanRange();
+		double rangeSqr = scanRange() * scanRange();
 
 		List<ScannerItem> results = new ArrayList<>();
-		for (BlockPos pos : BlockPos.betweenClosed(center.offset(-r, -r, -r), center.offset(r, r, r))) {
-			BlockState state = level.getBlockState(pos);
-			if (!predicate.test(pos, state)) {
-				continue;
+		forEachBlockInRange(level, center, r, (pos, state) -> {
+			// Distance first, predicate second: a predicate like Ores'/Search's isExposed() does
+			// up to six raycasts, and skipping it for the ~48% of the bounding cube that falls
+			// outside the actual spherical scanRange() (a cube's volume is roughly double its
+			// inscribed sphere's) avoids most of that cost outright instead of throwing the work
+			// away after the fact.
+			double distanceSqr = eye.distanceToSqr(Vec3.atCenterOf(pos));
+			if (distanceSqr > rangeSqr) {
+				return true;
 			}
-			double distance = eye.distanceTo(Vec3.atCenterOf(pos));
-			if (distance <= scanRange()) {
+			if (predicate.test(pos, state)) {
 				BlockPos immutable = pos.immutable();
 				String label = NamedBlockController.findAt(level.dimension(), immutable);
-				results.add(new ScannerItem(immutable, null, distance, label));
+				results.add(new ScannerItem(immutable, null, Math.sqrt(distanceSqr), label));
 			}
-		}
+			return true;
+		});
 		results.sort(Comparator.comparingDouble(ScannerItem::distance));
 		return results;
 	}
@@ -1278,17 +1360,20 @@ public final class ScannerController {
 		Vec3 eye = player.getEyePosition();
 		BlockPos center = player.blockPosition();
 		int r = (int) scanRange();
+		double rangeSqr = scanRange() * scanRange();
 
-		for (BlockPos pos : BlockPos.betweenClosed(center.offset(-r, -r, -r), center.offset(r, r, r))) {
-			BlockState state = level.getBlockState(pos);
-			if (!predicate.test(pos, state)) {
-				continue;
-			}
-			if (eye.distanceTo(Vec3.atCenterOf(pos)) <= scanRange()) {
+		boolean[] found = {false};
+		forEachBlockInRange(level, center, r, (pos, state) -> {
+			if (eye.distanceToSqr(Vec3.atCenterOf(pos)) > rangeSqr) {
 				return true;
 			}
-		}
-		return false;
+			if (predicate.test(pos, state)) {
+				found[0] = true;
+				return false;
+			}
+			return true;
+		});
+		return found[0];
 	}
 
 	/**
@@ -1304,21 +1389,23 @@ public final class ScannerController {
 	private static boolean categoryHasAny(ScannerCategory category, LocalPlayer player) {
 		Level level = player.level();
 		Vec3 eye = player.getEyePosition();
+		FastBlockAccess fastAccess = new FastBlockAccess(level);
 		return switch (category) {
 			case INTERACTABLES -> scanBlocksAny(player, interactablesPredicate(player));
 			case MECHANISMS -> scanBlocksAny(player, (pos, state) -> mechanismMatches(state));
 			// Deliberately not x-ray, matching scan()'s own ORES case.
-			case ORES -> scanBlocksAny(player, (pos, state) -> OreDetection.isValuableOre(state) && OreDetection.isExposed(level, pos, eye));
+			case ORES -> scanBlocksAny(player, (pos, state) ->
+					OreDetection.isValuableOre(state) && OreDetection.isExposed(level, fastAccess::getBlockState, pos, eye));
 			// isExposed is evaluated per-block here exactly as it is inside scanLiquids's own
 			// per-cluster search, so "any water/lava block passes" is exactly equivalent to
 			// "some cluster has an exposed member" for existence purposes - clustering only
 			// changes how many entries get reported, never whether any given block qualifies.
 			case LIQUIDS -> scanBlocksAny(player, (pos, state) ->
-					(state.is(Blocks.WATER) || state.is(Blocks.LAVA)) && OreDetection.isExposed(level, pos, eye));
+					(state.is(Blocks.WATER) || state.is(Blocks.LAVA)) && OreDetection.isExposed(level, fastAccess::getBlockState, pos, eye));
 			case CROPS -> scanBlocksAny(player, (pos, state) -> cropMatches(state.getBlock()));
 			case SEARCH -> !searchTerm.isBlank() && scanBlocksAny(player, (pos, state) -> !state.isAir()
 					&& matchesSearchTerm(state, searchTerm.toLowerCase(Locale.ROOT))
-					&& OreDetection.isExposed(level, pos, eye));
+					&& OreDetection.isExposed(level, fastAccess::getBlockState, pos, eye));
 			case TREES -> scanBlocksAny(player, (pos, state) -> state.is(BlockTags.LOGS) && hasNearbyLeavesAt(level, pos));
 			default -> !scan(category, player).isEmpty();
 		};
@@ -1347,9 +1434,11 @@ public final class ScannerController {
 			return List.of();
 		}
 		String term = searchTerm.toLowerCase(Locale.ROOT);
+		FastBlockAccess fastAccess = new FastBlockAccess(player.level());
+		Vec3 eye = player.getEyePosition();
 		return scanBlocks(player, (pos, state) -> !state.isAir()
 				&& matchesSearchTerm(state, term)
-				&& OreDetection.isExposed(player.level(), pos, player.getEyePosition()));
+				&& OreDetection.isExposed(player.level(), fastAccess::getBlockState, pos, eye));
 	}
 
 	/** Matches either the block's localized display name or its registry id (underscores treated as spaces) against {@code term}. */
@@ -1383,11 +1472,12 @@ public final class ScannerController {
 		int r = (int) scanRange();
 
 		Set<BlockPos> logPositions = new HashSet<>();
-		for (BlockPos pos : BlockPos.betweenClosed(center.offset(-r, -r, -r), center.offset(r, r, r))) {
-			if (level.getBlockState(pos).is(BlockTags.LOGS)) {
+		forEachBlockInRange(level, center, r, (pos, state) -> {
+			if (state.is(BlockTags.LOGS)) {
 				logPositions.add(pos.immutable());
 			}
-		}
+			return true;
+		});
 
 		List<ScannerItem> results = new ArrayList<>();
 		Set<BlockPos> visited = new HashSet<>();
@@ -1425,49 +1515,103 @@ public final class ScannerController {
 		// into one body with an ambiguous name.
 		Set<BlockPos> waterPositions = new HashSet<>();
 		Set<BlockPos> lavaPositions = new HashSet<>();
-		for (BlockPos pos : BlockPos.betweenClosed(center.offset(-r, -r, -r), center.offset(r, r, r))) {
-			BlockState state = level.getBlockState(pos);
+		double rangeSqr = scanRange() * scanRange();
+		forEachBlockInRange(level, center, r, (pos, state) -> {
+			// Unlike scanBlocks, nothing downstream filters these candidates by distance before
+			// flood-filling them into bodies - an ocean or lake is one connected structure, so
+			// without this check every water block in the whole bounding cube (however far past
+			// scanRange() the body actually extends) would get pulled into the flood fill and
+			// sorted, not just the part actually in range.
+			if (eye.distanceToSqr(Vec3.atCenterOf(pos)) > rangeSqr) {
+				return true;
+			}
 			if (state.is(Blocks.WATER)) {
 				waterPositions.add(pos.immutable());
 			} else if (state.is(Blocks.LAVA)) {
 				lavaPositions.add(pos.immutable());
 			}
-		}
+			return true;
+		});
 
+		FastBlockAccess fastAccess = new FastBlockAccess(level);
 		List<ScannerItem> results = new ArrayList<>();
-		addLiquidClusters(level, eye, waterPositions, results);
-		addLiquidClusters(level, eye, lavaPositions, results);
+		addLiquidClusters(level, fastAccess, eye, waterPositions, results);
+		addLiquidClusters(level, fastAccess, eye, lavaPositions, results);
 		results.sort(Comparator.comparingDouble(ScannerItem::distance));
 		return results;
 	}
 
 	/**
 	 * Floods {@code positions} (one fluid type at a time, already range-limited) into connected
-	 * bodies via {@link #floodFillCluster}, then reports each body once, at whichever of its
-	 * blocks is both nearest the player and actually {@link OreDetection#isExposed exposed} -
-	 * skipping a body entirely if none of it is, the same "don't x-ray" rule Ores follows (lava
-	 * sealed behind unmined stone shouldn't show up until there's actually a way to see it).
+	 * bodies, then reports each body once, at whichever of its blocks is both nearest the
+	 * player and actually {@link OreDetection#isExposed exposed} - skipping a body entirely if
+	 * none of it is, the same "don't x-ray" rule Ores follows (lava sealed behind unmined stone
+	 * shouldn't show up until there's actually a way to see it).
+	 *
+	 * <p>Expands best-first (a priority queue ordered by distance to the player) instead of a
+	 * plain flood fill: the block popped is always whichever undiscovered one is closest, so the
+	 * first one found exposed is already the globally nearest exposed point in the body - a real
+	 * lake or ocean can be far larger than {@link #scanRange()}, and this only ever walks the
+	 * part of it between the player and the nearest visible water, never the far side. Once an
+	 * answer is found, whatever's left of the body still needs marking visited (so a later
+	 * {@code start} elsewhere in the same body isn't mistaken for the start of a separate one) -
+	 * that remainder is drained through a plain queue instead, since neither distance ordering
+	 * nor further {@code isExposed} checks (each up to six raycasts) are useful once the body's
+	 * answer is already settled.
 	 */
-	private static void addLiquidClusters(Level level, Vec3 eye, Set<BlockPos> positions, List<ScannerItem> results) {
+	private static void addLiquidClusters(Level level, FastBlockAccess fastAccess, Vec3 eye, Set<BlockPos> positions, List<ScannerItem> results) {
 		Set<BlockPos> visited = new HashSet<>();
 		for (BlockPos start : positions) {
 			if (visited.contains(start)) {
 				continue;
 			}
-			Set<BlockPos> cluster = new HashSet<>();
-			floodFillCluster(start, positions, visited, cluster);
+			PriorityQueue<BlockPos> frontier =
+					new PriorityQueue<>(Comparator.comparingDouble(pos -> eye.distanceToSqr(Vec3.atCenterOf(pos))));
+			frontier.add(start);
+			visited.add(start);
 
-			List<BlockPos> byDistance = new ArrayList<>(cluster);
-			byDistance.sort(Comparator.comparingDouble(pos -> eye.distanceToSqr(Vec3.atCenterOf(pos))));
-			for (BlockPos pos : byDistance) {
-				double distance = eye.distanceTo(Vec3.atCenterOf(pos));
-				if (distance > scanRange()) {
+			ScannerItem found = null;
+			while (!frontier.isEmpty()) {
+				BlockPos pos = frontier.poll();
+				boolean exposed = OreDetection.isExposed(level, fastAccess::getBlockState, pos, eye);
+				// Expand this node's neighbors regardless of whether it's the answer - stopping
+				// without expanding the found node would leave anything reachable only through it
+				// (a narrow channel leading deeper into the same body, say) unmarked, and it would
+				// surface as a bogus second "lake" when the outer loop later reaches it as an
+				// unvisited start.
+				addFluidNeighbors(pos, positions, visited, frontier);
+				if (exposed) {
+					found = new ScannerItem(pos.immutable(), null, eye.distanceTo(Vec3.atCenterOf(pos)), null);
 					break;
 				}
-				if (OreDetection.isExposed(level, pos, eye)) {
-					results.add(new ScannerItem(pos.immutable(), null, distance, null));
-					break;
-				}
+			}
+			if (found == null) {
+				continue;
+			}
+			results.add(found);
+
+			Deque<BlockPos> remainder = new ArrayDeque<>(frontier);
+			while (!remainder.isEmpty()) {
+				addFluidNeighbors(remainder.poll(), positions, visited, remainder);
+			}
+		}
+	}
+
+	/**
+	 * Face-connected (6-connected, not the 26-connected face/edge/corner {@link
+	 * #floodFillCluster} uses for logs) neighbor expansion for {@link #addLiquidClusters} -
+	 * water and lava only ever spread from one block into another across a shared face, never
+	 * diagonally, so two fluid blocks that only touch at an edge or corner were never actually
+	 * part of the same flowing body to begin with. Restricting to real fluid-adjacency cuts the
+	 * neighbor checks a large connected body needs (a real lake or aquifer can run into the tens
+	 * of thousands of blocks) by more than 4x versus 26-connectivity, for the same clustering
+	 * result in every case except a body hand-placed to touch only at a diagonal corner.
+	 */
+	private static void addFluidNeighbors(BlockPos pos, Set<BlockPos> candidates, Set<BlockPos> visited, Collection<BlockPos> frontier) {
+		for (Direction direction : Direction.values()) {
+			BlockPos neighbor = pos.relative(direction);
+			if (candidates.contains(neighbor) && visited.add(neighbor)) {
+				frontier.add(neighbor);
 			}
 		}
 	}
@@ -1491,29 +1635,29 @@ public final class ScannerController {
 		Set<BlockPos> canePositions = new HashSet<>();
 		Set<BlockPos> kelpPositions = new HashSet<>();
 		List<ScannerItem> results = new ArrayList<>();
-		for (BlockPos pos : BlockPos.betweenClosed(center.offset(-r, -r, -r), center.offset(r, r, r))) {
-			BlockState state = level.getBlockState(pos);
+		forEachBlockInRange(level, center, r, (pos, state) -> {
 			Block block = state.getBlock();
 			if (block instanceof BambooStalkBlock) {
 				bambooPositions.add(pos.immutable());
-				continue;
+				return true;
 			}
 			if (block instanceof SugarCaneBlock) {
 				canePositions.add(pos.immutable());
-				continue;
+				return true;
 			}
 			if (block instanceof KelpBlock || block instanceof KelpPlantBlock) {
 				kelpPositions.add(pos.immutable());
-				continue;
+				return true;
 			}
 			if (!isCrop(block)) {
-				continue;
+				return true;
 			}
 			double distance = eye.distanceTo(Vec3.atCenterOf(pos));
 			if (distance <= scanRange()) {
 				results.add(new ScannerItem(pos.immutable(), null, distance, null));
 			}
-		}
+			return true;
+		});
 
 		addStalkClusters(eye, bambooPositions, results);
 		addStalkClusters(eye, canePositions, results);

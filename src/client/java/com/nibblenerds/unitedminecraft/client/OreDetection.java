@@ -1,5 +1,7 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import java.util.function.Function;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.tags.BlockItemTags;
@@ -8,6 +10,7 @@ import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
@@ -41,10 +44,23 @@ final class OreDetection {
 	}
 
 	static boolean isExposed(Level level, BlockPos pos, Vec3 eye) {
+		return isExposed(level, level::getBlockState, pos, eye);
+	}
+
+	/**
+	 * Same as {@link #isExposed(Level, BlockPos, Vec3)}, but reading neighbor block states
+	 * through {@code neighborLookup} instead of {@link Level#getBlockState} directly - a scanner
+	 * scan can call this thousands of times in one burst (six neighbors each), and {@link
+	 * FastBlockAccess} answers those without re-resolving the owning chunk from scratch on every
+	 * single one the way {@code Level#getBlockState} does. {@code level} itself is still needed
+	 * for the real raycast below, which has no such fast path.
+	 */
+	static boolean isExposed(Level level, Function<BlockPos, BlockState> neighborLookup, BlockPos pos, Vec3 eye) {
 		Vec3 center = Vec3.atCenterOf(pos);
+		FluidState fluidHere = neighborLookup.apply(pos).getFluidState();
 		for (Direction direction : Direction.values()) {
 			BlockPos neighborPos = pos.relative(direction);
-			BlockState neighborState = level.getBlockState(neighborPos);
+			BlockState neighborState = neighborLookup.apply(neighborPos);
 			// A torch, rail, slab, snow layer, or any other non-full-cube neighbor doesn't
 			// actually seal the face the way a real solid block does - only a genuinely solid,
 			// fully-opaque neighbor rules a face out here. isSolidRender() is the same check
@@ -53,6 +69,15 @@ final class OreDetection {
 			// real raycast below (hasLineOfSight) still has the final say either way - this is
 			// only a fast pre-filter, not the actual visibility test.
 			if (neighborState.isSolidRender() && neighborState.getFluidState().isEmpty()) {
+				continue;
+			}
+			// A neighbor filled with the exact same fluid isn't a real boundary either - it's
+			// the interior of the same body, not a face anything could ever be seen through.
+			// This only ever applies when pos itself is a fluid (ore is never one), so it can't
+			// change ore visibility - but without it, a block buried in the middle of a large
+			// lake or underground aquifer needed a real raycast in every direction that bordered
+			// more of that same lake, just to conclude (correctly) that none of it was visible.
+			if (!fluidHere.isEmpty() && neighborState.getFluidState().getType() == fluidHere.getType()) {
 				continue;
 			}
 			Vec3 facePoint = center.add(
