@@ -721,5 +721,22 @@
 	"united_minecraft.narrate.material.potent_sulfur": "A bright, saturated yellow stone with a mottled texture.",
 	"united_minecraft.narrate.material.chiseled_sulfur": "A warm mustard-yellow stone carved with a decorative concentric-square border pattern.",
 	"united_minecraft.narrate.material.polished_sulfur": "A warm mustard-yellow stone, cut smooth and even.",
-	"united_minecraft.narrate.material.sulfur_spike": "A tall, tapering yellow crystal spike."
+	"united_minecraft.narrate.material.sulfur_spike": "A tall, tapering yellow crystal spike.",
+
+	"united_minecraft.narrate.material.dispenser": "A gray stone block carved with a face and a dark central opening.",
+	"united_minecraft.narrate.material.dropper": "A gray stone block carved with a face and a small dark opening.",
+	"united_minecraft.narrate.material.hopper": "A dark gray metal funnel with a bright, wide opening.",
+	"united_minecraft.narrate.material.observer": "A gray stone block carved with a single eye and a slit-like mouth.",
+	"united_minecraft.narrate.material.piston": "A gray stone block with a flat, tan-brown wooden face on one side.",
+	"united_minecraft.narrate.material.lever": "A small dark lever mounted on a gray stone base.",
+	"united_minecraft.narrate.material.ladder": "A wooden ladder with horizontal rungs between two vertical rails.",
+	"united_minecraft.narrate.material.lantern": "A hanging metal cage enclosing a warm, glowing flame.",
+	"united_minecraft.narrate.material.grindstone": "A round, gray stone grinding wheel.",
+	"united_minecraft.narrate.material.loom": "A wooden frame strung with vertical beige threads.",
+	"united_minecraft.narrate.material.lectern": "A wooden stand with an open book resting on a slanted top.",
+	"united_minecraft.narrate.material.fletching_table": "A wooden table marked with a fletched arrow design.",
+	"united_minecraft.narrate.material.jack_o_lantern": "A bright orange pumpkin carved with a glowing face.",
+	"united_minecraft.narrate.material.iron_bars": "A lattice of thin, crossing iron bars.",
+	"united_minecraft.narrate.material.redstone_lamp": "A warm, glowing orange-brown block with a soft circular glow.",
+	"united_minecraft.narrate.material.daylight_detector": "A wooden panel set with a grid of pale glass sensor cells."
 }
