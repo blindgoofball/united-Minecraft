@@ -150,89 +150,18 @@ public final class AccessibilityTickHandler {
 		}
 		screenWasOpenLastTick = screenOpenNow;
 
-		// Reset Rotation to North needs to release a Scanner lock-on *before* the
-		// rotation-ownership chain below runs this same tick - releasing it any later (e.g. down
-		// where this key is actually handled, after that chain) means ScannerController.tickLock
-		// would already have re-aimed at the locked entity this tick, and would do so again next
-		// tick before resetRotationToNorth's effect is ever visible, silently swallowing the
-		// reset entirely. isLocked() being false by the time the chain reads it below is what
-		// makes the reset actually stick. ClientKeyBindings.pressed is a plain read (no
-		// consuming), so re-checking it again down where it's normally handled is safe and
-		// unaffected by this early check.
-		//
-		// Everything in this block is GLOBAL-context and gated on no screen being open - without
-		// it, these keys still fire (as raw, unconsumed hardware state - see
-		// ClientKeyBindings#updateAll) while typing in chat, a command, a sign, or any other
-		// text field, since polling doesn't know or care that a screen "claimed" the keypress the
-		// way the event-driven container-screen actions do.
-		boolean snapLeftPressed = false;
-		boolean snapRightPressed = false;
-		boolean snapUpPressed = false;
-		boolean snapDownPressed = false;
-		if (client.gui.screen() == null) {
-			if (ScannerController.isLocked() && ClientKeyBindings.pressed(ClientKeyBindings.RESET_ROTATION_TO_NORTH)) {
-				ScannerController.stopLock(client);
-			}
+		// Every purely keybind-driven action (toggles, mode entry, keypress-triggered narration)
+		// lives in handleKeybindActions - it needs no client.gui.screen() == null checks of its
+		// own, since KeybindContext.isActive() already requires no screen be open for every
+		// context it reads through (see that enum's own doc), unlike the mode-dispatch/ambient-
+		// tick logic further below, which mixes real screen-dependent behavior with controller
+		// tick() calls and isn't purely about keybind gating. Snap-turn's own press state comes
+		// back from it because the mode-dispatch chain below still needs it, to call
+		// handleSnapTurn at the right point in that chain.
+		SnapTurnPresses snapTurn = handleKeybindActions(client, player);
 
-			snapLeftPressed = ClientKeyBindings.pressed(ClientKeyBindings.SNAP_TURN_LEFT);
-			snapRightPressed = ClientKeyBindings.pressed(ClientKeyBindings.SNAP_TURN_RIGHT);
-			snapUpPressed = ClientKeyBindings.pressed(ClientKeyBindings.SNAP_TURN_UP);
-			snapDownPressed = ClientKeyBindings.pressed(ClientKeyBindings.SNAP_TURN_DOWN);
-
-			// Blocked while locked: lock-on owns rotation until Stop Lock is pressed, and
-			// combining it with the build cursor's own rotation-override would just fight it.
-			// Combat Mode owns rotation the same way, so it blocks entering build mode too -
-			// toggling combat mode on already turns build mode off if it was running.
-			// BUILD_MODE_RECENTER_CURSOR's own KeybindContext already means it can only fire while
-			// Build Mode is active, so - unlike the old Alt+I-while-active check this replaces -
-			// there's no need to guard against it firing before Build Mode was ever turned on.
-			if (!ScannerController.isLocked() && !CombatModeController.isActive()
-					&& ClientKeyBindings.pressed(ClientKeyBindings.BUILD_MODE_RECENTER_CURSOR)) {
-				BuildModeController.recenterCursor(client, player);
-			} else if (!ScannerController.isLocked() && !CombatModeController.isActive()
-					&& ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_BUILD_MODE)) {
-				BuildModeController.toggle(client, player);
-			}
-			if (ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_NAV_RADAR)) {
-				NavRadarController.toggle(client);
-			}
-			if (ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_MINING_RADAR)) {
-				MiningRadarController.toggle(client);
-			}
-			if (ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_COMBAT_MODE)) {
-				CombatModeController.toggle(client, player);
-			}
-			// Same rotation-owning modes TOGGLE_BUILD_MODE is blocked against above - starting a
-			// swim while one of them already owns rotation would just fight it. Auto-Walk itself
-			// isn't in that list - starting a swim cancels it outright instead (see
-			// WaterExitController#start), since the two are never useful to run at once anyway.
-			boolean rotationFree = !ScannerController.isLocked() && !CombatModeController.isActive() && !BuildModeController.isActive();
-			if (rotationFree && ClientKeyBindings.pressed(ClientKeyBindings.WATER_ESCAPE_AUTO_SWIM)) {
-				WaterExitController.start(client, player);
-			} else if (rotationFree && ClientKeyBindings.pressed(ClientKeyBindings.WATER_ESCAPE)) {
-				WaterExitController.narrate(client, player);
-			}
-			if (ClientKeyBindings.pressed(ClientKeyBindings.TRAIL_MARK_START)) {
-				// Doesn't touch rotation or movement, so it isn't gated behind the rotation-owning
-				// modes check below - marking was never gated before this key was merged either.
-				TrailController.markStart(client, player);
-			} else if (rotationFree && ClientKeyBindings.pressed(ClientKeyBindings.TRAIL_WALK_BACK)) {
-				// Same rotation-owning modes WATER_ESCAPE is blocked against above, for the same reason.
-				TrailController.start(client, player);
-			} else if (rotationFree && ClientKeyBindings.pressed(ClientKeyBindings.TRAIL)) {
-				TrailController.narrate(client, player);
-			}
-		}
 		MapMarkerController.tick(client);
 		NamedBlockController.tick(client);
-		if (client.gui.screen() == null && ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_NAME_FOCUSED_ITEM)) {
-			ScannerController.nameFocusedItem(client, player);
-		} else if (client.gui.screen() == null && ClientKeyBindings.pressed(ClientKeyBindings.PLACE_MARKER)) {
-			MapMarkerController.openNameScreen(client, player);
-		}
-		if (client.gui.screen() == null && ClientKeyBindings.pressed(ClientKeyBindings.OPEN_SETTINGS)) {
-			client.gui.setScreen(new SettingsScreen());
-		}
 
 		if (client.gui.screen() != null && AutoWalkController.isActive()) {
 			// AutoWalkController.tick (and the cancel-key check inside it) only runs below,
@@ -290,8 +219,8 @@ public final class AccessibilityTickHandler {
 				// so handleCameraLook's isDown() reads are already false on any axis a snap-turn
 				// just won - see ClientKeyBindings#updateAll's own doc.
 				handleCameraLook(player);
-				if (snapLeftPressed || snapRightPressed || snapUpPressed || snapDownPressed) {
-					handleSnapTurn(client, player, snapLeftPressed, snapRightPressed, snapUpPressed, snapDownPressed);
+				if (snapTurn.left() || snapTurn.right() || snapTurn.up() || snapTurn.down()) {
+					handleSnapTurn(client, player, snapTurn.left(), snapTurn.right(), snapTurn.up(), snapTurn.down());
 				}
 				TreeChoppingAssist.tick(client, player);
 				ScannerController.tick(client, player);
@@ -347,52 +276,137 @@ public final class AccessibilityTickHandler {
 			// the offhand slot there, and vanilla's swap-hands key does nothing over a screen.
 			handleOffhandNarration(client, player);
 		}
+	}
 
-		// Gated the same way, and for the same reason, as the toggle/mode block earlier in this
-		// method - these are all GLOBAL-context, polled keys, so without this they'd still fire
-		// off raw hardware state while typing in chat, a command, a sign, or any other text field.
-		if (client.gui.screen() == null) {
-			if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_LIGHT_LEVEL)) {
-				narrateLightLevel(client, player);
-			} else if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_COORDINATES)) {
-				narrateCoordinates(client, player);
-			}
-			if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_ARMOR_AND_EFFECTS)) {
-				narrateArmorAndEffects(client, player);
-			} else if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_EXPERIENCE)) {
-				narrateExperienceLevel(client, player);
-			} else if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_HEALTH)) {
-				narrateHealth(client, player);
-			}
-			if (ClientKeyBindings.pressed(ClientKeyBindings.RESET_ROTATION_TO_NORTH)) {
-				// Build Mode locks the player's yaw to its own facing (see BuildModeController) -
-				// snapping it to north here would silently desync the two and jerk the camera off
-				// whatever facing the cursor is actually keyed to.
-				if (!BuildModeController.isActive()) {
-					resetRotationToNorth(client, player);
-				}
-			} else if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_BEARING)) {
-				narrateBearing(client, player);
-			}
-			if (ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_AUTO_CROSSHAIR_NARRATION)) {
-				AutoCrosshairNarrationController.toggle(client);
-			} else if (ClientKeyBindings.pressed(ClientKeyBindings.SCAN_SURROUNDINGS)) {
-				SurroundingsScanner.narrateFront(client, player);
-			}
-			if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_WEATHER_AND_MOON)) {
-				narrateWeatherAndMoon(client, player);
-			} else if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_TIME)) {
-				narrateTimeOfDay(client, player);
-			}
-			if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_BOSS_BARS)) {
-				narrateBossBars(client);
-			}
-			if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_SCOREBOARD_FULL)) {
-				narrateScoreboard(client, player, true);
-			} else if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_SCOREBOARD)) {
-				narrateScoreboard(client, player, false);
-			}
+	/** Which of the four snap-turn keys ({@link ClientKeyBindings#SNAP_TURN_LEFT} etc.) were just pressed this tick - see {@link #handleKeybindActions}. */
+	private record SnapTurnPresses(boolean left, boolean right, boolean up, boolean down) {
+	}
+
+	/**
+	 * Every action this handler owns that's purely a reaction to a keypress - toggles, mode
+	 * entry, and keypress-triggered narration - isolated here from {@link #onEndTick}'s own
+	 * ambient/mode-dispatch logic, which mixes real screen-dependent behavior with continuous
+	 * controller {@code tick()} calls and isn't purely about keybind gating the way everything in
+	 * this method is. None of the {@code ClientKeyBindings.pressed(...)} reads below need their
+	 * own {@code client.gui.screen() == null} check: every action read here is GLOBAL, BUILD_MODE,
+	 * or NORMAL_LOOK context, and {@link KeybindContext#isActive()} already requires no screen be
+	 * open for all three - see that method's own doc. Safe to call unconditionally every tick.
+	 */
+	private static SnapTurnPresses handleKeybindActions(Minecraft client, LocalPlayer player) {
+		// Reset Rotation to North needs to release a Scanner lock-on *before* the
+		// rotation-ownership chain in onEndTick runs this same tick - releasing it any later
+		// (e.g. down where this key is actually handled, further below in this same method) means
+		// ScannerController.tickLock would already have re-aimed at the locked entity this tick,
+		// and would do so again next tick before resetRotationToNorth's effect is ever visible,
+		// silently swallowing the reset entirely. isLocked() being false by the time that chain
+		// reads it is what makes the reset actually stick. ClientKeyBindings.pressed is a plain
+		// read (no consuming), so re-checking it again below, where it's normally handled, is safe
+		// and unaffected by this early check.
+		if (ScannerController.isLocked() && ClientKeyBindings.pressed(ClientKeyBindings.RESET_ROTATION_TO_NORTH)) {
+			ScannerController.stopLock(client);
 		}
+
+		SnapTurnPresses snapTurn = new SnapTurnPresses(
+				ClientKeyBindings.pressed(ClientKeyBindings.SNAP_TURN_LEFT),
+				ClientKeyBindings.pressed(ClientKeyBindings.SNAP_TURN_RIGHT),
+				ClientKeyBindings.pressed(ClientKeyBindings.SNAP_TURN_UP),
+				ClientKeyBindings.pressed(ClientKeyBindings.SNAP_TURN_DOWN));
+
+		// Blocked while locked: lock-on owns rotation until Stop Lock is pressed, and combining
+		// it with the build cursor's own rotation-override would just fight it. Combat Mode owns
+		// rotation the same way, so it blocks entering build mode too - toggling combat mode on
+		// already turns build mode off if it was running. BUILD_MODE_RECENTER_CURSOR's own
+		// KeybindContext already means it can only fire while Build Mode is active, so - unlike
+		// the old Alt+I-while-active check this replaces - there's no need to guard against it
+		// firing before Build Mode was ever turned on.
+		if (!ScannerController.isLocked() && !CombatModeController.isActive()
+				&& ClientKeyBindings.pressed(ClientKeyBindings.BUILD_MODE_RECENTER_CURSOR)) {
+			BuildModeController.recenterCursor(client, player);
+		} else if (!ScannerController.isLocked() && !CombatModeController.isActive()
+				&& ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_BUILD_MODE)) {
+			BuildModeController.toggle(client, player);
+		}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_NAV_RADAR)) {
+			NavRadarController.toggle(client);
+		}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_MINING_RADAR)) {
+			MiningRadarController.toggle(client);
+		}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_COMBAT_MODE)) {
+			CombatModeController.toggle(client, player);
+		}
+		// Same rotation-owning modes TOGGLE_BUILD_MODE is blocked against above - starting a
+		// swim while one of them already owns rotation would just fight it. Auto-Walk itself
+		// isn't in that list - starting a swim cancels it outright instead (see
+		// WaterExitController#start), since the two are never useful to run at once anyway.
+		boolean rotationFree = !ScannerController.isLocked() && !CombatModeController.isActive() && !BuildModeController.isActive();
+		if (rotationFree && ClientKeyBindings.pressed(ClientKeyBindings.WATER_ESCAPE_AUTO_SWIM)) {
+			WaterExitController.start(client, player);
+		} else if (rotationFree && ClientKeyBindings.pressed(ClientKeyBindings.WATER_ESCAPE)) {
+			WaterExitController.narrate(client, player);
+		}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.TRAIL_MARK_START)) {
+			// Doesn't touch rotation or movement, so it isn't gated behind the rotation-owning
+			// modes check below - marking was never gated before this key was merged either.
+			TrailController.markStart(client, player);
+		} else if (rotationFree && ClientKeyBindings.pressed(ClientKeyBindings.TRAIL_WALK_BACK)) {
+			// Same rotation-owning modes WATER_ESCAPE is blocked against above, for the same reason.
+			TrailController.start(client, player);
+		} else if (rotationFree && ClientKeyBindings.pressed(ClientKeyBindings.TRAIL)) {
+			TrailController.narrate(client, player);
+		}
+
+		if (ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_NAME_FOCUSED_ITEM)) {
+			ScannerController.nameFocusedItem(client, player);
+		} else if (ClientKeyBindings.pressed(ClientKeyBindings.PLACE_MARKER)) {
+			MapMarkerController.openNameScreen(client, player);
+		}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.OPEN_SETTINGS)) {
+			client.gui.setScreen(new SettingsScreen());
+		}
+
+		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_LIGHT_LEVEL)) {
+			narrateLightLevel(client, player);
+		} else if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_COORDINATES)) {
+			narrateCoordinates(client, player);
+		}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_ARMOR_AND_EFFECTS)) {
+			narrateArmorAndEffects(client, player);
+		} else if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_EXPERIENCE)) {
+			narrateExperienceLevel(client, player);
+		} else if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_HEALTH)) {
+			narrateHealth(client, player);
+		}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.RESET_ROTATION_TO_NORTH)) {
+			// Build Mode locks the player's yaw to its own facing (see BuildModeController) -
+			// snapping it to north here would silently desync the two and jerk the camera off
+			// whatever facing the cursor is actually keyed to.
+			if (!BuildModeController.isActive()) {
+				resetRotationToNorth(client, player);
+			}
+		} else if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_BEARING)) {
+			narrateBearing(client, player);
+		}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_AUTO_CROSSHAIR_NARRATION)) {
+			AutoCrosshairNarrationController.toggle(client);
+		} else if (ClientKeyBindings.pressed(ClientKeyBindings.SCAN_SURROUNDINGS)) {
+			SurroundingsScanner.narrateFront(client, player);
+		}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_WEATHER_AND_MOON)) {
+			narrateWeatherAndMoon(client, player);
+		} else if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_TIME)) {
+			narrateTimeOfDay(client, player);
+		}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_BOSS_BARS)) {
+			narrateBossBars(client);
+		}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_SCOREBOARD_FULL)) {
+			narrateScoreboard(client, player, true);
+		} else if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_SCOREBOARD)) {
+			narrateScoreboard(client, player, false);
+		}
+
+		return snapTurn;
 	}
 
 	private static void handleCameraLook(LocalPlayer player) {
