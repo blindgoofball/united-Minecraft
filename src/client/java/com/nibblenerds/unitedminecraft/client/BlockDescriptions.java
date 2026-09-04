@@ -1,6 +1,7 @@
 package com.nibblenerds.unitedminecraft.client;
 
 import java.util.List;
+import java.util.Set;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.locale.Language;
@@ -51,6 +52,30 @@ public final class BlockDescriptions {
 			"white", "orange", "magenta", "light_blue", "yellow", "lime", "pink", "gray",
 			"light_gray", "cyan", "purple", "blue", "brown", "green", "red", "black");
 
+	/**
+	 * Ids that happen to start with a dye-color word for reasons that have nothing to do with
+	 * dyeing - the color word is just part of the block's actual name - so stripping it would
+	 * collide with an unrelated block: {@code red_sand}/{@code red_sandstone} (and its cut
+	 * forms) would collapse onto plain {@code sand}/{@code sandstone}, {@code red_mushroom}/
+	 * {@code brown_mushroom}(_block) onto each other, {@code red_nether_bricks} onto plain
+	 * {@code nether_bricks}, and {@code blue_ice} onto plain {@code ice} - none of which are
+	 * actually the same material. Checked as a prefix (not exact match) so it also covers each
+	 * one's own stairs/slab/wall/block forms.
+	 */
+	private static final List<String> COLOR_STRIP_EXCEPTIONS = List.of(
+			"red_sand", "red_mushroom", "brown_mushroom", "red_nether_brick", "blue_ice");
+
+	/**
+	 * The far rarer opposite problem: an undyed block and its {@code <color>_} family share the
+	 * same word once the color is stripped, but they're visually distinct (plain {@code
+	 * terracotta}'s solid earthy orange vs. a dyed terracotta's mottled color-streaked pattern;
+	 * an unwaxed {@code candle}'s natural cream wax vs. a dyed one's solid color; the default
+	 * {@code shulker_box}'s mottled purple-gray vs. a dyed one's flat color). Only ever applied
+	 * when a color prefix was actually stripped (see {@link #materialKeyFor}), so the plain
+	 * block's own key is untouched.
+	 */
+	private static final Set<String> AMBIGUOUS_WITH_UNDYED = Set.of("terracotta", "candle", "candle_cake", "shulker_box");
+
 	public static MutableComponent describe(ItemStack stack) {
 		if (stack.isEmpty()) {
 			return Component.translatable("united_minecraft.narrate.hotbar_empty").copy();
@@ -81,11 +106,27 @@ public final class BlockDescriptions {
 			return "sapling";
 		}
 
+		// Checked against the untouched registry path, not the partially-reduced key: by the
+		// time a shape suffix like "_bricks" has already been stripped from e.g.
+		// "red_nether_bricks", there's nothing left for a "starts with red_nether_brick" check
+		// to match against, and the exception would silently stop working.
+		boolean skipColorStrip = COLOR_STRIP_EXCEPTIONS.stream().anyMatch(path::startsWith);
+
 		String key = normalizeWallInfix(path);
 		key = normalizeIrregularPlural(key);
 		key = stripShapeSuffix(key);
-		key = stripColorPrefix(key);
+
+		boolean colorWasStripped = false;
+		if (!skipColorStrip) {
+			String beforeColor = key;
+			key = stripColorPrefix(key);
+			colorWasStripped = !key.equals(beforeColor);
+		}
+
 		key = stripShapeSuffix(key);
+		if (colorWasStripped && AMBIGUOUS_WITH_UNDYED.contains(key)) {
+			key = "dyed_" + key;
+		}
 		return key;
 	}
 
