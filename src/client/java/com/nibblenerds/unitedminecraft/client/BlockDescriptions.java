@@ -42,7 +42,7 @@ public final class BlockDescriptions {
 	 * leave a stray "_brick" behind.
 	 */
 	private static final List<String> SHAPE_SUFFIXES = List.of(
-			"_hanging_sign", "_wall_hanging_sign", "_pressure_plate", "_fence_gate",
+			"_hanging_sign", "_wall_hanging_sign", "_pressure_plate", "_fence_gate", "_brick_fence",
 			"_brick_stairs", "_brick_slab", "_brick_wall", "_wall_sign", "_wall_skull", "_wall_head",
 			"_stairs", "_slab", "_wall", "_fence", "_door", "_trapdoor", "_button", "_sign",
 			"_planks", "_wood", "_log", "_hyphae", "_stem", "_shelf", "_bricks", "_skull", "_head", "_torch");
