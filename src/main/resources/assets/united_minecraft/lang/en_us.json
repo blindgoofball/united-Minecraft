@@ -675,7 +675,7 @@
 	"united_minecraft.narrate.material.chorus_plant": "A twisting, knotted stalk of dusty purple wood.",
 	"united_minecraft.narrate.material.spore_blossom": "A bright pink, upside-down hanging flower with drooping petals.",
 	"united_minecraft.narrate.material.wildflowers": "A scattered patch of tiny yellow, white, and blue blossoms.",
-	"united_minecraft.narrate.material.pink_petals": "A scattering of small pink flower petals.",
+	"united_minecraft.narrate.material.petals": "A scattering of small pink flower petals.",
 	"united_minecraft.narrate.material.azalea": "A short shrub of dense olive-green leaves.",
 	"united_minecraft.narrate.material.flowering_azalea": "A short shrub of olive-green leaves dotted with small pink blossoms.",
 	"united_minecraft.narrate.material.open_eyeblossom": "A pale, ghostly white flower with a dark purple-red eye-like center.",
@@ -916,5 +916,18 @@
 	"united_minecraft.narrate.material.potted_torchflower": "A small terracotta pot holding a fiery orange torchflower.",
 	"united_minecraft.narrate.material.potted_warped_fungus": "A small terracotta pot holding a small teal-capped fungus.",
 	"united_minecraft.narrate.material.potted_warped_roots": "A small terracotta pot holding a tangle of teal-green roots.",
-	"united_minecraft.narrate.material.potted_wither_rose": "A small terracotta pot holding a dark, near-black wither rose."
+	"united_minecraft.narrate.material.potted_wither_rose": "A small terracotta pot holding a dark, near-black wither rose.",
+
+	"united_minecraft.narrate.material.end_rod": "A thin, pale cream-white rod with a gray tip.",
+	"united_minecraft.narrate.material.water_cauldron": "A dark gray iron basin filled with water.",
+	"united_minecraft.narrate.material.lava_cauldron": "A dark gray iron basin filled with glowing lava.",
+	"united_minecraft.narrate.material.powder_snow_cauldron": "A dark gray iron basin filled with powdery snow.",
+	"united_minecraft.narrate.material.copper_chest": "A wooden storage box banded with warm salmon-pink copper trim.",
+	"united_minecraft.narrate.material.exposed_copper_chest": "A wooden storage box banded with dusty rose-brown copper trim, beginning to show green patina.",
+	"united_minecraft.narrate.material.weathered_copper_chest": "A wooden storage box banded with mottled greenish-teal copper trim, with fading brown patches.",
+	"united_minecraft.narrate.material.oxidized_copper_chest": "A wooden storage box banded with muted, teal-green copper trim.",
+	"united_minecraft.narrate.material.copper_golem_statue": "A small statue with a body of warm salmon-pink copper.",
+	"united_minecraft.narrate.material.exposed_copper_golem_statue": "A small statue with a body of dusty rose-brown copper, beginning to show green patina.",
+	"united_minecraft.narrate.material.weathered_copper_golem_statue": "A small statue with a body of mottled greenish-teal copper, with fading brown patches.",
+	"united_minecraft.narrate.material.oxidized_copper_golem_statue": "A small statue with a body of muted, teal-green copper."
 }
