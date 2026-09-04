@@ -80,6 +80,7 @@ import net.minecraft.world.level.block.StemBlock;
 import net.minecraft.world.level.block.SugarCaneBlock;
 import net.minecraft.world.level.block.SweetBerryBushBlock;
 import net.minecraft.world.level.block.TrapDoorBlock;
+import net.minecraft.world.level.block.VaultBlock;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
 import net.minecraft.world.level.block.entity.SignText;
 import net.minecraft.world.level.block.state.BlockState;
@@ -892,7 +893,14 @@ public final class ScannerController {
 		if (category == ScannerCategory.BIOMES) {
 			return AccessibilityTickHandler.biomeName(level.getBiome(item.blockPos()));
 		}
-		return level.getBlockState(item.blockPos()).getBlock().getName();
+		BlockState state = level.getBlockState(item.blockPos());
+		// Vault and Ominous Vault are the same block with an OMINOUS blockstate property, not
+		// separate blocks, so getName() alone can't tell them apart - narrate it explicitly.
+		if (category == ScannerCategory.INTERACTABLES && state.getBlock() instanceof VaultBlock
+				&& state.getValue(VaultBlock.OMINOUS)) {
+			return Component.translatable("united_minecraft.narrate.ominous_vault");
+		}
+		return state.getBlock().getName();
 	}
 
 	private static Component describeTree(Level level, BlockPos pos) {
@@ -1039,6 +1047,11 @@ public final class ScannerController {
 				return false;
 			}
 			if (state.getBlock() instanceof SignBlock) {
+				return true;
+			}
+			// Vaults have no menu provider - you insert a key by right-clicking rather than
+			// opening a screen - so the getMenuProvider check below misses them entirely.
+			if (state.getBlock() instanceof VaultBlock) {
 				return true;
 			}
 			return state.getMenuProvider(player.level(), pos) != null;
