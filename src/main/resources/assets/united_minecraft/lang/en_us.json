@@ -421,5 +421,19 @@
 	"united_minecraft.narrate.material.bamboo": "A bright yellow-green wood with a tight, woven-looking grain.",
 	"united_minecraft.narrate.material.bamboo_mosaic": "A yellow-green wood cut into a crosshatched, parquet-style weave.",
 	"united_minecraft.narrate.material.bamboo_block": "A yellow-green wood with a clean vertical grain, showing the plant's natural stalk.",
-	"united_minecraft.narrate.material.stripped_bamboo_block": "A smooth, pale yellow-tan wood with a clean vertical grain."
+	"united_minecraft.narrate.material.stripped_bamboo_block": "A smooth, pale yellow-tan wood with a clean vertical grain.",
+
+	"united_minecraft.narrate.material.stone": "A dull gray, fine-grained rock, cut plain or into mortared bricks.",
+	"united_minecraft.narrate.material.chiseled_stone": "A gray stone brick carved with a decorative concentric-square border pattern.",
+	"united_minecraft.narrate.material.cracked_stone": "A gray stone brick fractured with visible crack lines running across its surface.",
+	"united_minecraft.narrate.material.mossy_stone": "A gray stone brick overgrown with patches of green moss.",
+	"united_minecraft.narrate.material.cobblestone": "A rough gray stone built from uneven, jumbled chunks with visible mortar lines.",
+	"united_minecraft.narrate.material.mossy_cobblestone": "A rough, jumbled gray stone overgrown with patches of green moss.",
+	"united_minecraft.narrate.material.smooth_stone": "A pale, uniform gray stone with a fine, smooth-cut surface.",
+	"united_minecraft.narrate.material.granite": "A warm pink-and-brown speckled igneous rock with a rough, granular surface.",
+	"united_minecraft.narrate.material.polished_granite": "A warm pink-and-brown speckled igneous rock, cut smooth and even.",
+	"united_minecraft.narrate.material.diorite": "A light gray stone speckled with dark salt-and-pepper flecks.",
+	"united_minecraft.narrate.material.polished_diorite": "A pale gray stone speckled with dark flecks, cut smooth and even.",
+	"united_minecraft.narrate.material.andesite": "A muted gray-brown stone with a fine speckled texture.",
+	"united_minecraft.narrate.material.polished_andesite": "A muted gray-brown stone, cut smooth and even, with a fine speckled texture."
 }
