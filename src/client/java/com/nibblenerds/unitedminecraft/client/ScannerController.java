@@ -729,12 +729,12 @@ public final class ScannerController {
 		List<Component> fragments = new ArrayList<>();
 		if (living instanceof Allay allay && allay.hasItemInHand()) {
 			fragments.add(Component.translatable("united_minecraft.narrate.mob_holding",
-					ItemDescriptions.describe(allay.getInventory().getItem(0), player, false)));
+					ItemDescriptions.describe(allay.getInventory().getItem(0), player, false, false)));
 		} else {
 			ItemStack mainHand = living.getItemBySlot(EquipmentSlot.MAINHAND);
 			if (!mainHand.isEmpty() && mainHand.getItem() != DEFAULT_MAINHAND_ITEM.get(living.getType())) {
 				fragments.add(Component.translatable(
-						"united_minecraft.narrate.mob_holding", ItemDescriptions.describe(mainHand, player, false)));
+						"united_minecraft.narrate.mob_holding", ItemDescriptions.describe(mainHand, player, false, false)));
 			}
 		}
 		MutableComponent armor = null;
@@ -743,7 +743,7 @@ public final class ScannerController {
 			if (piece.isEmpty()) {
 				continue;
 			}
-			Component described = ItemDescriptions.describe(piece, player, false);
+			Component described = ItemDescriptions.describe(piece, player, false, false);
 			armor = armor == null ? described.copy() : armor.append(Component.literal(", ")).append(described);
 		}
 		if (armor != null) {

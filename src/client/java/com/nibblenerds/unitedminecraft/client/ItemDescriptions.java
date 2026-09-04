@@ -36,6 +36,16 @@ public final class ItemDescriptions {
 	 * the player's own hotbar or inventory, where it is.
 	 */
 	public static MutableComponent describe(ItemStack stack, Player player, boolean includeDurability) {
+		return describe(stack, player, includeDurability, true);
+	}
+
+	/**
+	 * {@code includeTooltip} exists for the same reason as {@code includeDurability} - a
+	 * scanned mob or player's equipment (see {@code ScannerController#equipmentFragments})
+	 * only needs the item's name, not every enchantment/attribute/durability line vanilla's
+	 * tooltip would show, which for full diamond gear alone can run to a dozen extra fragments.
+	 */
+	public static MutableComponent describe(ItemStack stack, Player player, boolean includeDurability, boolean includeTooltip) {
 		MutableComponent name = stack.getCount() > 1
 				? Component.translatable("united_minecraft.narrate.item_count", stack.getCount(), stack.getHoverName()).copy()
 				: stack.getHoverName().copy();
@@ -46,11 +56,13 @@ public final class ItemDescriptions {
 					"united_minecraft.narrate.hotbar_durability", remaining, stack.getMaxDamage()));
 		}
 
-		List<Component> tooltip = stack.getTooltipLines(Item.TooltipContext.of(player.level()), player, TooltipFlag.NORMAL);
-		for (int i = 1; i < tooltip.size(); i++) {
-			Component line = tooltip.get(i);
-			if (!line.getString().isBlank()) {
-				name = name.append(Component.literal(", ")).append(line);
+		if (includeTooltip) {
+			List<Component> tooltip = stack.getTooltipLines(Item.TooltipContext.of(player.level()), player, TooltipFlag.NORMAL);
+			for (int i = 1; i < tooltip.size(); i++) {
+				Component line = tooltip.get(i);
+				if (!line.getString().isBlank()) {
+					name = name.append(Component.literal(", ")).append(line);
+				}
 			}
 		}
 		return name;
