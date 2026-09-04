@@ -18,6 +18,7 @@ import net.minecraft.world.item.BucketItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.ComparatorBlock;
@@ -35,8 +36,12 @@ import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.block.state.properties.StairsShape;
 import net.minecraft.world.level.material.Fluids;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
  * "Build mode": a virtual cursor for exploring and targeting blocks without
@@ -482,7 +487,7 @@ public final class BuildModeController {
 
 		InteractionHand bucketHand = bucketHand(player);
 		if (bucketHand != null) {
-			startBucketUse(player, bucketHand);
+			startBucketUse(client, player, bucketHand);
 			return;
 		}
 
@@ -708,55 +713,112 @@ public final class BuildModeController {
 	 * manufactured {@link BlockHitResult} the way every other item {@link #attemptPlacementSequence}
 	 * places does. There's no way around that: unlike solid blocks, water/lava placement has no
 	 * click-a-neighboring-face alternative in vanilla, so this fakes the player's rotation to
-	 * look exactly at the cursor - the same real, unobstructed line of sight a sighted player
-	 * pouring into a hole from directly above already needs, this just aims it for you - then
-	 * defers to {@link #attemptBucketUse} via the same rotation-sync delay {@link
-	 * #startRotatedPlacement} needs and for the same reason.
+	 * look exactly at {@link #bucketAimTarget} - the same real, unobstructed line of sight a
+	 * sighted player pouring into a hole from directly above already needs, this just aims it
+	 * for you - then defers to {@link #attemptBucketUse} via the same rotation-sync delay
+	 * {@link #startRotatedPlacement} needs and for the same reason.
+	 *
+	 * <p>If nothing usable is actually reachable in a straight line (something's in the way, or
+	 * there's no solid neighbor to aim at at all), {@link #bucketAimTarget} returns {@code null}
+	 * and this bails out with a narration instead of firing the real interaction - without that
+	 * check, an obstructed shot used to just silently empty/fill wherever the real raycast
+	 * happened to land past whatever was in the way, with no feedback that it wasn't the cursor.
 	 */
-	private static void startBucketUse(LocalPlayer player, InteractionHand hand) {
+	private static void startBucketUse(Minecraft client, LocalPlayer player, InteractionHand hand) {
 		if (pendingPlaceTicks >= 0) {
+			return;
+		}
+		Vec3 aimTarget = bucketAimTarget(player, hand);
+		if (aimTarget == null) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_not_visible"));
 			return;
 		}
 		pendingSavedYaw = player.getYRot();
 		pendingSavedPitch = player.getXRot();
-		CameraUtil.aimAt(player, bucketAimTarget(player, hand));
+		CameraUtil.aimAt(player, aimTarget);
 		pendingAction = PendingAction.BUCKET;
 		pendingBucketHand = hand;
 		pendingPlaceTicks = ROTATION_SYNC_DELAY_TICKS;
 	}
 
 	/**
-	 * Where to aim for {@link #startBucketUse}. Emptying a full bucket is the case that needs
-	 * care: vanilla's real raycast doesn't stop at the aimed-at point, it keeps going to the
-	 * player's full interaction range - so aiming at the cursor's own center only works by luck
-	 * when the cursor is a solid/waterloggable block itself. When it's an empty cell (a hole to
-	 * pour into), the ray sails straight through it and keeps going, landing on whatever solid
-	 * surface happens to lie beyond - one row of the pit's wall, the floor two blocks down
-	 * instead of one, anything the real geometry happens to put in that exact line - instead of
-	 * the neighbor the player actually selected. This mirrors {@link #attemptPlacementSequence}'s
-	 * own neighbor-face search (respecting {@link #selectedFacing} the same way) and aims at a
-	 * point just inside that neighbor's face instead, so the real raycast has nothing else to
-	 * hit along the way and lands exactly there every time.
+	 * Where to aim for {@link #startBucketUse}, or {@code null} if nothing reachable qualifies.
+	 * Emptying a full bucket is the case that needs care: vanilla's real raycast doesn't stop at
+	 * the aimed-at point, it keeps going to the player's full interaction range - so aiming at
+	 * the cursor's own center only works by luck when the cursor is a solid/waterloggable block
+	 * itself. When it's an empty cell (a hole to pour into), the ray sails straight through it
+	 * and keeps going, landing on whatever solid surface happens to lie beyond - one row of the
+	 * pit's wall, the floor two blocks down instead of one, anything the real geometry happens to
+	 * put in that exact line - instead of the neighbor the player actually selected. This mirrors
+	 * {@link #attemptPlacementSequence}'s own neighbor-face search (respecting {@link
+	 * #selectedFacing} the same way), aiming at a point actually on that neighbor's own shape
+	 * (see {@link #pointOnShape}) rather than a fixed offset, and skips straight past any
+	 * candidate {@link #hasClearLineOfSight} can't actually confirm - so the real raycast has
+	 * nothing else to hit along the way and lands exactly there every time.
 	 *
-	 * <p>Picking up a fluid (an empty bucket) doesn't have this problem - the source block being
-	 * scooped sits at the cursor itself, not behind it, so aiming at the cursor's own center is
-	 * already correct and landing on a neighbor instead would scoop the wrong thing entirely.
+	 * <p>Picking up a fluid (an empty bucket) doesn't have the "ray sails past it" problem - the
+	 * source block being scooped sits at the cursor itself, not behind it - but still needs the
+	 * same line-of-sight check: nothing stops the player from moving the cursor behind a wall,
+	 * and the real raycast can't reach through one any more than a sighted player's could.
 	 */
 	private static Vec3 bucketAimTarget(LocalPlayer player, InteractionHand hand) {
-		if (!(player.getItemInHand(hand).getItem() instanceof BucketItem bucketItem) || bucketItem.getContent() == Fluids.EMPTY) {
-			return Vec3.atCenterOf(cursor);
-		}
 		Level level = player.level();
+		if (!(player.getItemInHand(hand).getItem() instanceof BucketItem bucketItem) || bucketItem.getContent() == Fluids.EMPTY) {
+			Vec3 point = pointOnShape(level, player, cursor, level.getBlockState(cursor));
+			return hasClearLineOfSight(level, player, cursor, point) ? point : null;
+		}
 		for (Direction face : faceTryOrder(null)) {
-			if (level.getBlockState(cursor.relative(face)).canBeReplaced()) {
+			BlockPos neighborPos = cursor.relative(face);
+			BlockState neighborState = level.getBlockState(neighborPos);
+			if (neighborState.canBeReplaced()) {
 				continue;
 			}
-			return Vec3.atCenterOf(cursor).add(
-					face.getStepX() * (0.5 - FACE_EPSILON),
-					face.getStepY() * (0.5 - FACE_EPSILON),
-					face.getStepZ() * (0.5 - FACE_EPSILON));
+			Vec3 point = pointOnShape(level, player, neighborPos, neighborState);
+			if (hasClearLineOfSight(level, player, neighborPos, point)) {
+				return point;
+			}
 		}
-		return Vec3.atCenterOf(cursor);
+		return null;
+	}
+
+	/**
+	 * A point actually on {@code pos}'s own outline shape (the same shape vanilla's bucket
+	 * raycast, {@link ClipContext.Block#OUTLINE}, checks against) rather than a fixed
+	 * cube-corner offset. A full block's shape is (near enough) the whole cell, so this lands
+	 * close to where a generic "just inside the face" guess would - but a thin or off-center one
+	 * (a sign, a fence post, a slab) has real geometry nowhere near that guess, and aiming at a
+	 * point that was never part of the block's own shape just lets the real raycast sail past it
+	 * to whatever solid surface happens to be further along the line, missing the intended block
+	 * entirely. (This is why placing lava directly onto a sign - the classic "suspended lava"
+	 * trick - didn't work: the old fixed offset aimed at empty air just past the sign's actual,
+	 * much thinner post.)
+	 */
+	private static Vec3 pointOnShape(Level level, LocalPlayer player, BlockPos pos, BlockState state) {
+		VoxelShape shape = state.getShape(level, pos, CollisionContext.of(player));
+		if (shape.isEmpty()) {
+			return Vec3.atCenterOf(pos);
+		}
+		AABB bounds = shape.bounds();
+		return new Vec3(
+				pos.getX() + (bounds.minX + bounds.maxX) / 2.0,
+				pos.getY() + (bounds.minY + bounds.maxY) / 2.0,
+				pos.getZ() + (bounds.minZ + bounds.maxZ) / 2.0);
+	}
+
+	/**
+	 * Whether the real raycast {@link #attemptBucketUse} fires will actually land on {@code
+	 * targetBlock} - the sync-delay rotation fake only controls where the player ends up
+	 * *looking*, it can't do anything about something else sitting in the way between the
+	 * player's eye and {@code targetPoint}. A miss (nothing in the way at all, not even the
+	 * target itself - the ray just falls short of anything solid) is treated the same as
+	 * actually hitting the target: {@code targetPoint} sits on the target's own shape by
+	 * construction, so the only way to land short of it is nothing being there to register the
+	 * hit at that exact floating-point boundary, not an actual obstruction.
+	 */
+	private static boolean hasClearLineOfSight(Level level, LocalPlayer player, BlockPos targetBlock, Vec3 targetPoint) {
+		BlockHitResult hit = level.clip(new ClipContext(
+				player.getEyePosition(), targetPoint, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, player));
+		return hit.getType() == HitResult.Type.MISS || hit.getBlockPos().equals(targetBlock);
 	}
 
 	/** Advances an action started by {@link #startRotatedPlacement} or {@link #startBucketUse}, firing it once the sync delay elapses. */
