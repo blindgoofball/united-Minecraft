@@ -44,7 +44,17 @@ import net.minecraft.world.phys.Vec3;
  */
 public final class AutoWalkController {
 	private static final float MAX_PATH_LENGTH = 128.0f;
-	private static final int REACH_RANGE = 2;
+	// Vanilla's PathFinder stops searching the instant it pops ANY node within Manhattan
+	// distance reachRange of the target - not the closest one, just the first one it happens
+	// to dequeue, which on open ground is whichever node the search frontier reaches first at
+	// that exact distance. With reachRange 2, a straight-line approach to a door/chest hits
+	// that condition two whole blocks out and the search stops right there, well short of the
+	// tile actually adjacent to the target - canReach() then reports success for a path that
+	// never got close enough for hasClearLineToTarget to agree, producing a false "didn't
+	// reach" even though nothing physically blocked the last two steps. reachRange 1 only ever
+	// satisfies on a node that's genuinely (orthogonally) adjacent to the target, so the walk
+	// keeps going until the player could actually reach out and interact with it.
+	private static final int REACH_RANGE = 1;
 	private static final double NODE_ARRIVAL_DISTANCE_SQR = 0.5 * 0.5;
 
 	// See TrailController's identical pattern (and its own doc on STUCK_TICKS_THRESHOLD) for why
