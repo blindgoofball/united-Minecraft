@@ -34,6 +34,7 @@ import net.minecraft.world.level.block.state.properties.Half;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.block.state.properties.StairsShape;
+import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
@@ -718,10 +719,44 @@ public final class BuildModeController {
 		}
 		pendingSavedYaw = player.getYRot();
 		pendingSavedPitch = player.getXRot();
-		CameraUtil.aimAt(player, Vec3.atCenterOf(cursor));
+		CameraUtil.aimAt(player, bucketAimTarget(player, hand));
 		pendingAction = PendingAction.BUCKET;
 		pendingBucketHand = hand;
 		pendingPlaceTicks = ROTATION_SYNC_DELAY_TICKS;
+	}
+
+	/**
+	 * Where to aim for {@link #startBucketUse}. Emptying a full bucket is the case that needs
+	 * care: vanilla's real raycast doesn't stop at the aimed-at point, it keeps going to the
+	 * player's full interaction range - so aiming at the cursor's own center only works by luck
+	 * when the cursor is a solid/waterloggable block itself. When it's an empty cell (a hole to
+	 * pour into), the ray sails straight through it and keeps going, landing on whatever solid
+	 * surface happens to lie beyond - one row of the pit's wall, the floor two blocks down
+	 * instead of one, anything the real geometry happens to put in that exact line - instead of
+	 * the neighbor the player actually selected. This mirrors {@link #attemptPlacementSequence}'s
+	 * own neighbor-face search (respecting {@link #selectedFacing} the same way) and aims at a
+	 * point just inside that neighbor's face instead, so the real raycast has nothing else to
+	 * hit along the way and lands exactly there every time.
+	 *
+	 * <p>Picking up a fluid (an empty bucket) doesn't have this problem - the source block being
+	 * scooped sits at the cursor itself, not behind it, so aiming at the cursor's own center is
+	 * already correct and landing on a neighbor instead would scoop the wrong thing entirely.
+	 */
+	private static Vec3 bucketAimTarget(LocalPlayer player, InteractionHand hand) {
+		if (!(player.getItemInHand(hand).getItem() instanceof BucketItem bucketItem) || bucketItem.getContent() == Fluids.EMPTY) {
+			return Vec3.atCenterOf(cursor);
+		}
+		Level level = player.level();
+		for (Direction face : faceTryOrder(null)) {
+			if (level.getBlockState(cursor.relative(face)).canBeReplaced()) {
+				continue;
+			}
+			return Vec3.atCenterOf(cursor).add(
+					face.getStepX() * (0.5 - FACE_EPSILON),
+					face.getStepY() * (0.5 - FACE_EPSILON),
+					face.getStepZ() * (0.5 - FACE_EPSILON));
+		}
+		return Vec3.atCenterOf(cursor);
 	}
 
 	/** Advances an action started by {@link #startRotatedPlacement} or {@link #startBucketUse}, firing it once the sync delay elapses. */
