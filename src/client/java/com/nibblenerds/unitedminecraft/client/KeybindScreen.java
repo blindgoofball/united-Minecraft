@@ -1,5 +1,8 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import java.util.Arrays;
+import java.util.Comparator;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -83,7 +86,7 @@ public final class KeybindScreen extends Screen {
 
 	private void resetSelected() {
 		KeybindList.Entry entry = list.getSelected();
-		if (entry == null) {
+		if (entry == null || entry.action() == null) {
 			return;
 		}
 		entry.action().resetToDefault();
@@ -170,18 +173,33 @@ public final class KeybindScreen extends Screen {
 				"united_minecraft.keybind_screen.bound", actionLabel(action), candidate.describe()));
 	}
 
-	/** Only actions whose {@link KeybindContext} could ever be active at the same time as {@code editing}'s really conflict - see {@link KeybindContext#canOverlap}. */
+	/**
+	 * Only actions that could ever both actually be reachable at the same time as {@code
+	 * editing}'s really conflict. {@link KeybindContext#canOverlap} handles that at the
+	 * tick-loop-mode level; within two {@link KeybindContext#CONTAINER_SCREEN} actions specifically,
+	 * {@link ContainerScope} refines it further - e.g. {@code recipe_book_search} and {@code
+	 * container_describe_slot} share a context but can never both fire (Recipe Book search vs.
+	 * ordinary slot navigation are different, mutually exclusive screen sections), so scoping
+	 * keeps that from being flagged as a false-positive conflict. See {@link ContainerScope}'s
+	 * own doc for why {@code null} scope still conflicts with everything.
+	 */
 	private static KeybindAction findConflict(KeybindAction editing, Keybind candidate) {
 		if (candidate.isUnbound()) {
 			return null;
 		}
 		for (KeybindAction other : ClientKeyBindings.allActions()) {
 			if (other != editing && other.current().equals(candidate)
-					&& KeybindContext.canOverlap(other.context(), editing.context())) {
+					&& KeybindContext.canOverlap(other.context(), editing.context())
+					&& scopesCanOverlap(other, editing)) {
 				return other;
 			}
 		}
 		return null;
+	}
+
+	/** {@code null} scope means "reachable from more than one place, treat as universally conflicting" - see {@link ContainerScope}. */
+	private static boolean scopesCanOverlap(KeybindAction a, KeybindAction b) {
+		return a.scope() == null || b.scope() == null || a.scope() == b.scope();
 	}
 
 	@Override
@@ -227,7 +245,19 @@ public final class KeybindScreen extends Screen {
 		KeybindList(Minecraft minecraft, Font font, int width, int height, int y0, int itemHeight) {
 			super(minecraft, width, height, y0, itemHeight);
 			this.font = font;
-			for (KeybindAction action : ClientKeyBindings.allActions()) {
+			// Grouped by category rather than raw declaration order - ClientKeyBindings' fields
+			// aren't declared in contiguous category blocks (e.g. RESET_ROTATION_TO_NORTH sits
+			// between two NARRATION actions but is itself MOVEMENT_AND_MODES), so without this
+			// sort a category could get more than one header scattered through the list. A
+			// stable sort keeps each category's own declaration order intact.
+			KeybindAction[] actions = ClientKeyBindings.allActions();
+			Arrays.sort(actions, Comparator.comparingInt(action -> action.category().ordinal()));
+			KeybindCategory lastCategory = null;
+			for (KeybindAction action : actions) {
+				if (action.category() != lastCategory) {
+					lastCategory = action.category();
+					addEntry(new Entry(lastCategory));
+				}
 				addEntry(new Entry(action));
 			}
 		}
@@ -237,11 +267,23 @@ public final class KeybindScreen extends Screen {
 			return Math.min(360, this.width - 20);
 		}
 
+		/**
+		 * One row - either a rebindable {@link #action}, or (when {@code action} is {@code null})
+		 * a category header, purely a visual/narration divider between {@link KeybindCategory}
+		 * groups with no rebind behavior of its own.
+		 */
 		final class Entry extends ObjectSelectionList.Entry<Entry> {
 			private final KeybindAction action;
+			private final KeybindCategory header;
 
 			Entry(KeybindAction action) {
 				this.action = action;
+				this.header = null;
+			}
+
+			Entry(KeybindCategory header) {
+				this.action = null;
+				this.header = header;
 			}
 
 			KeybindAction action() {
@@ -249,6 +291,9 @@ public final class KeybindScreen extends Screen {
 			}
 
 			private Component label() {
+				if (action == null) {
+					return header.label();
+				}
 				if (KeybindScreen.this.listeningAction == action) {
 					return Component.translatable("united_minecraft.keybind_screen.rebind_prompt", actionLabel(action));
 				}
@@ -262,7 +307,7 @@ public final class KeybindScreen extends Screen {
 
 			@Override
 			public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean hovering, float partialTick) {
-				int textX = getContentX() + 2;
+				int textX = getContentX() + (action == null ? 0 : 2);
 				int textY = getContentY() + (getContentHeight() - font.lineHeight) / 2;
 				String text = label().getString();
 				guiGraphics.text(font, font.plainSubstrByWidth(text, getContentWidth() - 4), textX, textY, -1);
@@ -275,7 +320,7 @@ public final class KeybindScreen extends Screen {
 
 			@Override
 			public boolean keyPressed(KeyEvent event) {
-				if (event.key() == GLFW.GLFW_KEY_ENTER || event.key() == GLFW.GLFW_KEY_KP_ENTER) {
+				if (action != null && (event.key() == GLFW.GLFW_KEY_ENTER || event.key() == GLFW.GLFW_KEY_KP_ENTER)) {
 					KeybindScreen.this.startListening(action);
 					return true;
 				}

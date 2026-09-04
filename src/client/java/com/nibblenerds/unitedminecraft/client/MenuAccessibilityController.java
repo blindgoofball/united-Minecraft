@@ -332,12 +332,14 @@ public final class MenuAccessibilityController {
 			return true;
 		}
 
-		boolean shiftHeld = (event.modifiers() & GLFW.GLFW_MOD_SHIFT) != 0;
 		boolean ctrlHeld = (event.modifiers() & GLFW.GLFW_MOD_CONTROL) != 0;
-		int key = event.key();
 
-		if (key == GLFW.GLFW_KEY_TAB) {
-			switchSection(screen, player, shiftHeld ? -1 : 1);
+		if (ClientKeyBindings.CONTAINER_SWITCH_SECTION_NEXT.current().matches(event)) {
+			switchSection(screen, player, 1);
+			return false;
+		}
+		if (ClientKeyBindings.CONTAINER_SWITCH_SECTION_PREV.current().matches(event)) {
+			switchSection(screen, player, -1);
 			return false;
 		}
 
@@ -349,41 +351,51 @@ public final class MenuAccessibilityController {
 		}
 
 		if (currentSection == Section.RECIPE_BOOK) {
-			return handleRecipeBookKey(screen, player, key, shiftHeld);
+			return handleRecipeBookKey(screen, player, event);
 		}
 		if (currentSection == Section.ENCHANT_OPTIONS) {
-			return handleEnchantOptionKey(screen, player, key);
+			return handleEnchantOptionKey(screen, player, event);
 		}
 		if (currentSection == Section.TRADES) {
-			return handleTradeKey(screen, key);
+			return handleTradeKey(screen, event);
 		}
 
-		Direction direction = switch (key) {
-			case GLFW.GLFW_KEY_LEFT -> Direction.LEFT;
-			case GLFW.GLFW_KEY_RIGHT -> Direction.RIGHT;
-			case GLFW.GLFW_KEY_UP -> Direction.UP;
-			case GLFW.GLFW_KEY_DOWN -> Direction.DOWN;
-			default -> null;
-		};
+		Direction direction = null;
+		if (ClientKeyBindings.CONTAINER_NAV_LEFT.current().matches(event)) {
+			direction = Direction.LEFT;
+		} else if (ClientKeyBindings.CONTAINER_NAV_RIGHT.current().matches(event)) {
+			direction = Direction.RIGHT;
+		} else if (ClientKeyBindings.CONTAINER_NAV_UP.current().matches(event)) {
+			direction = Direction.UP;
+		} else if (ClientKeyBindings.CONTAINER_NAV_DOWN.current().matches(event)) {
+			direction = Direction.DOWN;
+		}
 		if (direction != null) {
 			moveFocus(screen, player, direction);
 			return false;
 		}
 
-		if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) {
-			// Button 0 = left click, button 1 = right click - same distinction the real mouse
-			// buttons make on AbstractContainerMenu.clicked. Right-click-pickup is what splits
-			// a stack in half (or drops one item at a time back into a slot from the cursor).
-			int button = ctrlHeld ? 1 : 0;
-			click(screen, player, shiftHeld ? ContainerInput.QUICK_MOVE : ContainerInput.PICKUP, button);
+		// Button 0 = left click, button 1 = right click - same distinction the real mouse
+		// buttons make on AbstractContainerMenu.clicked. Right-click-pickup is what splits a
+		// stack in half (or places one item at a time back into a slot from the cursor).
+		if (ClientKeyBindings.CONTAINER_PICKUP.current().matches(event)) {
+			click(screen, player, ContainerInput.PICKUP, 0);
+			return false;
+		}
+		if (ClientKeyBindings.CONTAINER_PICKUP_SPLIT.current().matches(event)) {
+			click(screen, player, ContainerInput.PICKUP, 1);
+			return false;
+		}
+		if (ClientKeyBindings.CONTAINER_QUICK_MOVE.current().matches(event)) {
+			click(screen, player, ContainerInput.QUICK_MOVE, 0);
 			return false;
 		}
 
-		if (key == GLFW.GLFW_KEY_DELETE) {
+		if (ClientKeyBindings.CONTAINER_DISCARD.current().matches(event)) {
 			return !discardCarriedItem(screen);
 		}
 
-		if (key == GLFW.GLFW_KEY_SPACE) {
+		if (ClientKeyBindings.CONTAINER_DESCRIBE_SLOT.current().matches(event)) {
 			describeFocusedSlot(screen.getMenu());
 			return false;
 		}
@@ -636,27 +648,46 @@ public final class MenuAccessibilityController {
 		narrateFocusedSlot(screen, player, false);
 	}
 
-	private static boolean handleRecipeBookKey(AbstractContainerScreen<?> screen, LocalPlayer player, int key, boolean shiftHeld) {
-		switch (key) {
-			case GLFW.GLFW_KEY_UP -> moveRecipeGroup(player, -1);
-			case GLFW.GLFW_KEY_DOWN -> moveRecipeGroup(player, 1);
-			case GLFW.GLFW_KEY_LEFT -> moveRecipeVariant(player, -1);
-			case GLFW.GLFW_KEY_RIGHT -> moveRecipeVariant(player, 1);
-			case GLFW.GLFW_KEY_HOME -> jumpRecipeGroup(player, true);
-			case GLFW.GLFW_KEY_END -> jumpRecipeGroup(player, false);
-			case GLFW.GLFW_KEY_PAGE_UP -> cycleRecipeCategory(player, -1);
-			case GLFW.GLFW_KEY_PAGE_DOWN -> cycleRecipeCategory(player, 1);
-			case GLFW.GLFW_KEY_SPACE -> {
-				// Deferred a tick rather than opened immediately - see pendingSearchPromptScreen's
-				// doc for why opening synchronously here leaks a literal space into the prompt.
-				pendingSearchPromptScreen = screen;
-				pendingSearchPromptPlayer = player;
-			}
-			case GLFW.GLFW_KEY_F -> toggleCraftableFilter(player);
-			case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> placeFocusedRecipe(screen.getMenu(), player, shiftHeld);
-			default -> {
-				return true;
-			}
+	/**
+	 * Up/Down/Left/Right/Enter/Shift+Enter reuse the same general container actions as ordinary
+	 * slot navigation (move focus, pick up / quick-move) - place a recipe is this section's own
+	 * equivalent of "activate the focused thing", and Shift's "do the bulk version" reading
+	 * matches vanilla's own shift-click-to-craft-max convention. Only the gestures unique to the
+	 * recipe book (jump to first/last group, cycle category, open search, toggle the craftable
+	 * filter) get their own actions.
+	 */
+	private static boolean handleRecipeBookKey(AbstractContainerScreen<?> screen, LocalPlayer player, KeyEvent event) {
+		if (ClientKeyBindings.CONTAINER_NAV_UP.current().matches(event)) {
+			moveRecipeGroup(player, -1);
+		} else if (ClientKeyBindings.CONTAINER_NAV_DOWN.current().matches(event)) {
+			moveRecipeGroup(player, 1);
+		} else if (ClientKeyBindings.CONTAINER_NAV_LEFT.current().matches(event)) {
+			moveRecipeVariant(player, -1);
+		} else if (ClientKeyBindings.CONTAINER_NAV_RIGHT.current().matches(event)) {
+			moveRecipeVariant(player, 1);
+		} else if (ClientKeyBindings.RECIPE_BOOK_JUMP_TO_FIRST_GROUP.current().matches(event)) {
+			jumpRecipeGroup(player, true);
+		} else if (ClientKeyBindings.RECIPE_BOOK_JUMP_TO_LAST_GROUP.current().matches(event)) {
+			jumpRecipeGroup(player, false);
+		} else if (ClientKeyBindings.RECIPE_BOOK_PREV_CATEGORY.current().matches(event)) {
+			cycleRecipeCategory(player, -1);
+		} else if (ClientKeyBindings.RECIPE_BOOK_NEXT_CATEGORY.current().matches(event)) {
+			cycleRecipeCategory(player, 1);
+		} else if (ClientKeyBindings.RECIPE_BOOK_SEARCH.current().matches(event)) {
+			// Deferred a tick rather than opened immediately - see pendingSearchPromptScreen's
+			// doc for why opening synchronously here leaks a literal space into the prompt.
+			pendingSearchPromptScreen = screen;
+			pendingSearchPromptPlayer = player;
+		} else if (ClientKeyBindings.RECIPE_BOOK_TOGGLE_CRAFTABLE_FILTER.current().matches(event)) {
+			toggleCraftableFilter(player);
+		} else if (ClientKeyBindings.CONTAINER_PICKUP.current().matches(event)
+				|| ClientKeyBindings.CONTAINER_PICKUP_SPLIT.current().matches(event)) {
+			// No left/right-click distinction for placing a recipe - both act the same here.
+			placeFocusedRecipe(screen.getMenu(), player, false);
+		} else if (ClientKeyBindings.CONTAINER_QUICK_MOVE.current().matches(event)) {
+			placeFocusedRecipe(screen.getMenu(), player, true);
+		} else {
+			return true;
 		}
 		return false;
 	}
@@ -1027,14 +1058,17 @@ public final class MenuAccessibilityController {
 		Minecraft.getInstance().getNarrator().saySystemNow(message);
 	}
 
-	private static boolean handleEnchantOptionKey(AbstractContainerScreen<?> screen, LocalPlayer player, int key) {
-		switch (key) {
-			case GLFW.GLFW_KEY_UP -> moveEnchantOption(screen, player, -1);
-			case GLFW.GLFW_KEY_DOWN -> moveEnchantOption(screen, player, 1);
-			case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> selectEnchantOption(screen, player);
-			default -> {
-				return true;
-			}
+	/** Up/Down/Enter reuse the same general container actions as ordinary slot navigation - no dedicated Enchant Options actions needed. */
+	private static boolean handleEnchantOptionKey(AbstractContainerScreen<?> screen, LocalPlayer player, KeyEvent event) {
+		if (ClientKeyBindings.CONTAINER_NAV_UP.current().matches(event)) {
+			moveEnchantOption(screen, player, -1);
+		} else if (ClientKeyBindings.CONTAINER_NAV_DOWN.current().matches(event)) {
+			moveEnchantOption(screen, player, 1);
+		} else if (ClientKeyBindings.CONTAINER_PICKUP.current().matches(event)
+				|| ClientKeyBindings.CONTAINER_PICKUP_SPLIT.current().matches(event)) {
+			selectEnchantOption(screen, player);
+		} else {
+			return true;
 		}
 		return false;
 	}
@@ -1116,14 +1150,17 @@ public final class MenuAccessibilityController {
 				.orElse(Component.translatable("united_minecraft.menu.enchant_option_none"));
 	}
 
-	private static boolean handleTradeKey(AbstractContainerScreen<?> screen, int key) {
-		switch (key) {
-			case GLFW.GLFW_KEY_UP -> moveTrade(screen, -1);
-			case GLFW.GLFW_KEY_DOWN -> moveTrade(screen, 1);
-			case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> selectTrade(screen);
-			default -> {
-				return true;
-			}
+	/** Up/Down/Enter reuse the same general container actions as ordinary slot navigation - no dedicated Trades actions needed. */
+	private static boolean handleTradeKey(AbstractContainerScreen<?> screen, KeyEvent event) {
+		if (ClientKeyBindings.CONTAINER_NAV_UP.current().matches(event)) {
+			moveTrade(screen, -1);
+		} else if (ClientKeyBindings.CONTAINER_NAV_DOWN.current().matches(event)) {
+			moveTrade(screen, 1);
+		} else if (ClientKeyBindings.CONTAINER_PICKUP.current().matches(event)
+				|| ClientKeyBindings.CONTAINER_PICKUP_SPLIT.current().matches(event)) {
+			selectTrade(screen);
+		} else {
+			return true;
 		}
 		return false;
 	}

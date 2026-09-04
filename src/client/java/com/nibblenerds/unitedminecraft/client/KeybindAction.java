@@ -16,19 +16,28 @@ public final class KeybindAction {
 	private final String id;
 	private final Keybind default_;
 	private final KeybindContext context;
+	private final KeybindCategory category;
+	private final ContainerScope scope;
 
 	private Keybind current;
 	private boolean held;
 	private boolean justPressed;
 
-	KeybindAction(String id, Keybind default_) {
-		this(id, default_, KeybindContext.GLOBAL);
+	KeybindAction(String id, KeybindCategory category, Keybind default_) {
+		this(id, category, default_, KeybindContext.GLOBAL);
 	}
 
-	KeybindAction(String id, Keybind default_, KeybindContext context) {
+	KeybindAction(String id, KeybindCategory category, Keybind default_, KeybindContext context) {
+		this(id, category, default_, context, null);
+	}
+
+	/** See {@link ContainerScope}'s own doc for what {@code scope} means and when it should be non-null. */
+	KeybindAction(String id, KeybindCategory category, Keybind default_, KeybindContext context, ContainerScope scope) {
 		this.id = id;
+		this.category = category;
 		this.default_ = default_;
 		this.context = context;
+		this.scope = scope;
 		this.current = default_;
 	}
 
@@ -42,6 +51,15 @@ public final class KeybindAction {
 
 	public KeybindContext context() {
 		return context;
+	}
+
+	public KeybindCategory category() {
+		return category;
+	}
+
+	/** {@code null} unless this is a {@link KeybindContext#CONTAINER_SCREEN} action reachable from only one {@link ContainerScope}. */
+	public ContainerScope scope() {
+		return scope;
 	}
 
 	public Keybind current() {
@@ -76,6 +94,15 @@ public final class KeybindAction {
 
 	void resetPressState() {
 		held = false;
+		justPressed = false;
+	}
+
+	/**
+	 * Clears just-this-tick's justPressed without touching {@link #held} - see {@link
+	 * ClientKeyBindings#suppressJustPressedAfterScreenClose()}'s own doc for why this exists and
+	 * why it's not the same thing as {@link #resetPressState()}.
+	 */
+	void suppressJustPressedThisTick() {
 		justPressed = false;
 	}
 }

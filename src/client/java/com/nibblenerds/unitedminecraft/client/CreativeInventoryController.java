@@ -24,8 +24,6 @@ import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.ItemStack;
 
-import org.lwjgl.glfw.GLFW;
-
 /**
  * Keyboard navigation for the Creative inventory's item-picker tabs (Survival Inventory,
  * Building Blocks, Combat, Search, ...). Vanilla's own model doesn't fit
@@ -157,13 +155,11 @@ public final class CreativeInventoryController {
 	 * its way entirely except for Tab (leave it) and Home/End (still cycle tabs).
 	 */
 	private static boolean handleKey(CreativeModeInventoryScreen screen, KeyEvent event) {
-		int key = event.key();
-
-		if (key == GLFW.GLFW_KEY_HOME) {
+		if (ClientKeyBindings.CREATIVE_SWITCH_TAB_PREV.current().matches(event)) {
 			switchTab(screen, -1);
 			return false;
 		}
-		if (key == GLFW.GLFW_KEY_END) {
+		if (ClientKeyBindings.CREATIVE_SWITCH_TAB_NEXT.current().matches(event)) {
 			switchTab(screen, 1);
 			return false;
 		}
@@ -172,8 +168,11 @@ public final class CreativeInventoryController {
 			return true; // Inventory tab: MenuAccessibilityController owns this instead.
 		}
 
+		boolean switchSection = ClientKeyBindings.CONTAINER_SWITCH_SECTION_NEXT.current().matches(event)
+				|| ClientKeyBindings.CONTAINER_SWITCH_SECTION_PREV.current().matches(event);
+
 		if (section == Section.SEARCH) {
-			if (key == GLFW.GLFW_KEY_TAB) {
+			if (switchSection) {
 				toggleSection(screen);
 				return false;
 			}
@@ -182,8 +181,10 @@ public final class CreativeInventoryController {
 			// convention as this class's own recipe-book search prompt equivalent. Left/Right stay
 			// with vanilla's EditBox (text-cursor movement while still editing the term) since
 			// there's no grid concept of "previous" from a text field to move to.
-			if (key == GLFW.GLFW_KEY_UP || key == GLFW.GLFW_KEY_DOWN
-					|| key == GLFW.GLFW_KEY_PAGE_UP || key == GLFW.GLFW_KEY_PAGE_DOWN) {
+			if (ClientKeyBindings.CONTAINER_NAV_UP.current().matches(event)
+					|| ClientKeyBindings.CONTAINER_NAV_DOWN.current().matches(event)
+					|| ClientKeyBindings.CREATIVE_PAGE_UP.current().matches(event)
+					|| ClientKeyBindings.CREATIVE_PAGE_DOWN.current().matches(event)) {
 				leaveSearchSection(screen);
 				section = Section.ITEM_GRID;
 				syncItems(screen);
@@ -196,7 +197,7 @@ public final class CreativeInventoryController {
 			return true;
 		}
 
-		if (key == GLFW.GLFW_KEY_TAB) {
+		if (switchSection) {
 			toggleSection(screen);
 			return false;
 		}
@@ -204,35 +205,52 @@ public final class CreativeInventoryController {
 		// Applies regardless of section - a carried item picked up from the grid or from the
 		// hotbar shares the same menu.getCarried(), so the trash-slot shortcut works from
 		// either. See MenuAccessibilityController#discardCarriedItem.
-		if (key == GLFW.GLFW_KEY_DELETE) {
+		if (ClientKeyBindings.CONTAINER_DISCARD.current().matches(event)) {
 			return !MenuAccessibilityController.discardCarriedItem(screen);
 		}
 
 		if (section == Section.HOTBAR) {
-			switch (key) {
-				case GLFW.GLFW_KEY_LEFT -> moveHotbar(screen, -1);
-				case GLFW.GLFW_KEY_RIGHT -> moveHotbar(screen, 1);
-				case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> clickHotbarSlot(screen, event);
-				case GLFW.GLFW_KEY_SPACE -> describeHotbarFocus(screen);
-				default -> {
-					return true;
-				}
+			if (ClientKeyBindings.CONTAINER_NAV_LEFT.current().matches(event)) {
+				moveHotbar(screen, -1);
+			} else if (ClientKeyBindings.CONTAINER_NAV_RIGHT.current().matches(event)) {
+				moveHotbar(screen, 1);
+			} else if (ClientKeyBindings.CONTAINER_PICKUP.current().matches(event)) {
+				clickHotbarSlot(screen, ContainerInput.PICKUP, 0);
+			} else if (ClientKeyBindings.CONTAINER_PICKUP_SPLIT.current().matches(event)) {
+				clickHotbarSlot(screen, ContainerInput.PICKUP, 1);
+			} else if (ClientKeyBindings.CONTAINER_QUICK_MOVE.current().matches(event)) {
+				clickHotbarSlot(screen, ContainerInput.QUICK_MOVE, 0);
+			} else if (ClientKeyBindings.CONTAINER_DESCRIBE_SLOT.current().matches(event)) {
+				describeHotbarFocus(screen);
+			} else {
+				return true;
 			}
 			return false;
 		}
 
-		switch (key) {
-			case GLFW.GLFW_KEY_LEFT -> move(screen, -1);
-			case GLFW.GLFW_KEY_RIGHT -> move(screen, 1);
-			case GLFW.GLFW_KEY_UP -> move(screen, -9);
-			case GLFW.GLFW_KEY_DOWN -> move(screen, 9);
-			case GLFW.GLFW_KEY_PAGE_UP -> move(screen, -45);
-			case GLFW.GLFW_KEY_PAGE_DOWN -> move(screen, 45);
-			case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> pickUpOrPlace(screen, event);
-			case GLFW.GLFW_KEY_SPACE -> describeCurrent(screen);
-			default -> {
-				return true;
-			}
+		if (ClientKeyBindings.CONTAINER_NAV_LEFT.current().matches(event)) {
+			move(screen, -1);
+		} else if (ClientKeyBindings.CONTAINER_NAV_RIGHT.current().matches(event)) {
+			move(screen, 1);
+		} else if (ClientKeyBindings.CONTAINER_NAV_UP.current().matches(event)) {
+			move(screen, -9);
+		} else if (ClientKeyBindings.CONTAINER_NAV_DOWN.current().matches(event)) {
+			move(screen, 9);
+		} else if (ClientKeyBindings.CREATIVE_PAGE_UP.current().matches(event)) {
+			move(screen, -45);
+		} else if (ClientKeyBindings.CREATIVE_PAGE_DOWN.current().matches(event)) {
+			move(screen, 45);
+		} else if (ClientKeyBindings.CONTAINER_PICKUP.current().matches(event)
+				|| ClientKeyBindings.CONTAINER_PICKUP_SPLIT.current().matches(event)) {
+			// No left/right-click distinction here - the item grid hands out an infinite copy
+			// either way, so there's no stack to split; see pickUpOrPlace's own doc.
+			pickUpOrPlace(screen, false);
+		} else if (ClientKeyBindings.CONTAINER_QUICK_MOVE.current().matches(event)) {
+			pickUpOrPlace(screen, true);
+		} else if (ClientKeyBindings.CONTAINER_DESCRIBE_SLOT.current().matches(event)) {
+			describeCurrent(screen);
+		} else {
+			return true;
 		}
 		return false;
 	}
@@ -356,19 +374,30 @@ public final class CreativeInventoryController {
 		narrateHotbarFocus(screen);
 	}
 
-	private static void clickHotbarSlot(CreativeModeInventoryScreen screen, KeyEvent event) {
+	/**
+	 * Mirrors vanilla's own {@code CreativeModeInventoryScreen#slotClicked} for a real (not
+	 * pseudo-grid) slot: a direct, purely client-side click against the player's own {@code
+	 * inventoryMenu}, not the networked {@code handleContainerInput} path - this screen has no
+	 * server-side container actually open to send that packet against, so a click routed through
+	 * it silently goes nowhere. {@code ItemPickerMenu#getCarried}/{@code #setCarried} already
+	 * just forward to {@code player.inventoryMenu}'s own carried field (decompiled and confirmed
+	 * - see {@link #pickUpOrPlace}), so this sees exactly what picking an item up from the grid
+	 * or another hotbar slot just put there.
+	 */
+	private static void clickHotbarSlot(CreativeModeInventoryScreen screen, ContainerInput input, int button) {
 		List<Slot> slots = hotbarSlots(screen);
 		if (hotbarIndex >= slots.size()) {
 			return;
 		}
 		Slot slot = slots.get(hotbarIndex);
+		LocalPlayer player = Minecraft.getInstance().player;
+		int inventoryMenuIndex = inventoryMenuIndexForHotbarSlot(player, slot.getContainerSlot());
+		if (inventoryMenuIndex < 0) {
+			return;
+		}
 
-		boolean shiftHeld = (event.modifiers() & GLFW.GLFW_MOD_SHIFT) != 0;
-		boolean ctrlHeld = (event.modifiers() & GLFW.GLFW_MOD_CONTROL) != 0;
-		int button = ctrlHeld ? 1 : 0;
-		Minecraft client = Minecraft.getInstance();
-		client.gameMode.handleContainerInput(screen.getMenu().containerId, slot.index, button,
-				shiftHeld ? ContainerInput.QUICK_MOVE : ContainerInput.PICKUP, client.player);
+		player.inventoryMenu.clicked(inventoryMenuIndex, button, input, player);
+		player.inventoryMenu.broadcastChanges();
 
 		narrateHotbarFocus(screen);
 	}
@@ -450,8 +479,11 @@ public final class CreativeInventoryController {
 	}
 
 	/**
-	 * Enter picks the focused item up onto the cursor; Shift+Enter instead writes it straight
-	 * into the player's currently selected hotbar slot.
+	 * {@link ClientKeyBindings#CONTAINER_PICKUP}/{@link ClientKeyBindings#CONTAINER_PICKUP_SPLIT}
+	 * (via {@code quickMove == false}) pick the focused item up onto the cursor; {@link
+	 * ClientKeyBindings#CONTAINER_QUICK_MOVE} instead writes it straight into the player's
+	 * currently selected hotbar slot. No left/right-click split for the pickup case - the grid
+	 * hands out an infinite copy either way, so there's no real stack to split in half.
 	 *
 	 * <p>Neither goes through {@code handleContainerInput} (the generic container-click
 	 * networking path {@link MenuAccessibilityController} uses for real containers) - that
@@ -464,7 +496,7 @@ public final class CreativeInventoryController {
 	 * {@code AbstractContainerMenu#clicked} for these slots at all - it hands out a copy via
 	 * {@code ItemPickerMenu#setCarried} directly, which this mirrors instead.
 	 */
-	private static void pickUpOrPlace(CreativeModeInventoryScreen screen, KeyEvent event) {
+	private static void pickUpOrPlace(CreativeModeInventoryScreen screen, boolean quickMove) {
 		syncItems(screen);
 		if (trackedItems.isEmpty()) {
 			return;
@@ -478,7 +510,7 @@ public final class CreativeInventoryController {
 		}
 		ItemStack clicked = slot.getItem();
 
-		if ((event.modifiers() & GLFW.GLFW_MOD_SHIFT) != 0) {
+		if (quickMove) {
 			if (writeToFirstEmptyHotbarSlot(clicked)) {
 				narrateCurrent(screen, false);
 			} else {

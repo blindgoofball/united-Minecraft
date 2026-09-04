@@ -2,6 +2,7 @@ package com.nibblenerds.unitedminecraft.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
 
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 
 import org.lwjgl.glfw.GLFW;
@@ -21,6 +22,31 @@ public record Keybind(int key, int modifiers) {
 
 	public boolean isUnbound() {
 		return key < 0;
+	}
+
+	/**
+	 * Exact match against a raw key-press event - used by {@link KeybindContext#CONTAINER_SCREEN}
+	 * actions, which are dispatched directly off a screen's own key events rather than polled
+	 * through {@link ClientKeyBindings#updateAll()}. Exact modifier equality, not a subset check
+	 * like {@code updateAll} uses: a container-screen chord like Shift+Enter is a fully separate
+	 * action from plain Enter (see {@link ClientKeyBindings#CONTAINER_QUICK_MOVE}), not a more
+	 * specific variant competing for the same primary key.
+	 *
+	 * <p>Enter and numpad Enter are treated as the same physical key here (matching every other
+	 * vanilla and United Minecraft "Enter" binding) - a {@code Keybind} bound to either one
+	 * accepts a press of both, rather than a player's numpad Enter silently not working just
+	 * because the default happens to be recorded as the main Enter key.
+	 */
+	public boolean matches(KeyEvent event) {
+		if (isUnbound() || modifiers != event.modifiers()) {
+			return false;
+		}
+		if (key == event.key()) {
+			return true;
+		}
+		boolean thisIsEnter = key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER;
+		boolean eventIsEnter = event.key() == GLFW.GLFW_KEY_ENTER || event.key() == GLFW.GLFW_KEY_KP_ENTER;
+		return thisIsEnter && eventIsEnter;
 	}
 
 	/** Human-readable form for the rebind screen, e.g. "Ctrl+Shift+G" or "Unbound". */
