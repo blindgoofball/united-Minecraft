@@ -383,6 +383,11 @@ public final class MenuAccessibilityController {
 			return !discardCarriedItem(screen);
 		}
 
+		if (key == GLFW.GLFW_KEY_SPACE) {
+			describeFocusedSlot(screen.getMenu());
+			return false;
+		}
+
 		if (handleHotbarSwapOrDrop(screen, player, event, ctrlHeld)) {
 			return false;
 		}
@@ -407,6 +412,15 @@ public final class MenuAccessibilityController {
 		Minecraft.getInstance().getNarrator().saySystemNow(
 				Component.translatable("united_minecraft.narrate.menu_item_discarded", itemName));
 		return true;
+	}
+
+	/** Space: narrates {@link BlockDescriptions#describe} for whatever's in the focused slot. */
+	private static void describeFocusedSlot(AbstractContainerMenu menu) {
+		Slot slot = currentSlot(menu);
+		if (slot == null) {
+			return;
+		}
+		Minecraft.getInstance().getNarrator().saySystemNow(BlockDescriptions.describe(slot.getItem()));
 	}
 
 	/**

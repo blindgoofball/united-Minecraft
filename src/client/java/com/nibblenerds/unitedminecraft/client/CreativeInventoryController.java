@@ -213,6 +213,7 @@ public final class CreativeInventoryController {
 				case GLFW.GLFW_KEY_LEFT -> moveHotbar(screen, -1);
 				case GLFW.GLFW_KEY_RIGHT -> moveHotbar(screen, 1);
 				case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> clickHotbarSlot(screen, event);
+				case GLFW.GLFW_KEY_SPACE -> describeHotbarFocus(screen);
 				default -> {
 					return true;
 				}
@@ -228,11 +229,30 @@ public final class CreativeInventoryController {
 			case GLFW.GLFW_KEY_PAGE_UP -> move(screen, -45);
 			case GLFW.GLFW_KEY_PAGE_DOWN -> move(screen, 45);
 			case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> pickUpOrPlace(screen, event);
+			case GLFW.GLFW_KEY_SPACE -> describeCurrent(screen);
 			default -> {
 				return true;
 			}
 		}
 		return false;
+	}
+
+	/** Space, in the item grid: narrates {@link BlockDescriptions#describe} for the focused item. */
+	private static void describeCurrent(CreativeModeInventoryScreen screen) {
+		syncItems(screen);
+		if (index >= trackedItems.size()) {
+			return;
+		}
+		Minecraft.getInstance().getNarrator().saySystemNow(BlockDescriptions.describe(trackedItems.get(index)));
+	}
+
+	/** Space, in the hotbar section: narrates {@link BlockDescriptions#describe} for the focused hotbar slot. */
+	private static void describeHotbarFocus(CreativeModeInventoryScreen screen) {
+		List<Slot> slots = hotbarSlots(screen);
+		if (hotbarIndex >= slots.size()) {
+			return;
+		}
+		Minecraft.getInstance().getNarrator().saySystemNow(BlockDescriptions.describe(slots.get(hotbarIndex).getItem()));
 	}
 
 	/** Tab cycles Search (Search tab only) -> Item Grid -> Hotbar -> back around. */
