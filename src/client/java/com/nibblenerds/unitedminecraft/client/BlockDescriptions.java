@@ -149,9 +149,21 @@ public final class BlockDescriptions {
 	 * match via {@link #SHAPE_SUFFIXES}' own {@code _bricks}, Mojang used singular "tile" in
 	 * the compound names here but plural "tiles" for the base block - an irregular case, not a
 	 * pattern worth generalizing into the suffix table.
+	 *
+	 * <p>Plain {@code bricks} (the terracotta-red brick block) has the same problem the other
+	 * way around: it has no material prefix of its own, so its cut forms are just {@code
+	 * brick_stairs}/{@code brick_slab}/{@code brick_wall} - the generic {@code _stairs}/{@code
+	 * _slab}/{@code _wall} suffixes strip those down to singular "brick", never matching the
+	 * base block's own plural "bricks" key.
 	 */
 	private static String normalizeIrregularPlural(String path) {
-		return path.equals("deepslate_tiles") ? "deepslate_tile" : path;
+		if (path.equals("deepslate_tiles")) {
+			return "deepslate_tile";
+		}
+		if (path.equals("brick_stairs") || path.equals("brick_slab") || path.equals("brick_wall")) {
+			return "bricks";
+		}
+		return path;
 	}
 
 	/**
