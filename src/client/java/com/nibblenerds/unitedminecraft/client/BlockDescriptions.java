@@ -43,7 +43,7 @@ public final class BlockDescriptions {
 	private static final List<String> SHAPE_SUFFIXES = List.of(
 			"_hanging_sign", "_wall_hanging_sign", "_pressure_plate", "_fence_gate",
 			"_brick_stairs", "_brick_slab", "_brick_wall", "_wall_sign", "_wall_skull", "_wall_head",
-			"_stairs", "_slab", "_fence", "_door", "_trapdoor", "_button", "_sign",
+			"_stairs", "_slab", "_wall", "_fence", "_door", "_trapdoor", "_button", "_sign",
 			"_planks", "_wood", "_log", "_hyphae", "_stem", "_shelf", "_bricks", "_skull", "_head", "_torch");
 
 	/** Every dye color a block family can be prefixed with (wool, concrete, stained glass, banners, ...). */
@@ -82,10 +82,23 @@ public final class BlockDescriptions {
 		}
 
 		String key = normalizeWallInfix(path);
+		key = normalizeIrregularPlural(key);
 		key = stripShapeSuffix(key);
 		key = stripColorPrefix(key);
 		key = stripShapeSuffix(key);
 		return key;
+	}
+
+	/**
+	 * {@code deepslate_tiles} (the plain block) doesn't reduce to the same key as {@code
+	 * deepslate_tile_slab}/{@code _stairs}/{@code _wall} without this: unlike {@code
+	 * X_bricks}/{@code X_brick_stairs}, which stay consistently plural/singular and already
+	 * match via {@link #SHAPE_SUFFIXES}' own {@code _bricks}, Mojang used singular "tile" in
+	 * the compound names here but plural "tiles" for the base block - an irregular case, not a
+	 * pattern worth generalizing into the suffix table.
+	 */
+	private static String normalizeIrregularPlural(String path) {
+		return path.equals("deepslate_tiles") ? "deepslate_tile" : path;
 	}
 
 	/**

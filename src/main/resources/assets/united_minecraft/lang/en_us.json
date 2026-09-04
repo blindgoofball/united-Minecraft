@@ -455,5 +455,26 @@
 	"united_minecraft.narrate.material.deepslate_copper_ore": "Dark bluish-gray deepslate flecked with orange and pale teal-green clusters.",
 	"united_minecraft.narrate.material.nether_gold_ore": "Dark reddish-brown netherrack flecked with bright golden-yellow clusters.",
 	"united_minecraft.narrate.material.nether_quartz_ore": "Dark reddish-brown netherrack flecked with streaks of pale cream-white quartz.",
-	"united_minecraft.narrate.material.ancient_debris": "A dark brownish-purple metallic block marbled with lighter tan streaks."
+	"united_minecraft.narrate.material.ancient_debris": "A dark brownish-purple metallic block marbled with lighter tan streaks.",
+
+	"united_minecraft.narrate.material.deepslate": "A dark bluish-gray rock, cut plain or into mortared bricks.",
+	"united_minecraft.narrate.material.deepslate_tile": "A dark bluish-gray rock cut into fine rectangular tiles with thin grout lines.",
+	"united_minecraft.narrate.material.cobbled_deepslate": "A rough, dark bluish-gray stone built from uneven, jumbled chunks.",
+	"united_minecraft.narrate.material.polished_deepslate": "A dark bluish-gray stone, cut smooth and even.",
+	"united_minecraft.narrate.material.chiseled_deepslate": "A dark bluish-gray stone carved with a decorative concentric-square border pattern.",
+	"united_minecraft.narrate.material.cracked_deepslate": "A dark bluish-gray stone brick fractured with visible crack lines.",
+	"united_minecraft.narrate.material.cracked_deepslate_tiles": "A dark bluish-gray stone tile fractured with visible crack lines.",
+	"united_minecraft.narrate.material.reinforced_deepslate": "A near-black block bordered by pale metal brackets, built to withstand almost anything.",
+	"united_minecraft.narrate.material.tuff": "An olive-gray rock with a muted, mottled surface, cut plain or into mortared bricks.",
+	"united_minecraft.narrate.material.polished_tuff": "An olive-gray stone, cut smooth and even.",
+	"united_minecraft.narrate.material.chiseled_tuff": "An olive-gray stone carved with a winding, maze-like pattern.",
+	"united_minecraft.narrate.material.blackstone": "A near-black volcanic stone with a faint purple-gray speckle.",
+	"united_minecraft.narrate.material.polished_blackstone": "A near-black stone, cut smooth and even, with a faint purple-gray tint.",
+	"united_minecraft.narrate.material.chiseled_polished_blackstone": "A near-black stone carved with a rectangular engraved border pattern.",
+	"united_minecraft.narrate.material.cracked_polished_blackstone": "A near-black stone brick fractured with visible crack lines.",
+	"united_minecraft.narrate.material.gilded_blackstone": "A near-black stone flecked with scattered raw gold nuggets.",
+	"united_minecraft.narrate.material.basalt": "A dark gray-purple volcanic rock with rough vertical striations.",
+	"united_minecraft.narrate.material.polished_basalt": "A dark gray volcanic rock with smooth vertical striations.",
+	"united_minecraft.narrate.material.smooth_basalt": "A dark gray volcanic rock with a flat, uniform matte surface.",
+	"united_minecraft.narrate.material.calcite": "A pale, near-white crystalline rock with a faint bluish-gray tint."
 }
