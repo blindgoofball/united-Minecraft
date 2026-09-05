@@ -322,7 +322,11 @@ keys move within a section in a proper 2D grid; Enter picks up/places
 or places one item at a time back from it - the keyboard equivalent of a
 right-click). Hovering a slot and pressing 1-9 swaps its contents into that
 hotbar slot, and Q (Ctrl+Q for the whole stack) drops it, the same as they
-would with a real mouse cursor.
+would with a real mouse cursor. Space on a focused slot holding a block
+narrates what it's actually made of - a visual, tactile description (grain,
+color, texture) written per material rather than per block, so a slab,
+stairs, wall, and fence of the same wood or stone all share one description
+instead of repeating near-identical entries.
 
 Wherever a crafting grid and Recipe Book are both present, Up/Down move
 between recipe groups and Left/Right between variants within one (vanilla
@@ -443,8 +447,11 @@ Minecraft's normal narrator on its own.
 
 ## Default Key Bindings
 
-All of these are rebindable from Options > Controls > United Minecraft, except
-where noted.
+All of these - including every Shift/Alt-modified meaning listed here, and
+every container-menu and Creative-inventory action described earlier - are
+independently rebindable to any key or modifier combination from United
+Minecraft's own Keybindings screen (Settings > Keybindings), not vanilla's
+Options > Controls.
 
 | Key | Action |
 | --- | --- |
@@ -478,8 +485,9 @@ where noted.
 
 Inside container menus, the Creative inventory, and settings/list screens, arrow
 keys/Tab/Enter/Home/End/Delete/Space/Page Up/Down take on the screen-specific
-meanings described above - those are fixed, not part of the rebindable list,
-since they only apply within that particular screen.
+meanings described above - see the Keybindings screen for the full, current
+default of each screen-specific action, since space here only shows the
+regular-gameplay bindings.
 
 ## Building From Source
 
