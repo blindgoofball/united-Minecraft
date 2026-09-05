@@ -318,9 +318,11 @@ tables, anvils, brewing stands, enchanting tables, and your own inventory.
 Tab/Shift+Tab cycle between sections (the container's own slots, equipment,
 main inventory, hotbar, and a Recipe Book section where applicable); arrow
 keys move within a section in a proper 2D grid; Enter picks up/places
-(Shift+Enter quick-moves). Hovering a slot and pressing 1-9 swaps its
-contents into that hotbar slot, and Q (Ctrl+Q for the whole stack) drops it,
-the same as they would with a real mouse cursor.
+(Shift+Enter quick-moves, Ctrl+Enter splits a stack in half onto the cursor
+or places one item at a time back from it - the keyboard equivalent of a
+right-click). Hovering a slot and pressing 1-9 swaps its contents into that
+hotbar slot, and Q (Ctrl+Q for the whole stack) drops it, the same as they
+would with a real mouse cursor.
 
 Wherever a crafting grid and Recipe Book are both present, Up/Down move
 between recipe groups and Left/Right between variants within one (vanilla
@@ -370,15 +372,18 @@ A dedicated key opens a settings screen for the things worth tuning to
 taste: on/off switches for Hostile Radar, its melee-range alert, Fall
 Warning, Durability Awareness, Tool Harvest Awareness (all otherwise
 always-on with no toggle of their own), skipping empty Scanner categories,
-and auto-locking onto a mob after walking to it, a three-way switch for the
-Combat Mode attack-ready cue (off, Combat Mode only, or always), and
-range/threshold sliders for Hostile Radar, Fall Warning, Mining Radar,
-Navigation Radar, the Scanner, and Durability Awareness's warning/critical
-thresholds. Saved to a config file shared across every world and server, and
-built from the same vanilla screen widgets as the rest of Minecraft's
-Options menus rather than a third-party settings toolkit, so it narrates
-exactly as reliably - including scrolling to keep whatever's focused on
-screen as the list of settings grows past what fits.
+auto-locking onto a mob after walking to it, and re-narrating Build Mode's
+cursor after a successful place/break/interact (on by default - turn it off
+if you'd rather rely on the sound/visual feedback alone for a routine
+action), a three-way switch for the Combat Mode attack-ready cue (off,
+Combat Mode only, or always), and range/threshold sliders for Hostile
+Radar, Fall Warning (including how many seconds ahead it looks), Mining
+Radar, Navigation Radar, the Scanner, and Durability Awareness's
+warning/critical thresholds. Saved to a config file shared across every
+world and server, and built from the same vanilla screen widgets as the
+rest of Minecraft's Options menus rather than a third-party settings
+toolkit, so it narrates exactly as reliably - including scrolling to keep
+whatever's focused on screen as the list of settings grows past what fits.
 
 A button on that screen opens the Sound and Cue Glossary - a scrollable,
 keyboard-navigable list of every audio cue this mod plays and what it means,
@@ -463,6 +468,7 @@ where noted.
 | Page Up/Down (Alt = jump to the next/previous item of the same kind) | Build Mode cursor up/down, or cycle the Scanner's nearest items |
 | Home/End | Cycle the Scanner's category |
 | Enter (Shift = walk there) | Target the Scanner's focused item, or interact with it directly while locked on |
+| Enter (Shift = quick-move, Ctrl = split stack), inside container menus and the Creative inventory | Pick up/place the focused slot's stack |
 | Backspace | Stop Scanner lock-on / cancel Auto-Walk, swim, or trail retrace |
 | Delete | Remove the focused marker in the Markers category |
 | \ (backslash) | Announce the Scanner's focused item's coordinates |
