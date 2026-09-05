@@ -885,12 +885,15 @@ public final class BuildModeController {
 	/**
 	 * Tries every candidate face in {@link #faceTryOrder} against the real placement call.
 	 *
-	 * <p>Distinguishes two distinct failure narrations if nothing works: {@code
-	 * build_no_support} when not even one non-replaceable neighbor face turned up to try
-	 * against in the first place, versus {@code build_placement_blocked} when at least one
-	 * was found but every real placement attempt against it still failed (usually an entity
-	 * occupying the space - see {@code build_placement_blocked}'s own doc in en_us.json for
-	 * why this doesn't bother confirming that specifically).
+	 * <p>Distinguishes three failure narrations if nothing works: {@code build_no_support} when
+	 * not even one non-replaceable neighbor face turned up to try against in the first place;
+	 * {@code build_placement_blocked} when a block item found one but every real placement
+	 * attempt against it still failed (usually an entity occupying the space - see that key's
+	 * own doc in en_us.json for why this doesn't bother confirming that specifically); and
+	 * {@code build_cannot_place} for the same "found a face, every attempt failed" outcome with
+	 * a non-block item instead - a tool passing {@link #hasUseOnBehavior}'s existence check
+	 * doesn't mean it does anything against *this particular* neighbor (an axe against stone, a
+	 * hoe against sand), and nothing is actually "blocking" it the way an entity would.
 	 */
 	private static void attemptPlacementSequence(Minecraft client, LocalPlayer player) {
 		Level level = player.level();
@@ -912,9 +915,22 @@ public final class BuildModeController {
 				return;
 			}
 		}
-		client.getNarrator().saySystemNow(Component.translatable(foundSupportFace
-				? "united_minecraft.narrate.build_placement_blocked"
-				: "united_minecraft.narrate.build_no_support"));
+		String failureKey;
+		if (!foundSupportFace) {
+			failureKey = "united_minecraft.narrate.build_no_support";
+		} else if (placingBlock(player) != null) {
+			failureKey = "united_minecraft.narrate.build_placement_blocked";
+		} else {
+			// A non-block item (a hoe, axe, shovel...) that declares useOn behavior in general
+			// (see hasUseOnBehavior) but turned out not to actually do anything against any
+			// neighbor here isn't "blocked" by anything - there's no entity in the way, nothing
+			// physically stopping it, the tool just has no effect on what's around the cursor
+			// (an axe against stone, a hoe against sand). build_placement_blocked's wording
+			// implies an obstruction that isn't there; build_cannot_place is the same generic
+			// "tried it and it didn't work" message attemptBucketUse's own failure already uses.
+			failureKey = "united_minecraft.narrate.build_cannot_place";
+		}
+		client.getNarrator().saySystemNow(Component.translatable(failureKey));
 	}
 
 	/**
