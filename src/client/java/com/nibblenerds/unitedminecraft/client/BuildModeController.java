@@ -30,6 +30,7 @@ import net.minecraft.world.level.block.SlabBlock;
 import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.ComparatorMode;
 import net.minecraft.world.level.block.state.properties.Half;
 import net.minecraft.world.level.block.state.properties.Property;
@@ -1214,8 +1215,17 @@ public final class BuildModeController {
 		if (level.hasNeighborSignal(cursor)) {
 			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_powered"));
 		}
-		if (state.getBlock() instanceof SlabBlock && state.getValue(SlabBlock.TYPE) == SlabType.DOUBLE) {
-			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_double_slab"));
+		if (state.getBlock() instanceof SlabBlock) {
+			if (state.getValue(SlabBlock.TYPE) == SlabType.DOUBLE) {
+				message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_double_slab"));
+			} else if (state.getValue(SlabBlock.TYPE) == SlabType.TOP) {
+				message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_top_slab"));
+			}
+		}
+		// Shared by DoorBlock, TrapDoorBlock, and FenceGateBlock alike - see their own OPEN
+		// fields, all of which just alias this one BlockStateProperties constant.
+		if (state.hasProperty(BlockStateProperties.OPEN) && state.getValue(BlockStateProperties.OPEN)) {
+			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_open"));
 		}
 		if (ScannerController.isCrop(state.getBlock()) && ScannerController.isRipe(state)) {
 			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.scanner_ripe"));

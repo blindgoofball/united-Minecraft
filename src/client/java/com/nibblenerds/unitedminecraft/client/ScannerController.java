@@ -85,6 +85,7 @@ import net.minecraft.world.level.block.entity.SignBlockEntity;
 import net.minecraft.world.level.block.entity.SignText;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BedPart;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.ChestType;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.level.chunk.ChunkAccess;
@@ -852,6 +853,14 @@ public final class ScannerController {
 				name = signText != null
 						? name.copy().append(Component.literal(", ")).append(signText)
 						: name.copy().append(Component.literal(", ")).append(Component.translatable("united_minecraft.narrate.scanner_sign_blank"));
+			}
+		}
+		if (category == ScannerCategory.MECHANISMS) {
+			BlockState state = player.level().getBlockState(item.blockPos());
+			// Shared by DoorBlock, TrapDoorBlock, and FenceGateBlock alike - see BuildModeController's
+			// own describeCursor for why this one BlockStateProperties constant covers all three.
+			if (state.hasProperty(BlockStateProperties.OPEN) && state.getValue(BlockStateProperties.OPEN)) {
+				name = name.copy().append(Component.literal(", ")).append(Component.translatable("united_minecraft.narrate.scanner_open"));
 			}
 		}
 		return Component.translatable("united_minecraft.narrate.scanner_item", name, distance, direction);
