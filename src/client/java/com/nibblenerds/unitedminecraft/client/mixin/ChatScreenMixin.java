@@ -1,6 +1,8 @@
 package com.nibblenerds.unitedminecraft.client.mixin;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Mixin;
@@ -20,8 +22,10 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.multiplayer.chat.GuiMessage;
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
 import net.minecraft.util.Mth;
 
 /**
@@ -40,14 +44,33 @@ import net.minecraft.util.Mth;
  * has no notion of "the message currently at index N") so the visible text still matches what's
  * being read. The chat log always starts back at the most recent message when the screen opens,
  * regardless of where it was left scrolled to previously.
+ *
+ * <p>Ctrl+Page Up/Down and Ctrl+Enter add keyboard access to whatever a sighted player would
+ * normally reach by clicking chat text directly - a link, a {@code run_command}/{@code
+ * suggest_command} span, a copy-to-clipboard prompt, and so on. Ctrl+Page Up/Down cycles which
+ * clickable span in the currently focused message (see {@link #unitedMinecraft$historyIndex}) is
+ * selected, narrating its text; Ctrl+Enter activates it via the same private {@code
+ * handleComponentClicked} vanilla's own {@code mouseClicked} calls, so it gets vanilla's own
+ * per-{@link ClickEvent} behavior for free - including the "Are you sure you want to open this
+ * link" confirmation screen for URLs, rather than this mod opening one unprompted.
  */
 @Mixin(ChatScreen.class)
 public abstract class ChatScreenMixin {
 	@Shadow
 	protected EditBox input;
 
+	@Shadow
+	private boolean handleComponentClicked(Style style, boolean insertion) {
+		throw new AssertionError();
+	}
+
 	@Unique
 	private int unitedMinecraft$historyIndex;
+
+	// Which clickable span within the currently focused message Ctrl+Page Up/Down has selected -
+	// see #unitedMinecraft$cycleLink and #unitedMinecraft$activateFocusedLink.
+	@Unique
+	private int unitedMinecraft$linkIndex;
 
 	@Redirect(
 			method = "updateNarrationState",
@@ -69,12 +92,23 @@ public abstract class ChatScreenMixin {
 	@Inject(method = "init", at = @At("TAIL"))
 	private void unitedMinecraft$resetChatHistoryOnOpen(CallbackInfo ci) {
 		unitedMinecraft$historyIndex = 0;
+		unitedMinecraft$linkIndex = 0;
 		Minecraft.getInstance().gui.hud.getChat().resetChatScroll();
 	}
 
 	@Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
 	private void unitedMinecraft$browseChatHistory(KeyEvent event, CallbackInfoReturnable<Boolean> cir) {
 		int key = event.key();
+		if (event.hasControlDown() && (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER)) {
+			unitedMinecraft$activateFocusedLink();
+			cir.setReturnValue(true);
+			return;
+		}
+		if (event.hasControlDown() && (key == GLFW.GLFW_KEY_PAGE_UP || key == GLFW.GLFW_KEY_PAGE_DOWN)) {
+			unitedMinecraft$cycleLink(key == GLFW.GLFW_KEY_PAGE_UP ? -1 : 1);
+			cir.setReturnValue(true);
+			return;
+		}
 		if (key != GLFW.GLFW_KEY_PAGE_UP && key != GLFW.GLFW_KEY_PAGE_DOWN) {
 			return;
 		}
@@ -102,6 +136,7 @@ public abstract class ChatScreenMixin {
 			}
 		}
 		unitedMinecraft$historyIndex = next;
+		unitedMinecraft$linkIndex = 0;
 
 		GuiMessage message = messages.get(next);
 		unitedMinecraft$scrollToMessage(chat, message);
@@ -133,5 +168,89 @@ public abstract class ChatScreenMixin {
 		}
 		chat.resetChatScroll();
 		chat.scrollChat(offset);
+	}
+
+	/**
+	 * Runs whichever clickable span {@link #unitedMinecraft$linkIndex} currently points at in the
+	 * focused history message, via the same {@link #handleComponentClicked} vanilla's own click
+	 * handling uses - so a URL still gets vanilla's "Are you sure?" confirmation screen, a {@code
+	 * run_command} span still runs the command, and so on, with no separate handling needed here
+	 * per {@link ClickEvent} type.
+	 */
+	@Unique
+	private void unitedMinecraft$activateFocusedLink() {
+		List<ChatScreenMixin.ChatLink> links = unitedMinecraft$focusedLinks();
+		if (links == null) {
+			return;
+		}
+		if (links.isEmpty()) {
+			Minecraft.getInstance().getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.chat_no_link"));
+			return;
+		}
+		int index = Mth.clamp(unitedMinecraft$linkIndex, 0, links.size() - 1);
+		handleComponentClicked(links.get(index).style(), false);
+	}
+
+	/** Moves {@link #unitedMinecraft$linkIndex} to the next/previous clickable span, wrapping, and narrates it. */
+	@Unique
+	private void unitedMinecraft$cycleLink(int direction) {
+		List<ChatScreenMixin.ChatLink> links = unitedMinecraft$focusedLinks();
+		if (links == null) {
+			return;
+		}
+		if (links.isEmpty()) {
+			Minecraft.getInstance().getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.chat_no_link"));
+			return;
+		}
+		unitedMinecraft$linkIndex = Math.floorMod(unitedMinecraft$linkIndex + direction, links.size());
+		ChatScreenMixin.ChatLink link = links.get(unitedMinecraft$linkIndex);
+
+		MutableComponent narration = link.text().isBlank()
+				? Component.translatable("united_minecraft.narrate.chat_link_unnamed")
+				: Component.literal(link.text());
+		narration = narration.append(Component.literal(", ")).append(
+				Component.translatable("united_minecraft.narrate.chat_link_position", unitedMinecraft$linkIndex + 1, links.size()));
+		Minecraft.getInstance().getNarrator().saySystemNow(narration);
+	}
+
+	/** The focused history message's clickable spans, or null (already narrated) if there's no history to focus at all. */
+	@Unique
+	private List<ChatScreenMixin.ChatLink> unitedMinecraft$focusedLinks() {
+		List<GuiMessage> messages = ((ChatComponentAccess) Minecraft.getInstance().gui.hud.getChat()).unitedMinecraft$getAllMessages();
+		if (messages.isEmpty()) {
+			Minecraft.getInstance().getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.chat_history_empty"));
+			return null;
+		}
+		int index = Mth.clamp(unitedMinecraft$historyIndex, 0, messages.size() - 1);
+		return unitedMinecraft$collectLinks(messages.get(index).content());
+	}
+
+	/**
+	 * Every distinct {@link ClickEvent}-bearing {@link Style} in {@code content}, in reading
+	 * order, paired with the plain text it covers - adjacent runs sharing the identical {@link
+	 * ClickEvent} (as a single link's text is usually split into per-format-change chunks by
+	 * {@link Component#visit(net.minecraft.network.chat.FormattedText.StyledContentConsumer,
+	 * Style)}) are merged into one entry rather than counted as separate links.
+	 */
+	@Unique
+	private static List<ChatScreenMixin.ChatLink> unitedMinecraft$collectLinks(Component content) {
+		List<ChatScreenMixin.ChatLink> links = new ArrayList<>();
+		content.visit((style, text) -> {
+			ClickEvent click = style.getClickEvent();
+			if (click != null) {
+				if (!links.isEmpty() && click.equals(links.get(links.size() - 1).style().getClickEvent())) {
+					ChatScreenMixin.ChatLink previous = links.remove(links.size() - 1);
+					links.add(new ChatScreenMixin.ChatLink(previous.style(), previous.text() + text));
+				} else {
+					links.add(new ChatScreenMixin.ChatLink(style, text));
+				}
+			}
+			return Optional.empty();
+		}, Style.EMPTY);
+		return links;
+	}
+
+	@Unique
+	private record ChatLink(Style style, String text) {
 	}
 }

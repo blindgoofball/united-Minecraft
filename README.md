@@ -67,6 +67,10 @@ no server-side install needed, and it works on any vanilla server.
   silently, a whole page of lines at a time). Shift with either jumps
   straight to the newest or oldest message. The screen always opens scrolled
   to the most recent message regardless of where it was left last time.
+  Ctrl+Page Down/Up cycles through that message's clickable text (links,
+  clickable commands, etc.) if it has more than one, narrating each; Ctrl+Enter
+  activates the selected one, same as clicking it - including vanilla's own
+  confirmation prompt before actually opening a link.
 - Fishing catches are narrated - vanilla gives no feedback at all about what
   a cast just reeled in, sighted or otherwise.
 - Dedicated keys read the current boss bar(s) (name and percentage) and the
