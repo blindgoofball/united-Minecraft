@@ -331,10 +331,10 @@ public final class BuildModeController {
 		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_DOWN)) {
 			moved |= tryMove(client, player, cursor.relative(facing.getOpposite()));
 		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.PAGE_UP)) {
+		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_ASCEND)) {
 			moved |= tryMove(client, player, cursor.above());
 		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.PAGE_DOWN)) {
+		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_DESCEND)) {
 			moved |= tryMove(client, player, cursor.below());
 		}
 

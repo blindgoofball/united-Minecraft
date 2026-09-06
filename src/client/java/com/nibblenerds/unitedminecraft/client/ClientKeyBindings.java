@@ -161,6 +161,12 @@ public final class ClientKeyBindings {
 	public static final KeybindAction BUILD_REORIENT_RIGHT = new KeybindAction("build_reorient_right",
 			KeybindCategory.BUILD_MODE, new Keybind(GLFW.GLFW_KEY_RIGHT, GLFW.GLFW_MOD_ALT), KeybindContext.BUILD_MODE);
 
+	/** Was PAGE_UP/PAGE_DOWN reused for Build Mode's own cursor vertical movement - now its own action, independently rebindable, same as {@link #BUILD_CURSOR_LEFT} etc. */
+	public static final KeybindAction BUILD_CURSOR_ASCEND = new KeybindAction(
+			"build_cursor_ascend", KeybindCategory.BUILD_MODE, new Keybind(GLFW.GLFW_KEY_PAGE_UP, 0), KeybindContext.BUILD_MODE);
+	public static final KeybindAction BUILD_CURSOR_DESCEND = new KeybindAction(
+			"build_cursor_descend", KeybindCategory.BUILD_MODE, new Keybind(GLFW.GLFW_KEY_PAGE_DOWN, 0), KeybindContext.BUILD_MODE);
+
 	public static final KeybindAction PAGE_UP =
 			new KeybindAction("page_up", KeybindCategory.SCANNER, new Keybind(GLFW.GLFW_KEY_PAGE_UP, 0));
 	public static final KeybindAction PAGE_DOWN =
