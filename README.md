@@ -466,6 +466,7 @@ Options > Controls.
 | Right Shift (hold) | Build Mode: break block |
 | G | Build Mode: walk to cursor |
 | J (Alt+J reverses) | Build Mode: cycle placement facing |
+| Ctrl+J | Build Mode: toggle upper/lower half placement (upside-down stairs, top slabs, a trapdoor that opens from the top) |
 | N | Toggle Navigation Radar |
 | M | Toggle Mining Radar |
 | K | Toggle Combat Mode |

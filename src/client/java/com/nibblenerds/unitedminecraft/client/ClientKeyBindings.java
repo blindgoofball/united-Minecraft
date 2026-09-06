@@ -89,6 +89,9 @@ public final class ClientKeyBindings {
 	/** Was Alt+J - see {@link #BUILD_CYCLE_FACING_REVERSE}. */
 	public static final KeybindAction BUILD_CYCLE_FACING_REVERSE = new KeybindAction("build_cycle_facing_reverse",
 			KeybindCategory.BUILD_MODE, new Keybind(GLFW.GLFW_KEY_J, GLFW.GLFW_MOD_ALT), KeybindContext.BUILD_MODE);
+	/** Ctrl+J - shares J with {@link #BUILD_CYCLE_FACING} since both adjust how the next block places. */
+	public static final KeybindAction BUILD_TOGGLE_UPPER_HALF = new KeybindAction("build_toggle_upper_half",
+			KeybindCategory.BUILD_MODE, new Keybind(GLFW.GLFW_KEY_J, GLFW.GLFW_MOD_CONTROL), KeybindContext.BUILD_MODE);
 
 	public static final KeybindAction TOGGLE_NAV_RADAR =
 			new KeybindAction("toggle_nav_radar", KeybindCategory.MOVEMENT_AND_MODES, new Keybind(GLFW.GLFW_KEY_N, 0));

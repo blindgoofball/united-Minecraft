@@ -188,6 +188,10 @@ public final class BuildModeController {
 	private static int anchorX;
 	private static int anchorZ;
 	private static Direction selectedFacing;
+	// Nudges stairs/slabs/trapdoors to place their upper half instead of the lower - see
+	// #attemptPlacementSequence's hitLocation construction and #faceTryOrder for how this
+	// actually steers vanilla's own HALF-picking logic.
+	private static boolean placeUpperHalf;
 	// The cursor's own movement orientation - Up/Down step forward/back along this, Left/Right
 	// strafe relative to it. Always north/east/south/west; set fresh on every toggle() and
 	// adjusted only by cycleOrientation() from there.
@@ -221,6 +225,7 @@ public final class BuildModeController {
 		active = false;
 		cursor = null;
 		selectedFacing = null;
+		placeUpperHalf = false;
 		facing = Direction.NORTH;
 		pendingPlaceTicks = -1;
 		breakHeld = false;
@@ -231,6 +236,7 @@ public final class BuildModeController {
 		if (active) {
 			breakHeld = ClientKeyBindings.BUILD_BREAK.isDown();
 			selectedFacing = null;
+			placeUpperHalf = false;
 			cursor = player.blockPosition();
 			anchorX = cursor.getX();
 			anchorZ = cursor.getZ();
@@ -347,6 +353,10 @@ public final class BuildModeController {
 			cyclePlacementFacing(client, 1);
 		}
 
+		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_TOGGLE_UPPER_HALF)) {
+			toggleUpperHalf(client);
+		}
+
 		boolean breakDown = ClientKeyBindings.BUILD_BREAK.isDown();
 		if (breakDown) {
 			breakBlock(client, player, !breakHeld);
@@ -426,6 +436,21 @@ public final class BuildModeController {
 		Component message = selectedFacing == null
 				? Component.translatable("united_minecraft.narrate.build_facing_auto")
 				: Component.translatable("united_minecraft.narrate.build_placement_facing", directionName(selectedFacing));
+		client.getNarrator().saySystemNow(message);
+	}
+
+	/**
+	 * Flips {@link #placeUpperHalf}, which steers {@link #attemptPlacementSequence} toward the
+	 * upper half of whatever face it ends up placing against (upside-down stairs, top slabs, a
+	 * trapdoor that opens from the top) instead of the lower half. Only actually changes anything
+	 * for blocks with a {@code HALF} (or slab {@code TYPE}) property - other blocks ignore it
+	 * entirely, same as {@link #selectedFacing} silently doing nothing for a non-directional block.
+	 */
+	private static void toggleUpperHalf(Minecraft client) {
+		placeUpperHalf = !placeUpperHalf;
+		Component message = Component.translatable(placeUpperHalf
+				? "united_minecraft.narrate.build_placement_half_upper"
+				: "united_minecraft.narrate.build_placement_half_lower");
 		client.getNarrator().saySystemNow(message);
 	}
 
@@ -909,6 +934,14 @@ public final class BuildModeController {
 					face.getStepX() * (0.5 - FACE_EPSILON),
 					face.getStepY() * (0.5 - FACE_EPSILON),
 					face.getStepZ() * (0.5 - FACE_EPSILON));
+			if (face.getAxis() != Direction.Axis.Y) {
+				// Against a sideways neighbor, vanilla's own HALF-picking logic (StairBlock,
+				// SlabBlock, TrapDoorBlock) reads whether the click landed above or below the
+				// neighbor's own mid-height - our hit is otherwise always dead-center (a tie,
+				// which every one of those blocks resolves to the lower half), so nudge it a hair
+				// off that boundary to actually pick a side.
+				hitLocation = hitLocation.add(0, placeUpperHalf ? FACE_EPSILON : -FACE_EPSILON, 0);
+			}
 			BlockHitResult hit = new BlockHitResult(hitLocation, face.getOpposite(), neighborPos, false);
 			if (attemptPlace(client, player, hit)) {
 				narrateAfterAction(client, player);
@@ -954,14 +987,15 @@ public final class BuildModeController {
 	 * #selectedFacing} instead, or the result comes out backwards.
 	 */
 	private static Direction[] faceTryOrder(Block block) {
+		Direction[] basePriority = placeUpperHalf ? FACE_PRIORITY_UPPER_HALF : FACE_PRIORITY;
 		if (selectedFacing == null) {
-			return FACE_PRIORITY;
+			return basePriority;
 		}
 		Direction searchDirection = facingIsOppositeOfClickedFace(block) ? selectedFacing : selectedFacing.getOpposite();
-		Direction[] order = new Direction[FACE_PRIORITY.length];
+		Direction[] order = new Direction[basePriority.length];
 		order[0] = searchDirection;
 		int i = 1;
-		for (Direction face : FACE_PRIORITY) {
+		for (Direction face : basePriority) {
 			if (face != searchDirection) {
 				order[i++] = face;
 			}
@@ -1313,6 +1347,17 @@ public final class BuildModeController {
 	// block above as a last resort.
 	private static final Direction[] FACE_PRIORITY = {
 			Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST, Direction.DOWN, Direction.UP,
+	};
+
+	// Same as FACE_PRIORITY, but with DOWN and UP swapped - used by faceTryOrder when
+	// #placeUpperHalf is set and there's no sideways neighbor to nudge (see that field's own
+	// doc). A neighbor above the cursor is clicked on its underside, which every HALF-bearing
+	// block (StairBlock, SlabBlock, TrapDoorBlock) unconditionally resolves to its upper half -
+	// preferring it here over the ground below (which unconditionally resolves to the lower
+	// half, no matter the click position) is what makes the toggle actually take effect in that
+	// fallback case instead of being silently overridden by the floor.
+	private static final Direction[] FACE_PRIORITY_UPPER_HALF = {
+			Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST, Direction.UP, Direction.DOWN,
 	};
 
 	/**
