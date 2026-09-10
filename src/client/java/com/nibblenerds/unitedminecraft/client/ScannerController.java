@@ -35,7 +35,10 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Leashable;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.OwnableEntity;
+import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.animal.allay.Allay;
+import net.minecraft.world.entity.animal.equine.AbstractHorse;
 import net.minecraft.world.entity.animal.sheep.Sheep;
 import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
 import net.minecraft.world.entity.decoration.ArmorStand;
@@ -691,6 +694,9 @@ public final class ScannerController {
 		// No comma before these, unlike the sheared/baby wrapping above - a screen reader pauses
 		// on a comma, and the mob's own name/species should be heard immediately, not after a
 		// beat waiting for whatever it's holding.
+		for (Component fragment : tameStatusFragments(entity)) {
+			name = name.copy().append(Component.literal(" ")).append(fragment);
+		}
 		if (entity instanceof LivingEntity living) {
 			for (Component fragment : equipmentFragments(living, player)) {
 				name = name.copy().append(Component.literal(" ")).append(fragment);
@@ -726,6 +732,36 @@ public final class ScannerController {
 	 * "wearing" fragment. Generic across every {@link LivingEntity} rather than special-cased per
 	 * mob, so a zombie that picked up a helmet gets the same treatment as anything else.
 	 */
+	/**
+	 * "Sitting" (wolves/cats ordered to sit) and "Tamed"/"Tamed by &lt;owner&gt;" - covers both
+	 * {@link TamableAnimal} (wolves, cats, parrots, etc., which also carry the sitting flag) and
+	 * {@link AbstractHorse} (horses/donkeys/mules, tamed but never ordered to sit), since the two
+	 * hierarchies don't share a common tamed/owned supertype despite both implementing {@link
+	 * OwnableEntity}. Sitting is reported first, matching how a player would describe an animal
+	 * ("sitting, tamed by X") - its posture is the more immediately observable fact.
+	 */
+	private static List<Component> tameStatusFragments(Entity entity) {
+		List<Component> fragments = new ArrayList<>();
+		boolean tamed;
+		if (entity instanceof TamableAnimal tamable) {
+			tamed = tamable.isTame();
+			if (tamed && tamable.isOrderedToSit()) {
+				fragments.add(Component.translatable("united_minecraft.narrate.mob_sitting"));
+			}
+		} else if (entity instanceof AbstractHorse horse) {
+			tamed = horse.isTamed();
+		} else {
+			tamed = false;
+		}
+		if (tamed) {
+			LivingEntity owner = ((OwnableEntity) entity).getOwner();
+			fragments.add(owner != null
+					? Component.translatable("united_minecraft.narrate.mob_tamed_by", owner.getDisplayName())
+					: Component.translatable("united_minecraft.narrate.mob_tamed"));
+		}
+		return fragments;
+	}
+
 	private static List<Component> equipmentFragments(LivingEntity living, Player player) {
 		List<Component> fragments = new ArrayList<>();
 		if (living instanceof Allay allay && allay.hasItemInHand()) {
