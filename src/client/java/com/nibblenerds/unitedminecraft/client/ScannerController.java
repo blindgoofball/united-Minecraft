@@ -72,6 +72,7 @@ import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.EndPortalBlock;
 import net.minecraft.world.level.block.EndPortalFrameBlock;
 import net.minecraft.world.level.block.FenceGateBlock;
+import net.minecraft.world.level.block.JukeboxBlock;
 import net.minecraft.world.level.block.KelpBlock;
 import net.minecraft.world.level.block.KelpPlantBlock;
 import net.minecraft.world.level.block.LeverBlock;
@@ -1151,7 +1152,8 @@ public final class ScannerController {
 				|| block instanceof FenceGateBlock
 				|| block instanceof NetherPortalBlock
 				|| block instanceof EndPortalBlock
-				|| block instanceof EndPortalFrameBlock;
+				|| block instanceof EndPortalFrameBlock
+				|| block instanceof JukeboxBlock;
 	}
 
 	/**
