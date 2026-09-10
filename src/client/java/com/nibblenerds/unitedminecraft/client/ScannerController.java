@@ -166,6 +166,12 @@ public final class ScannerController {
 	/** The Search category's current term - blank until the player enters one via {@link #openSearchPrompt}. */
 	private static String searchTerm = "";
 
+	// Every Block whose name or id matches searchTerm, resolved once per term instead of once
+	// per scanned position - see #searchMatches. Keyed by the term it was built for so a fresh
+	// term (or reset()'s blanking) rebuilds it rather than answering from a stale set.
+	private static String searchMatchesTerm;
+	private static Set<Block> searchMatches = Set.of();
+
 	private ScannerController() {
 	}
 
@@ -913,6 +919,21 @@ public final class ScannerController {
 		return item.entity() != null ? item.entity().getBoundingBox().getCenter() : Vec3.atCenterOf(item.blockPos());
 	}
 
+	/**
+	 * {@code eye.distanceToSqr(Vec3.atCenterOf(pos))} without allocating the intermediate {@link
+	 * Vec3} - used only on the per-scanned-position paths ({@link #scanBlocks}, {@link
+	 * #scanBlocksAny}, {@link #scanLiquids}, {@link #addLiquidClusters}'s frontier ordering),
+	 * which run into the hundreds of thousands to millions of calls in a single scan. The
+	 * per-result call sites elsewhere keep the plain, more readable {@code Vec3} form - a handful
+	 * of allocations there isn't worth the noise.
+	 */
+	private static double distanceSqrToCenter(Vec3 eye, BlockPos pos) {
+		double dx = pos.getX() + 0.5 - eye.x();
+		double dy = pos.getY() + 0.5 - eye.y();
+		double dz = pos.getZ() + 0.5 - eye.z();
+		return dx * dx + dy * dy + dz * dz;
+	}
+
 	private static Component itemName(ScannerCategory category, ScannerItem item, LocalPlayer player) {
 		if (item.label() != null) {
 			return Component.literal(item.label());
@@ -1388,7 +1409,7 @@ public final class ScannerController {
 			// outside the actual spherical scanRange() (a cube's volume is roughly double its
 			// inscribed sphere's) avoids most of that cost outright instead of throwing the work
 			// away after the fact.
-			double distanceSqr = eye.distanceToSqr(Vec3.atCenterOf(pos));
+			double distanceSqr = distanceSqrToCenter(eye, pos);
 			if (distanceSqr > rangeSqr) {
 				return true;
 			}
@@ -1417,7 +1438,7 @@ public final class ScannerController {
 
 		boolean[] found = {false};
 		forEachBlockInRange(level, center, r, (pos, state) -> {
-			if (eye.distanceToSqr(Vec3.atCenterOf(pos)) > rangeSqr) {
+			if (distanceSqrToCenter(eye, pos) > rangeSqr) {
 				return true;
 			}
 			if (predicate.test(pos, state)) {
@@ -1457,7 +1478,7 @@ public final class ScannerController {
 					(state.is(Blocks.WATER) || state.is(Blocks.LAVA)) && OreDetection.isExposed(level, fastAccess::getBlockState, pos, eye));
 			case CROPS -> scanBlocksAny(player, (pos, state) -> cropMatches(state.getBlock()));
 			case SEARCH -> !searchTerm.isBlank() && scanBlocksAny(player, (pos, state) -> !state.isAir()
-					&& matchesSearchTerm(state, searchTerm.toLowerCase(Locale.ROOT))
+					&& searchMatches().contains(state.getBlock())
 					&& OreDetection.isExposed(level, fastAccess::getBlockState, pos, eye));
 			case TREES -> scanBlocksAny(player, (pos, state) -> state.is(BlockTags.LOGS) && hasNearbyLeavesAt(level, pos));
 			default -> !scan(category, player).isEmpty();
@@ -1486,20 +1507,51 @@ public final class ScannerController {
 		if (searchTerm.isBlank()) {
 			return List.of();
 		}
-		String term = searchTerm.toLowerCase(Locale.ROOT);
+		Set<Block> matches = searchMatches();
 		FastBlockAccess fastAccess = new FastBlockAccess(player.level());
 		Vec3 eye = player.getEyePosition();
 		return scanBlocks(player, (pos, state) -> !state.isAir()
-				&& matchesSearchTerm(state, term)
+				&& matches.contains(state.getBlock())
 				&& OreDetection.isExposed(player.level(), fastAccess::getBlockState, pos, eye));
 	}
 
+	/**
+	 * Every {@link Block} matching the current {@link #searchTerm}, resolved by walking the block
+	 * registry once (about a thousand entries) and cached until the term changes.
+	 *
+	 * <p>The membership test itself is per-{@code Block}, never per-{@code BlockState} - {@link
+	 * #matchesSearchTerm} only ever read {@code state.getBlock()} anyway - so hoisting it out of
+	 * the scan loop is exactly equivalent, just enormously cheaper. Evaluating it inline meant
+	 * resolving a translatable component to a {@code String}, lowercasing it, and allocating along
+	 * the way for <em>every</em> non-air block in range: at the maximum {@link #scanRange()} of 64
+	 * that's over a million positions on a single keypress (and again on every Home/End press,
+	 * through {@link #categoryHasAny}'s probe), which is seconds of frozen client rather than the
+	 * hash lookup per position it costs now.
+	 */
+	private static Set<Block> searchMatches() {
+		if (searchTerm.equals(searchMatchesTerm)) {
+			return searchMatches;
+		}
+		String term = searchTerm.toLowerCase(Locale.ROOT);
+		Set<Block> matches = new HashSet<>();
+		if (!term.isBlank()) {
+			for (Block block : BuiltInRegistries.BLOCK) {
+				if (matchesSearchTerm(block, term)) {
+					matches.add(block);
+				}
+			}
+		}
+		searchMatchesTerm = searchTerm;
+		searchMatches = matches;
+		return matches;
+	}
+
 	/** Matches either the block's localized display name or its registry id (underscores treated as spaces) against {@code term}. */
-	private static boolean matchesSearchTerm(BlockState state, String term) {
-		if (state.getBlock().getName().getString().toLowerCase(Locale.ROOT).contains(term)) {
+	private static boolean matchesSearchTerm(Block block, String term) {
+		if (block.getName().getString().toLowerCase(Locale.ROOT).contains(term)) {
 			return true;
 		}
-		String path = BuiltInRegistries.BLOCK.getKey(state.getBlock()).getPath().replace('_', ' ');
+		String path = BuiltInRegistries.BLOCK.getKey(block).getPath().replace('_', ' ');
 		return path.contains(term);
 	}
 
@@ -1575,7 +1627,7 @@ public final class ScannerController {
 			// without this check every water block in the whole bounding cube (however far past
 			// scanRange() the body actually extends) would get pulled into the flood fill and
 			// sorted, not just the part actually in range.
-			if (eye.distanceToSqr(Vec3.atCenterOf(pos)) > rangeSqr) {
+			if (distanceSqrToCenter(eye, pos) > rangeSqr) {
 				return true;
 			}
 			if (state.is(Blocks.WATER)) {
@@ -1619,7 +1671,7 @@ public final class ScannerController {
 				continue;
 			}
 			PriorityQueue<BlockPos> frontier =
-					new PriorityQueue<>(Comparator.comparingDouble(pos -> eye.distanceToSqr(Vec3.atCenterOf(pos))));
+					new PriorityQueue<>(Comparator.comparingDouble(pos -> distanceSqrToCenter(eye, pos)));
 			frontier.add(start);
 			visited.add(start);
 
