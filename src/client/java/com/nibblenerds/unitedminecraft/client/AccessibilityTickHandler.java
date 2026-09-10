@@ -746,7 +746,7 @@ public final class AccessibilityTickHandler {
 	 */
 	private static void narrateArmorAndEffects(Minecraft client, LocalPlayer player) {
 		MutableComponent message = Component.translatable(
-				"united_minecraft.narrate.armor_value", player.getArmorValue()).copy();
+				"united_minecraft.narrate.armor_value", player.getArmorValue());
 
 		Collection<MobEffectInstance> effects = player.getActiveEffects();
 		if (effects.isEmpty()) {
@@ -829,7 +829,7 @@ public final class AccessibilityTickHandler {
 				.thenComparing(PlayerScoreEntry::owner, String.CASE_INSENSITIVE_ORDER));
 
 		int limit = full ? entries.size() : Math.min(SCOREBOARD_DEFAULT_LIMIT, entries.size());
-		MutableComponent message = Component.translatable("united_minecraft.narrate.scoreboard_header", objective.getDisplayName()).copy();
+		MutableComponent message = Component.translatable("united_minecraft.narrate.scoreboard_header", objective.getDisplayName());
 		for (int i = 0; i < limit; i++) {
 			PlayerScoreEntry entry = entries.get(i);
 			message.append(Component.literal(". ")).append(Component.translatable(

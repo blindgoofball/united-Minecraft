@@ -228,6 +228,17 @@ public final class MenuAccessibilityController {
 			// unconditionally cannot double up a listener - there's nothing there yet to double.
 			ScreenKeyboardEvents.allowKeyPress(screen).register(
 					(scr, event) -> handleKey(containerScreen, event));
+			// Nothing else ever cleared trackedScreen, so the last container screen opened - and
+			// through it the whole menu, its slot list, and every ItemStack in it - stayed
+			// reachable for the rest of the session, with clearStrayFocus still poking at a dead
+			// screen every tick. Same for the focused slot and the cached recipe groups.
+			ScreenEvents.remove(screen).register(closed -> {
+				if (closed == trackedScreen) {
+					trackedScreen = null;
+					focusedSlot = null;
+					recipeGroups = List.of();
+				}
+			});
 		});
 		ClientTickEvents.END_CLIENT_TICK.register(MenuAccessibilityController::recheckInitialSlotNarration);
 		ClientTickEvents.END_CLIENT_TICK.register(MenuAccessibilityController::clearStrayFocus);
@@ -1022,7 +1033,7 @@ public final class MenuAccessibilityController {
 				: List.of();
 		MutableComponent message;
 		if (variants.isEmpty()) {
-			message = Component.translatable("united_minecraft.menu.recipe_book.empty").copy();
+			message = Component.translatable("united_minecraft.menu.recipe_book.empty");
 		} else {
 			RecipeCollection group = groups.get(recipeGroupIndex);
 			RecipeDisplayEntry entry = variants.get(Math.min(recipeVariantIndex, variants.size() - 1));
@@ -1112,7 +1123,7 @@ public final class MenuAccessibilityController {
 			return;
 		}
 		MutableComponent message = Component.translatable(
-				"united_minecraft.menu.enchant_option_number", enchantOptionIndex + 1).copy();
+				"united_minecraft.menu.enchant_option_number", enchantOptionIndex + 1);
 
 		int levelRequirement = menu.costs[enchantOptionIndex];
 		if (levelRequirement <= 0) {
@@ -1203,7 +1214,7 @@ public final class MenuAccessibilityController {
 		MerchantOffers offers = menu.getOffers();
 		MutableComponent message;
 		if (offers.isEmpty() || tradeIndex >= offers.size()) {
-			message = Component.translatable("united_minecraft.menu.trade.empty").copy();
+			message = Component.translatable("united_minecraft.menu.trade.empty");
 		} else {
 			MerchantOffer offer = offers.get(tradeIndex);
 			message = ItemDescriptions.describe(offer.getCostA(), player).copy();

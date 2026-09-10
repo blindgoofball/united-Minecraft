@@ -78,17 +78,17 @@ public final class BlockDescriptions {
 
 	public static MutableComponent describe(ItemStack stack) {
 		if (stack.isEmpty()) {
-			return Component.translatable("united_minecraft.narrate.hotbar_empty").copy();
+			return Component.translatable("united_minecraft.narrate.hotbar_empty");
 		}
 
 		if (stack.getItem() instanceof BlockItem blockItem) {
 			String key = "united_minecraft.narrate.material." + materialKeyFor(blockItem.getBlock());
 			if (Language.getInstance().has(key)) {
-				return Component.translatable(key).copy();
+				return Component.translatable(key);
 			}
 		}
 
-		return Component.translatable("united_minecraft.narrate.no_description_available").copy();
+		return Component.translatable("united_minecraft.narrate.no_description_available");
 	}
 
 	/**

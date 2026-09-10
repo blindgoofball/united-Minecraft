@@ -27,10 +27,6 @@ public final class ToolHarvestAwarenessController {
 	private ToolHarvestAwarenessController() {
 	}
 
-	public static void register() {
-		// AccessibilityTickHandler calls tick() directly
-	}
-
 	public static void reset() {
 		lastWarnedPos = null;
 		lastHeldItem = ItemStack.EMPTY;

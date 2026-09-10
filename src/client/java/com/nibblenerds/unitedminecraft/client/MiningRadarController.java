@@ -2,7 +2,8 @@ package com.nibblenerds.unitedminecraft.client;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 import net.minecraft.client.Minecraft;
@@ -38,9 +39,16 @@ public final class MiningRadarController {
 	private static final int SCAN_INTERVAL_TICKS = 10;
 	private static final int ALERT_INTERVAL_TICKS = 5;
 
+	// Every ore already alerted, so a block stays quiet once it has been announced. Insertion
+	// ordered and capped: it only ever grew before, gaining an entry for every ore seen all
+	// session, and a long mining session strip-mining through thousands of them had nothing
+	// bounding it. Past the cap the oldest entries are dropped, which at worst re-announces ore
+	// from far earlier in the session rather than holding all of it forever.
+	private static final int MAX_REMEMBERED_ALERTS = 4096;
+
 	private static int ticksUntilScan;
 	private static int ticksUntilNextAlert;
-	private static final Set<BlockPos> alerted = new HashSet<>();
+	private static final Set<BlockPos> alerted = new LinkedHashSet<>();
 	private static final Deque<BlockPos> pending = new ArrayDeque<>();
 
 	private MiningRadarController() {
@@ -56,7 +64,12 @@ public final class MiningRadarController {
 		config.miningRadarEnabled = !config.miningRadarEnabled;
 		UnitedMinecraftConfig.save();
 		ticksUntilScan = 0;
+		ticksUntilNextAlert = 0;
 		pending.clear();
+		// Turning the radar back on is a request to hear what's around right now, so forget
+		// what was already announced rather than staying silent about ore still sitting in
+		// plain sight from before it was switched off.
+		alerted.clear();
 		client.getNarrator().saySystemNow(Component.translatable(config.miningRadarEnabled
 				? "united_minecraft.narrate.mining_radar_on"
 				: "united_minecraft.narrate.mining_radar_off"));
@@ -106,6 +119,11 @@ public final class MiningRadarController {
 			BlockPos immutable = pos.immutable();
 			alerted.add(immutable);
 			pending.add(immutable);
+			if (alerted.size() > MAX_REMEMBERED_ALERTS) {
+				Iterator<BlockPos> oldest = alerted.iterator();
+				oldest.next();
+				oldest.remove();
+			}
 		}
 	}
 

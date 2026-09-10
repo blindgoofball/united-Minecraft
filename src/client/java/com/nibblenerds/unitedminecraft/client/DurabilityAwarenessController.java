@@ -1,5 +1,7 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import java.util.Arrays;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
@@ -10,12 +12,12 @@ import net.minecraft.world.item.ItemStack;
 /**
  * Proactive durability warnings for worn armor and held items: narrates once when a
  * damageable stack crosses each configured threshold, and once when a stack actually
- * breaks. Runs regardless of which mode owns rotation — a pick breaking mid-mine
+ * breaks. Runs regardless of which mode owns rotation - a pick breaking mid-mine
  * during Auto-Walk is still worth knowing about.
  *
  * <p>Each slot + threshold combination fires only once per below-threshold window.
  * When the item is repaired (Mending XP, anvil use) and the fraction rises back above
- * the warning threshold, the flags auto-rearm on the next tick — no external repair
+ * the warning threshold, the flags auto-rearm on the next tick - no external repair
  * hook required.
  */
 public final class DurabilityAwarenessController {
@@ -38,6 +40,10 @@ public final class DurabilityAwarenessController {
 	private static final boolean[] warnedWarning = new boolean[SLOT_COUNT];
 	private static final boolean[] warnedCritical = new boolean[SLOT_COUNT];
 	private static final Snapshot[] lastSnapshot = new Snapshot[SLOT_COUNT];
+
+	static {
+		Arrays.fill(lastSnapshot, Snapshot.EMPTY);
+	}
 
 	/**
 	 * Just enough of a slot's previous-tick state to compare against the current one -
@@ -62,15 +68,7 @@ public final class DurabilityAwarenessController {
 		}
 	}
 
-	static {
-		reset();
-	}
-
 	private DurabilityAwarenessController() {
-	}
-
-	public static void register() {
-		// AccessibilityTickHandler calls tick() directly — no separate event registration.
 	}
 
 	public static void reset() {
@@ -86,7 +84,7 @@ public final class DurabilityAwarenessController {
 			return;
 		}
 
-		// World change between ticks (e.g. dimension switch) — re-arm so warnings fire in
+		// World change between ticks (e.g. dimension switch) - re-arm so warnings fire in
 		// the new session. client.level is the currently-loaded level, which lags player.level
 		// by at most one tick after a portal, so this catches it reliably.
 		if (client.level == null || client.level != player.level()) {
@@ -131,7 +129,7 @@ public final class DurabilityAwarenessController {
 			return;
 		}
 
-		// Not damageable or no durability data — nothing to track.
+		// Not damageable or no durability data - nothing to track.
 		if (!current.isDamageableItem() || current.getMaxDamage() <= 0) {
 			lastSnapshot[slot] = Snapshot.of(current);
 			return;
@@ -151,7 +149,7 @@ public final class DurabilityAwarenessController {
 
 		// Auto-rearm: if the stack has healed back above the warning threshold, clear both
 		// flags so the next genuine crossing gets narrated. This is what makes Mending work
-		// without any external "on repair" hook — the tick-based poll sees the healed state
+		// without any external "on repair" hook - the tick-based poll sees the healed state
 		// and re-arms on its own.
 		int warningThreshold = UnitedMinecraftConfig.get().durabilityWarningThreshold;
 		int criticalThreshold = UnitedMinecraftConfig.get().durabilityCriticalThreshold;
@@ -159,7 +157,7 @@ public final class DurabilityAwarenessController {
 			warnedWarning[slot] = false;
 			warnedCritical[slot] = false;
 		} else if (pctRemaining > criticalThreshold) {
-			// Recovered above critical but still below warning — only the "getting low"
+			// Recovered above critical but still below warning - only the "getting low"
 			// warning can still fire; the more urgent "about to break" is no longer relevant.
 			warnedCritical[slot] = false;
 		}
@@ -168,7 +166,7 @@ public final class DurabilityAwarenessController {
 		// session with Unending off) narrates "about to break" rather than firing both.
 		if (!warnedCritical[slot] && pctRemaining <= criticalThreshold) {
 			warnedCritical[slot] = true;
-			warnedWarning[slot] = true; // supersedes — no need to also say "getting low"
+			warnedWarning[slot] = true; // supersedes - no need to also say "getting low"
 			client.getNarrator().saySystemNow(Component.translatable(
 					"united_minecraft.narrate.durability_critical",
 					Component.translatable(SLOT_KEYS[slot]), current.getHoverName(), remaining, max));

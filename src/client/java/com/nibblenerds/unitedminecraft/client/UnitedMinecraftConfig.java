@@ -63,10 +63,43 @@ public final class UnitedMinecraftConfig {
 	private UnitedMinecraftConfig() {
 	}
 
+	/**
+	 * Forces every field back into the range {@link SettingsScreen}'s own control for it can
+	 * produce. Only the two durability thresholds were checked before, so a hand-edited or
+	 * partially-corrupt file could set a scannerRange of 10000 (a scan of billions of block
+	 * positions, freezing the client outright), a negative fall-warning threshold, or a
+	 * combatCueMode Gson couldn't parse - which it leaves null, silently disabling the attack cue
+	 * with nothing said about why.
+	 *
+	 * <p>Anything actually out of range is logged rather than corrected silently: it means the
+	 * file on disk disagreed with what the game will now do, which is worth being able to find
+	 * out about from the log.
+	 */
 	private void sanitize() {
-		durabilityWarningThreshold = Math.max(1, Math.min(50, durabilityWarningThreshold));
-		durabilityCriticalThreshold = Math.max(1,
-				Math.min(durabilityWarningThreshold, Math.min(50, durabilityCriticalThreshold)));
+		hostileRadarRange = clamp("hostileRadarRange", hostileRadarRange, 4.0, 32.0);
+		fallWarningThreshold = clamp("fallWarningThreshold", fallWarningThreshold, 1.0, 10.0);
+		fallWarningLookaheadSeconds = clamp("fallWarningLookaheadSeconds", fallWarningLookaheadSeconds, 0.5, 3.0);
+		miningRadarRange = (int) clamp("miningRadarRange", miningRadarRange, 4, 16);
+		navRadarRange = (int) clamp("navRadarRange", navRadarRange, 4, 16);
+		scannerRange = clamp("scannerRange", scannerRange, 8.0, 64.0);
+		durabilityWarningThreshold = (int) clamp("durabilityWarningThreshold", durabilityWarningThreshold, 1, 50);
+		// Deliberately capped by the warning threshold rather than a fixed 50: "critical" above
+		// "getting low" would mean the critical warning always fired first and the other never.
+		durabilityCriticalThreshold =
+				(int) clamp("durabilityCriticalThreshold", durabilityCriticalThreshold, 1, durabilityWarningThreshold);
+		if (combatCueMode == null) {
+			LOGGER.warn("Setting combatCueMode was missing or not a recognised value, using {}", CombatCueMode.COMBAT_MODE_ONLY);
+			combatCueMode = CombatCueMode.COMBAT_MODE_ONLY;
+		}
+	}
+
+	private static double clamp(String name, double value, double min, double max) {
+		if (Double.isNaN(value) || value < min || value > max) {
+			double clamped = Double.isNaN(value) ? min : Math.max(min, Math.min(max, value));
+			LOGGER.warn("Setting {} was {}, outside its range {} to {} - using {}", name, value, min, max, clamped);
+			return clamped;
+		}
+		return value;
 	}
 
 	public static UnitedMinecraftConfig get() {

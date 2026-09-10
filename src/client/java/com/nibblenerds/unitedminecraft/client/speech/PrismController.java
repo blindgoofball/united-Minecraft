@@ -104,9 +104,14 @@ public final class PrismController {
 			return Optional.empty();
 		}
 
+		// The arena owns the loaded native library: every failure path below has to close it, or
+		// the library stays mapped into the process for good with nothing left holding a handle
+		// to it. handedOff tracks whether a PrismController took ownership instead.
+		Arena arena = null;
+		boolean handedOff = false;
 		try {
 			Path dll = extractLibrary(library.get());
-			Arena arena = Arena.ofShared();
+			arena = Arena.ofShared();
 			SymbolLookup lookup = SymbolLookup.libraryLookup(dll, arena);
 			Linker linker = Linker.nativeLinker();
 
@@ -165,9 +170,11 @@ public final class PrismController {
 			String name = readCString((MemorySegment) backendName.invoke(backend));
 			LOGGER.info("Loaded Prism speech backend '{}' from {}", name, dll);
 
-			return Optional.of(new PrismController(arena, prismShutdown, registryCreateBest, backendFree, backendName,
-					backendGetFeatures, backendSpeak, backendBraille, backendOutput, backendStop, errorString,
-					context, backend));
+			PrismController controller = new PrismController(arena, prismShutdown, registryCreateBest, backendFree,
+					backendName, backendGetFeatures, backendSpeak, backendBraille, backendOutput, backendStop,
+					errorString, context, backend);
+			handedOff = true;
+			return Optional.of(controller);
 		} catch (Throwable t) {
 			// Logged at WARN with the full stack trace (not just t.toString()) because a
 			// bare message loses the cause chain that usually explains *why* the native
@@ -176,6 +183,16 @@ public final class PrismController {
 			// work" reports and an actionable diagnosis.
 			LOGGER.warn("Prism unavailable, the default narrator will be used instead", t);
 			return Optional.empty();
+		} finally {
+			if (arena != null && !handedOff) {
+				try {
+					arena.close();
+				} catch (Throwable t) {
+					// Already on a failure path with the fallback narrator selected - nothing
+					// useful left to do about a close that also fails.
+					LOGGER.debug("Failed to release the Prism arena after a failed load", t);
+				}
+			}
 		}
 	}
 
@@ -213,6 +230,17 @@ public final class PrismController {
 				throw new UncheckedIOException(new IOException(library.resourcePath() + " was not found on the classpath"));
 			}
 			Files.copy(in, dest, StandardCopyOption.REPLACE_EXISTING);
+		} catch (IOException e) {
+			// Windows locks a DLL for as long as any process has it loaded, so a second game
+			// instance running alongside this one makes the overwrite above fail outright with
+			// AccessDeniedException - which tryLoad's catch-all would swallow, silently dropping
+			// that instance to the vanilla narrator. An existing copy is overwhelmingly likely to
+			// be the very library that's holding the lock, so use it rather than give up; the
+			// re-extract is a safeguard against a stale file, not a correctness requirement.
+			if (!Files.exists(dest)) {
+				throw e;
+			}
+			LOGGER.info("Could not refresh {} ({}), using the copy already there", dest, e.toString());
 		}
 		return dest;
 	}

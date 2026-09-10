@@ -37,12 +37,10 @@ import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.block.state.properties.StairsShape;
 import net.minecraft.world.level.material.Fluids;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
-import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
  * "Build mode": a virtual cursor for exploring and targeting blocks without
@@ -831,15 +829,7 @@ public final class BuildModeController {
 	 * much thinner post.)
 	 */
 	private static Vec3 pointOnShape(Level level, LocalPlayer player, BlockPos pos, BlockState state) {
-		VoxelShape shape = state.getShape(level, pos, CollisionContext.of(player));
-		if (shape.isEmpty()) {
-			return Vec3.atCenterOf(pos);
-		}
-		AABB bounds = shape.bounds();
-		return new Vec3(
-				pos.getX() + (bounds.minX + bounds.maxX) / 2.0,
-				pos.getY() + (bounds.minY + bounds.maxY) / 2.0,
-				pos.getZ() + (bounds.minZ + bounds.maxZ) / 2.0);
+		return BlockShapes.centreOf(state.getShape(level, pos, CollisionContext.of(player)), pos);
 	}
 
 	/**
@@ -1197,10 +1187,10 @@ public final class BuildModeController {
 		BlockState state = level.getBlockState(cursor);
 		MutableComponent message = state.getBlock().getName().copy();
 
-		Direction facing = directionPropertyOf(state);
-		if (facing != null) {
+		Direction blockFacing = directionPropertyOf(state);
+		if (blockFacing != null) {
 			message = message.append(Component.literal(" "))
-					.append(Component.translatable("united_minecraft.narrate.build_facing", directionName(facing)));
+					.append(Component.translatable("united_minecraft.narrate.build_facing", directionName(blockFacing)));
 		}
 		if (state.getBlock() instanceof StairBlock) {
 			String cornerKey = stairCornerDirectionKey(state);
@@ -1306,14 +1296,20 @@ public final class BuildModeController {
 		if (shape == StairsShape.STRAIGHT) {
 			return null;
 		}
-		int facingBearing = switch (state.getValue(StairBlock.FACING)) {
+		Integer facingBearing = switch (state.getValue(StairBlock.FACING)) {
 			case NORTH -> 0;
 			case EAST -> 90;
 			case SOUTH -> 180;
 			case WEST -> 270;
-			// StairBlock's FACING is a HorizontalDirectionalBlock property - never UP/DOWN.
-			case UP, DOWN -> throw new IllegalStateException("Stair FACING can't be vertical");
+			// Vanilla's StairBlock FACING is a HorizontalDirectionalBlock property and never
+			// vertical - but a modded subclass is free to redefine it, and this runs inside
+			// describeCursor on every cursor move, so throwing would take the client down on an
+			// arrow keypress. Report no corner instead; the caller already handles null.
+			case UP, DOWN -> null;
 		};
+		if (facingBearing == null) {
+			return null;
+		}
 		int offsetDegrees = switch (shape) {
 			case OUTER_LEFT -> -45;
 			case OUTER_RIGHT -> 45;

@@ -860,16 +860,7 @@ public final class ScannerController {
 	 * manual nudge left or right to actually land back on it.
 	 */
 	private static Vec3 interactionPoint(Level level, BlockPos pos) {
-		BlockState state = level.getBlockState(pos);
-		var shape = state.getShape(level, pos);
-		if (shape.isEmpty()) {
-			return Vec3.atCenterOf(pos);
-		}
-		AABB bounds = shape.bounds();
-		return new Vec3(
-				pos.getX() + (bounds.minX + bounds.maxX) / 2.0,
-				pos.getY() + (bounds.minY + bounds.maxY) / 2.0,
-				pos.getZ() + (bounds.minZ + bounds.maxZ) / 2.0);
+		return BlockShapes.centreOf(level.getBlockState(pos).getShape(level, pos), pos);
 	}
 
 	private static ScannerItem currentItem() {
