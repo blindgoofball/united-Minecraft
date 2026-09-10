@@ -53,6 +53,7 @@ public final class UnitedMinecraftConfig {
 	public boolean miningRadarEnabled = false;
 	public boolean autoCrosshairNarrationEnabled = false;
 	public boolean preciseCoordinatesEnabled = false;
+	public boolean mountJumpCueEnabled = true;
 
 	/** Governs the audio cue for the weapon attack-strength meter refilling - see {@link CombatModeController#tickAttackCue}. */
 	public enum CombatCueMode {

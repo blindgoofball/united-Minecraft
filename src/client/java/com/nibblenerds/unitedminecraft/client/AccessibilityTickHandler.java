@@ -23,6 +23,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.Util;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.animal.equine.AbstractHorse;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.LightLayer;
@@ -133,6 +134,7 @@ public final class AccessibilityTickHandler {
 			DurabilityAwarenessController.reset();
 			ToolHarvestAwarenessController.reset();
 			TameNotificationController.reset();
+			MountJumpCueController.reset();
 			return;
 		}
 
@@ -254,6 +256,9 @@ public final class AccessibilityTickHandler {
 			// Same reasoning - a nearby animal you're feeding could finish taming regardless of
 			// what else is going on, and vanilla's only feedback for it is silent heart particles.
 			TameNotificationController.tick(client, player);
+			// Same reasoning - a held Jump on a mount keeps charging regardless of what else is
+			// going on, and vanilla's only feedback for a full charge is a purely visual bar.
+			MountJumpCueController.tick(client, player);
 		}
 
 		boolean rotationOwned = BuildModeController.isActive() || ScannerController.isLocked() || AutoWalkController.isActive()
@@ -695,13 +700,27 @@ public final class AccessibilityTickHandler {
 				"united_minecraft.narrate.light_level", combined, blockLight, skyLight));
 	}
 
-	/** Reports on the same 10-heart/10-shank scale the sighted HUD shows, half-point precision included. */
+	/**
+	 * Reports on the same 10-heart/10-shank scale the sighted HUD shows, half-point precision
+	 * included. While riding a horse (or donkey/mule/llama/camel - anything under {@link
+	 * AbstractHorse}, the same family {@link TameNotificationController} already treats as one
+	 * group), also reports the mount's own health - the sighted HUD replaces the hunger bar with
+	 * a horse health bar in that situation, and this is the equivalent for narration, appended
+	 * rather than replacing anything so the hunger read isn't lost.
+	 */
 	private static void narrateHealth(Minecraft client, LocalPlayer player) {
 		double hearts = player.getHealth() / 2.0;
 		double maxHearts = player.getMaxHealth() / 2.0;
 		double hunger = player.getFoodData().getFoodLevel() / 2.0;
-		client.getNarrator().saySystemNow(Component.translatable(
-				"united_minecraft.narrate.health", formatHalf(hearts), formatHalf(maxHearts), formatHalf(hunger)));
+		Component message = Component.translatable(
+				"united_minecraft.narrate.health", formatHalf(hearts), formatHalf(maxHearts), formatHalf(hunger));
+		if (player.getVehicle() instanceof AbstractHorse horse) {
+			double mountHearts = horse.getHealth() / 2.0;
+			double mountMaxHearts = horse.getMaxHealth() / 2.0;
+			message = message.copy().append(Component.literal(". ")).append(Component.translatable(
+					"united_minecraft.narrate.mount_health", formatHalf(mountHearts), formatHalf(mountMaxHearts)));
+		}
+		client.getNarrator().saySystemNow(message);
 	}
 
 	private static String formatHalf(double value) {

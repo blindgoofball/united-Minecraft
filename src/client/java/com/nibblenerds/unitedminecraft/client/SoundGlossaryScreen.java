@@ -47,7 +47,8 @@ public final class SoundGlossaryScreen extends Screen {
 			new GlossaryEntry("united_minecraft.glossary.arrow_hit", () -> SoundEvents.ARROW_HIT_PLAYER, 1.0f, 1.0f),
 			new GlossaryEntry("united_minecraft.glossary.autowalk_arrived", SoundEvents.NOTE_BLOCK_CHIME::value, 0.7f, 1.4f),
 			new GlossaryEntry("united_minecraft.glossary.autowalk_stopped", SoundEvents.NOTE_BLOCK_BASS::value, 0.7f, 0.7f),
-			new GlossaryEntry("united_minecraft.glossary.combat_cue", SoundEvents.NOTE_BLOCK_XYLOPHONE::value, 0.5f, 1.4f));
+			new GlossaryEntry("united_minecraft.glossary.combat_cue", SoundEvents.NOTE_BLOCK_XYLOPHONE::value, 0.5f, 1.4f),
+			new GlossaryEntry("united_minecraft.glossary.mount_jump_ready", SoundEvents.NOTE_BLOCK_HARP::value, 0.6f, 1.6f));
 
 	private GlossaryList list;
 

@@ -122,6 +122,8 @@ public final class SettingsScreen extends Screen {
 				config.scannerAutoLockAfterWalk, value -> config.scannerAutoLockAfterWalk = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.precise_coordinates_enabled",
 				config.preciseCoordinatesEnabled, value -> config.preciseCoordinatesEnabled = value);
+		y = addToggle(x, y, "united_minecraft.settings_screen.mount_jump_cue_enabled",
+				config.mountJumpCueEnabled, value -> config.mountJumpCueEnabled = value);
 
 		registerRow(addRenderableWidget(Button.builder(Component.translatable("united_minecraft.settings_screen.sound_glossary"),
 				button -> Minecraft.getInstance().gui.setScreen(new SoundGlossaryScreen()))
