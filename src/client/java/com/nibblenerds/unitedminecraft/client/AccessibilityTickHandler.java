@@ -370,6 +370,13 @@ public final class AccessibilityTickHandler {
 		} else if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_COORDINATES)) {
 			narrateCoordinates(client, player);
 		}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_COORDINATE_X)) {
+			narrateCoordinateAxis(client, player, "united_minecraft.narrate.axis_x", player.blockPosition().getX(), player.getX());
+		} else if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_COORDINATE_Y)) {
+			narrateCoordinateAxis(client, player, "united_minecraft.narrate.axis_y", player.blockPosition().getY(), player.getY());
+		} else if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_COORDINATE_Z)) {
+			narrateCoordinateAxis(client, player, "united_minecraft.narrate.axis_z", player.blockPosition().getZ(), player.getZ());
+		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_ARMOR_AND_EFFECTS)) {
 			narrateArmorAndEffects(client, player);
 		} else if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_EXPERIENCE)) {
@@ -639,12 +646,33 @@ public final class AccessibilityTickHandler {
 	private static void narrateCoordinates(Minecraft client, LocalPlayer player) {
 		BlockPos pos = player.blockPosition();
 		Component standingOn = player.level().getBlockState(pos.below()).getBlock().getName();
-		Component message = Component.translatable("united_minecraft.narrate.coordinates", pos.getX(), pos.getY(), pos.getZ())
+		Component message = Component.translatable("united_minecraft.narrate.coordinates",
+						formatCoordinate(pos.getX(), player.getX()),
+						formatCoordinate(pos.getY(), player.getY()),
+						formatCoordinate(pos.getZ(), player.getZ()))
 				.append(Component.literal(". "))
 				.append(Component.translatable("united_minecraft.narrate.standing_on", standingOn))
 				.append(Component.literal(". "))
 				.append(Component.translatable("united_minecraft.narrate.biome_label", biomeName(player.level().getBiome(pos))));
 		client.getNarrator().saySystemNow(message);
+	}
+
+	/** Speaks a single axis of the player's position, in the form "{value} X"/"{value} Y"/"{value} Z". */
+	private static void narrateCoordinateAxis(Minecraft client, LocalPlayer player, String axisLabelKey, int blockCoord, double preciseCoord) {
+		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.coordinate_axis",
+				formatCoordinate(blockCoord, preciseCoord), Component.translatable(axisLabelKey)));
+	}
+
+	/**
+	 * Formats one coordinate per {@link UnitedMinecraftConfig#preciseCoordinatesEnabled} - the
+	 * player's whole block position by default (matching the block-grid-aligned coordinates every
+	 * other coordinate readout in this mod, e.g. {@link ScannerController}'s, already uses), or
+	 * the player's exact sub-block position to one decimal place when the setting is on.
+	 */
+	private static String formatCoordinate(int blockCoord, double preciseCoord) {
+		return UnitedMinecraftConfig.get().preciseCoordinatesEnabled
+				? String.format(Locale.ROOT, "%.1f", preciseCoord)
+				: String.valueOf(blockCoord);
 	}
 
 	/**

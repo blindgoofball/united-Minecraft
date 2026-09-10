@@ -44,6 +44,16 @@ public final class ClientKeyBindings {
 	public static final KeybindAction NARRATE_ARMOR_AND_EFFECTS = new KeybindAction(
 			"narrate_armor_and_effects", KeybindCategory.NARRATION, new Keybind(GLFW.GLFW_KEY_H, GLFW.GLFW_MOD_ALT));
 
+	/** Unassigned by default - speaks just the player's X coordinate, in the form "{value} X". */
+	public static final KeybindAction NARRATE_COORDINATE_X =
+			new KeybindAction("narrate_coordinate_x", KeybindCategory.NARRATION, Keybind.UNBOUND);
+	/** Unassigned by default - speaks just the player's Y coordinate, in the form "{value} Y". */
+	public static final KeybindAction NARRATE_COORDINATE_Y =
+			new KeybindAction("narrate_coordinate_y", KeybindCategory.NARRATION, Keybind.UNBOUND);
+	/** Unassigned by default - speaks just the player's Z coordinate, in the form "{value} Z". */
+	public static final KeybindAction NARRATE_COORDINATE_Z =
+			new KeybindAction("narrate_coordinate_z", KeybindCategory.NARRATION, Keybind.UNBOUND);
+
 	public static final KeybindAction NARRATE_BEARING =
 			new KeybindAction("narrate_bearing", KeybindCategory.NARRATION, new Keybind(GLFW.GLFW_KEY_B, 0));
 	/** Was Shift+B - see {@link #RESET_ROTATION_TO_NORTH}. */

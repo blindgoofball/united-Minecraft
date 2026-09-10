@@ -1,6 +1,9 @@
 {
 	"united_minecraft.keybind.narrate_coordinates": "Narrate Coordinates, Standing Block, and Biome",
 	"united_minecraft.keybind.narrate_light_level": "Narrate Light Level",
+	"united_minecraft.keybind.narrate_coordinate_x": "Narrate X Coordinate",
+	"united_minecraft.keybind.narrate_coordinate_y": "Narrate Y Coordinate",
+	"united_minecraft.keybind.narrate_coordinate_z": "Narrate Z Coordinate",
 	"united_minecraft.keybind.narrate_health": "Narrate Health and Hunger",
 	"united_minecraft.keybind.narrate_experience": "Narrate Experience Level",
 	"united_minecraft.keybind.narrate_armor_and_effects": "Narrate Armor and Active Effects",
@@ -82,6 +85,10 @@
 	"united_minecraft.keybind.recipe_book_toggle_craftable_filter": "Recipe Book: Toggle Craftable-Only Filter",
 
 	"united_minecraft.narrate.coordinates": "%s, %s, %s",
+	"united_minecraft.narrate.coordinate_axis": "%s %s",
+	"united_minecraft.narrate.axis_x": "X",
+	"united_minecraft.narrate.axis_y": "Y",
+	"united_minecraft.narrate.axis_z": "Z",
 	"united_minecraft.narrate.standing_on": "Standing on %s",
 	"united_minecraft.narrate.biome_label": "%s biome",
 	"united_minecraft.narrate.light_level": "Light level %s, block light %s, sky light %s",
@@ -420,6 +427,7 @@
 	"united_minecraft.settings_screen.tool_harvest_warning_enabled": "Mining Tool Warnings",
 	"united_minecraft.settings_screen.scanner_skip_empty_categories": "Scanner: Skip Empty Categories",
 	"united_minecraft.settings_screen.scanner_auto_lock_after_walk": "Scanner: Auto-Lock After Walking to a Mob",
+	"united_minecraft.settings_screen.precise_coordinates_enabled": "Precise Coordinates (One Decimal Place)",
 	"united_minecraft.narrate.tool_mismatch_diamond": "Warning: %s requires diamond pickaxe or higher to drop items",
 	"united_minecraft.narrate.tool_mismatch_iron": "Warning: %s requires iron pickaxe or higher to drop items",
 	"united_minecraft.narrate.tool_mismatch_stone": "Warning: %s requires stone pickaxe or higher to drop items",
