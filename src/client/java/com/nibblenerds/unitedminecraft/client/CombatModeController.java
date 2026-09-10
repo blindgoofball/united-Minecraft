@@ -67,6 +67,14 @@ public final class CombatModeController {
 			BuildModeController.toggle(client, player);
 		}
 		ScannerController.cancelLock();
+		// This key is GLOBAL context, so it fires while one of the auto-navigate modes is
+		// already running - but all three of those sit above Combat Mode in the tick handler's
+		// rotation-owner chain, so tick() below would simply never run and the mode would sit
+		// silently "on" until the walk happened to end. Cancelling them makes the toggle mean
+		// what it says, matching how WaterExitController#start already cancels Auto-Walk.
+		AutoWalkController.cancel(client, player);
+		WaterExitController.cancel(client, player);
+		TrailController.cancel(client, player);
 
 		target = findNearestHostile(player, player.getEyePosition());
 		Component message = Component.translatable("united_minecraft.narrate.combat_mode_on")

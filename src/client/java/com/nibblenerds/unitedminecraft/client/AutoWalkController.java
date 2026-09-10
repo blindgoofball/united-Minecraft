@@ -10,7 +10,6 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.pathfinder.Path;
@@ -18,7 +17,6 @@ import net.minecraft.world.level.pathfinder.PathFinder;
 import net.minecraft.world.level.pathfinder.WalkNodeEvaluator;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
-import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -57,19 +55,11 @@ public final class AutoWalkController {
 	private static final int REACH_RANGE = 1;
 	private static final double NODE_ARRIVAL_DISTANCE_SQR = 0.5 * 0.5;
 
-	// See TrailController's identical pattern (and its own doc on STUCK_TICKS_THRESHOLD) for why
-	// "no real progress toward the next waypoint for a while" is the right thing to watch for -
-	// a mob being pushed off its path, a block placed mid-walk, or another player's build can all
-	// strand this exactly the same way a straight-line trail leg can clip an obstacle.
-	private static final int STUCK_TICKS_THRESHOLD = 40;
-	private static final double STUCK_PROGRESS_EPSILON = 0.05;
-
 	private static Path currentPath;
 	private static ClientInput previousInput;
 	private static Component targetName;
 	private static Runnable onArrival;
-	private static double bestDistanceToNext = Double.MAX_VALUE;
-	private static int stuckTicks;
+	private static final StuckDetector STUCK = new StuckDetector();
 	// Whether this stuck episode has already tried recomputing the path once - only one retry
 	// per episode, so a genuinely unreachable spot still gives up instead of re-pathing forever.
 	private static boolean rePathAttempted;
@@ -86,8 +76,7 @@ public final class AutoWalkController {
 		previousInput = null;
 		targetName = null;
 		onArrival = null;
-		bestDistanceToNext = Double.MAX_VALUE;
-		stuckTicks = 0;
+		STUCK.reset();
 		rePathAttempted = false;
 	}
 
@@ -118,7 +107,7 @@ public final class AutoWalkController {
 		targetName = name;
 		AutoWalkController.onArrival = onArrival;
 		previousInput = player.input;
-		player.input = new AutoWalkInput();
+		player.input = new RouteInput();
 		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.autowalk_started", name));
 	}
 
@@ -144,8 +133,7 @@ public final class AutoWalkController {
 
 		if (dx * dx + dz * dz < NODE_ARRIVAL_DISTANCE_SQR) {
 			currentPath.advance();
-			bestDistanceToNext = Double.MAX_VALUE;
-			stuckTicks = 0;
+			STUCK.reset();
 			rePathAttempted = false;
 			if (currentPath.isDone()) {
 				// vanilla's pathfinder gives up and hands back its best-effort partial path
@@ -181,15 +169,10 @@ public final class AutoWalkController {
 		// something's blocking the straight line the path assumed was clear (a mob shoved the
 		// player off course, a block got placed mid-walk, terrain changed). Try recomputing the
 		// path once from here before giving up outright.
-		double distanceToNext = Math.sqrt(dx * dx + dz * dz);
-		if (distanceToNext < bestDistanceToNext - STUCK_PROGRESS_EPSILON) {
-			bestDistanceToNext = distanceToNext;
-			stuckTicks = 0;
-		} else if (++stuckTicks > STUCK_TICKS_THRESHOLD) {
+		if (STUCK.isStuck(Math.sqrt(dx * dx + dz * dz))) {
 			if (!rePathAttempted && tryRepath(player)) {
 				rePathAttempted = true;
-				bestDistanceToNext = Double.MAX_VALUE;
-				stuckTicks = 0;
+				STUCK.reset();
 			} else {
 				finishStuck(client, player);
 			}
@@ -205,7 +188,7 @@ public final class AutoWalkController {
 		player.setOldRot();
 
 		boolean needsJump = player.onGround() && nextPos.getY() > Mth.floor(player.getY() + 0.1);
-		((AutoWalkInput) player.input).setWalking(needsJump, client.options.keySprint.isDown());
+		((RouteInput) player.input).setWalking(needsJump, client.options.keySprint.isDown());
 	}
 
 	/** {@code messageKey} may be null to restore input and reset state without narrating anything. */
@@ -288,13 +271,5 @@ public final class AutoWalkController {
 		BlockHitResult hit = level.clip(new ClipContext(
 				from, Vec3.atCenterOf(target), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
 		return hit.getType() == HitResult.Type.MISS || hit.getBlockPos().equals(target);
-	}
-
-	/** Reports "forward" (and "jump"/"sprint" as needed) as held, exactly like real keyboard input would. */
-	private static final class AutoWalkInput extends ClientInput {
-		void setWalking(boolean jump, boolean sprint) {
-			this.keyPresses = new Input(true, false, false, false, jump, false, sprint);
-			this.moveVector = new Vec2(0.0f, 1.0f);
-		}
 	}
 }

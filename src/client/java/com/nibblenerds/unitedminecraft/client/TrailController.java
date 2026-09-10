@@ -7,8 +7,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.ClientInput;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.entity.player.Input;
-import net.minecraft.world.phys.Vec2;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -46,19 +46,18 @@ public final class TrailController {
 	// original route - almost always fine, but not guaranteed: the outbound walk could have
 	// curved around a corner or pillar within a single recorded gap (points are only ever
 	// TRAIL_MIN_SPACING apart) in a way this straight line clips. Rather than trying to detect
-	// that geometrically, #tick instead notices the practical symptom - no real progress toward
-	// the current waypoint for this many ticks despite actively walking - and stops instead of
-	// pushing against it silently forever.
-	private static final int STUCK_TICKS_THRESHOLD = 40;
-	private static final double STUCK_PROGRESS_EPSILON = 0.05;
+	// that geometrically, #tick watches for the practical symptom via StuckDetector - no real
+	// progress toward the current waypoint - and stops instead of pushing against it forever.
+	private static final StuckDetector STUCK = new StuckDetector();
 
 	private static final List<Vec3> trail = new ArrayList<>();
 
 	private static List<Vec3> route;
 	private static int routeIndex;
 	private static ClientInput previousInput;
-	private static double bestDistanceToNext;
-	private static int stuckTicks;
+	// Which dimension the recorded points belong to - they're raw world coordinates with no
+	// dimension of their own, so they mean nothing once the player has gone through a portal.
+	private static ResourceKey<Level> trailDimension;
 
 	private TrailController() {
 	}
@@ -69,11 +68,31 @@ public final class TrailController {
 
 	public static void reset() {
 		trail.clear();
+		trailDimension = null;
 		route = null;
 		routeIndex = 0;
 		previousInput = null;
-		bestDistanceToNext = Double.MAX_VALUE;
-		stuckTicks = 0;
+		STUCK.reset();
+	}
+
+	/**
+	 * Drops everything recorded so far if the player has changed dimension since the last check,
+	 * and reports whether it did.
+	 *
+	 * <p>Trail points are raw world coordinates, so a trail recorded in the Overworld describes
+	 * nothing meaningful once the player steps out of a Nether portal - narrating a bearing to
+	 * it, or worse retracing toward it, would send them at a coordinate that only coincidentally
+	 * exists there. {@link #reset()} doesn't cover this on its own: it only runs when the player
+	 * unloads entirely, which a dimension change deliberately isn't.
+	 */
+	private static boolean clearOnDimensionChange(LocalPlayer player) {
+		ResourceKey<Level> dimension = player.level().dimension();
+		if (dimension.equals(trailDimension)) {
+			return false;
+		}
+		trail.clear();
+		trailDimension = dimension;
+		return true;
 	}
 
 	/**
@@ -95,6 +114,7 @@ public final class TrailController {
 	 * manually.
 	 */
 	public static void recordTick(Minecraft client, LocalPlayer player) {
+		clearOnDimensionChange(player);
 		Vec3 pos = player.position();
 		if (trail.isEmpty()) {
 			trail.add(pos);
@@ -125,6 +145,7 @@ public final class TrailController {
 
 	/** Clears the trail and starts recording fresh from here - marks a deliberate "return to this point". */
 	public static void markStart(Minecraft client, LocalPlayer player) {
+		clearOnDimensionChange(player);
 		trail.clear();
 		trail.add(player.position());
 		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.trail_marked"));
@@ -132,6 +153,7 @@ public final class TrailController {
 
 	/** Reports distance and direction back to the start of the recorded trail, without moving the player. */
 	public static void narrate(Minecraft client, LocalPlayer player) {
+		clearOnDimensionChange(player);
 		List<Vec3> path = buildRoute(player);
 		if (path == null) {
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.trail_none"));
@@ -158,6 +180,7 @@ public final class TrailController {
 
 	/** Walks the player back along the recorded trail, one waypoint at a time, until it reaches the start. */
 	public static void start(Minecraft client, LocalPlayer player) {
+		clearOnDimensionChange(player);
 		if (isActive()) {
 			cancel(client, player);
 		}
@@ -180,10 +203,9 @@ public final class TrailController {
 
 		route = path;
 		routeIndex = 0;
-		bestDistanceToNext = Double.MAX_VALUE;
-		stuckTicks = 0;
+		STUCK.reset();
 		previousInput = player.input;
-		player.input = new TrailInput();
+		player.input = new RouteInput();
 		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.trail_started"));
 	}
 
@@ -202,12 +224,17 @@ public final class TrailController {
 			cancel(client, player);
 			return;
 		}
+		if (clearOnDimensionChange(player)) {
+			// Went through a portal mid-retrace - every remaining waypoint refers to the
+			// dimension just left, so there's nothing left to walk back to.
+			finish(client, player, "united_minecraft.narrate.trail_cancelled");
+			return;
+		}
 
 		Vec3 next = route.get(routeIndex);
 		if (player.position().distanceToSqr(next) < NODE_ARRIVAL_DISTANCE_SQR) {
 			routeIndex++;
-			bestDistanceToNext = Double.MAX_VALUE;
-			stuckTicks = 0;
+			STUCK.reset();
 			if (routeIndex >= route.size()) {
 				finish(client, player, "united_minecraft.narrate.trail_arrived");
 			}
@@ -222,21 +249,17 @@ public final class TrailController {
 			return;
 		}
 
-		// See STUCK_TICKS_THRESHOLD's doc - this is what actually catches a straight-line leg
-		// that clips something the original walk curved around, since nothing above this point
-		// checks for real obstructions at all.
-		double distance = player.position().distanceTo(next);
-		if (distance < bestDistanceToNext - STUCK_PROGRESS_EPSILON) {
-			bestDistanceToNext = distance;
-			stuckTicks = 0;
-		} else if (++stuckTicks > STUCK_TICKS_THRESHOLD) {
+		// See StuckDetector - this is what actually catches a straight-line leg that clips
+		// something the original walk curved around, since nothing above this point checks for
+		// real obstructions at all.
+		if (STUCK.isStuck(player.position().distanceTo(next))) {
 			finish(client, player, "united_minecraft.narrate.trail_stuck");
 			return;
 		}
 
 		CameraUtil.aimAt(player, next);
 		boolean rise = next.y() > player.getY() + 0.1;
-		((TrailInput) player.input).setWalking(rise);
+		((RouteInput) player.input).setWalking(rise);
 	}
 
 	private static void finish(Minecraft client, LocalPlayer player, String messageKey) {
@@ -273,13 +296,5 @@ public final class TrailController {
 			path.add(trail.get(i));
 		}
 		return path;
-	}
-
-	/** Reports "forward" (and "jump" when the next waypoint sits above the player) as held. */
-	private static final class TrailInput extends ClientInput {
-		void setWalking(boolean jump) {
-			this.keyPresses = new Input(true, false, false, false, jump, false, false);
-			this.moveVector = new Vec2(0.0f, 1.0f);
-		}
 	}
 }

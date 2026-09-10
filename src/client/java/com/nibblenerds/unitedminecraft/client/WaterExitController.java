@@ -12,13 +12,12 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.ClientInput;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.tags.FluidTags;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -50,6 +49,8 @@ public final class WaterExitController {
 	private static final double NODE_ARRIVAL_DISTANCE_SQR = 0.7 * 0.7;
 	private static final double VERTICAL_DIRECTION_THRESHOLD = 3.0;
 
+	private static final StuckDetector STUCK = new StuckDetector();
+
 	private static List<BlockPos> route;
 	private static int routeIndex;
 	private static ClientInput previousInput;
@@ -65,6 +66,7 @@ public final class WaterExitController {
 		route = null;
 		routeIndex = 0;
 		previousInput = null;
+		STUCK.reset();
 	}
 
 	/** Reports distance and direction to the nearest reachable way out, without moving the player. */
@@ -115,8 +117,9 @@ public final class WaterExitController {
 
 		route = path;
 		routeIndex = 0;
+		STUCK.reset();
 		previousInput = player.input;
-		player.input = new SwimInput();
+		player.input = new RouteInput();
 		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.water_exit_started"));
 	}
 
@@ -140,15 +143,26 @@ public final class WaterExitController {
 		Vec3 target = Vec3.atCenterOf(next);
 		if (player.position().distanceToSqr(target) < NODE_ARRIVAL_DISTANCE_SQR) {
 			routeIndex++;
+			STUCK.reset();
 			if (routeIndex >= route.size()) {
 				finish(client, player, "united_minecraft.narrate.water_exit_arrived");
 			}
 			return;
 		}
 
+		// Same "no real progress despite actively swimming" guard Auto-Walk and Trail already
+		// use - a current pushing the player back, or the route being invalidated mid-swim,
+		// would otherwise hold forward and jump forever with no way out but the cancel key.
+		// Reported as "no way out": from the player's position in the water that's what a route
+		// it can no longer make progress along amounts to.
+		if (STUCK.isStuck(player.position().distanceTo(target))) {
+			finish(client, player, "united_minecraft.narrate.water_exit_none");
+			return;
+		}
+
 		CameraUtil.aimAt(player, target);
 		boolean rise = next.getY() > player.getY() + 0.1;
-		((SwimInput) player.input).setSwimming(rise);
+		((RouteInput) player.input).setWalking(rise);
 	}
 
 	private static void finish(Minecraft client, LocalPlayer player, String messageKey) {
@@ -168,6 +182,17 @@ public final class WaterExitController {
 	 * pre-built into a set over the entire {@link #SEARCH_RADIUS} cube up front - in the common
 	 * case (a lake or river, not the open ocean), the real reachable region is far smaller than
 	 * that whole cube, and a nearby exit stops the flood well before it ever would be.
+	 *
+	 * <p>Face-connected (6-connected), the same restriction {@link
+	 * ScannerController#addFluidNeighbors} already applies to liquid clustering and for a
+	 * closely related reason: the player's bounding box is 0.6 blocks wide, so two solid blocks
+	 * meeting at a diagonal leave a zero-width gap that vanilla collision never lets anyone
+	 * through - a diagonal step was never actually swimmable. Dropping the 26-connected version
+	 * cuts neighbor probes more than four-fold, which is what keeps the worst case (open ocean,
+	 * where the reachable region really is the whole {@link #SEARCH_RADIUS} cube) to a brief
+	 * hitch on a keypress rather than a freeze. It also suits the follower better: {@link #tick}
+	 * swims a straight line between consecutive waypoints, so axis-aligned steps are traversable
+	 * by construction where a diagonal leg could clip a corner.
 	 */
 	private static List<BlockPos> findRoute(LocalPlayer player) {
 		Level level = player.level();
@@ -185,21 +210,14 @@ public final class WaterExitController {
 				exit = current;
 				break;
 			}
-			for (int dx = -1; dx <= 1; dx++) {
-				for (int dy = -1; dy <= 1; dy++) {
-					for (int dz = -1; dz <= 1; dz++) {
-						if (dx == 0 && dy == 0 && dz == 0) {
-							continue;
-						}
-						BlockPos neighbor = current.offset(dx, dy, dz);
-						if (cameFrom.containsKey(neighbor) || !withinSearchRadius(start, neighbor)) {
-							continue;
-						}
-						if (isSwimmable(level.getBlockState(neighbor))) {
-							cameFrom.put(neighbor, current);
-							queue.add(neighbor);
-						}
-					}
+			for (Direction direction : Direction.values()) {
+				BlockPos neighbor = current.relative(direction);
+				if (cameFrom.containsKey(neighbor) || !withinSearchRadius(start, neighbor)) {
+					continue;
+				}
+				if (isSwimmable(level.getBlockState(neighbor))) {
+					cameFrom.put(neighbor, current);
+					queue.add(neighbor);
 				}
 			}
 		}
@@ -245,13 +263,5 @@ public final class WaterExitController {
 		AABB box = player.getBoundingBox().move(
 				pos.getX() + 0.5 - player.getX(), pos.getY() - player.getY(), pos.getZ() + 0.5 - player.getZ());
 		return level.noCollision(player, box);
-	}
-
-	/** Reports "forward" (and "jump", vanilla's own swim-up input) as held, exactly like real keyboard input would. */
-	private static final class SwimInput extends ClientInput {
-		void setSwimming(boolean rise) {
-			this.keyPresses = new Input(true, false, false, false, rise, false, false);
-			this.moveVector = new Vec2(0.0f, 1.0f);
-		}
 	}
 }
