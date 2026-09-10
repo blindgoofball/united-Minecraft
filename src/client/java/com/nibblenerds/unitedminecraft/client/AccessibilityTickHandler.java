@@ -132,6 +132,7 @@ public final class AccessibilityTickHandler {
 			AutoCrosshairNarrationController.reset();
 			DurabilityAwarenessController.reset();
 			ToolHarvestAwarenessController.reset();
+			TameNotificationController.reset();
 			return;
 		}
 
@@ -250,6 +251,9 @@ public final class AccessibilityTickHandler {
 			CombatModeController.tickAttackCue(client, player);
 			// Proactive tool mismatch and mining waste prevention
 			ToolHarvestAwarenessController.tick(client, player);
+			// Same reasoning - a nearby animal you're feeding could finish taming regardless of
+			// what else is going on, and vanilla's only feedback for it is silent heart particles.
+			TameNotificationController.tick(client, player);
 		}
 
 		boolean rotationOwned = BuildModeController.isActive() || ScannerController.isLocked() || AutoWalkController.isActive()

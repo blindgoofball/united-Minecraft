@@ -231,6 +231,7 @@
 	"united_minecraft.narrate.mob_sitting": "Sitting",
 	"united_minecraft.narrate.mob_tamed": "Tamed",
 	"united_minecraft.narrate.mob_tamed_by": "Tamed by %s",
+	"united_minecraft.narrate.mob_tamed_notification": "Tamed %s",
 	"united_minecraft.narrate.painting_title": "Painting: %s",
 	"united_minecraft.narrate.sheep_colored": "%s %s",
 	"united_minecraft.narrate.sheep_sheared": "sheared",
