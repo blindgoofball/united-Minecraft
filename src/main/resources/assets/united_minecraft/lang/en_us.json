@@ -298,6 +298,7 @@
 	"united_minecraft.narrate.named_block_cancelled": "Naming cancelled",
 	"united_minecraft.narrate.named_block_set": "Named '%s'",
 	"united_minecraft.narrate.named_block_cleared": "Name cleared",
+	"united_minecraft.narrate.named_block_unsupported": "Biomes can't be named",
 	"united_minecraft.search_screen.title": "Search",
 	"united_minecraft.search_screen.term": "Search term",
 	"united_minecraft.narrate.search_prompt": "Enter a block name to search for, then press Enter to confirm, or Escape to cancel",

@@ -205,7 +205,13 @@ public final class ScannerController {
 
 		if (isLocked()) {
 			if (stopPressed) {
+				// Returning matters: everything below this branch reads lockedEntity, which
+				// stopLock just cleared. Falling through with a same-tick Enter still held would
+				// reach the "is focus still the locked entity" check below with both sides null
+				// (for a block-based focus), route into interactWithLocked, and have it bail on
+				// its own null guard - silently swallowing that keypress instead of targeting.
 				stopLock(client);
+				return;
 			}
 			if (coordinatesPressed) {
 				announceCoordinates(client, lockedEntity.blockPosition());
@@ -315,6 +321,14 @@ public final class ScannerController {
 			return;
 		}
 		if (categoryIndex == -1 || CATEGORIES[categoryIndex] == ScannerCategory.MARKERS) {
+			return;
+		}
+		if (CATEGORIES[categoryIndex] == ScannerCategory.BIOMES) {
+			// A biome entry's position is an arbitrary surface sample point on a 4-block grid,
+			// not a block the player pointed at - a name keyed to it would never be read back
+			// (see itemName's own exclusion). Said out loud rather than silently ignored, so
+			// it's clear the key did something and this category simply can't carry a name.
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.named_block_unsupported"));
 			return;
 		}
 		ScannerItem item = currentItem();
@@ -953,6 +967,20 @@ public final class ScannerController {
 			return mobDisplayName(item.entity(), player);
 		}
 		Level level = player.level();
+		// Looked up here rather than baked into each scan's ScannerItem: only the item actually
+		// being narrated needs it (one lookup instead of one per scanned result), and doing it in
+		// one place means every block-based category picks custom names up uniformly. Previously
+		// only scanBlocks and scanMechanisms passed a label through, so naming a tree, crop,
+		// liquid, or portal cluster saved and confirmed but then never showed up again.
+		// Biomes are the one exclusion - their blockPos is an arbitrary surface sample point on a
+		// 4-block grid, not a block the player ever pointed at, so a name saved for that exact
+		// position from some other category isn't about this biome entry at all.
+		if (category != ScannerCategory.BIOMES) {
+			String customName = NamedBlockController.findAt(level.dimension(), item.blockPos());
+			if (customName != null) {
+				return Component.literal(customName);
+			}
+		}
 		if (category == ScannerCategory.TREES) {
 			return describeTree(level, item.blockPos());
 		}
@@ -1186,9 +1214,7 @@ public final class ScannerController {
 			}
 			double distance = eye.distanceTo(Vec3.atCenterOf(pos));
 			if (distance <= scanRange()) {
-				BlockPos immutable = pos.immutable();
-				String label = NamedBlockController.findAt(level.dimension(), immutable);
-				results.add(new ScannerItem(immutable, null, distance, label));
+				results.add(new ScannerItem(pos.immutable(), null, distance, null));
 			}
 			return true;
 		});
@@ -1414,9 +1440,7 @@ public final class ScannerController {
 				return true;
 			}
 			if (predicate.test(pos, state)) {
-				BlockPos immutable = pos.immutable();
-				String label = NamedBlockController.findAt(level.dimension(), immutable);
-				results.add(new ScannerItem(immutable, null, Math.sqrt(distanceSqr), label));
+				results.add(new ScannerItem(pos.immutable(), null, Math.sqrt(distanceSqr), null));
 			}
 			return true;
 		});
@@ -1966,7 +1990,11 @@ public final class ScannerController {
 		return false;
 	}
 
-	/** {@code label} is only ever set for Markers - everything else derives its narrated name from the block/entity itself. */
+	/**
+	 * {@code label} is only ever set for Markers, whose name is the marker itself and has no
+	 * block to derive one from. Every other category derives its narrated name from the live
+	 * block/entity, with any player-assigned name applied on top in {@link #itemName}.
+	 */
 	private record ScannerItem(BlockPos blockPos, Entity entity, double distance, String label) {
 	}
 }
