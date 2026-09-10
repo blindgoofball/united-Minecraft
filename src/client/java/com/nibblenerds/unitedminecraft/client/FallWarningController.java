@@ -11,6 +11,7 @@ import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Block;
@@ -50,13 +51,24 @@ import net.minecraft.world.phys.Vec3;
  *
  * <p>The landing spot's block matters for whether a fall actually damages: water negates it
  * entirely, a slime block always negates it (bouncing or not), a hay block reduces the final
- * damage to a fifth, and a bed halves the effective fall distance before the 3-block threshold
- * is even subtracted - all mirrored here from vanilla's own {@code fallOn} overrides so the
- * "will this hurt" call matches what actually happens on landing.
+ * damage to a fifth, and a bed halves the effective fall distance before the player's own
+ * safe-fall distance is even subtracted - all mirrored here from vanilla's own {@code fallOn}
+ * overrides so the "will this hurt" call matches what actually happens on landing. See {@link
+ * #wouldDamage} for the height math itself, and for why armor and Feather Falling deliberately
+ * don't enter into it.
  */
 public final class FallWarningController {
-	/** Matches {@code Entity.BASE_SAFE_FALL_DISTANCE} - falls at or under this never damage. */
+	/**
+	 * Vanilla's default {@link Attributes#SAFE_FALL_DISTANCE} - the documentation default for
+	 * {@link UnitedMinecraftConfig#fallWarningThreshold} only. The damage math itself reads the
+	 * player's live attribute instead, since it can be modified - see {@link #wouldDamage}.
+	 */
 	private static final double SAFE_FALL_DISTANCE = 3.0;
+
+	// The exact nudge LivingEntity#calculateFallPower adds before subtracting the safe-fall
+	// distance; carried over so a fall landing precisely on the boundary is classified the same
+	// way vanilla classifies it rather than one block out.
+	private static final double FALL_POWER_EPSILON = 1.0e-6;
 
 	private static final double MIN_HORIZONTAL_SPEED_SQR = 0.02 * 0.02;
 	private static final double TICKS_PER_SECOND = 20.0;
@@ -248,7 +260,26 @@ public final class FallWarningController {
 		return null;
 	}
 
-	/** Mirrors vanilla's own fall-damage mitigations for the landing spot to decide whether this specific fall actually hurts. */
+	/**
+	 * Mirrors vanilla's own fall-damage mitigations for the landing spot to decide whether this
+	 * specific fall actually hurts.
+	 *
+	 * <p>The height math follows {@code LivingEntity.calculateFallDamage}/{@code
+	 * calculateFallPower} exactly, including their tiny epsilon and their floor (read off the
+	 * bytecode - see this repo's CLAUDE.md on inspecting vanilla via {@code javap}). Both terms
+	 * it reads are real, client-synced <em>attributes</em>, not the constants this used to
+	 * assume: {@link Attributes#SAFE_FALL_DISTANCE} was hardcoded to {@link
+	 * #SAFE_FALL_DISTANCE}, and {@link Attributes#FALL_DAMAGE_MULTIPLIER} was ignored outright,
+	 * so anything modifying either (a datapack, a command, another mod) made every "will this
+	 * hurt" call silently wrong.
+	 *
+	 * <p>Armor and Protection/Feather Falling deliberately aren't consulted: {@code
+	 * minecraft:fall} is in {@code #minecraft:bypasses_armor}, so armor points never apply, and
+	 * the enchantments only ever <em>scale</em> the resulting damage rather than being able to
+	 * cancel it - vanilla gates the hurt call on this integer being positive, before any of that
+	 * runs. A fall this reports as damaging really does damage a Feather Falling IV player; it
+	 * just costs them less health.
+	 */
 	private static boolean wouldDamage(LocalPlayer player, BlockState landingState, double dropHeight) {
 		if (landingState.getFluidState().is(FluidTags.WATER)) {
 			return false;
@@ -260,16 +291,17 @@ public final class FallWarningController {
 		}
 
 		double effectiveDrop = dropHeight;
-		float damageModifier = 1.0f;
+		double damageModifier = 1.0;
 		if (block instanceof BedBlock) {
 			// BedBlock#fallOn halves the fall distance itself before the safe-distance subtraction.
 			effectiveDrop *= 0.5;
 		} else if (block instanceof HayBlock) {
 			// HayBlock#fallOn instead reduces the final damage to a fifth.
-			damageModifier = 0.2f;
+			damageModifier = 0.2;
 		}
 
-		int damage = (int) Math.floor((effectiveDrop - SAFE_FALL_DISTANCE) * damageModifier);
+		double fallPower = effectiveDrop + FALL_POWER_EPSILON - player.getAttributeValue(Attributes.SAFE_FALL_DISTANCE);
+		int damage = Mth.floor(fallPower * damageModifier * player.getAttributeValue(Attributes.FALL_DAMAGE_MULTIPLIER));
 		return damage > 0;
 	}
 

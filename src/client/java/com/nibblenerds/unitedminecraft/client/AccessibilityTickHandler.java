@@ -630,9 +630,11 @@ public final class AccessibilityTickHandler {
 		}
 		Component message = Component.translatable(weatherKey);
 
-		// Moon phase only matters once it's actually visible - matches the same night threshold
-		// used for the ambient "night" time-of-day narration.
-		if (timePeriodIndex(player) >= 3) {
+		// Moon phase only matters once it's actually visible. Keyed to sunset (period 2) rather
+		// than the later "night" threshold (period 3) the ambient time-of-day narration uses:
+		// the moon rises opposite the setting sun at tick 12000, so the thousand ticks between
+		// sunset and mobs-can-spawn night had it up in the sky but unreportable.
+		if (timePeriodIndex(player) >= 2) {
 			MoonPhase phase = level.environmentAttributes().getDimensionValue(EnvironmentAttributes.MOON_PHASE);
 			message = message.copy().append(Component.literal(". ")).append(Component.translatable(moonPhaseKey(phase)));
 		}
