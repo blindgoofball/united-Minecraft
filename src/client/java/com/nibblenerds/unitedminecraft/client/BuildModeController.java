@@ -26,6 +26,7 @@ import net.minecraft.world.level.block.DaylightDetectorBlock;
 import net.minecraft.world.level.block.HopperBlock;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.ObserverBlock;
+import net.minecraft.world.level.block.RedStoneWireBlock;
 import net.minecraft.world.level.block.RepeaterBlock;
 import net.minecraft.world.level.block.SlabBlock;
 import net.minecraft.world.level.block.StairBlock;
@@ -35,6 +36,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.ComparatorMode;
 import net.minecraft.world.level.block.state.properties.Half;
 import net.minecraft.world.level.block.state.properties.Property;
+import net.minecraft.world.level.block.state.properties.RedstoneSide;
 import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.block.state.properties.StairsShape;
 import net.minecraft.world.level.material.Fluids;
@@ -493,6 +495,35 @@ public final class BuildModeController {
 			case DOWN -> "united_minecraft.direction.down";
 		};
 		return Component.translatable(key);
+	}
+
+	// Only the four horizontal directions - redstone dust never has a vertical connection
+	// property of its own (RedStoneWireBlock.PROPERTY_BY_DIRECTION only maps these four).
+	private static final Direction[] REDSTONE_WIRE_SIDES = {Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
+
+	/**
+	 * Redstone dust's own connection state, otherwise only ever shown visually (a dot, a straight
+	 * line, a T, a cross, or a side climbing up an adjacent block's wall) - narrated directly
+	 * rather than left for a sighted-only glance at the wire's shape. {@link RedstoneSide#UP}
+	 * means this side climbs the face of a solid neighbor to reach a wire sitting on top of it,
+	 * distinct enough from an ordinary flat {@link RedstoneSide#SIDE} connection to call out on
+	 * its own - the two look and behave differently even though both are "connected".
+	 */
+	private static Component redstoneConnectionsDescription(BlockState state) {
+		MutableComponent list = null;
+		for (Direction direction : REDSTONE_WIRE_SIDES) {
+			RedstoneSide side = state.getValue(RedStoneWireBlock.PROPERTY_BY_DIRECTION.get(direction));
+			if (side == RedstoneSide.NONE) {
+				continue;
+			}
+			Component entry = side == RedstoneSide.UP
+					? Component.translatable("united_minecraft.narrate.build_redstone_side_up", directionName(direction))
+					: directionName(direction);
+			list = list == null ? entry.copy() : list.append(Component.literal(", ")).append(entry);
+		}
+		return list == null
+				? Component.translatable("united_minecraft.narrate.build_redstone_none")
+				: Component.translatable("united_minecraft.narrate.build_redstone_connects", list);
 	}
 
 	/**
@@ -1290,6 +1321,9 @@ public final class BuildModeController {
 		// which a player can't pick back up and shouldn't be told is the same thing as the source.
 		if (state.getBlock() instanceof LiquidBlock && state.getValue(LiquidBlock.LEVEL) == 0) {
 			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_liquid_source"));
+		}
+		if (state.getBlock() instanceof RedStoneWireBlock) {
+			message = message.append(Component.literal(" ")).append(redstoneConnectionsDescription(state));
 		}
 
 		if (cursor.equals(player.blockPosition())) {
