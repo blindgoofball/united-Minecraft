@@ -203,6 +203,12 @@ public final class BuildModeController {
 	private static InteractionHand pendingBucketHand;
 	private static float pendingSavedYaw;
 	private static float pendingSavedPitch;
+	// The rotation being held for the pending action - a fixed look direction for PLACE
+	// (faceDirection only needs a Direction), a precise aim point for BUCKET (its raycast needs
+	// the exact point on the target's shape, not just a direction). Re-applied every tick of the
+	// delay in tick(), not just once at the start - see its doc for why.
+	private static Direction pendingLookDirection;
+	private static Vec3 pendingAimTarget;
 
 	// Break is a hold, not a click - mirrors a real held mouse button so survival mining
 	// time still applies (see breakBlock()).
@@ -296,6 +302,20 @@ public final class BuildModeController {
 			// deliberately fakes the yaw away from facing for a couple of ticks (see
 			// startRotatedPlacement), and this would stomp it before the placement packet fires.
 			snapYawTo(player, facing);
+		} else {
+			// Re-assert the faked rotation every tick of the delay instead of trusting the one-time
+			// set in startRotatedPlacement/startBucketUse to survive it - Build Mode doesn't consume
+			// mouse/trackpad input (see the snapYawTo branch above), so any incidental movement
+			// during those couple of ticks would otherwise silently retarget the real raycast
+			// attemptBucketUse fires away from the cursor and toward wherever the mouse drifted,
+			// which is exactly the "doesn't always land where the cursor is" failure this exists to
+			// prevent. Harmless for a PLACE pending too, even though attemptPlacementSequence's own
+			// manufactured BlockHitResult doesn't depend on live rotation for position - it still
+			// keeps the block's server-side orientation matching the requested facing.
+			switch (pendingAction) {
+				case PLACE -> faceDirection(player, pendingLookDirection);
+				case BUCKET -> CameraUtil.aimAt(player, pendingAimTarget);
+			}
 		}
 
 		boolean leftPressed = ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_LEFT);
@@ -736,7 +756,8 @@ public final class BuildModeController {
 		}
 		pendingSavedYaw = player.getYRot();
 		pendingSavedPitch = player.getXRot();
-		faceDirection(player, lookDirectionFor(selectedFacing, placingBlock(player)));
+		pendingLookDirection = lookDirectionFor(selectedFacing, placingBlock(player));
+		faceDirection(player, pendingLookDirection);
 		pendingAction = PendingAction.PLACE;
 		pendingPlaceTicks = ROTATION_SYNC_DELAY_TICKS;
 	}
@@ -770,7 +791,8 @@ public final class BuildModeController {
 		}
 		pendingSavedYaw = player.getYRot();
 		pendingSavedPitch = player.getXRot();
-		CameraUtil.aimAt(player, aimTarget);
+		pendingAimTarget = aimTarget;
+		CameraUtil.aimAt(player, pendingAimTarget);
 		pendingAction = PendingAction.BUCKET;
 		pendingBucketHand = hand;
 		pendingPlaceTicks = ROTATION_SYNC_DELAY_TICKS;
@@ -786,10 +808,11 @@ public final class BuildModeController {
 	 * pit's wall, the floor two blocks down instead of one, anything the real geometry happens to
 	 * put in that exact line - instead of the neighbor the player actually selected. This mirrors
 	 * {@link #attemptPlacementSequence}'s own neighbor-face search (respecting {@link
-	 * #selectedFacing} the same way), aiming at a point actually on that neighbor's own shape
-	 * (see {@link #pointOnShape}) rather than a fixed offset, and skips straight past any
-	 * candidate {@link #hasClearLineOfSight} can't actually confirm - so the real raycast has
-	 * nothing else to hit along the way and lands exactly there every time.
+	 * #selectedFacing} the same way), aiming at a point actually on the specific face of that
+	 * neighbor bordering the cursor (see {@link #pointOnFace} for why it has to be that face
+	 * specifically, not just anywhere on the neighbor's shape) rather than a fixed offset, and
+	 * skips straight past any candidate {@link #hasClearLineOfSight} can't actually confirm - so
+	 * the real raycast has nothing else to hit along the way and lands exactly there every time.
 	 *
 	 * <p>Picking up a fluid (an empty bucket) doesn't have the "ray sails past it" problem - the
 	 * source block being scooped sits at the cursor itself, not behind it - but still needs the
@@ -808,7 +831,7 @@ public final class BuildModeController {
 			if (neighborState.canBeReplaced()) {
 				continue;
 			}
-			Vec3 point = pointOnShape(level, player, neighborPos, neighborState);
+			Vec3 point = pointOnFace(level, player, neighborPos, neighborState, face.getOpposite());
 			if (hasClearLineOfSight(level, player, neighborPos, point)) {
 				return point;
 			}
@@ -827,9 +850,36 @@ public final class BuildModeController {
 	 * entirely. (This is why placing lava directly onto a sign - the classic "suspended lava"
 	 * trick - didn't work: the old fixed offset aimed at empty air just past the sign's actual,
 	 * much thinner post.)
+	 *
+	 * <p>Only used for the fluid-pickup branch of {@link #bucketAimTarget}, where the target is
+	 * the cursor's own block and there's no neighbor to disambiguate which face - which face gets
+	 * hit doesn't matter there. {@link #pointOnFace} is the one the placement branch needs, since
+	 * that one does care.
 	 */
 	private static Vec3 pointOnShape(Level level, LocalPlayer player, BlockPos pos, BlockState state) {
 		return BlockShapes.centreOf(state.getShape(level, pos, CollisionContext.of(player)), pos);
+	}
+
+	/**
+	 * Like {@link #pointOnShape}, but pinned to {@code face} specifically rather than the shape's
+	 * overall centre - see {@link BlockShapes#centreOfFace} for why that distinction is the whole
+	 * point here: aiming at a neighbor's volumetric centre lets the real raycast enter its shape
+	 * through whichever face the player's eye happens to line up with, which is only the face
+	 * bordering the cursor by luck. A player standing beside (rather than directly above/below/in
+	 * line with) the neighbor would have the fluid land beside it instead of at the cursor -
+	 * exactly the "doesn't always land where the cursor is" failure this exists to prevent.
+	 *
+	 * <p>Nudged {@link #FACE_EPSILON} in from the exact face plane, back into the shape's own
+	 * volume - {@code centreOfFace} otherwise sits precisely on the boundary shared with the
+	 * cursor cell, and a ray whose endpoint sits exactly on a floating-point boundary can resolve
+	 * to either side of it (the same ambiguity {@link #attemptSlabMerge}'s own hit location
+	 * construction nudges away from). Moving fractionally toward {@code pos}'s interior instead
+	 * of the cursor's guarantees the clip has no way to read it as anything but this block.
+	 */
+	private static Vec3 pointOnFace(Level level, LocalPlayer player, BlockPos pos, BlockState state, Direction face) {
+		Vec3 point = BlockShapes.centreOfFace(state.getShape(level, pos, CollisionContext.of(player)), pos, face);
+		return point.subtract(
+				face.getStepX() * FACE_EPSILON, face.getStepY() * FACE_EPSILON, face.getStepZ() * FACE_EPSILON);
 	}
 
 	/**
