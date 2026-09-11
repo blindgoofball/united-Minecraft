@@ -124,6 +124,8 @@ public final class SettingsScreen extends Screen {
 				config.preciseCoordinatesEnabled, value -> config.preciseCoordinatesEnabled = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.mount_jump_cue_enabled",
 				config.mountJumpCueEnabled, value -> config.mountJumpCueEnabled = value);
+		y = addToggle(x, y, "united_minecraft.settings_screen.map_beacon_enabled",
+				config.mapBeaconEnabled, value -> config.mapBeaconEnabled = value);
 
 		registerRow(addRenderableWidget(Button.builder(Component.translatable("united_minecraft.settings_screen.sound_glossary"),
 				button -> Minecraft.getInstance().gui.setScreen(new SoundGlossaryScreen()))

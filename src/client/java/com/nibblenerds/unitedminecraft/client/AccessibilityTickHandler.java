@@ -125,6 +125,7 @@ public final class AccessibilityTickHandler {
 			MovementAssistController.reset();
 			NavRadarController.reset();
 			MiningRadarController.reset();
+			MapBeaconController.reset();
 			HostileRadarController.reset();
 			ArrowHitController.reset();
 			FishingCatchController.reset();
@@ -242,6 +243,11 @@ public final class AccessibilityTickHandler {
 			// Runs no matter which mode owns rotation - a nearby, visible hostile mob is
 			// worth a warning regardless of what else you're doing.
 			HostileRadarController.tick(client, player);
+			// Same reasoning - it's purely observational audio/narration and never touches
+			// rotation, so gating it behind Build Mode/Combat Mode/Auto-Walk/Scanner-lock
+			// exclusivity would silence it exactly when it's most useful (e.g. auto-walking
+			// somewhere while still wanting bearing feedback toward a held map's target).
+			MapBeaconController.tick(client, player);
 			// Same reasoning - a fired arrow keeps flying, and needs watching for a hit,
 			// regardless of what else the player is doing once it's loosed.
 			ArrowHitController.tick(client, player);
