@@ -24,6 +24,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.ComparatorBlock;
 import net.minecraft.world.level.block.DaylightDetectorBlock;
 import net.minecraft.world.level.block.HopperBlock;
+import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.ObserverBlock;
 import net.minecraft.world.level.block.RepeaterBlock;
 import net.minecraft.world.level.block.SlabBlock;
@@ -1282,6 +1283,13 @@ public final class BuildModeController {
 		}
 		if (state.getBlock() instanceof DaylightDetectorBlock && state.getValue(DaylightDetectorBlock.INVERTED)) {
 			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_daylight_inverted"));
+		}
+		// LEVEL is shared between water and lava's own LiquidBlock instances (same property
+		// instance, like FACING/HORIZONTAL_FACING above) - 0 is the still source block a bucket
+		// can actually scoop from; anything higher is flowing runoff spreading away from one,
+		// which a player can't pick back up and shouldn't be told is the same thing as the source.
+		if (state.getBlock() instanceof LiquidBlock && state.getValue(LiquidBlock.LEVEL) == 0) {
+			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_liquid_source"));
 		}
 
 		if (cursor.equals(player.blockPosition())) {
