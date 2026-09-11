@@ -14,17 +14,13 @@
 	},
 	"license": "GPL-3.0-or-later",
 	"icon": "assets/united_minecraft/icon.png",
-	"environment": "*",
+	"environment": "client",
 	"entrypoints": {
-		"main": [
-			"com.nibblenerds.unitedminecraft.UnitedMinecraft"
-		],
 		"client": [
 			"com.nibblenerds.unitedminecraft.client.UnitedMinecraftClient"
 		]
 	},
 	"mixins": [
-		"united_minecraft.mixins.json",
 		{
 			"config": "united_minecraft.client.mixins.json",
 			"environment": "client"
