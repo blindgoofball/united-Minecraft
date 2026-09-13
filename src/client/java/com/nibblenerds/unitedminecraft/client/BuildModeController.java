@@ -20,6 +20,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.BaseRailBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.ComparatorBlock;
 import net.minecraft.world.level.block.DaylightDetectorBlock;
@@ -36,6 +37,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.ComparatorMode;
 import net.minecraft.world.level.block.state.properties.Half;
 import net.minecraft.world.level.block.state.properties.Property;
+import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.level.block.state.properties.RedstoneSide;
 import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.block.state.properties.StairsShape;
@@ -507,7 +509,10 @@ public final class BuildModeController {
 	 * rather than left for a sighted-only glance at the wire's shape. {@link RedstoneSide#UP}
 	 * means this side climbs the face of a solid neighbor to reach a wire sitting on top of it,
 	 * distinct enough from an ordinary flat {@link RedstoneSide#SIDE} connection to call out on
-	 * its own - the two look and behave differently even though both are "connected".
+	 * its own - the two look and behave differently even though both are "connected". The
+	 * "connects %s"/"%s (climbing)" phrasing is shared with {@link #railShapeDescription} below -
+	 * both are the same "which of these directions is this thing joined to, and does any of them
+	 * climb" shape, just for different blocks.
 	 */
 	private static Component redstoneConnectionsDescription(BlockState state) {
 		MutableComponent list = null;
@@ -517,13 +522,67 @@ public final class BuildModeController {
 				continue;
 			}
 			Component entry = side == RedstoneSide.UP
-					? Component.translatable("united_minecraft.narrate.build_redstone_side_up", directionName(direction))
+					? Component.translatable("united_minecraft.narrate.build_climbing", directionName(direction))
 					: directionName(direction);
 			list = list == null ? entry.copy() : list.append(Component.literal(", ")).append(entry);
 		}
 		return list == null
 				? Component.translatable("united_minecraft.narrate.build_redstone_none")
-				: Component.translatable("united_minecraft.narrate.build_redstone_connects", list);
+				: Component.translatable("united_minecraft.narrate.build_connects", list);
+	}
+
+	/**
+	 * The two directions a {@link RailShape} joins, in the order {NORTH_SOUTH -> [SOUTH, NORTH]}
+	 * etc. run for slopes so that {@link #railShapeDescription} can always mark the *second*
+	 * entry as the climbing one - the ascending shapes name only the high end
+	 * ({@code ASCENDING_NORTH} is the rail rising as it goes north from a flat southern neighbor)
+	 * and curves name both ends they connect, matching vanilla's own shape names one-for-one.
+	 */
+	private static Direction[] railConnectedDirections(RailShape shape) {
+		return switch (shape) {
+			case NORTH_SOUTH -> new Direction[]{Direction.NORTH, Direction.SOUTH};
+			case EAST_WEST -> new Direction[]{Direction.EAST, Direction.WEST};
+			case ASCENDING_NORTH -> new Direction[]{Direction.SOUTH, Direction.NORTH};
+			case ASCENDING_SOUTH -> new Direction[]{Direction.NORTH, Direction.SOUTH};
+			case ASCENDING_EAST -> new Direction[]{Direction.WEST, Direction.EAST};
+			case ASCENDING_WEST -> new Direction[]{Direction.EAST, Direction.WEST};
+			case SOUTH_EAST -> new Direction[]{Direction.SOUTH, Direction.EAST};
+			case SOUTH_WEST -> new Direction[]{Direction.SOUTH, Direction.WEST};
+			case NORTH_WEST -> new Direction[]{Direction.NORTH, Direction.WEST};
+			case NORTH_EAST -> new Direction[]{Direction.NORTH, Direction.EAST};
+		};
+	}
+
+	private static Direction railRisingDirection(RailShape shape) {
+		return switch (shape) {
+			case ASCENDING_NORTH -> Direction.NORTH;
+			case ASCENDING_SOUTH -> Direction.SOUTH;
+			case ASCENDING_EAST -> Direction.EAST;
+			case ASCENDING_WEST -> Direction.WEST;
+			default -> null;
+		};
+	}
+
+	/**
+	 * Any rail's shape (straight, curved, or sloped) as which directions it actually connects to -
+	 * a curve, a straight length, and a slope all look like a flat line of track from directly
+	 * above without a sighted glance at the model. Mirrors {@link #redstoneConnectionsDescription}'s
+	 * comma-list-plus-marker approach (down to reusing its lang keys - a climbing rail end and a
+	 * climbing redstone wire are the same narrated concept): {@link #railRisingDirection} marks the
+	 * one entry that's the climbing end for a sloped shape, since that's the one detail ("this end
+	 * goes up") a flat reading of "connects north, south" wouldn't otherwise convey.
+	 */
+	private static Component railShapeDescription(BlockState state, BaseRailBlock railBlock) {
+		RailShape shape = state.getValue(railBlock.getShapeProperty());
+		Direction rising = railRisingDirection(shape);
+		MutableComponent list = null;
+		for (Direction direction : railConnectedDirections(shape)) {
+			Component entry = direction == rising
+					? Component.translatable("united_minecraft.narrate.build_climbing", directionName(direction))
+					: directionName(direction);
+			list = list == null ? entry.copy() : list.append(Component.literal(", ")).append(entry);
+		}
+		return Component.translatable("united_minecraft.narrate.build_connects", list);
 	}
 
 	/**
@@ -1324,6 +1383,9 @@ public final class BuildModeController {
 		}
 		if (state.getBlock() instanceof RedStoneWireBlock) {
 			message = message.append(Component.literal(" ")).append(redstoneConnectionsDescription(state));
+		}
+		if (state.getBlock() instanceof BaseRailBlock railBlock) {
+			message = message.append(Component.literal(" ")).append(railShapeDescription(state, railBlock));
 		}
 
 		if (cursor.equals(player.blockPosition())) {
