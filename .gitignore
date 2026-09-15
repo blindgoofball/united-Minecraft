@@ -42,3 +42,4 @@ replay_*.log
 # claude code
 
 CLAUDE.md
+.claude/
