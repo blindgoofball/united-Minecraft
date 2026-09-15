@@ -17,6 +17,7 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.BucketItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
@@ -27,7 +28,7 @@ import net.minecraft.world.level.block.DaylightDetectorBlock;
 import net.minecraft.world.level.block.HopperBlock;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.ObserverBlock;
-import net.minecraft.world.level.block.RedStoneWireBlock;
+import net.minecraft.world.level.block.RedstoneWireBlock;
 import net.minecraft.world.level.block.RepeaterBlock;
 import net.minecraft.world.level.block.SlabBlock;
 import net.minecraft.world.level.block.StairBlock;
@@ -500,7 +501,7 @@ public final class BuildModeController {
 	}
 
 	// Only the four horizontal directions - redstone dust never has a vertical connection
-	// property of its own (RedStoneWireBlock.PROPERTY_BY_DIRECTION only maps these four).
+	// property of its own (RedstoneWireBlock.PROPERTY_BY_DIRECTION only maps these four).
 	private static final Direction[] REDSTONE_WIRE_SIDES = {Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
 
 	/**
@@ -517,7 +518,7 @@ public final class BuildModeController {
 	private static Component redstoneConnectionsDescription(BlockState state) {
 		MutableComponent list = null;
 		for (Direction direction : REDSTONE_WIRE_SIDES) {
-			RedstoneSide side = state.getValue(RedStoneWireBlock.PROPERTY_BY_DIRECTION.get(direction));
+			RedstoneSide side = state.getValue(RedstoneWireBlock.PROPERTY_BY_DIRECTION.get(direction));
 			if (side == RedstoneSide.NONE) {
 				continue;
 			}
@@ -1020,8 +1021,8 @@ public final class BuildModeController {
 	private static void attemptBucketUse(Minecraft client, LocalPlayer player) {
 		InteractionResult result = client.gameMode.useItem(player, pendingBucketHand);
 		if (result instanceof InteractionResult.Success success) {
-			if (success.swingSource() == InteractionResult.SwingSource.CLIENT) {
-				player.swing(pendingBucketHand);
+			if (success.swingSource() == InteractionResult.SwingSource.PREDICTED) {
+				player.swing(pendingBucketHand, SwingAnimation.DEFAULT, true);
 			}
 			narrateAfterAction(client, player);
 		} else {
@@ -1206,8 +1207,8 @@ public final class BuildModeController {
 		for (InteractionHand hand : InteractionHand.values()) {
 			InteractionResult result = client.gameMode.useItemOn(player, hand, hit);
 			if (result instanceof InteractionResult.Success success) {
-				if (success.swingSource() == InteractionResult.SwingSource.CLIENT) {
-					player.swing(hand);
+				if (success.swingSource() == InteractionResult.SwingSource.PREDICTED) {
+					player.swing(hand, SwingAnimation.DEFAULT, true);
 				}
 				return true;
 			}
@@ -1381,7 +1382,7 @@ public final class BuildModeController {
 		if (state.getBlock() instanceof LiquidBlock && state.getValue(LiquidBlock.LEVEL) == 0) {
 			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_liquid_source"));
 		}
-		if (state.getBlock() instanceof RedStoneWireBlock) {
+		if (state.getBlock() instanceof RedstoneWireBlock) {
 			message = message.append(Component.literal(" ")).append(redstoneConnectionsDescription(state));
 		}
 		if (state.getBlock() instanceof BaseRailBlock railBlock) {

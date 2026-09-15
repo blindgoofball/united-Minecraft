@@ -9,7 +9,7 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.monster.Enemy;
-import net.minecraft.world.entity.monster.EnderMan;
+import net.minecraft.world.entity.monster.Enderman;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -177,7 +177,7 @@ public final class CombatModeController {
 	 * already angry at you for some other reason, though, there's no more provoking left to do.
 	 */
 	private static boolean isCalmEnderman(Entity entity) {
-		return entity instanceof EnderMan enderMan && !enderMan.isCreepy();
+		return entity instanceof Enderman enderMan && !enderMan.isCreepy();
 	}
 
 	private static double distanceSq(Vec3 eye, Entity entity) {

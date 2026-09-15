@@ -1,6 +1,7 @@
 package com.nibblenerds.unitedminecraft.client.mixin;
 
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
+
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -67,16 +68,16 @@ public abstract class EditBoxMixin extends AbstractWidget {
 
 		boolean byWord = Minecraft.getInstance().hasControlDown();
 		switch (event.key()) {
-			case GLFW.GLFW_KEY_LEFT -> unitedMinecraft$narrate(unitedMinecraft$textBetweenCursorAnd(
+			case InputConstants.KEY_LEFT -> unitedMinecraft$narrate(unitedMinecraft$textBetweenCursorAnd(
 					byWord ? getWordPosition(-1) : getCursorPos(-1)));
-			case GLFW.GLFW_KEY_RIGHT -> unitedMinecraft$narrate(unitedMinecraft$textBetweenCursorAnd(
+			case InputConstants.KEY_RIGHT -> unitedMinecraft$narrate(unitedMinecraft$textBetweenCursorAnd(
 					byWord ? getWordPosition(1) : getCursorPos(1)));
-			case GLFW.GLFW_KEY_HOME -> {
+			case InputConstants.KEY_HOME -> {
 				if (!value.isEmpty()) {
 					unitedMinecraft$narrate(value.substring(0, 1));
 				}
 			}
-			case GLFW.GLFW_KEY_END -> {
+			case InputConstants.KEY_END -> {
 				if (!value.isEmpty()) {
 					unitedMinecraft$narrate(value.substring(value.length() - 1));
 				}

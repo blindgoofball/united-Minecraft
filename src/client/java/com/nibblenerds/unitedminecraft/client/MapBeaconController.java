@@ -3,6 +3,9 @@ package com.nibblenerds.unitedminecraft.client;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import java.util.Set;
+
+import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
@@ -13,6 +16,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.MapItem;
 import net.minecraft.world.item.component.MapDecorations;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.saveddata.maps.MapDecorationType;
 import net.minecraft.world.level.saveddata.maps.MapDecorationTypes;
 import net.minecraft.world.level.saveddata.maps.MapItemSavedData;
 import net.minecraft.world.phys.Vec3;
@@ -49,21 +53,19 @@ import net.minecraft.world.phys.Vec3;
  * MapId} broadcast" caveat the old {@code MapItemSavedData}-based approach had either.
  *
  * <p>Which entries actually count as "a real target" still needs the same care: {@link
- * net.minecraft.world.level.saveddata.maps.MapDecorationType#explorationMapElement()} sounds like
- * it should mean exactly that, but bytecode inspection of {@link MapDecorationTypes}'s own
- * registration calls shows the opposite of what the name suggests: it's {@code true} for the
+ * MapDecorationType} no longer carries a boolean flag for this (its record was trimmed down to
+ * just {@code assetId}/{@code showOnItemFrame}/{@code trackCount} as of Minecraft 26.3), so the
  * structure-icon types an explorer map generates (woodland mansion, ocean monument, the
- * village/temple/hut/trial chambers family) but {@code false} for {@code RED_X} - the actual "X
+ * village/temple/hut/trial chambers family) are enumerated explicitly in {@link
+ * #STRUCTURE_DECORATION_TYPES} instead, plus an explicit check for {@code RED_X} - the actual "X
  * marks the spot" icon real buried treasure maps use (confirmed against vanilla's own loot tables
  * - {@code chests/shipwreck_map.json} and both {@code underwater_ruin_*.json}, each configuring
  * their {@code minecraft:exploration_map} loot function with {@code "decoration":
- * "minecraft:red_x"} - {@code TARGET_X}/{@code TARGET_POINT} are registered decoration types but,
- * per that same check, unused by any vanilla loot table in this version). So both signals are
- * needed: {@code explorationMapElement()} for structure-style explorer maps, plus an explicit
- * check for {@code RED_X} (and {@code TARGET_X}/{@code TARGET_POINT}, kept in case a future
- * version or a mod ever uses them the same way) for treasure maps - see {@link
- * #isNavigableTarget}. Everything else (banners, the player's own position dot, off-map/off-limits
- * arrows) is deliberately excluded - none of those are a real generated destination.
+ * "minecraft:red_x"} - {@code TARGET_X}/{@code TARGET_POINT} are registered decoration types but
+ * unused by any vanilla loot table in this version, kept here in case a future version or a mod
+ * ever uses them the same way) - see {@link #isNavigableTarget}. Everything else (banners, the
+ * player's own position dot, off-map/off-limits arrows) is deliberately excluded - none of those
+ * are a real generated destination.
  *
  * <p>A map only ever encodes X/Z - there's no vertical component at all, so every distance/bearing
  * computation here is strictly horizontal, and "arrival" can only ever mean "close on the map
@@ -94,6 +96,17 @@ public final class MapBeaconController {
 	private static final float PITCH_FAR = 0.8f;
 	private static final float PITCH_NEAR = 1.8f;
 	private static final int NARRATION_INTERVAL_TICKS = 100;
+
+	/** The structure-icon decoration types an explorer map generates - see {@link #isNavigableTarget}. */
+	private static final Set<Holder<MapDecorationType>> STRUCTURE_DECORATION_TYPES = Set.of(
+			MapDecorationTypes.WOODLAND_MANSION, MapDecorationTypes.OCEAN_MONUMENT,
+			MapDecorationTypes.DESERT_VILLAGE, MapDecorationTypes.PLAINS_VILLAGE,
+			MapDecorationTypes.SAVANNA_VILLAGE, MapDecorationTypes.SNOWY_VILLAGE,
+			MapDecorationTypes.TAIGA_VILLAGE, MapDecorationTypes.JUNGLE_TEMPLE,
+			MapDecorationTypes.SWAMP_HUT, MapDecorationTypes.TRIAL_CHAMBERS,
+			MapDecorationTypes.ABANDONED_CAMP, MapDecorationTypes.ANCIENT_CITY,
+			MapDecorationTypes.DESERT_PYRAMID, MapDecorationTypes.MINESHAFT,
+			MapDecorationTypes.OCEAN_RUIN_WARM);
 
 	// The world position of the target currently being tracked - null whenever nothing valid is
 	// held (no map, no qualifying decoration, or the map's own dimension doesn't match the
@@ -244,7 +257,7 @@ public final class MapBeaconController {
 	 * off-map/off-limits arrows, none of which are a real generated destination.
 	 */
 	private static boolean isNavigableTarget(MapDecorations.Entry entry) {
-		return entry.type().value().explorationMapElement()
+		return STRUCTURE_DECORATION_TYPES.contains(entry.type())
 				|| entry.type().equals(MapDecorationTypes.RED_X)
 				|| entry.type().equals(MapDecorationTypes.TARGET_X)
 				|| entry.type().equals(MapDecorationTypes.TARGET_POINT);

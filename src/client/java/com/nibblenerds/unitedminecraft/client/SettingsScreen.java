@@ -6,6 +6,8 @@ import java.util.Locale;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import com.mojang.blaze3d.platform.InputConstants;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -17,7 +19,6 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 
-import org.lwjgl.glfw.GLFW;
 
 /**
  * United Minecraft's settings screen - hand-rolled from vanilla's own widgets rather than a
@@ -308,8 +309,8 @@ public final class SettingsScreen extends Screen {
 
 		@Override
 		public boolean keyPressed(KeyEvent event) {
-			if (event.key() == GLFW.GLFW_KEY_LEFT || event.key() == GLFW.GLFW_KEY_RIGHT) {
-				double direction = event.key() == GLFW.GLFW_KEY_RIGHT ? 1.0 : -1.0;
+			if (event.key() == InputConstants.KEY_LEFT || event.key() == InputConstants.KEY_RIGHT) {
+				double direction = event.key() == InputConstants.KEY_RIGHT ? 1.0 : -1.0;
 				double next = Mth.clamp(currentValue() + direction * step, min, max);
 				this.value = (next - min) / (max - min);
 				updateMessage();

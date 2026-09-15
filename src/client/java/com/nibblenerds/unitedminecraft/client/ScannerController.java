@@ -55,6 +55,7 @@ import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.AttachedStemBlock;
@@ -87,6 +88,7 @@ import net.minecraft.world.level.block.TrapDoorBlock;
 import net.minecraft.world.level.block.VaultBlock;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
 import net.minecraft.world.level.block.entity.SignText;
+import net.minecraft.world.level.block.entity.SignTextSlot;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BedPart;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -441,8 +443,8 @@ public final class ScannerController {
 			AnimalFeedingController.playFeedSoundIfSuccessful(lockedEntity, player.getItemInHand(hand));
 			InteractionResult result = client.gameMode.interact(player, lockedEntity, hitResult, hand);
 			if (result instanceof InteractionResult.Success success) {
-				if (success.swingSource() == InteractionResult.SwingSource.CLIENT) {
-					player.swing(hand);
+				if (success.swingSource() == InteractionResult.SwingSource.PREDICTED) {
+					player.swing(hand, SwingAnimation.DEFAULT, true);
 				}
 				return;
 			}
@@ -1048,8 +1050,8 @@ public final class ScannerController {
 		if (!(level.getBlockEntity(pos) instanceof SignBlockEntity sign)) {
 			return null;
 		}
-		Component front = joinSignLines(sign.getText(true));
-		return front != null ? front : joinSignLines(sign.getText(false));
+		Component front = joinSignLines(sign.getText(SignTextSlot.FRONT));
+		return front != null ? front : joinSignLines(sign.getText(SignTextSlot.BACK));
 	}
 
 	private static Component joinSignLines(SignText text) {

@@ -2,12 +2,13 @@ package com.nibblenerds.unitedminecraft.client;
 
 import java.util.function.Consumer;
 
+import com.mojang.blaze3d.platform.InputConstants;
+
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 
-import org.lwjgl.glfw.GLFW;
 
 /**
  * A minimal name-entry prompt: one text field, Enter confirms, Escape cancels. Reuses
@@ -74,7 +75,7 @@ final class MarkerNameScreen extends Screen {
 
 	@Override
 	public boolean keyPressed(KeyEvent event) {
-		if (event.key() == GLFW.GLFW_KEY_ENTER || event.key() == GLFW.GLFW_KEY_KP_ENTER) {
+		if (event.key() == InputConstants.KEY_RETURN || event.key() == InputConstants.KEY_NUMPADENTER) {
 			onConfirm.accept(nameBox.getValue());
 			this.minecraft.gui.setScreen(returnTo);
 			return true;

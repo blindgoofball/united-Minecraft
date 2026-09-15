@@ -6,6 +6,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import net.minecraft.client.gui.narration.NarrationTrigger;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.util.Util;
 
@@ -29,7 +30,7 @@ public abstract class ScreenNarrationDelayMixin {
 	private long narrationSuppressTime;
 
 	@Inject(method = "scheduleNarration", at = @At("HEAD"), cancellable = true)
-	private void unitedMinecraft$removeNarrationDelay(long delay, boolean ignoreSuppression, CallbackInfo ci) {
+	private void unitedMinecraft$removeNarrationDelay(long delay, boolean ignoreSuppression, NarrationTrigger trigger, CallbackInfo ci) {
 		this.nextNarrationTime = Util.getMillis();
 		if (ignoreSuppression) {
 			this.narrationSuppressTime = Long.MIN_VALUE;

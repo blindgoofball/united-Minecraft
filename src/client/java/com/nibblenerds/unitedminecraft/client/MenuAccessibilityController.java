@@ -7,6 +7,8 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Predicate;
 
+import com.mojang.blaze3d.platform.InputConstants;
+
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
@@ -62,7 +64,6 @@ import net.minecraft.world.item.crafting.display.SlotDisplay;
 import net.minecraft.world.item.crafting.display.SlotDisplayContext;
 import net.minecraft.world.item.enchantment.Enchantment;
 
-import org.lwjgl.glfw.GLFW;
 
 /**
  * Keyboard navigation for container menus (chest, furnace, crafting table, anvil, etc.).
@@ -343,7 +344,7 @@ public final class MenuAccessibilityController {
 			return true;
 		}
 
-		boolean ctrlHeld = (event.modifiers() & GLFW.GLFW_MOD_CONTROL) != 0;
+		boolean ctrlHeld = (event.modifiers() & InputConstants.MOD_CONTROL) != 0;
 
 		if (ClientKeyBindings.CONTAINER_SWITCH_SECTION_NEXT.current().matches(event)) {
 			switchSection(screen, player, 1);

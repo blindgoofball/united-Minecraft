@@ -36,10 +36,10 @@ public class AdvancementToastMixin {
 			return;
 		}
 		DisplayInfo info = display.get();
-		MutableComponent message = info.getType().getDisplayName().copy()
+		MutableComponent message = info.type().getDisplayName().copy()
 				.append(Component.literal(": "))
-				.append(info.getTitle());
-		Component description = info.getDescription();
+				.append(info.title());
+		Component description = info.description();
 		if (!description.getString().isBlank()) {
 			message = message.append(Component.literal(". ")).append(description);
 		}

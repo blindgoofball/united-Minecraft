@@ -5,13 +5,13 @@ import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 
-import org.lwjgl.glfw.GLFW;
 
 /**
- * One rebindable chord: a primary GLFW key plus a GLFW modifier bitmask (the same bitmask
- * {@link net.minecraft.client.input.KeyEvent#modifiers()} already produces - see
- * {@link MenuAccessibilityController#handleKey} for another place in this codebase that
- * already reads {@code GLFW_MOD_SHIFT}/{@code GLFW_MOD_CONTROL} off it the same way).
+ * One rebindable chord: a primary {@link InputConstants} key plus an {@link InputConstants}
+ * modifier bitmask (the same bitmask {@link net.minecraft.client.input.KeyEvent#modifiers()}
+ * already produces - see {@link MenuAccessibilityController#handleKey} for another place in
+ * this codebase that already reads {@code InputConstants.MOD_SHIFT}/{@code
+ * InputConstants.MOD_CONTROL} off it the same way).
  * {@code modifiers == 0} is just a plain key, the same as every one of this mod's existing
  * defaults - no special case needed anywhere else in the model for that, including a bare
  * modifier key itself (e.g. {@link ClientKeyBindings#BUILD_PLACE}'s default of bare Right
@@ -44,8 +44,8 @@ public record Keybind(int key, int modifiers) {
 		if (key == event.key()) {
 			return true;
 		}
-		boolean thisIsEnter = key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER;
-		boolean eventIsEnter = event.key() == GLFW.GLFW_KEY_ENTER || event.key() == GLFW.GLFW_KEY_KP_ENTER;
+		boolean thisIsEnter = key == InputConstants.KEY_RETURN || key == InputConstants.KEY_NUMPADENTER;
+		boolean eventIsEnter = event.key() == InputConstants.KEY_RETURN || event.key() == InputConstants.KEY_NUMPADENTER;
 		return thisIsEnter && eventIsEnter;
 	}
 
@@ -55,19 +55,19 @@ public record Keybind(int key, int modifiers) {
 			return Component.translatable("united_minecraft.keybind_screen.unbound");
 		}
 		StringBuilder text = new StringBuilder();
-		if ((modifiers & GLFW.GLFW_MOD_CONTROL) != 0) {
+		if ((modifiers & InputConstants.MOD_CONTROL) != 0) {
 			text.append("Ctrl+");
 		}
-		if ((modifiers & GLFW.GLFW_MOD_SHIFT) != 0) {
+		if ((modifiers & InputConstants.MOD_SHIFT) != 0) {
 			text.append("Shift+");
 		}
-		if ((modifiers & GLFW.GLFW_MOD_ALT) != 0) {
+		if ((modifiers & InputConstants.MOD_ALT) != 0) {
 			text.append("Alt+");
 		}
-		if ((modifiers & GLFW.GLFW_MOD_SUPER) != 0) {
+		if ((modifiers & InputConstants.MOD_SUPER) != 0) {
 			text.append("Super+");
 		}
-		text.append(InputConstants.Type.KEYSYM.getOrCreate(key).getDisplayName().getString());
+		text.append(InputConstants.Type.KEYBOARD.getOrCreate(key).getDisplayName().getString());
 		return Component.literal(text.toString());
 	}
 }

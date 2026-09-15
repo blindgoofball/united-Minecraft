@@ -3,6 +3,8 @@ package com.nibblenerds.unitedminecraft.client;
 import java.util.List;
 import java.util.function.Supplier;
 
+import com.mojang.blaze3d.platform.InputConstants;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -17,7 +19,6 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 
-import org.lwjgl.glfw.GLFW;
 
 /**
  * A browsable reference of every audio cue this mod plays, since it's not always obvious
@@ -123,7 +124,7 @@ public final class SoundGlossaryScreen extends Screen {
 			/** Lets a keyboard-only user preview the sound with Enter, matching this mod's keyboard-first navigation. */
 			@Override
 			public boolean keyPressed(KeyEvent event) {
-				if (event.key() == GLFW.GLFW_KEY_ENTER || event.key() == GLFW.GLFW_KEY_KP_ENTER) {
+				if (event.key() == InputConstants.KEY_RETURN || event.key() == InputConstants.KEY_NUMPADENTER) {
 					playSound();
 					return true;
 				}

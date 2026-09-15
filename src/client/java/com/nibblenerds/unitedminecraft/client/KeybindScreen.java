@@ -3,6 +3,8 @@ package com.nibblenerds.unitedminecraft.client;
 import java.util.Arrays;
 import java.util.Comparator;
 
+import com.mojang.blaze3d.platform.InputConstants;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -12,7 +14,6 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 
-import org.lwjgl.glfw.GLFW;
 
 /**
  * Rebind screen for every {@link ClientKeyBindings} action - one {@link ObjectSelectionList}
@@ -207,7 +208,7 @@ public final class KeybindScreen extends Screen {
 		if (conflictEditing != null) {
 			if (event.isEscape()) {
 				cancelConflict();
-			} else if (event.key() == GLFW.GLFW_KEY_ENTER || event.key() == GLFW.GLFW_KEY_KP_ENTER) {
+			} else if (event.key() == InputConstants.KEY_RETURN || event.key() == InputConstants.KEY_NUMPADENTER) {
 				confirmConflict();
 			}
 			return true;
@@ -215,7 +216,7 @@ public final class KeybindScreen extends Screen {
 		if (listeningAction != null) {
 			if (event.isEscape()) {
 				cancelListening();
-			} else if (event.key() == GLFW.GLFW_KEY_BACKSPACE) {
+			} else if (event.key() == InputConstants.KEY_BACKSPACE) {
 				commitUnbind();
 			} else {
 				pendingKey = event.key();
@@ -320,7 +321,7 @@ public final class KeybindScreen extends Screen {
 
 			@Override
 			public boolean keyPressed(KeyEvent event) {
-				if (action != null && (event.key() == GLFW.GLFW_KEY_ENTER || event.key() == GLFW.GLFW_KEY_KP_ENTER)) {
+				if (action != null && (event.key() == InputConstants.KEY_RETURN || event.key() == InputConstants.KEY_NUMPADENTER)) {
 					KeybindScreen.this.startListening(action);
 					return true;
 				}

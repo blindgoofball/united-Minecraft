@@ -4,7 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
+
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -99,17 +100,17 @@ public abstract class ChatScreenMixin {
 	@Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
 	private void unitedMinecraft$browseChatHistory(KeyEvent event, CallbackInfoReturnable<Boolean> cir) {
 		int key = event.key();
-		if (event.hasControlDown() && (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER)) {
+		if (event.hasControlDown() && (key == InputConstants.KEY_RETURN || key == InputConstants.KEY_NUMPADENTER)) {
 			unitedMinecraft$activateFocusedLink();
 			cir.setReturnValue(true);
 			return;
 		}
-		if (event.hasControlDown() && (key == GLFW.GLFW_KEY_PAGE_UP || key == GLFW.GLFW_KEY_PAGE_DOWN)) {
-			unitedMinecraft$cycleLink(key == GLFW.GLFW_KEY_PAGE_UP ? -1 : 1);
+		if (event.hasControlDown() && (key == InputConstants.KEY_PAGEUP || key == InputConstants.KEY_PAGEDOWN)) {
+			unitedMinecraft$cycleLink(key == InputConstants.KEY_PAGEUP ? -1 : 1);
 			cir.setReturnValue(true);
 			return;
 		}
-		if (key != GLFW.GLFW_KEY_PAGE_UP && key != GLFW.GLFW_KEY_PAGE_DOWN) {
+		if (key != InputConstants.KEY_PAGEUP && key != InputConstants.KEY_PAGEDOWN) {
 			return;
 		}
 
@@ -121,7 +122,7 @@ public abstract class ChatScreenMixin {
 			return;
 		}
 
-		boolean older = key == GLFW.GLFW_KEY_PAGE_UP;
+		boolean older = key == InputConstants.KEY_PAGEUP;
 		int lastIndex = messages.size() - 1;
 		int next;
 		if (event.hasShiftDown()) {
