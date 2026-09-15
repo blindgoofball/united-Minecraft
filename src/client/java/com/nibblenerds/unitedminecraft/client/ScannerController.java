@@ -42,6 +42,7 @@ import net.minecraft.world.entity.animal.equine.AbstractHorse;
 import net.minecraft.world.entity.animal.sheep.Sheep;
 import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
 import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.entity.decoration.Cushion;
 import net.minecraft.world.entity.decoration.ItemFrame;
 import net.minecraft.world.entity.decoration.LeashFenceKnotEntity;
 import net.minecraft.world.entity.decoration.painting.Painting;
@@ -58,10 +59,10 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.block.AbstractBedBlock;
 import net.minecraft.world.level.block.AttachedStemBlock;
 import net.minecraft.world.level.block.BambooSaplingBlock;
 import net.minecraft.world.level.block.BambooStalkBlock;
-import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ButtonBlock;
@@ -690,6 +691,9 @@ public final class ScannerController {
 		if (entity instanceof Painting painting) {
 			return describePainting(painting);
 		}
+		if (entity instanceof Cushion cushion) {
+			return describeCushion(cushion);
+		}
 		return mobDisplayName(entity, player);
 	}
 
@@ -895,7 +899,7 @@ public final class ScannerController {
 		}
 		if (category == ScannerCategory.INTERACTABLES) {
 			BlockState state = player.level().getBlockState(item.blockPos());
-			if (state.getBlock() instanceof BedBlock && state.getValue(BedBlock.OCCUPIED)) {
+			if (state.getBlock() instanceof AbstractBedBlock && state.getValue(AbstractBedBlock.OCCUPIED)) {
 				name = name.copy().append(Component.literal(", ")).append(Component.translatable("united_minecraft.narrate.scanner_occupied"));
 			}
 			if (state.getBlock() instanceof SignBlock) {
@@ -956,6 +960,9 @@ public final class ScannerController {
 				}
 				if (item.entity() instanceof Painting painting) {
 					return describePainting(painting);
+				}
+				if (item.entity() instanceof Cushion cushion) {
+					return describeCushion(cushion);
 				}
 			}
 			return mobDisplayName(item.entity(), player);
@@ -1028,6 +1035,19 @@ public final class ScannerController {
 		Component title = variant.title().<Component>map(t -> t).orElseGet(() -> Component.literal(
 				titleCaseWords(variantHolder.unwrapKey().map(key -> key.identifier().getPath()).orElse("unknown"))));
 		return Component.translatable("united_minecraft.narrate.painting_title", title);
+	}
+
+	/**
+	 * "Red Cushion" - {@link Cushion#getDisplayName()} alone would just say the generic entity
+	 * name "Cushion" (unlike each colored {@code CushionItem}'s own per-color item name), since
+	 * color here is a synced entity field ({@link Cushion#getColor()}) rather than a distinct
+	 * entity type per color - same underlying gap {@link #describeItemFrame}/{@link
+	 * #describePainting} fill for their own entity types, and the same "prefix the color"
+	 * approach {@link #mobDisplayName}'s {@link net.minecraft.world.entity.animal.sheep.Sheep}
+	 * case already uses.
+	 */
+	private static Component describeCushion(Cushion cushion) {
+		return Component.translatable("united_minecraft.narrate.cushion_colored", dyeColorName(cushion.getColor()), cushion.getDisplayName());
 	}
 
 	/** "warped_stem" -> "Warped Stem" - shared by {@link #describeTree} and {@link #describePainting}'s fallback. */
@@ -1118,7 +1138,8 @@ public final class ScannerController {
 							|| entity instanceof ItemFrame
 							|| entity instanceof EndCrystal
 							|| entity instanceof LeashFenceKnotEntity
-							|| entity instanceof Painting);
+							|| entity instanceof Painting
+							|| entity instanceof Cushion);
 		};
 	}
 
@@ -1128,8 +1149,8 @@ public final class ScannerController {
 	 */
 	private static BiPredicate<BlockPos, BlockState> interactablesPredicate(LocalPlayer player) {
 		return (pos, state) -> {
-			if (state.getBlock() instanceof BedBlock) {
-				return state.getValue(BedBlock.PART) == BedPart.HEAD;
+			if (state.getBlock() instanceof AbstractBedBlock) {
+				return state.getValue(AbstractBedBlock.PART) == BedPart.HEAD;
 			}
 			if (state.hasProperty(ChestBlock.TYPE) && state.getValue(ChestBlock.TYPE) == ChestType.RIGHT) {
 				return false;

@@ -13,7 +13,6 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HayBlock;
@@ -290,12 +289,13 @@ public final class FallWarningController {
 			return false;
 		}
 
-		double effectiveDrop = dropHeight;
+		// Block#getFallDistanceReduction is the same data-driven fraction Block#fallOn itself
+		// reduces the drop by (dropHeight * (1 - reduction)) - beds (and, as of Minecraft 26.3,
+		// straw beds) set this to halve it, ordinary blocks default to 0 (a no-op multiplier of
+		// 1.0), so this one read covers every bed variant without needing to know their types.
+		double effectiveDrop = dropHeight * (1.0 - block.getFallDistanceReduction());
 		double damageModifier = 1.0;
-		if (block instanceof BedBlock) {
-			// BedBlock#fallOn halves the fall distance itself before the safe-distance subtraction.
-			effectiveDrop *= 0.5;
-		} else if (block instanceof HayBlock) {
+		if (block instanceof HayBlock) {
 			// HayBlock#fallOn instead reduces the final damage to a fifth.
 			damageModifier = 0.2;
 		}
