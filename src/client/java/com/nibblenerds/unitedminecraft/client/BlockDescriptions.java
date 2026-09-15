@@ -45,7 +45,7 @@ public final class BlockDescriptions {
 			"_hanging_sign", "_wall_hanging_sign", "_pressure_plate", "_fence_gate", "_brick_fence",
 			"_brick_stairs", "_brick_slab", "_brick_wall", "_wall_sign", "_wall_skull", "_wall_head",
 			"_stairs", "_slab", "_wall", "_fence", "_door", "_trapdoor", "_button", "_sign",
-			"_planks", "_wood", "_log", "_hyphae", "_stem", "_shelf", "_bricks", "_skull", "_head", "_torch");
+			"_planks", "_wood", "_log", "_hyphae", "_stem", "_bricks", "_skull", "_head", "_torch");
 
 	/** Every dye color a block family can be prefixed with (wool, concrete, stained glass, banners, ...). */
 	private static final List<String> DYE_COLORS = List.of(
@@ -58,12 +58,13 @@ public final class BlockDescriptions {
 	 * collide with an unrelated block: {@code red_sand}/{@code red_sandstone} (and its cut
 	 * forms) would collapse onto plain {@code sand}/{@code sandstone}, {@code red_mushroom}/
 	 * {@code brown_mushroom}(_block) onto each other, {@code red_nether_bricks} onto plain
-	 * {@code nether_bricks}, and {@code blue_ice} onto plain {@code ice} - none of which are
-	 * actually the same material. Checked as a prefix (not exact match) so it also covers each
-	 * one's own stairs/slab/wall/block forms.
+	 * {@code nether_bricks}, {@code blue_ice} onto plain {@code ice}, and (as of Minecraft 26.3)
+	 * {@code red_shrub} onto a nonexistent plain {@code shrub} - none of which are actually the
+	 * same material (or, for the shrub, exist at all). Checked as a prefix (not exact match) so
+	 * it also covers each one's own stairs/slab/wall/block forms.
 	 */
 	private static final List<String> COLOR_STRIP_EXCEPTIONS = List.of(
-			"red_sand", "red_mushroom", "brown_mushroom", "red_nether_brick", "blue_ice");
+			"red_sand", "red_mushroom", "brown_mushroom", "red_nether_brick", "blue_ice", "red_shrub");
 
 	/**
 	 * The far rarer opposite problem: an undyed block and its {@code <color>_} family share the

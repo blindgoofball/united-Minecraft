@@ -16,6 +16,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HayBlock;
+import net.minecraft.world.level.block.ShelfMushroomBlock;
 import net.minecraft.world.level.block.SlimeBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
@@ -285,7 +286,11 @@ public final class FallWarningController {
 		}
 
 		Block block = landingState.getBlock();
-		if (block instanceof SlimeBlock) {
+		// Slime and (as of Minecraft 26.3) Shelf Mushroom both override bounceOn to redirect the
+		// entity's velocity instead of letting fallOn ever run, so no fall damage happens at all -
+		// there's no shared marker/property for "this block bounces" the way getFallDistanceReduction
+		// covers beds generically, so this still has to name both block types explicitly.
+		if (block instanceof SlimeBlock || block instanceof ShelfMushroomBlock) {
 			return false;
 		}
 

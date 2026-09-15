@@ -81,12 +81,14 @@ import net.minecraft.world.level.block.LeverBlock;
 import net.minecraft.world.level.block.NetherPortalBlock;
 import net.minecraft.world.level.block.NetherWartBlock;
 import net.minecraft.world.level.block.SaplingBlock;
+import net.minecraft.world.level.block.SelectableSlotContainer;
 import net.minecraft.world.level.block.SignBlock;
 import net.minecraft.world.level.block.StemBlock;
 import net.minecraft.world.level.block.SugarCaneBlock;
 import net.minecraft.world.level.block.SweetBerryBushBlock;
 import net.minecraft.world.level.block.TrapDoorBlock;
 import net.minecraft.world.level.block.VaultBlock;
+import net.minecraft.world.level.block.entity.ListBackedContainer;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
 import net.minecraft.world.level.block.entity.SignText;
 import net.minecraft.world.level.block.entity.SignTextSlot;
@@ -908,6 +910,14 @@ public final class ScannerController {
 						? name.copy().append(Component.literal(", ")).append(signText)
 						: name.copy().append(Component.literal(", ")).append(Component.translatable("united_minecraft.narrate.scanner_sign_blank"));
 			}
+			// Covers both the Chiseled Bookshelf and (as of Minecraft 26.3) the Poplar Shelf -
+			// both implement SelectableSlotContainer and back their contents with a
+			// ListBackedContainer block entity, so this needs no per-block-type special-casing.
+			if (state.getBlock() instanceof SelectableSlotContainer
+					&& player.level().getBlockEntity(item.blockPos()) instanceof ListBackedContainer container) {
+				name = name.copy().append(Component.literal(", ")).append(Component.translatable(
+						"united_minecraft.narrate.scanner_shelf_items", container.count(), container.getContainerSize()));
+			}
 		}
 		if (category == ScannerCategory.MECHANISMS) {
 			BlockState state = player.level().getBlockState(item.blockPos());
@@ -1156,6 +1166,12 @@ public final class ScannerController {
 				return false;
 			}
 			if (state.getBlock() instanceof SignBlock) {
+				return true;
+			}
+			// Chiseled Bookshelf and Poplar Shelf alike have no menu provider - items are swapped
+			// in and out by right-clicking a specific slot directly, not through a screen - so the
+			// getMenuProvider check below misses them the same way it misses Vaults.
+			if (state.getBlock() instanceof SelectableSlotContainer) {
 				return true;
 			}
 			// Vaults have no menu provider - you insert a key by right-clicking rather than
