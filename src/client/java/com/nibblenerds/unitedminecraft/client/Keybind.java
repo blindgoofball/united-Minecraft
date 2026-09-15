@@ -25,12 +25,45 @@ public record Keybind(int key, int modifiers) {
 	}
 
 	/**
+	 * Widens a raw, live {@link InputConstants} modifier bitmask into the same per-family shape
+	 * every {@code Keybind}'s own {@link #modifiers} always uses - e.g. {@link
+	 * InputConstants#MOD_SHIFT} (both the left- and right-shift bits) rather than just whichever
+	 * single side is actually held. As of Minecraft 26.3's GLFW-&gt;SDL switch, {@code
+	 * KeyEvent#modifiers()} reports only the specific side that's down (bytecode inspection of
+	 * {@code InputWithModifiers#hasShiftDown} etc. confirms vanilla itself always masks - {@code
+	 * (modifiers() & MOD_SHIFT) != 0} - rather than comparing for equality), so a live event's
+	 * raw value almost never equals a stored default's normalized one even when the "right"
+	 * modifier is genuinely held. Used wherever a live event's modifiers need comparing against a
+	 * stored {@code Keybind} - see {@link #matches} and {@link KeybindScreen#keyPressed}, which
+	 * normalizes at capture time so every stored {@code Keybind} (default or user-rebound alike)
+	 * stays in this same normalized shape.
+	 */
+	public static int normalizeModifiers(int rawModifiers) {
+		int normalized = 0;
+		if ((rawModifiers & InputConstants.MOD_SHIFT) != 0) {
+			normalized |= InputConstants.MOD_SHIFT;
+		}
+		if ((rawModifiers & InputConstants.MOD_CONTROL) != 0) {
+			normalized |= InputConstants.MOD_CONTROL;
+		}
+		if ((rawModifiers & InputConstants.MOD_ALT) != 0) {
+			normalized |= InputConstants.MOD_ALT;
+		}
+		if ((rawModifiers & InputConstants.MOD_SUPER) != 0) {
+			normalized |= InputConstants.MOD_SUPER;
+		}
+		return normalized;
+	}
+
+	/**
 	 * Exact match against a raw key-press event - used by {@link KeybindContext#CONTAINER_SCREEN}
 	 * actions, which are dispatched directly off a screen's own key events rather than polled
 	 * through {@link ClientKeyBindings#updateAll()}. Exact modifier equality, not a subset check
 	 * like {@code updateAll} uses: a container-screen chord like Shift+Enter is a fully separate
 	 * action from plain Enter (see {@link ClientKeyBindings#CONTAINER_QUICK_MOVE}), not a more
-	 * specific variant competing for the same primary key.
+	 * specific variant competing for the same primary key. The event's modifiers are {@link
+	 * #normalizeModifiers normalized} first - see that method for why comparing its raw value
+	 * directly would silently never match.
 	 *
 	 * <p>Enter and numpad Enter are treated as the same physical key here (matching every other
 	 * vanilla and United Minecraft "Enter" binding) - a {@code Keybind} bound to either one
@@ -38,7 +71,7 @@ public record Keybind(int key, int modifiers) {
 	 * because the default happens to be recorded as the main Enter key.
 	 */
 	public boolean matches(KeyEvent event) {
-		if (isUnbound() || modifiers != event.modifiers()) {
+		if (isUnbound() || modifiers != normalizeModifiers(event.modifiers())) {
 			return false;
 		}
 		if (key == event.key()) {

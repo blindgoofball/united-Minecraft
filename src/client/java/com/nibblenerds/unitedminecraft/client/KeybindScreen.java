@@ -220,7 +220,11 @@ public final class KeybindScreen extends Screen {
 				commitUnbind();
 			} else {
 				pendingKey = event.key();
-				pendingModifiers = event.modifiers();
+				// Normalized to the same per-family shape every other Keybind's modifiers use -
+				// see Keybind#normalizeModifiers - so a freshly captured chord compares correctly
+				// against both updateAll()'s subset check and matches()'s exact one, regardless of
+				// which side of a modifier key the player actually held.
+				pendingModifiers = Keybind.normalizeModifiers(event.modifiers());
 			}
 			return true;
 		}
