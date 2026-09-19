@@ -8,8 +8,6 @@ import java.util.Locale;
 
 import com.nibblenerds.unitedminecraft.client.access.BossHealthOverlayAccess;
 
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.BossHealthOverlay;
 import net.minecraft.client.gui.components.LerpingBossEvent;
@@ -98,11 +96,7 @@ public final class AccessibilityTickHandler {
 	private AccessibilityTickHandler() {
 	}
 
-	public static void register() {
-		ClientTickEvents.END_CLIENT_TICK.register(AccessibilityTickHandler::onEndTick);
-	}
-
-	private static void onEndTick(Minecraft client) {
+	static void onEndTick(Minecraft client) {
 		LocalPlayer player = client.player;
 		if (player == null) {
 			// Reset so a fresh world/session starts without narrating stale changes.

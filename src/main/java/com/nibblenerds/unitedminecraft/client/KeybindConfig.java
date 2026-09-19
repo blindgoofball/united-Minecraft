@@ -19,7 +19,7 @@ import com.google.gson.reflect.TypeToken;
 
 import com.mojang.blaze3d.platform.InputConstants;
 
-import net.fabricmc.loader.api.FabricLoader;
+import com.nibblenerds.unitedminecraft.platform.Platform;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -169,7 +169,7 @@ public final class KeybindConfig {
 	}
 
 	private static Path file() {
-		return FabricLoader.getInstance().getConfigDir().resolve("united_minecraft_keybinds.json");
+		return Platform.get().configDir().resolve("united_minecraft_keybinds.json");
 	}
 
 	/** Null if {@code legacyKey} has no confident {@link InputConstants} equivalent - see {@link #LEGACY_KEY_MAP}. */

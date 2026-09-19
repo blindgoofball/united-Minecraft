@@ -20,8 +20,7 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
-import net.fabricmc.loader.api.FabricLoader;
+import com.nibblenerds.unitedminecraft.platform.Platform;
 
 /**
  * Binds the C API exported by Prism (https://github.com/ethindp/prism), a
@@ -92,9 +91,17 @@ public final class PrismController {
 		return INSTANCE;
 	}
 
-	/** Ties Prism's shutdown to client shutdown. Call once, from mod init. */
-	public static void register() {
-		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> INSTANCE.ifPresent(PrismController::shutdown));
+	/**
+	 * No-op call that forces the static initializer above to run, so Prism loads (or is
+	 * found absent and fallen back on) at mod init rather than lazily at whatever the
+	 * player first happens to narrate. Call once, from mod init.
+	 */
+	public static void init() {
+	}
+
+	/** Shuts Prism down if it loaded at all. Call once, when the client is stopping. */
+	public static void shutdownIfLoaded() {
+		INSTANCE.ifPresent(PrismController::shutdown);
 	}
 
 	private static Optional<PrismController> tryLoad() {
@@ -218,7 +225,7 @@ public final class PrismController {
 		// extracted .so then fails - silently, from Java's point of view, since it
 		// just surfaces as a generic link failure with no mention of the real cause.
 		// The game directory is never mounted noexec, so extract there instead.
-		Path dir = FabricLoader.getInstance().getGameDir().resolve("united_minecraft").resolve("prism-native");
+		Path dir = Platform.get().gameDir().resolve("united_minecraft").resolve("prism-native");
 		Files.createDirectories(dir);
 		Path dest = dir.resolve(library.fileName());
 		// Always re-extract rather than reusing a file left over from a previous run:

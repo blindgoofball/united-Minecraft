@@ -4,10 +4,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
-import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
-
 import com.nibblenerds.unitedminecraft.client.access.CreativeModeInventoryScreenAccess;
 
 import net.minecraft.client.Minecraft;
@@ -85,29 +81,16 @@ public final class CreativeInventoryController {
 	// silently fire again for a redundant re-init of the same screen.
 	private static CreativeModeInventoryScreen trackedScreen;
 
-	public static void register() {
-		ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
-			if (!(screen instanceof CreativeModeInventoryScreen creative)) {
-				return;
-			}
-			if (creative != trackedScreen) {
-				trackedScreen = creative;
-				onScreenOpened(creative);
-			}
-			// Confirmed via ScreenMixin#beforeInit bytecode (fabric-screen-api-v1): vanilla's
-			// Screen.init(int,int) reassigns this screen's Fabric key-press event to a
-			// brand-new, listener-less Event object at the HEAD of every single call, including
-			// a same-instance re-init - so this registration must run every time AFTER_INIT
-			// fires, not just on a screen's first-ever init, or a later re-init would silently
-			// leave zero listeners registered. The event being fresh each time means this can
-			// never double up a listener.
-			ScreenKeyboardEvents.allowKeyPress(screen).register((scr, event) -> handleKey(creative, event));
-		});
-		// Vanilla's own search filtering happens off charTyped, which this class never hooks
-		// (nor could - Fabric only exposes allow/before/after events for the key-press half of
-		// typing, not character input; see the class doc). Polling the resulting item count once
-		// per tick is what actually lets a result-count summary get narrated as the player types.
-		ClientTickEvents.END_CLIENT_TICK.register(CreativeInventoryController::recheckSearchResults);
+	/**
+	 * A creative inventory screen finished {@code init()}. Also fires for a same-instance
+	 * re-init (e.g. a window resize), which {@link #trackedScreen} is what guards against -
+	 * see its own comment.
+	 */
+	static void onScreenInit(CreativeModeInventoryScreen creative) {
+		if (creative != trackedScreen) {
+			trackedScreen = creative;
+			onScreenOpened(creative);
+		}
 	}
 
 	private static CreativeModeInventoryScreenAccess access(CreativeModeInventoryScreen screen) {
@@ -154,7 +137,7 @@ public final class CreativeInventoryController {
 	 * {@code MenuAccessibilityController}'s anvil Rename section) and this class then gets out of
 	 * its way entirely except for Tab (leave it) and Home/End (still cycle tabs).
 	 */
-	private static boolean handleKey(CreativeModeInventoryScreen screen, KeyEvent event) {
+	static boolean handleKey(CreativeModeInventoryScreen screen, KeyEvent event) {
 		if (ClientKeyBindings.CREATIVE_SWITCH_TAB_PREV.current().matches(event)) {
 			switchTab(screen, -1);
 			return false;
@@ -346,7 +329,13 @@ public final class CreativeInventoryController {
 	 * charTyped dispatch, invisible to this class's key handling. Narrates a result-count summary
 	 * whenever the filtered item count actually changes.
 	 */
-	private static void recheckSearchResults(Minecraft client) {
+	/**
+	 * Vanilla.s own search filtering happens off {@code charTyped}, which this class never
+	 * hooks (the screen-key hook covers the key-press half of typing, not character input;
+	 * see the class doc). Polling the resulting item count once per tick is what actually
+	 * lets a result-count summary get narrated as the player types.
+	 */
+	static void recheckSearchResults(Minecraft client) {
 		if (!(client.gui.screen() instanceof CreativeModeInventoryScreen screen) || !isSearchTab(screen)) {
 			lastSearchResultCount = -1;
 			return;

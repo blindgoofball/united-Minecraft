@@ -11,7 +11,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
 
-import net.fabricmc.loader.api.FabricLoader;
+import com.nibblenerds.unitedminecraft.platform.Platform;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,7 +108,7 @@ public final class UnitedMinecraftConfig {
 	}
 
 	private static Path file() {
-		return FabricLoader.getInstance().getConfigDir().resolve("united_minecraft.json");
+		return Platform.get().configDir().resolve("united_minecraft.json");
 	}
 
 	public static void load() {

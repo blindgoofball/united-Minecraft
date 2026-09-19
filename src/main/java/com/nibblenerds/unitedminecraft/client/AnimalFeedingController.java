@@ -1,19 +1,15 @@
 package com.nibblenerds.unitedminecraft.client;
 
-import net.fabricmc.fabric.api.event.player.UseEntityCallback;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.EntityHitResult;
 
 /**
  * Vanilla's own {@code Animal#playEatingSound()} is a silent no-op for most animals (sheep,
@@ -29,7 +25,7 @@ import net.minecraft.world.phys.EntityHitResult;
  * smaller problem than silence on every common one.
  *
  * <p>{@link #playFeedSoundIfSuccessful} is exposed for {@link ScannerController} to call
- * directly - {@code UseEntityCallback} only fires from {@code Minecraft}'s own mouse-click
+ * directly - {@link ClientHooks#onEntityInteract} only fires from {@code Minecraft}'s own mouse-click
  * handling (before it ever calls {@code gameMode.interact}), so a caller like {@link
  * ScannerController#interactWithLocked} that invokes {@code gameMode.interact} straight,
  * bypassing that click handling entirely (on purpose - see its own doc comment), would
@@ -39,17 +35,10 @@ public final class AnimalFeedingController {
 	private AnimalFeedingController() {
 	}
 
-	public static void register() {
-		UseEntityCallback.EVENT.register(AnimalFeedingController::onUseEntity);
-	}
-
-	private static InteractionResult onUseEntity(Player player, Level level, InteractionHand hand, Entity entity, EntityHitResult hitResult) {
+	static void onUseEntity(Player player, Level level, InteractionHand hand, Entity entity) {
 		if (level.isClientSide()) {
 			playFeedSoundIfSuccessful(entity, player.getItemInHand(hand));
 		}
-		// Never overrides vanilla's own result - this only ever adds a sound alongside
-		// whatever the real interaction does.
-		return InteractionResult.PASS;
 	}
 
 	/** Plays the feed confirmation sound if using {@code stack} on {@code entity} would actually feed it. */

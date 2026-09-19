@@ -17,7 +17,7 @@
 	"environment": "client",
 	"entrypoints": {
 		"client": [
-			"com.nibblenerds.unitedminecraft.client.UnitedMinecraftClient"
+			"com.nibblenerds.unitedminecraft.fabric.UnitedMinecraftFabric"
 		]
 	},
 	"mixins": [

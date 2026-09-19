@@ -9,10 +9,6 @@ import java.util.function.Predicate;
 
 import com.mojang.blaze3d.platform.InputConstants;
 
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
-import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
-
 import com.nibblenerds.unitedminecraft.client.access.AnvilScreenAccess;
 import com.nibblenerds.unitedminecraft.client.access.CreativeModeInventoryScreenAccess;
 import com.nibblenerds.unitedminecraft.client.access.RecipeBookComponentAccess;
@@ -218,53 +214,45 @@ public final class MenuAccessibilityController {
 	 */
 	private static boolean recipeSearchPromptActive = false;
 
-	public static void register() {
-		ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
-			if (!(screen instanceof AbstractContainerScreen<?> containerScreen)) {
+	/**
+	 * A container screen finished {@code init()}. Also fires for a same-instance re-init -
+	 * e.g. the recipe-book search prompt's returnTo (see MarkerNameScreen), which calls
+	 * Minecraft#setScreen on the screen it was opened from rather than a new instance, and
+	 * vanilla's setScreen re-runs init() even when reusing the same instance. Tracking the
+	 * screen instance is what keeps that redundant re-init from silently wiping the
+	 * just-confirmed search term and section back to defaults.
+	 */
+	static void onScreenInit(AbstractContainerScreen<?> containerScreen) {
+		if (containerScreen != trackedScreen) {
+			trackedScreen = containerScreen;
+			onScreenOpened(containerScreen);
+		}
+	}
+
+	/**
+	 * A container screen was removed. Nothing else ever cleared trackedScreen, so without
+	 * this the last container screen opened - and through it the whole menu, its slot list,
+	 * and every ItemStack in it - stayed reachable for the rest of the session, with
+	 * clearStrayFocus still poking at a dead screen every tick. Same for the focused slot
+	 * and the cached recipe groups.
+	 */
+	static void onScreenRemoved(AbstractContainerScreen<?> closed) {
+		if (closed == trackedScreen) {
+			// openRecipeSearchPrompt swaps this same screen out for its MarkerNameScreen
+			// prompt and back again - that swap fires this same removal event (Screen
+			// swaps always call the outgoing screen's removed(), same as a real close), so
+			// without this check trackedScreen would already be null by the time the
+			// prompt hands control back, making onScreenInit treat the returning screen as
+			// brand new and wipe the just-confirmed search term/section back to defaults -
+			// see recipeSearchPromptActive's own doc.
+			if (recipeSearchPromptActive) {
+				recipeSearchPromptActive = false;
 				return;
 			}
-			if (containerScreen != trackedScreen) {
-				trackedScreen = containerScreen;
-				onScreenOpened(containerScreen);
-			}
-			// Confirmed via ScreenMixin#beforeInit bytecode (fabric-screen-api-v1): vanilla's
-			// Screen.init(int,int) unconditionally reassigns this screen's Fabric key-press
-			// event to a brand-new, listener-less Event object at the HEAD of every single call
-			// - not just a screen's first-ever init. So this registration must run on every
-			// AFTER_INIT firing, including a same-instance re-init (e.g. returning from the
-			// recipe-book search prompt) - skipping it there (as an earlier version of this fix
-			// did, to avoid what looked like a double-registration risk) instead left the freshly
-			// recreated event with zero listeners, silently killing all key handling on this
-			// screen from that point on. Since the event is genuinely fresh each time, doing this
-			// unconditionally cannot double up a listener - there's nothing there yet to double.
-			ScreenKeyboardEvents.allowKeyPress(screen).register(
-					(scr, event) -> handleKey(containerScreen, event));
-			// Nothing else ever cleared trackedScreen, so the last container screen opened - and
-			// through it the whole menu, its slot list, and every ItemStack in it - stayed
-			// reachable for the rest of the session, with clearStrayFocus still poking at a dead
-			// screen every tick. Same for the focused slot and the cached recipe groups.
-			ScreenEvents.remove(screen).register(closed -> {
-				if (closed == trackedScreen) {
-					// openRecipeSearchPrompt swaps this same screen out for its MarkerNameScreen
-					// prompt and back again - that swap fires this same removal event (Screen
-					// swaps always call the outgoing screen's removed(), same as a real close), so
-					// without this check trackedScreen would already be null by the time the
-					// prompt hands control back, making the AFTER_INIT handler above treat the
-					// returning screen as brand new and wipe the just-confirmed search
-					// term/section back to defaults - see recipeSearchPromptActive's own doc.
-					if (recipeSearchPromptActive) {
-						recipeSearchPromptActive = false;
-						return;
-					}
-					trackedScreen = null;
-					focusedSlot = null;
-					recipeGroups = List.of();
-				}
-			});
-		});
-		ClientTickEvents.END_CLIENT_TICK.register(MenuAccessibilityController::recheckInitialSlotNarration);
-		ClientTickEvents.END_CLIENT_TICK.register(MenuAccessibilityController::clearStrayFocus);
-		ClientTickEvents.END_CLIENT_TICK.register(MenuAccessibilityController::openPendingSearchPrompt);
+			trackedScreen = null;
+			focusedSlot = null;
+			recipeGroups = List.of();
+		}
 	}
 
 	private static AbstractContainerScreen<?> pendingSearchPromptScreen;
@@ -281,7 +269,7 @@ public final class MenuAccessibilityController {
 	 * typing even starts. Deferring the actual screen swap to the next tick lets that trailing
 	 * character event get delivered and ignored first.
 	 */
-	private static void openPendingSearchPrompt(Minecraft client) {
+	static void openPendingSearchPrompt(Minecraft client) {
 		if (pendingSearchPromptScreen == null) {
 			return;
 		}
@@ -304,7 +292,7 @@ public final class MenuAccessibilityController {
 	 * focused, and so screen readers don't narrate a stray, unlabeled widget on top of this
 	 * class's own narration).
 	 */
-	private static void clearStrayFocus(Minecraft client) {
+	static void clearStrayFocus(Minecraft client) {
 		if (trackedScreen == null || trackedScreen.getFocused() == null) {
 			return;
 		}
@@ -314,7 +302,7 @@ public final class MenuAccessibilityController {
 		}
 	}
 
-	private static void recheckInitialSlotNarration(Minecraft client) {
+	static void recheckInitialSlotNarration(Minecraft client) {
 		if (!pendingInitialSlotRecheck) {
 			return;
 		}
@@ -355,7 +343,7 @@ public final class MenuAccessibilityController {
 		enterSection(screen, player, true);
 	}
 
-	private static boolean handleKey(AbstractContainerScreen<?> screen, KeyEvent event) {
+	static boolean handleKey(AbstractContainerScreen<?> screen, KeyEvent event) {
 		if (isHandledByCreativeItemGrid(screen)) {
 			return true;
 		}

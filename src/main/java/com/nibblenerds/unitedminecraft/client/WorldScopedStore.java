@@ -15,7 +15,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
 
-import net.fabricmc.loader.api.FabricLoader;
+import com.nibblenerds.unitedminecraft.platform.Platform;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ServerData;
@@ -128,7 +128,7 @@ final class WorldScopedStore<T> {
 	}
 
 	private Path directory() {
-		return FabricLoader.getInstance().getConfigDir().resolve("united_minecraft").resolve(subdirectory);
+		return Platform.get().configDir().resolve("united_minecraft").resolve(subdirectory);
 	}
 
 	/**
