@@ -208,6 +208,16 @@ public final class MenuAccessibilityController {
 	// check - see the comment at that registration call for why.
 	private static AbstractContainerScreen<?> trackedScreen;
 
+	/**
+	 * True for the single {@code trackedScreen} removal event caused by {@link
+	 * #openRecipeSearchPrompt} swapping this screen out for its search prompt - see that
+	 * removal-listener's own doc for why this needs suppressing. Set right before the swap and
+	 * consumed (reset false) by the very next matching removal, so a genuine later close of this
+	 * screen (e.g. the player pressing Escape once back from the prompt) still clears
+	 * trackedScreen normally.
+	 */
+	private static boolean recipeSearchPromptActive = false;
+
 	public static void register() {
 		ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
 			if (!(screen instanceof AbstractContainerScreen<?> containerScreen)) {
@@ -235,6 +245,17 @@ public final class MenuAccessibilityController {
 			// screen every tick. Same for the focused slot and the cached recipe groups.
 			ScreenEvents.remove(screen).register(closed -> {
 				if (closed == trackedScreen) {
+					// openRecipeSearchPrompt swaps this same screen out for its MarkerNameScreen
+					// prompt and back again - that swap fires this same removal event (Screen
+					// swaps always call the outgoing screen's removed(), same as a real close), so
+					// without this check trackedScreen would already be null by the time the
+					// prompt hands control back, making the AFTER_INIT handler above treat the
+					// returning screen as brand new and wipe the just-confirmed search
+					// term/section back to defaults - see recipeSearchPromptActive's own doc.
+					if (recipeSearchPromptActive) {
+						recipeSearchPromptActive = false;
+						return;
+					}
 					trackedScreen = null;
 					focusedSlot = null;
 					recipeGroups = List.of();
@@ -772,6 +793,7 @@ public final class MenuAccessibilityController {
 	 * prompts.
 	 */
 	private static void openRecipeSearchPrompt(AbstractContainerScreen<?> screen, LocalPlayer player) {
+		recipeSearchPromptActive = true;
 		Minecraft.getInstance().gui.setScreen(new MarkerNameScreen(
 				Component.translatable("united_minecraft.search_screen.title"),
 				Component.translatable("united_minecraft.narrate.search_prompt"),
