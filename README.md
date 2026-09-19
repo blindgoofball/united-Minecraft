@@ -3,8 +3,9 @@
 An accessibility mod for Minecraft, by NibbleNerds, built primarily for blind and
 low-vision players.
 
-Built on the [Fabric](https://fabricmc.net/) mod loader. Everything is client-side -
-no server-side install needed, and it works on any vanilla server.
+Runs on the [Fabric](https://fabricmc.net/) and [NeoForge](https://neoforged.net/)
+mod loaders. Everything is client-side - no server-side install needed, and it
+works on any vanilla server.
 
 ## Features
 
@@ -401,27 +402,42 @@ mod actually uses, so you can learn to recognize it on demand.
 
 ## Installation
 
-You'll need three things: the matching version of Minecraft Java Edition,
-Fabric Loader, and Fabric API. United Minecraft is a mod jar that goes
-alongside Fabric API in your mods folder - it doesn't need anything installed
-on the server you're playing on.
+United Minecraft runs on either of Minecraft's two main mod loaders, **Fabric**
+or **NeoForge**. Pick whichever you already use; if you have no preference,
+Fabric is the better default, for a reason worth knowing up front:
+
+> Fabric builds are released the day a new Minecraft version comes out.
+> NeoForge builds follow once NeoForge itself supports that version, which
+> usually takes days and can take weeks. Both get the same features - the
+> NeoForge build is simply sometimes behind on the newest Minecraft version.
+
+Each release provides a separate jar per loader, named so you can tell them
+apart: `united-minecraft-1.2.0+mc26.3-fabric.jar` ends in `-fabric`, and
+`united-minecraft-1.2.0+mc26.3-neoforge.jar` ends in `-neoforge`. The `mc26.3`
+part is the Minecraft version that jar is for.
+
+Either way, United Minecraft is entirely client-side. Nothing needs to be
+installed on the server you play on, and it works against ordinary vanilla
+servers.
+
+### Installing on Fabric
 
 1. **Download United Minecraft.**
-   Go to this repository's
-   [Releases page](https://github.com/blindgoofball/united-Minecraft/releases)
-   and download the latest `.jar` file. Note the Minecraft version listed in
-   that release's title or notes - you'll use that same version for both
-   steps below.
+   From this repository's
+   [Releases page](https://github.com/blindgoofball/united-Minecraft/releases),
+   download the latest jar ending in `-fabric.jar`. Note the Minecraft version
+   in its filename - you'll use that same version below.
 
 2. **Install Fabric Loader.**
    Go to the [Fabric installer page](https://fabricmc.net/use/installer/) and
-   download the installer for your operating system. Run it, set the
-   Minecraft version to the one from step 1, and click Install. This adds a
-   new "Fabric Loader" profile to the official Minecraft Launcher - you don't
-   need to touch anything else here.
+   download the installer for your operating system. Run it, set the Minecraft
+   version to the one from step 1, and click Install. This adds a "Fabric
+   Loader" profile to the official Minecraft Launcher - nothing else here needs
+   changing.
 
 3. **Download Fabric API.**
-   Get the Fabric API release built for that same Minecraft version from
+   Fabric needs this; NeoForge does not. Get the Fabric API release built for
+   that same Minecraft version from
    [Modrinth](https://modrinth.com/mod/fabric-api) or
    [CurseForge](https://www.curseforge.com/minecraft/mc-mods/fabric-api).
 
@@ -431,18 +447,56 @@ on the server you're playing on.
    - macOS: `~/Library/Application Support/minecraft/mods`
    - Linux: `~/.minecraft/mods`
 
-   If it doesn't exist yet, launch the Fabric profile once (step 5) to have
-   it created automatically, then close the game and drop the two `.jar`
-   files straight into it - not inside any subfolder.
+   If it doesn't exist yet, launch the Fabric profile once to have it created
+   automatically, then close the game and drop both `.jar` files straight into
+   it - not inside any subfolder.
 
 5. **Launch the game.**
    Open the official Minecraft Launcher, choose the Fabric profile from the
    installations dropdown, and click Play.
 
-6. **Turn on Minecraft's narrator**, if it isn't already. Either press
-   Ctrl+B in-game to toggle it on, or go through Options > Accessibility
-   Settings > Narrator. This is what actually triggers speech; United
-   Minecraft narrates through it rather than replacing it.
+Then turn on the narrator - see below.
+
+### Installing on NeoForge
+
+1. **Download United Minecraft.**
+   From this repository's
+   [Releases page](https://github.com/blindgoofball/united-Minecraft/releases),
+   download the latest jar ending in `-neoforge.jar`. Note the Minecraft version
+   in its filename - you'll use that same version below. If the newest release
+   has no `-neoforge` jar, NeoForge hasn't caught up to that Minecraft version
+   yet; use the most recent release that does have one.
+
+2. **Install NeoForge.**
+   Go to the [NeoForge downloads page](https://neoforged.net/) and get the
+   installer for the Minecraft version from step 1. Run it (it's a `.jar` - open
+   it with Java), choose "Install client", and let it finish. This adds a
+   NeoForge profile to the official Minecraft Launcher.
+
+3. **Put the jar in your mods folder.**
+   That's a folder called `mods` inside your Minecraft folder:
+   - Windows: `%appdata%\.minecraft\mods`
+   - macOS: `~/Library/Application Support/minecraft/mods`
+   - Linux: `~/.minecraft/mods`
+
+   If it doesn't exist yet, launch the NeoForge profile once to have it created
+   automatically, then close the game and drop the `.jar` straight into it - not
+   inside any subfolder. There's no second jar to install on NeoForge; nothing
+   corresponds to Fabric API here.
+
+4. **Launch the game.**
+   Open the official Minecraft Launcher, choose the NeoForge profile from the
+   installations dropdown, and click Play.
+
+Then turn on the narrator - see below.
+
+### Turning on the narrator
+
+This step is the same on both loaders, and the mod stays silent without it.
+
+Either press Ctrl+B in-game to toggle the narrator on, or go through Options >
+Accessibility Settings > Narrator. This is what actually triggers speech;
+United Minecraft narrates through it rather than replacing it.
 
 If a screen reader (or other Prism-supported speech backend) is available,
 United Minecraft speaks through it automatically for better screen-reader
@@ -493,13 +547,29 @@ keys/Tab/Enter/Home/End/Delete/Space/Page Up/Down take on the screen-specific
 meanings described above - see the Keybindings screen for the full, current
 default of each screen-specific action, since space here only shows the
 regular-gameplay bindings.
-
 ## Building From Source
 
 This section is for building the mod itself, not for playing with it - see
-Installation above for that. For IDE setup instructions, see the
-[Fabric Documentation page](https://docs.fabricmc.net/develop/getting-started/creating-a-project#setting-up).
-For cutting an actual release, see [RELEASING.md](RELEASING.md).
+Installation above for that. For cutting an actual release, see
+[RELEASING.md](RELEASING.md).
+
+`./gradlew build` builds both loaders and produces two jars:
+
+- `fabric/build/libs/united-minecraft-{version}+mc{mc_version}-fabric.jar`
+- `neoforge/build/libs/united-minecraft-{version}+mc{mc_version}-neoforge.jar`
+
+To launch a development client, pick the loader: `./gradlew :fabric:runClient`
+or `./gradlew :neoforge:runClient`. Each keeps its own game directory
+(`fabric/run/` and `neoforge/run/`), so their worlds and settings are separate.
+
+Almost all of the code lives in `common/`, which is shared source compiled by
+both loader modules rather than a built artifact. `fabric/` and `neoforge/`
+hold only each loader's entrypoint and its event bridge - a hundred lines or
+so apiece. Building requires JDK 25.
+
+For IDE setup instructions, see the
+[Fabric Documentation page](https://docs.fabricmc.net/develop/getting-started/creating-a-project#setting-up)
+or the [NeoForged documentation](https://docs.neoforged.net/).
 
 ## License
 
