@@ -4,6 +4,10 @@ pluginManagement {
 			name = 'Fabric'
 			url = 'https://maven.fabricmc.net/'
 		}
+		maven {
+			name = 'NeoForged'
+			url = 'https://maven.neoforged.net/releases'
+		}
 		mavenCentral()
 		gradlePluginPortal()
 	}
@@ -11,3 +15,16 @@ pluginManagement {
 
 // Should match your modid
 rootProject.name = 'united-minecraft'
+
+// Fabric is tier-1: it has to stay buildable on its own, on the day a new Minecraft version
+// lands, without waiting for anything NeoForge-side to catch up. NeoForge trails each
+// Minecraft release by days to weeks, so during a lag window set neoforge_enabled=false in
+// gradle.properties and every build, CI run and release goes on working exactly as it does
+// with one loader. Flip it back once NeoForge ships for the new version.
+//
+// The directory check is what keeps this inert until the neoforge module actually exists.
+include 'fabric'
+if (providers.gradleProperty('neoforge_enabled').getOrElse('true').toBoolean()
+		&& file('neoforge').isDirectory()) {
+	include 'neoforge'
+}
