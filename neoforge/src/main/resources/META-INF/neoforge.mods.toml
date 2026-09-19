@@ -1,0 +1,30 @@
+modLoader = "javafml"
+loaderVersion = "[1,)"
+license = "GPL-3.0-or-later"
+issueTrackerURL = "https://github.com/blindgoofball/united-Minecraft/issues"
+
+[[mods]]
+modId = "united_minecraft"
+version = "${version}"
+displayName = "United Minecraft"
+description = '''An accessibility mod for Minecraft.'''
+authors = "NibbleNerds"
+logoFile = "assets/united_minecraft/icon.png"
+displayURL = "https://github.com/blindgoofball/united-Minecraft"
+
+[[mixins]]
+config = "united_minecraft.client.mixins.json"
+
+[[dependencies.united_minecraft]]
+modId = "neoforge"
+type = "required"
+versionRange = "[26.3,)"
+ordering = "NONE"
+side = "CLIENT"
+
+[[dependencies.united_minecraft]]
+modId = "minecraft"
+type = "required"
+versionRange = "[26.3,26.4)"
+ordering = "NONE"
+side = "CLIENT"

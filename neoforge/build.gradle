@@ -1,0 +1,84 @@
+plugins {
+	id 'net.neoforged.moddev' version "${moddev_version}"
+	id 'maven-publish'
+}
+
+version = rootProject.mod_version
+group = rootProject.maven_group
+
+// Same arrangement as the Fabric module: the shared sources are compiled here, in this
+// loader's own environment, rather than consumed as an artifact. See the root build.gradle.
+sourceSets.main.java.srcDir rootProject.file('common/src/main/java')
+sourceSets.main.resources.srcDir rootProject.file('common/src/main/resources')
+
+// Keeps the jar named after the mod rather than after this subproject's directory.
+base {
+	archivesName = rootProject.name
+}
+
+neoForge {
+	version = rootProject.neoforge_version
+
+	// Mixins are configured through neoforge.mods.toml; this is what puts the mod's own
+	// classes on the dev-run classpath as a mod rather than as plain library code.
+	mods {
+		"united_minecraft" {
+			sourceSet sourceSets.main
+		}
+	}
+
+	runs {
+		client {
+			client()
+		}
+	}
+}
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+
+	filesMatching("META-INF/neoforge.mods.toml") {
+		expand "version": version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 25
+}
+
+java {
+	withSourcesJar()
+
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}
+
+tasks.named('check') {
+	dependsOn rootProject.tasks.named('checkSharedSources')
+}
+
+jar {
+	def modName = rootProject.name
+	inputs.property "modName", modName
+
+	// Every release targets exactly one Minecraft version and stops working after the next
+	// one - baking it into the filename (not just the version number) keeps a jar
+	// self-describing even with no other context. The loader suffix answers the other
+	// question someone holding a lone jar has to be able to answer.
+	archiveFileName = "${modName}-${project.version}+mc${rootProject.minecraft_version}-neoforge.jar"
+
+	from(rootProject.file("LICENSE")) {
+		rename { "${it}_$modName" }
+	}
+}
+
+publishing {
+	publications {
+		create("mavenJava", MavenPublication) {
+			from components.java
+		}
+	}
+	repositories {
+	}
+}

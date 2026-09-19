@@ -67,7 +67,7 @@ jar {
 	// Every release targets exactly one Minecraft version and stops working after the next
 	// one - baking it into the filename (not just the version number) keeps a jar
 	// self-describing even with no other context, e.g. sitting alone in a downloads folder.
-	archiveFileName = "${modName}-${project.version}+mc${rootProject.minecraft_version}.jar"
+	archiveFileName = "${modName}-${project.version}+mc${rootProject.minecraft_version}-fabric.jar"
 
 	from(rootProject.file("LICENSE")) {
 		rename { "${it}_$modName" }
