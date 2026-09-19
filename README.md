@@ -467,13 +467,40 @@ Then turn on the narrator - see below.
    has no `-neoforge` jar, NeoForge hasn't caught up to that Minecraft version
    yet; use the most recent release that does have one.
 
-2. **Install NeoForge.**
-   Go to the [NeoForge downloads page](https://neoforged.net/) and get the
-   installer for the Minecraft version from step 1. Run it (it's a `.jar` - open
-   it with Java), choose "Install client", and let it finish. This adds a
-   NeoForge profile to the official Minecraft Launcher.
+2. **Make sure you have Java installed.**
+   NeoForge's installer is a `.jar` file, and running one needs Java on your
+   computer. Minecraft's launcher bundles its own Java for playing the game, but
+   that copy isn't available for running an installer - so this is a separate
+   thing you may need even if Minecraft already works fine.
 
-3. **Put the jar in your mods folder.**
+   To check, open a terminal (Command Prompt or PowerShell on Windows, Terminal
+   on macOS or Linux) and run:
+
+   ```
+   java -version
+   ```
+
+   If it reports a version number, you're set. If it says the command isn't
+   found, install Java 25 from [Adoptium](https://adoptium.net/) - that's the
+   version Minecraft itself runs on, so it will certainly run the installer.
+
+   Fabric offers a `.exe` installer on Windows that skips this step entirely,
+   which is one reason Fabric is the simpler starting point.
+
+3. **Install NeoForge.**
+   Go to the [NeoForge downloads page](https://neoforged.net/) and get the
+   installer for the Minecraft version from step 1. Then run it from a terminal,
+   in the folder you downloaded it to:
+
+   ```
+   java -jar neoforge-<version>-installer.jar
+   ```
+
+   Running it this way is more reliable than double-clicking, since `.jar` files
+   aren't always associated with Java. Choose "Install client" and let it
+   finish. This adds a NeoForge profile to the official Minecraft Launcher.
+
+4. **Put the jar in your mods folder.**
    That's a folder called `mods` inside your Minecraft folder:
    - Windows: `%appdata%\.minecraft\mods`
    - macOS: `~/Library/Application Support/minecraft/mods`
@@ -484,7 +511,7 @@ Then turn on the narrator - see below.
    inside any subfolder. There's no second jar to install on NeoForge; nothing
    corresponds to Fabric API here.
 
-4. **Launch the game.**
+5. **Launch the game.**
    Open the official Minecraft Launcher, choose the NeoForge profile from the
    installations dropdown, and click Play.
 
