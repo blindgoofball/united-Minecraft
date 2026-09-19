@@ -9,7 +9,7 @@ version = "${version}"
 displayName = "United Minecraft"
 description = '''An accessibility mod for Minecraft.'''
 authors = "NibbleNerds"
-logoFile = "assets/united_minecraft/icon.png"
+iconFile = "assets/united_minecraft/icon.png"
 displayURL = "https://github.com/blindgoofball/united-Minecraft"
 
 [[mixins]]
