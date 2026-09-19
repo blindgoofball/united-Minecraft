@@ -50,8 +50,40 @@ tasks.withType(JavaCompile).configureEach {
 java {
 	withSourcesJar()
 
+	// ModDevGradle resolves an explicit toolchain for its own tooling and dev runs, and falls
+	// back to NeoForge's usual Java 21 when the project declares none - which cannot work
+	// here, since Minecraft 26.3 needs Java 25 and that is the only JDK this project targets.
+	// Loom never needed this because it just uses the Gradle JVM.
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(25)
+	}
+
 	sourceCompatibility = JavaVersion.VERSION_25
 	targetCompatibility = JavaVersion.VERSION_25
+}
+
+// Workaround, removable once a ModDevGradle release lists Minecraft 26.3.
+//
+// MDG 2.0.147 was published four days before 26.3 released, and its baked-in version table
+// knows 26.3-snapshot-N but not plain 26.3. Unable to look the version up, it cannot work
+// out which Java the game needs and falls back to NeoForge's usual 21 - which nothing here
+// can satisfy, since 25 is the only JDK this project targets and the only one Minecraft
+// 26.3 runs on. Compiling is unaffected (that uses the toolchain above); it is the tooling
+// JVM and the dev-run JVM that have to be pointed at 25 by hand.
+def java25 = javaToolchains.launcherFor {
+	languageVersion = JavaLanguageVersion.of(25)
+}
+
+// The NeoForm Runtime tasks (downloadAssets, createMinecraftArtifacts and friends) take a
+// plain executable path.
+tasks.withType(net.neoforged.nfrtgradle.NeoFormRuntimeTask).configureEach {
+	javaExecutable = java25.map { it.executablePath.asFile.absolutePath }
+}
+
+// The dev runs are JavaExec tasks; JavaExec's own javaLauncher is public API, so there is no
+// need to name MDG's internal task type here.
+tasks.withType(JavaExec).configureEach {
+	javaLauncher = java25
 }
 
 tasks.named('check') {
