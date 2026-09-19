@@ -17,7 +17,7 @@ works on any vanilla server.
   including a connected braille display where your screen reader supports one.
   Falls back to the normal narrator automatically when no such backend is
   available. Works on Windows, macOS, and Linux (x86-64 and arm64); see
-  [`src/client/resources/prism/README.md`](src/client/resources/prism/README.md)
+  [`common/src/main/resources/prism/README.md`](common/src/main/resources/prism/README.md)
   for details.
 - Action-bar HUDs (health/mana readouts, cooldowns, etc.) that some servers
   keep alive by resending the same message every second or two are only
