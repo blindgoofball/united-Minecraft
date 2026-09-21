@@ -43,6 +43,7 @@ public final class ClientHooks {
 	public static void onClientTick(Minecraft client) {
 		AccessibilityTickHandler.onEndTick(client);
 		MenuAccessibilityController.recheckInitialSlotNarration(client);
+		MenuAccessibilityController.recheckFocusedSlotForExternalChange(client);
 		MenuAccessibilityController.clearStrayFocus(client);
 		MenuAccessibilityController.openPendingSearchPrompt(client);
 		CreativeInventoryController.recheckSearchResults(client);

@@ -317,6 +317,40 @@ public final class MenuAccessibilityController {
 		}
 	}
 
+	/**
+	 * Per-tick check for the focused slot's contents changing without the player doing anything -
+	 * a furnace's output slot finishing a smelt while it's focused, a hopper feeding a chest the
+	 * player is looking at, brewing finishing, and so on. Vanilla only ever narrates a slot in
+	 * response to the player themselves navigating or clicking it, so nothing else here would
+	 * otherwise catch a change like that at all.
+	 *
+	 * <p>Reuses {@link #lastNarratedSlotItem} - every narration this class produces, from
+	 * navigation, clicks, and {@link #recheckInitialSlotNarration} alike, updates it - so this
+	 * only ever fires for a change this class didn't itself already narrate, rather than
+	 * re-announcing the player's own action a tick later. Runs after that initial-open recheck
+	 * each tick (see {@link ClientHooks#onClientTick}), so on the one tick both could fire, the
+	 * initial recheck's own narration already resets the comparison and this one is a no-op.
+	 */
+	static void recheckFocusedSlotForExternalChange(Minecraft client) {
+		if (trackedScreen == null || client.player == null || client.gui.screen() != trackedScreen) {
+			// The gui.screen() check excludes recipeSearchPromptActive's window, where trackedScreen
+			// is still set but MarkerNameScreen is the one actually showing - narrating a
+			// backgrounded slot over that prompt would talk over whatever it's doing instead.
+			return;
+		}
+		// Only the slot-based sections (Container/Inventory/Hotbar/Equipment) have a real
+		// focusedSlot worth watching - the others narrate off their own virtual index and may
+		// still hold a stale focusedSlot reference from whichever slot section was current before.
+		if (currentSection == Section.RECIPE_BOOK || currentSection == Section.ENCHANT_OPTIONS
+				|| currentSection == Section.RENAME || currentSection == Section.TRADES) {
+			return;
+		}
+		Slot slot = currentSlot(trackedScreen.getMenu());
+		if (slot != null && !ItemStack.matches(slot.getItem(), lastNarratedSlotItem)) {
+			narrateFocusedSlot(trackedScreen, client.player, false);
+		}
+	}
+
 	/** True while a Creative screen's item-picker tab (not its Inventory tab) is selected - see the class doc. */
 	private static boolean isHandledByCreativeItemGrid(AbstractContainerScreen<?> screen) {
 		return screen instanceof CreativeModeInventoryScreen creative
