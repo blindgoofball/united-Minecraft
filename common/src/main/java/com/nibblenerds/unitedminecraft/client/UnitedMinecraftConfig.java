@@ -49,6 +49,7 @@ public final class UnitedMinecraftConfig {
 	public boolean toolHarvestWarningEnabled = true;
 	public boolean scannerSkipEmptyCategories = false;
 	public boolean scannerAutoLockAfterWalk = false;
+	public boolean autoWalkAutoSprint = false;
 	public boolean navRadarEnabled = false;
 	public boolean miningRadarEnabled = false;
 	public boolean autoCrosshairNarrationEnabled = false;

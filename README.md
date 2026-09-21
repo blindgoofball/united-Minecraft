@@ -210,7 +210,9 @@ the fight. Toggleable independently from the settings screen.
 Automatically walks you to anything the Scanner has found, or that Build Mode's
 cursor is pointing at. Works on any server, no special permissions needed.
 Hold your sprint key while it's walking to get there faster, same as walking
-there yourself would. Cancel any time with the stop-lock key.
+there yourself would - or turn on the "Auto-Walk: Always Sprint" Settings
+toggle to sprint the whole way automatically, without holding the key down.
+Cancel any time with the stop-lock key.
 
 ### Water Exit
 

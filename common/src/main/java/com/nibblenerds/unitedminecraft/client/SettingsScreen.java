@@ -121,6 +121,8 @@ public final class SettingsScreen extends Screen {
 				config.scannerSkipEmptyCategories, value -> config.scannerSkipEmptyCategories = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.scanner_auto_lock_after_walk",
 				config.scannerAutoLockAfterWalk, value -> config.scannerAutoLockAfterWalk = value);
+		y = addToggle(x, y, "united_minecraft.settings_screen.auto_walk_auto_sprint",
+				config.autoWalkAutoSprint, value -> config.autoWalkAutoSprint = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.precise_coordinates_enabled",
 				config.preciseCoordinatesEnabled, value -> config.preciseCoordinatesEnabled = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.mount_jump_cue_enabled",

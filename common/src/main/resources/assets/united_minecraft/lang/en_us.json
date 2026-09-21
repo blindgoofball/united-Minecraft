@@ -449,6 +449,7 @@
 	"united_minecraft.settings_screen.tool_harvest_warning_enabled": "Mining Tool Warnings",
 	"united_minecraft.settings_screen.scanner_skip_empty_categories": "Scanner: Skip Empty Categories",
 	"united_minecraft.settings_screen.scanner_auto_lock_after_walk": "Scanner: Auto-Lock After Walking to a Mob",
+	"united_minecraft.settings_screen.auto_walk_auto_sprint": "Auto-Walk: Always Sprint",
 	"united_minecraft.settings_screen.precise_coordinates_enabled": "Precise Coordinates (One Decimal Place)",
 	"united_minecraft.settings_screen.mount_jump_cue_enabled": "Mount Jump Charge Audio Cue",
 	"united_minecraft.settings_screen.map_beacon_enabled": "Map Beacon (Treasure/Explorer Map Audio Cue)",
