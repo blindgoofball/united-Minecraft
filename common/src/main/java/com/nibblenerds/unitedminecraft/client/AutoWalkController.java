@@ -55,14 +55,15 @@ public final class AutoWalkController {
 	// satisfies on a node that's genuinely (orthogonally) adjacent to the target, so the walk
 	// keeps going until the player could actually reach out and interact with it.
 	private static final int REACH_RANGE = 1;
-	// A ladder/vine/scaffolding/etc. isn't an obstacle to stop beside - it's a thin, non-solid
-	// shape the player needs to actually walk into the same cell as, same as any other open
-	// ground. Reusing REACH_RANGE 1 for one of these would let the pathfinder settle for *any*
-	// horizontally adjacent cell around the target - including one on a completely different
-	// side of whatever solid block the target is mounted against, close enough by raw distance
-	// but with no way to actually reach the target from there (a wall in between, or, for a
-	// ladder specifically, simply the wrong side of it to climb). See {@link #startForClimb}.
-	private static final int CLIMB_REACH_RANGE = 0;
+	// A walkable target cell (a ladder/vine/scaffolding/etc. to climb, or an empty cell a Build
+	// Mode cursor is pointing at) isn't an obstacle to stop beside - it's ground the player can
+	// actually stand on, same as any other open floor. Reusing REACH_RANGE 1 for one of these
+	// would let the pathfinder settle for *any* horizontally adjacent cell around the target -
+	// including one on a completely different side of whatever solid block it's next to, close
+	// enough by raw distance but not actually where the player meant to end up (a wall in
+	// between, or, for a ladder specifically, simply the wrong side of it to climb). See {@link
+	// #startExact}.
+	private static final int EXACT_REACH_RANGE = 0;
 	private static final double NODE_ARRIVAL_DISTANCE_SQR = 0.5 * 0.5;
 
 	private static Path currentPath;
@@ -110,13 +111,18 @@ public final class AutoWalkController {
 
 	/**
 	 * Same as {@link #start(Minecraft, LocalPlayer, BlockPos, Component, Runnable)}, for a target
-	 * that needs to be walked into rather than stood beside - a ladder, vine, scaffolding, or
-	 * anything else in the Climbable scanner category. {@code target} should be the climbable
-	 * block's own position, not an adjacent one; see {@link #CLIMB_REACH_RANGE}'s own doc for why
-	 * the ordinary reach range would let the player arrive on the wrong side of it entirely.
+	 * the player needs to end up standing exactly on/in rather than merely near - a ladder, vine,
+	 * scaffolding, or anything else in the Climbable scanner category (which the player needs to
+	 * walk into, not stand beside, to actually climb), or an empty cell a Build Mode cursor is
+	 * pointing at (so "walk to the cursor" actually arrives there, instead of at an unpredictable
+	 * nearby tile). {@code target} must itself be a cell the player can occupy - solid ground the
+	 * player is meant to stand beside instead still wants the ordinary {@link #start}, since a
+	 * solid block obviously can't be walked into. See {@link #EXACT_REACH_RANGE}'s own doc for why
+	 * the ordinary reach range can otherwise land the player somewhere unintended entirely, e.g.
+	 * the wrong side of a ladder to climb it.
 	 */
-	public static void startForClimb(Minecraft client, LocalPlayer player, BlockPos target, Component name, Runnable onArrival) {
-		start(client, player, target, name, onArrival, CLIMB_REACH_RANGE);
+	public static void startExact(Minecraft client, LocalPlayer player, BlockPos target, Component name, Runnable onArrival) {
+		start(client, player, target, name, onArrival, EXACT_REACH_RANGE);
 	}
 
 	private static void start(Minecraft client, LocalPlayer player, BlockPos target, Component name, Runnable onArrival, int reachRange) {

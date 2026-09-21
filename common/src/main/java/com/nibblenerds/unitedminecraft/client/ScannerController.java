@@ -838,11 +838,11 @@ public final class ScannerController {
 				aimOnceAtBlock(client, player, pos, name);
 			};
 			// A ladder/vine/scaffolding/etc. is something you walk *into*, not up to - see
-			// AutoWalkController#startForClimb's own doc for why the ordinary "stand adjacent"
+			// AutoWalkController#startExact's own doc for why the ordinary "stand adjacent"
 			// pathing could otherwise land the player on the wrong side of it entirely, unable
 			// to climb even after aimOnceAtBlock faces them the right way.
 			if (category == ScannerCategory.CLIMBABLE) {
-				AutoWalkController.startForClimb(client, player, pos, name, onArrival);
+				AutoWalkController.startExact(client, player, pos, name, onArrival);
 			} else {
 				AutoWalkController.start(client, player, pos, name, onArrival);
 			}

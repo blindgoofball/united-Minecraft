@@ -438,13 +438,26 @@ public final class BuildModeController {
 		player.setYHeadRot(yaw);
 	}
 
-	/** Walks the player to within reach of the cursor, if a path there exists. */
+	/**
+	 * Walks the player to the cursor, if a path there exists. When the cursor cell is itself
+	 * walkable ({@link BlockState#canBeReplaced}, e.g. air, tall grass, water - the common case
+	 * while laying out a build over open ground), walks the player into that exact cell rather
+	 * than merely to within reach of it - see {@link AutoWalkController#startExact}'s own doc for
+	 * why "within reach" alone can land the player somewhere unpredictable. A cursor sitting on a
+	 * solid, non-replaceable block (examining existing terrain/structure) obviously can't be
+	 * walked into, so that case keeps the ordinary "stand adjacent" behavior.
+	 */
 	private static void walkToCursor(Minecraft client, LocalPlayer player) {
 		if (isInReach(player, cursor)) {
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_already_in_reach"));
 			return;
 		}
-		AutoWalkController.start(client, player, cursor, Component.translatable("united_minecraft.narrate.build_cursor_name"));
+		Component name = Component.translatable("united_minecraft.narrate.build_cursor_name");
+		if (player.level().getBlockState(cursor).canBeReplaced()) {
+			AutoWalkController.startExact(client, player, cursor, name, null);
+		} else {
+			AutoWalkController.start(client, player, cursor, name);
+		}
 	}
 
 	/** Steps {@link #selectedFacing} through null (automatic) and the six {@link Direction}s. */
