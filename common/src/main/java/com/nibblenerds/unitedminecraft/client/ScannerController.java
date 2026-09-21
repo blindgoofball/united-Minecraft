@@ -983,26 +983,41 @@ public final class ScannerController {
 		return dx * dx + dy * dy + dz * dz;
 	}
 
+	/**
+	 * The best available name for any entity, regardless of which Scanner category (if any) it
+	 * was found through - an {@link ItemEntity} by its actual item ({@link ItemDescriptions}), an
+	 * {@link ItemFrame}/{@link Painting}/{@link Cushion} by their own dedicated describers, and
+	 * everything else via {@link #mobDisplayName}'s general mob treatment (species, sheep color,
+	 * baby, tamed/owned, held/worn items, leash). Category-independent dispatch is safe here since
+	 * these types are already mutually exclusive by category in practice - an {@link ItemEntity}
+	 * is only ever surfaced under {@link ScannerCategory#ITEMS}, the other three only under {@link
+	 * ScannerCategory#ENTITIES} - so this is exactly what {@link #itemName} already did per
+	 * category, just without needing the category to tell them apart. Also reused by {@link
+	 * BuildModeController} to narrate entities sharing the build cursor's cell, which has no
+	 * category of its own at all.
+	 */
+	static Component entityDisplayName(Entity entity, Player player) {
+		if (entity instanceof ItemEntity itemEntity) {
+			return ItemDescriptions.describe(itemEntity.getItem(), player);
+		}
+		if (entity instanceof ItemFrame frame) {
+			return describeItemFrame(frame, player);
+		}
+		if (entity instanceof Painting painting) {
+			return describePainting(painting);
+		}
+		if (entity instanceof Cushion cushion) {
+			return describeCushion(cushion);
+		}
+		return mobDisplayName(entity, player);
+	}
+
 	private static Component itemName(ScannerCategory category, ScannerItem item, LocalPlayer player) {
 		if (item.label() != null) {
 			return Component.literal(item.label());
 		}
 		if (item.entity() != null) {
-			if (category == ScannerCategory.ITEMS && item.entity() instanceof ItemEntity itemEntity) {
-				return ItemDescriptions.describe(itemEntity.getItem(), player);
-			}
-			if (category == ScannerCategory.ENTITIES) {
-				if (item.entity() instanceof ItemFrame frame) {
-					return describeItemFrame(frame, player);
-				}
-				if (item.entity() instanceof Painting painting) {
-					return describePainting(painting);
-				}
-				if (item.entity() instanceof Cushion cushion) {
-					return describeCushion(cushion);
-				}
-			}
-			return mobDisplayName(item.entity(), player);
+			return entityDisplayName(item.entity(), player);
 		}
 		Level level = player.level();
 		// Looked up here rather than baked into each scan's ScannerItem: only the item actually

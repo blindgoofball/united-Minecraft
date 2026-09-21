@@ -154,6 +154,7 @@
 	"united_minecraft.narrate.build_stair_corner": "%s corner",
 	"united_minecraft.narrate.build_upside_down": "Upside down",
 	"united_minecraft.narrate.build_player_here": "You are here",
+	"united_minecraft.narrate.build_entities_here": "%s here",
 	"united_minecraft.narrate.build_repeater_delay": "Delay %s",
 	"united_minecraft.narrate.build_comparator_compare": "Compare mode",
 	"united_minecraft.narrate.build_comparator_subtract": "Subtract mode",

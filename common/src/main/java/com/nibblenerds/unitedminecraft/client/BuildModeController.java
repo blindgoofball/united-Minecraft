@@ -2,6 +2,7 @@ package com.nibblenerds.unitedminecraft.client;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import net.minecraft.client.Minecraft;
@@ -12,6 +13,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.BucketItem;
@@ -43,6 +45,7 @@ import net.minecraft.world.level.block.state.properties.RedstoneSide;
 import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.block.state.properties.StairsShape;
 import net.minecraft.world.level.material.Fluids;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
@@ -1329,13 +1332,13 @@ public final class BuildModeController {
 	}
 
 	/**
-	 * Block name, then any extra state (facing, powered, ripe, and so on), then whether the
-	 * player is standing in the cursor's way, then the coordinates, then whether it's actionable
-	 * right now - state describes the block itself so it belongs right after naming it, not
-	 * after the coordinates that just happen to be read next; "you're standing here" is worth
-	 * knowing before sitting through the coordinates, not after; "Out of reach"/"Placeable"
-	 * describe the cursor's current actionability rather than the block, so they stay last
-	 * regardless.
+	 * Block name, then any extra state (facing, powered, ripe, and so on), then any entities
+	 * sharing the cursor's cell, then whether the player is standing in the cursor's way, then
+	 * the coordinates, then whether it's actionable right now - state describes the block itself
+	 * so it belongs right after naming it, not after the coordinates that just happen to be read
+	 * next; entities and "you're standing here" are both worth knowing before sitting through the
+	 * coordinates, not after; "Out of reach"/"Placeable" describe the cursor's current
+	 * actionability rather than the block, so they stay last regardless.
 	 */
 	private static Component describeCursor(LocalPlayer player) {
 		Level level = player.level();
@@ -1400,6 +1403,18 @@ public final class BuildModeController {
 		}
 		if (state.getBlock() instanceof BaseRailBlock railBlock) {
 			message = message.append(Component.literal(" ")).append(railShapeDescription(state, railBlock));
+		}
+
+		// Excludes the player themselves - handled separately just below, with its own more
+		// direct "you're standing here" wording rather than being just another name in this list.
+		List<Entity> entitiesHere = level.getEntities(player, new AABB(cursor), Entity::isAlive);
+		if (!entitiesHere.isEmpty()) {
+			MutableComponent entityNames = ScannerController.entityDisplayName(entitiesHere.get(0), player).copy();
+			for (int i = 1; i < entitiesHere.size(); i++) {
+				entityNames = entityNames.append(Component.literal(", "))
+						.append(ScannerController.entityDisplayName(entitiesHere.get(i), player));
+			}
+			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_entities_here", entityNames));
 		}
 
 		if (cursor.equals(player.blockPosition())) {

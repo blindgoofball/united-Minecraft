@@ -295,7 +295,9 @@ orientation. If the cursor wanders out of reach, a dedicated key walks you to
 it automatically; Alt+I instead snaps the cursor straight back to wherever
 you're currently standing and re-centers the whole 65x65 area there, so you
 don't have to walk back to keep exploring from your new position. Moving the
-cursor onto the block you're actually standing on narrates that too.
+cursor onto the block you're actually standing on narrates that too, and so
+does moving it onto any other entity sharing that cell - a mob, dropped item,
+minecart, and so on, named the same rich way the Scanner would.
 
 If the block under the cursor has a meaningful facing (repeaters, comparators,
 dispensers, pistons, and the like), that's narrated too, and any block
