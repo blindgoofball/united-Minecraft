@@ -212,7 +212,9 @@ cursor is pointing at. Works on any server, no special permissions needed.
 Hold your sprint key while it's walking to get there faster, same as walking
 there yourself would - or turn on the "Auto-Walk: Always Sprint" Settings
 toggle to sprint the whole way automatically, without holding the key down.
-Cancel any time with the stop-lock key.
+Cancel any time with the stop-lock key. Won't walk you onto an open trapdoor
+and drop you through it, unlike vanilla mob pathfinding (every mob, not just
+zombies) is prone to doing.
 
 ### Water Exit
 
