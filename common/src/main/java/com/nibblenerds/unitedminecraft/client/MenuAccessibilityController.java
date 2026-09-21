@@ -42,6 +42,7 @@ import net.minecraft.world.inventory.AnvilMenu;
 import net.minecraft.world.inventory.BrewingStandMenu;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.EnchantmentMenu;
+import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.inventory.MerchantMenu;
 import net.minecraft.world.inventory.RecipeBookMenu;
 import net.minecraft.world.inventory.Slot;
@@ -339,7 +340,12 @@ public final class MenuAccessibilityController {
 		recipeCraftableOnlyFilter = false;
 		currentRecipeCategory = null;
 		recipeSearchTerm = "";
-		currentSection = applicableSections(screen.getMenu())[0];
+		// The survival inventory screen (opened with E) leads its Tab order with CONTAINER like
+		// every other menu does (see applicableSections) - but there that's just the leftover 2x2
+		// crafting grid, not the point of the screen, so initial focus skips straight to the
+		// player's actual inventory instead. Tab still visits CONTAINER first when cycling, same
+		// as it always did; only what's focused on open changes.
+		currentSection = screen.getMenu() instanceof InventoryMenu ? Section.INVENTORY : applicableSections(screen.getMenu())[0];
 		enterSection(screen, player, true);
 	}
 
