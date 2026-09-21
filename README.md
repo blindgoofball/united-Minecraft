@@ -109,6 +109,10 @@ navigation without needing to see or aim at them.
 - Like Markers, Players ignores the Scanner's normal range - every other player in
   your current dimension shows up regardless of distance, since the game already
   tells your client about all of them no matter how far away they are.
+- A shoulder parrot (yours or another player's) narrates by color alongside
+  whichever shoulder it's on - your own gets a dedicated announcement the
+  moment one lands or flies off, since it's never something the Scanner or
+  Build Mode cursor would otherwise mention about you.
 - Crops covers farmland crops (wheat, carrots, potatoes, beetroot, torchflower),
   pumpkin and melon stems, nether wart, cocoa pods, sweet berry bushes, saplings
   (including mangrove propagules and bamboo's own sapling stage), and cave vines

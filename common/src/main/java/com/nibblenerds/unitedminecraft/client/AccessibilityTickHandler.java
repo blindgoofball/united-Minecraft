@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 import com.nibblenerds.unitedminecraft.client.access.BossHealthOverlayAccess;
 
@@ -22,6 +23,7 @@ import net.minecraft.util.Util;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.animal.equine.AbstractHorse;
+import net.minecraft.world.entity.animal.parrot.Parrot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.LightLayer;
@@ -89,6 +91,9 @@ public final class AccessibilityTickHandler {
 	private static int lastTimePeriod = -1;
 	private static Item lastOffhandItem = null;
 	private static Holder<Biome> lastBiome = null;
+	// null (not Optional.empty()) means "not yet known" - see handleShoulderParrotNarration.
+	private static Optional<Parrot.Variant> lastShoulderParrotLeft = null;
+	private static Optional<Parrot.Variant> lastShoulderParrotRight = null;
 	// Whether a screen was open as of the end of the previous tick - see the screen-just-closed
 	// check in onEndTick for why this is tracked.
 	private static boolean screenWasOpenLastTick;
@@ -106,6 +111,8 @@ public final class AccessibilityTickHandler {
 			lastTimePeriod = -1;
 			lastOffhandItem = null;
 			lastBiome = null;
+			lastShoulderParrotLeft = null;
+			lastShoulderParrotRight = null;
 			screenWasOpenLastTick = false;
 			ClientKeyBindings.resetPressState();
 			BuildModeController.reset();
@@ -282,6 +289,7 @@ public final class AccessibilityTickHandler {
 		handleHotbarNarration(client, player);
 		handleBiomeNarration(client, player);
 		handleTimeOfDayNarration(client, player);
+		handleShoulderParrotNarration(client, player);
 		if (client.gui.screen() == null) {
 			// Only relevant in-world: the menu's own inventory-screen narration already covers
 			// the offhand slot there, and vanilla's swap-hands key does nothing over a screen.
@@ -538,6 +546,40 @@ public final class AccessibilityTickHandler {
 					describeHand(player.getMainHandItem(), player), describeHand(offhand, player)));
 		}
 		lastOffhandItem = offhandItem;
+	}
+
+	/**
+	 * A shoulder parrot landing (taming a wild one, or one you already had climbing back up after
+	 * being shaken/knocked off) or departing (sneaking, taking damage, or the 100-tick ride
+	 * cooldown wearing off and it flying away) has no dedicated key to check it with, unlike
+	 * another player's shoulder parrot, which the Scanner narrates on request - so this is the
+	 * only place the local player's own shoulder ever gets mentioned at all. Each shoulder is
+	 * tracked and narrated independently, since one can change without the other (shaking off just
+	 * one side is possible; taming a second parrot for the empty shoulder is common).
+	 */
+	private static void handleShoulderParrotNarration(Minecraft client, LocalPlayer player) {
+		Optional<Parrot.Variant> left = player.getShoulderParrotLeft();
+		if (lastShoulderParrotLeft != null && !left.equals(lastShoulderParrotLeft)) {
+			narrateShoulderParrotChange(client, left, true);
+		}
+		lastShoulderParrotLeft = left;
+
+		Optional<Parrot.Variant> right = player.getShoulderParrotRight();
+		if (lastShoulderParrotRight != null && !right.equals(lastShoulderParrotRight)) {
+			narrateShoulderParrotChange(client, right, false);
+		}
+		lastShoulderParrotRight = right;
+	}
+
+	private static void narrateShoulderParrotChange(Minecraft client, Optional<Parrot.Variant> variant, boolean left) {
+		Component message = variant.isPresent()
+				? Component.translatable(
+						left ? "united_minecraft.narrate.shoulder_parrot_landed_left" : "united_minecraft.narrate.shoulder_parrot_landed_right",
+						ScannerController.parrotVariantName(variant.get()))
+				: Component.translatable(left
+						? "united_minecraft.narrate.shoulder_parrot_flew_off_left"
+						: "united_minecraft.narrate.shoulder_parrot_flew_off_right");
+		client.getNarrator().saySystemNow(message);
 	}
 
 	private static Component describeHand(ItemStack stack, LocalPlayer player) {

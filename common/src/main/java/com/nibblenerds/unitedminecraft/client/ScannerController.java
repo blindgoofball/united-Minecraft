@@ -39,6 +39,7 @@ import net.minecraft.world.entity.OwnableEntity;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.animal.allay.Allay;
 import net.minecraft.world.entity.animal.equine.AbstractHorse;
+import net.minecraft.world.entity.animal.parrot.Parrot;
 import net.minecraft.world.entity.animal.sheep.Sheep;
 import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
 import net.minecraft.world.entity.decoration.ArmorStand;
@@ -743,6 +744,11 @@ public final class ScannerController {
 		if (entity instanceof Leashable leashable && leashable.isLeashed()) {
 			name = name.copy().append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.scanner_leashed"));
 		}
+		if (entity instanceof Player shoulderOwner) {
+			for (Component fragment : shoulderParrotFragments(shoulderOwner)) {
+				name = name.copy().append(Component.literal(" ")).append(fragment);
+			}
+		}
 		return name;
 	}
 
@@ -829,6 +835,30 @@ public final class ScannerController {
 
 	private static Component dyeColorName(DyeColor color) {
 		return Component.translatable("united_minecraft.color." + color.getName());
+	}
+
+	/**
+	 * A shoulder parrot is never a real, scannable {@link Entity} of its own - riding a shoulder
+	 * discards the actual {@link Parrot} entity server-side and keeps only its variant, synced to
+	 * every client (not just the rider's own) via {@link Player#getShoulderParrotLeft}/{@link
+	 * Player#getShoulderParrotRight}. So this reads straight off {@code player} itself rather than
+	 * scanning for anything, and is why a shoulder parrot needs its own handling here at all
+	 * instead of just being another entity {@link #mobDisplayName} would find and describe
+	 * normally. Also reused by {@link AccessibilityTickHandler} to narrate the local player's own
+	 * shoulder landing/departing, which never goes through this method at all (the Scanner/Build
+	 * Mode cursor only ever narrate other entities, never the player controlling them).
+	 */
+	private static List<Component> shoulderParrotFragments(Player player) {
+		List<Component> fragments = new ArrayList<>();
+		player.getShoulderParrotLeft().ifPresent(variant -> fragments.add(
+				Component.translatable("united_minecraft.narrate.mob_shoulder_parrot_left", parrotVariantName(variant))));
+		player.getShoulderParrotRight().ifPresent(variant -> fragments.add(
+				Component.translatable("united_minecraft.narrate.mob_shoulder_parrot_right", parrotVariantName(variant))));
+		return fragments;
+	}
+
+	static Component parrotVariantName(Parrot.Variant variant) {
+		return Component.translatable("united_minecraft.narrate.parrot_variant." + variant.getSerializedName());
 	}
 
 	private static void targetBlock(Minecraft client, LocalPlayer player, ScannerCategory category, BlockPos pos, Component name, boolean walkThere) {
