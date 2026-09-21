@@ -125,6 +125,7 @@ public final class AccessibilityTickHandler {
 			FishingCatchController.reset();
 			FallWarningController.reset();
 			TreeChoppingAssist.reset();
+			OreMiningAssist.reset();
 			AutoCrosshairNarrationController.reset();
 			DurabilityAwarenessController.reset();
 			ToolHarvestAwarenessController.reset();
@@ -221,6 +222,7 @@ public final class AccessibilityTickHandler {
 					handleSnapTurn(client, player, snapTurn.left(), snapTurn.right(), snapTurn.up(), snapTurn.down());
 				}
 				TreeChoppingAssist.tick(client, player);
+				OreMiningAssist.tick(client, player);
 				ScannerController.tick(client, player);
 				MovementAssistController.tick(client, player);
 				NavRadarController.tick(client, player);
