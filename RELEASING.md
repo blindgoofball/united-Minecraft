@@ -52,21 +52,46 @@ When NeoForge catches up, set the flag back to `true`, bump
 Minecraft version's first NeoForge-capable release is an ordinary release,
 not a special one.
 
+## Checking for a newer NeoForge build
+
+Separately from the above - which is about crossing a *Minecraft* version
+boundary - NeoForge also publishes new beta builds routinely *within* the
+current `minecraft_version`, at a pace nothing like Fabric's own tooling.
+Fabric Loader/API/Loom go weeks between updates and the
+`# check these on https://fabricmc.net/develop` comment above `loader_version`
+in `gradle.properties` is enough to keep them current; NeoForge is nowhere
+near that stable, and it's normal for `neoforge_version` to already be
+several beta iterations behind by the time a release is cut, even with
+nothing else about the Minecraft version having changed.
+
+Before every release (not only ones that also bump `minecraft_version`),
+check <https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/neoforge>
+for the newest version whose prefix matches `minecraft_version`, and bump
+`neoforge_version` if a newer one exists. Always follow that bump with a full
+`./gradlew build` and an actual runtime check on NeoForge (`./gradlew
+:neoforge:runClient`) before tagging - not just the version string change on
+its own - since a beta build can introduce a real breaking change, and
+there's no time left to catch that once the jars are already attached to a
+GitHub release.
+
 ## GitHub release
 
-1. Bump `mod_version` in `gradle.properties` if this release includes changes
+1. If `neoforge_enabled` is `true`, check for a newer NeoForge build (see
+   above) and bump `neoforge_version` if one exists, rebuilding and
+   re-checking NeoForge before continuing.
+2. Bump `mod_version` in `gradle.properties` if this release includes changes
    since the last one (it usually will).
-2. Commit that version bump.
-3. Tag the commit: `git tag v{mod_version}+mc{minecraft_version}`, then
+3. Commit those version bumps together.
+4. Tag the commit: `git tag v{mod_version}+mc{minecraft_version}`, then
    `git push origin v{mod_version}+mc{minecraft_version}`.
-4. Run `./gradlew build` and collect both jars (not the `-sources.jar` files -
+5. Run `./gradlew build` and collect both jars (not the `-sources.jar` files -
    those are for IDEs, not for players):
    - `fabric/build/libs/united-minecraft-{mod_version}+mc{minecraft_version}-fabric.jar`
    - `neoforge/build/libs/united-minecraft-{mod_version}+mc{minecraft_version}-neoforge.jar`
 
    If `neoforge_enabled` is `false`, there is no NeoForge jar and that is
    expected - see above.
-5. Create the GitHub release from that tag:
+6. Create the GitHub release from that tag:
    - **Title**: `United Minecraft {mod_version} for Minecraft {minecraft_version}`
      - e.g. `United Minecraft 1.2.0 for Minecraft 26.3`
    - **Notes**: a short "What's new" list, plus the loader versions this build
@@ -75,4 +100,4 @@ not a special one.
      Fabric Loader and Fabric API for the Fabric jar, NeoForge for the
      NeoForge jar. Say which loaders this release includes, especially when it
      is Fabric-only.
-   - Attach both jars from step 4.
+   - Attach both jars from step 5.
