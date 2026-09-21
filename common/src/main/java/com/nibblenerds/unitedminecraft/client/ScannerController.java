@@ -67,6 +67,8 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ButtonBlock;
 import net.minecraft.world.level.block.CaveVines;
+import net.minecraft.world.level.block.CaveVinesBlock;
+import net.minecraft.world.level.block.CaveVinesPlantBlock;
 import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.CocoaBlock;
 import net.minecraft.world.level.block.CropBlock;
@@ -77,17 +79,24 @@ import net.minecraft.world.level.block.FenceGateBlock;
 import net.minecraft.world.level.block.JukeboxBlock;
 import net.minecraft.world.level.block.KelpBlock;
 import net.minecraft.world.level.block.KelpPlantBlock;
+import net.minecraft.world.level.block.LadderBlock;
 import net.minecraft.world.level.block.LeverBlock;
 import net.minecraft.world.level.block.NetherPortalBlock;
 import net.minecraft.world.level.block.NetherWartBlock;
 import net.minecraft.world.level.block.SaplingBlock;
+import net.minecraft.world.level.block.ScaffoldingBlock;
 import net.minecraft.world.level.block.SelectableSlotContainer;
 import net.minecraft.world.level.block.SignBlock;
 import net.minecraft.world.level.block.StemBlock;
 import net.minecraft.world.level.block.SugarCaneBlock;
 import net.minecraft.world.level.block.SweetBerryBushBlock;
 import net.minecraft.world.level.block.TrapDoorBlock;
+import net.minecraft.world.level.block.TwistingVinesBlock;
+import net.minecraft.world.level.block.TwistingVinesPlantBlock;
 import net.minecraft.world.level.block.VaultBlock;
+import net.minecraft.world.level.block.VineBlock;
+import net.minecraft.world.level.block.WeepingVinesBlock;
+import net.minecraft.world.level.block.WeepingVinesPlantBlock;
 import net.minecraft.world.level.block.entity.ListBackedContainer;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
 import net.minecraft.world.level.block.entity.SignText;
@@ -491,7 +500,7 @@ public final class ScannerController {
 			//
 			// categoryHasAny is a cheap existence probe, not a full scan() - a full scan of
 			// every block-cube category (Interactables, Mechanisms, Ores, Liquids, Crops,
-			// Search, Trees) in the same pass this loop can make up to CATEGORIES.length - 1
+			// Climbable, Search, Trees) in the same pass this loop can make up to CATEGORIES.length - 1
 			// times would mean hundreds of thousands of block reads on a single Home/End press.
 			// Only the category actually settled on below gets the real, full scan().
 			for (int step = 1; step < CATEGORIES.length; step++) {
@@ -609,7 +618,7 @@ public final class ScannerController {
 				targetEntity(client, player, item.entity(), walkThere);
 			}
 		} else {
-			targetBlock(client, player, item.blockPos(), itemName(category, item, player), walkThere);
+			targetBlock(client, player, category, item.blockPos(), itemName(category, item, player), walkThere);
 		}
 	}
 
@@ -822,12 +831,21 @@ public final class ScannerController {
 		return Component.translatable("united_minecraft.color." + color.getName());
 	}
 
-	private static void targetBlock(Minecraft client, LocalPlayer player, BlockPos pos, Component name, boolean walkThere) {
+	private static void targetBlock(Minecraft client, LocalPlayer player, ScannerCategory category, BlockPos pos, Component name, boolean walkThere) {
 		if (walkThere) {
-			AutoWalkController.start(client, player, pos, name, () -> {
+			Runnable onArrival = () -> {
 				rescanAndRefocus(player, item -> pos.equals(item.blockPos()));
 				aimOnceAtBlock(client, player, pos, name);
-			});
+			};
+			// A ladder/vine/scaffolding/etc. is something you walk *into*, not up to - see
+			// AutoWalkController#startForClimb's own doc for why the ordinary "stand adjacent"
+			// pathing could otherwise land the player on the wrong side of it entirely, unable
+			// to climb even after aimOnceAtBlock faces them the right way.
+			if (category == ScannerCategory.CLIMBABLE) {
+				AutoWalkController.startForClimb(client, player, pos, name, onArrival);
+			} else {
+				AutoWalkController.start(client, player, pos, name, onArrival);
+			}
 			return;
 		}
 		aimOnceAtBlock(client, player, pos, name);
@@ -925,6 +943,15 @@ public final class ScannerController {
 			// own describeCursor for why this one BlockStateProperties constant covers all three.
 			if (state.hasProperty(BlockStateProperties.OPEN) && state.getValue(BlockStateProperties.OPEN)) {
 				name = name.copy().append(Component.literal(", ")).append(Component.translatable("united_minecraft.narrate.scanner_open"));
+			}
+		}
+		if (category == ScannerCategory.CLIMBABLE) {
+			ClimbableRun run = climbableRun(player.level(), item.blockPos());
+			if (run != null) {
+				name = name.copy().append(Component.literal(", "))
+						.append(Component.translatable("united_minecraft.narrate.scanner_height", run.height()))
+						.append(Component.literal(", "))
+						.append(climbableDirection(run, player));
 			}
 		}
 		return Component.translatable("united_minecraft.narrate.scanner_item", name, distance, direction);
@@ -1125,6 +1152,7 @@ public final class ScannerController {
 			}
 			case LIQUIDS -> scanLiquids(player);
 			case CROPS -> scanCrops(player);
+			case CLIMBABLE -> scanClimbable(player);
 			case SEARCH -> scanSearch(player);
 			case BIOMES -> scanBiomes(player);
 			// instanceof Animal alone missed anything that isn't a beast - villagers, wandering
@@ -1389,6 +1417,69 @@ public final class ScannerController {
 		return Component.translatable("united_minecraft.narrate.scanner_height", height);
 	}
 
+	/** How tall a Climbable run is, and the Y levels its base and top blocks currently sit at - see {@link #climbableRun}. */
+	private record ClimbableRun(int height, int baseY, int topY) {
+	}
+
+	/**
+	 * Same idea as {@link #stalkHeight}, for the Climbable category instead of Crops - how tall
+	 * the vertical run of whichever climbable type {@code base} belongs to actually is right now,
+	 * counted live rather than cached from scan time, since a run can get shortened by mining a
+	 * block out of the middle of it between the scan and narrating this particular entry. Weeping/
+	 * twisting/cave vines match either their head or body block type, same pairing {@link
+	 * #scanClimbable} clusters them with. The top Y that comes back alongside the height is what
+	 * {@link #climbableDirection} compares against the player's own feet to say whether climbing
+	 * this run actually takes them up, down, or both from where they're standing.
+	 */
+	private static ClimbableRun climbableRun(Level level, BlockPos base) {
+		Block block = level.getBlockState(base).getBlock();
+		Predicate<Block> partOfRun;
+		if (block instanceof LadderBlock) {
+			partOfRun = candidate -> candidate instanceof LadderBlock;
+		} else if (block instanceof VineBlock) {
+			partOfRun = candidate -> candidate instanceof VineBlock;
+		} else if (block instanceof ScaffoldingBlock) {
+			partOfRun = candidate -> candidate instanceof ScaffoldingBlock;
+		} else if (block instanceof WeepingVinesBlock || block instanceof WeepingVinesPlantBlock) {
+			partOfRun = candidate -> candidate instanceof WeepingVinesBlock || candidate instanceof WeepingVinesPlantBlock;
+		} else if (block instanceof TwistingVinesBlock || block instanceof TwistingVinesPlantBlock) {
+			partOfRun = candidate -> candidate instanceof TwistingVinesBlock || candidate instanceof TwistingVinesPlantBlock;
+		} else if (block instanceof CaveVinesBlock || block instanceof CaveVinesPlantBlock) {
+			partOfRun = candidate -> candidate instanceof CaveVinesBlock || candidate instanceof CaveVinesPlantBlock;
+		} else {
+			return null;
+		}
+
+		int height = 1;
+		BlockPos pos = base.above();
+		while (partOfRun.test(level.getBlockState(pos).getBlock())) {
+			height++;
+			pos = pos.above();
+		}
+		return new ClimbableRun(height, base.getY(), base.getY() + height - 1);
+	}
+
+	/**
+	 * Whether climbing {@code run} actually takes the player up, down, or both, relative to where
+	 * they're currently standing - not just whether the run itself has more above or below its own
+	 * base, which {@link #climbableRun}'s height already covers. A run based at or above the
+	 * player's feet leads up; one topping out at or below their feet leads down; one that straddles
+	 * both (the player's standing partway up or down a long shaft, common in trial chambers) leads
+	 * both ways. The base-at-feet-exactly and single-block-at-feet-exactly cases both fall into
+	 * "leads up" - the far more common real case of standing right at the foot of something about
+	 * to be climbed upward.
+	 */
+	private static Component climbableDirection(ClimbableRun run, LocalPlayer player) {
+		int feetY = player.blockPosition().getY();
+		if (run.baseY() >= feetY) {
+			return Component.translatable("united_minecraft.narrate.scanner_climbable_up");
+		}
+		if (run.topY() <= feetY) {
+			return Component.translatable("united_minecraft.narrate.scanner_climbable_down");
+		}
+		return Component.translatable("united_minecraft.narrate.scanner_climbable_up_and_down");
+	}
+
 	/** Returns {@code true} to keep {@link #forEachBlockInRange} scanning, {@code false} to stop immediately. */
 	@FunctionalInterface
 	private interface BlockVisitor {
@@ -1533,6 +1624,7 @@ public final class ScannerController {
 			case LIQUIDS -> scanBlocksAny(player, (pos, state) ->
 					(state.is(Blocks.WATER) || state.is(Blocks.LAVA)) && OreDetection.isExposed(level, fastAccess::getBlockState, pos, eye));
 			case CROPS -> scanBlocksAny(player, (pos, state) -> cropMatches(state.getBlock()));
+			case CLIMBABLE -> scanBlocksAny(player, (pos, state) -> state.is(BlockTags.CLIMBABLE));
 			case SEARCH -> !searchTerm.isBlank() && scanBlocksAny(player, (pos, state) -> !state.isAir()
 					&& searchMatches().contains(state.getBlock())
 					&& OreDetection.isExposed(level, fastAccess::getBlockState, pos, eye));
@@ -1854,6 +1946,59 @@ public final class ScannerController {
 				results.add(new ScannerItem(pos, null, distance, null));
 			}
 		}
+	}
+
+	/**
+	 * Everything {@link BlockTags#CLIMBABLE} covers - ladders, vines, scaffolding, weeping/twisting
+	 * vines, and cave vines - grouped into one category rather than one apiece, since none of them
+	 * are common enough alone to be worth their own Tab stop, and they're all the same kind of
+	 * thing to a player: "can I climb this to get up/down". Every one of them grows/stacks as a
+	 * long vertical run the same way bamboo/sugar cane/kelp do (see {@link #addStalkClusters}'s
+	 * own doc), so each type gets clustered into one entry per run at its base the same way, rather
+	 * than narrating the same block name once per rung/segment while climbing up it. Weeping/
+	 * twisting/cave vines are each a head block plus a separate plant-body block type for the rest
+	 * of the strand (mirroring kelp in {@link #scanCrops}), so both halves feed the same set to
+	 * cluster as one strand instead of splitting into two entries at the head/body boundary.
+	 */
+	private static List<ScannerItem> scanClimbable(LocalPlayer player) {
+		Level level = player.level();
+		Vec3 eye = player.getEyePosition();
+		BlockPos center = player.blockPosition();
+		int r = (int) scanRange();
+
+		Set<BlockPos> ladderPositions = new HashSet<>();
+		Set<BlockPos> vinePositions = new HashSet<>();
+		Set<BlockPos> scaffoldingPositions = new HashSet<>();
+		Set<BlockPos> weepingVinePositions = new HashSet<>();
+		Set<BlockPos> twistingVinePositions = new HashSet<>();
+		Set<BlockPos> caveVinePositions = new HashSet<>();
+		forEachBlockInRange(level, center, r, (pos, state) -> {
+			Block block = state.getBlock();
+			if (block instanceof LadderBlock) {
+				ladderPositions.add(pos.immutable());
+			} else if (block instanceof VineBlock) {
+				vinePositions.add(pos.immutable());
+			} else if (block instanceof ScaffoldingBlock) {
+				scaffoldingPositions.add(pos.immutable());
+			} else if (block instanceof WeepingVinesBlock || block instanceof WeepingVinesPlantBlock) {
+				weepingVinePositions.add(pos.immutable());
+			} else if (block instanceof TwistingVinesBlock || block instanceof TwistingVinesPlantBlock) {
+				twistingVinePositions.add(pos.immutable());
+			} else if (block instanceof CaveVinesBlock || block instanceof CaveVinesPlantBlock) {
+				caveVinePositions.add(pos.immutable());
+			}
+			return true;
+		});
+
+		List<ScannerItem> results = new ArrayList<>();
+		addStalkClusters(eye, ladderPositions, results);
+		addStalkClusters(eye, vinePositions, results);
+		addStalkClusters(eye, scaffoldingPositions, results);
+		addStalkClusters(eye, weepingVinePositions, results);
+		addStalkClusters(eye, twistingVinePositions, results);
+		addStalkClusters(eye, caveVinePositions, results);
+		results.sort(Comparator.comparingDouble(ScannerItem::distance));
+		return results;
 	}
 
 	/**

@@ -53,12 +53,21 @@ public final class AutoWalkController {
 	// satisfies on a node that's genuinely (orthogonally) adjacent to the target, so the walk
 	// keeps going until the player could actually reach out and interact with it.
 	private static final int REACH_RANGE = 1;
+	// A ladder/vine/scaffolding/etc. isn't an obstacle to stop beside - it's a thin, non-solid
+	// shape the player needs to actually walk into the same cell as, same as any other open
+	// ground. Reusing REACH_RANGE 1 for one of these would let the pathfinder settle for *any*
+	// horizontally adjacent cell around the target - including one on a completely different
+	// side of whatever solid block the target is mounted against, close enough by raw distance
+	// but with no way to actually reach the target from there (a wall in between, or, for a
+	// ladder specifically, simply the wrong side of it to climb). See {@link #startForClimb}.
+	private static final int CLIMB_REACH_RANGE = 0;
 	private static final double NODE_ARRIVAL_DISTANCE_SQR = 0.5 * 0.5;
 
 	private static Path currentPath;
 	private static ClientInput previousInput;
 	private static Component targetName;
 	private static Runnable onArrival;
+	private static int reachRange = REACH_RANGE;
 	private static final StuckDetector STUCK = new StuckDetector();
 	// Whether this stuck episode has already tried recomputing the path once - only one retry
 	// per episode, so a genuinely unreachable spot still gives up instead of re-pathing forever.
@@ -76,6 +85,7 @@ public final class AutoWalkController {
 		previousInput = null;
 		targetName = null;
 		onArrival = null;
+		reachRange = REACH_RANGE;
 		STUCK.reset();
 		rePathAttempted = false;
 	}
@@ -93,11 +103,26 @@ public final class AutoWalkController {
 	 * player doing it themselves.
 	 */
 	public static void start(Minecraft client, LocalPlayer player, BlockPos target, Component name, Runnable onArrival) {
+		start(client, player, target, name, onArrival, REACH_RANGE);
+	}
+
+	/**
+	 * Same as {@link #start(Minecraft, LocalPlayer, BlockPos, Component, Runnable)}, for a target
+	 * that needs to be walked into rather than stood beside - a ladder, vine, scaffolding, or
+	 * anything else in the Climbable scanner category. {@code target} should be the climbable
+	 * block's own position, not an adjacent one; see {@link #CLIMB_REACH_RANGE}'s own doc for why
+	 * the ordinary reach range would let the player arrive on the wrong side of it entirely.
+	 */
+	public static void startForClimb(Minecraft client, LocalPlayer player, BlockPos target, Component name, Runnable onArrival) {
+		start(client, player, target, name, onArrival, CLIMB_REACH_RANGE);
+	}
+
+	private static void start(Minecraft client, LocalPlayer player, BlockPos target, Component name, Runnable onArrival, int reachRange) {
 		if (isActive()) {
 			cancel(client, player);
 		}
 
-		Path path = ClientPathfinding.computePath(player, target, MAX_PATH_LENGTH, REACH_RANGE);
+		Path path = ClientPathfinding.computePath(player, target, MAX_PATH_LENGTH, reachRange);
 		if (path == null || path.getNodeCount() == 0) {
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.autowalk_unreachable"));
 			return;
@@ -106,6 +131,7 @@ public final class AutoWalkController {
 		currentPath = path;
 		targetName = name;
 		AutoWalkController.onArrival = onArrival;
+		AutoWalkController.reachRange = reachRange;
 		previousInput = player.input;
 		player.input = new RouteInput();
 		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.autowalk_started", name));
@@ -224,7 +250,7 @@ public final class AutoWalkController {
 	/** Recomputes the path to the original target from the player's current position - true (and swaps {@link #currentPath}) only if one was actually found. */
 	private static boolean tryRepath(LocalPlayer player) {
 		BlockPos target = currentPath.getTarget();
-		Path fresh = ClientPathfinding.computePath(player, target, MAX_PATH_LENGTH, REACH_RANGE);
+		Path fresh = ClientPathfinding.computePath(player, target, MAX_PATH_LENGTH, reachRange);
 		if (fresh == null || fresh.getNodeCount() == 0) {
 			return false;
 		}

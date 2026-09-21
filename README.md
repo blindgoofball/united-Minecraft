@@ -86,10 +86,10 @@ Cycle through nearby things by category and get full narration, targeting, and
 navigation without needing to see or aim at them.
 
 - Categories: Interactables, Mechanisms, Items, Passive Mobs, Hostile Mobs, Trees,
-  Ores, Liquids, Crops, Search, Biomes, Markers (see Map Markers below), Players,
-  and Entities (minecarts, boats, armor stands, item frames and glow item frames -
-  narrating what they're holding, if anything - paintings by their actual name
-  rather than just "Painting", end crystals, and leash knots).
+  Ores, Liquids, Crops, Climbable, Search, Biomes, Markers (see Map Markers below),
+  Players, and Entities (minecarts, boats, armor stands, item frames and glow item
+  frames - narrating what they're holding, if anything - paintings by their actual
+  name rather than just "Painting", end crystals, and leash knots).
 - An optional Settings toggle skips empty categories entirely when cycling with
   Home/End, instead of stopping on them to announce "empty" - off by default.
 - Selecting a category announces how many items it found (e.g. "Trees, 13"),
@@ -122,6 +122,14 @@ navigation without needing to see or aim at them.
   won't show up until there's an actual way to see it.
 - Ore detection (here and in the Mining Radar) only flags ore you could actually
   see - not ore sealed behind an unmined wall.
+- Climbable covers ladders, vines, scaffolding, weeping/twisting vines, and cave
+  vines - anything you can climb up or down - reporting each vertical run as one
+  entry at its base, narrating how many blocks tall it currently is (not one entry
+  per rung/segment) and whether it leads up, down, or both relative to your
+  current height - handy for telling a shaft leading further down from one
+  leading back up before you commit to climbing it. Selecting one with Enter (or
+  Shift+Enter to walk there first) faces you squarely at it, ready to climb, the
+  same targeting every other block category already gets.
 - Search finds every visible block whose name matches a term you type - Shift+U
   while it's the selected category (instead of naming, which it does for every
   other category) opens a prompt for the term, then finds anything nearby whose
