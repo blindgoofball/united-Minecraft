@@ -1530,23 +1530,22 @@ public final class BuildModeController {
 		return findSupportFace(level, cursor) != null;
 	}
 
-	// Checked in this order when looking for a non-replaceable neighbor to place against:
-	// sideways neighbors first (attaching to whatever you just built next to the cursor is
-	// almost always the intent once one exists), then the ground below, then finally the
-	// block above as a last resort.
+	// Checked in this order when looking for a non-replaceable neighbor to place against: the
+	// ground below first (stacking upward on top of what's already there is the default
+	// building style), then sideways neighbors, then finally the block above as a last resort.
 	private static final Direction[] FACE_PRIORITY = {
-			Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST, Direction.DOWN, Direction.UP,
+			Direction.DOWN, Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST, Direction.UP,
 	};
 
 	// Same as FACE_PRIORITY, but with DOWN and UP swapped - used by faceTryOrder when
-	// #placeUpperHalf is set and there's no sideways neighbor to nudge (see that field's own
-	// doc). A neighbor above the cursor is clicked on its underside, which every HALF-bearing
-	// block (StairBlock, SlabBlock, TrapDoorBlock) unconditionally resolves to its upper half -
-	// preferring it here over the ground below (which unconditionally resolves to the lower
-	// half, no matter the click position) is what makes the toggle actually take effect in that
-	// fallback case instead of being silently overridden by the floor.
+	// #placeUpperHalf is set (see that field's own doc). A neighbor above the cursor is clicked
+	// on its underside, which every HALF-bearing block (StairBlock, SlabBlock, TrapDoorBlock)
+	// unconditionally resolves to its upper half - preferring it here, ahead of the ground below
+	// (which unconditionally resolves to the lower half, no matter the click position, and would
+	// otherwise win first per FACE_PRIORITY's own ordering) is what makes the toggle actually
+	// take effect instead of being silently overridden by the floor.
 	private static final Direction[] FACE_PRIORITY_UPPER_HALF = {
-			Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST, Direction.UP, Direction.DOWN,
+			Direction.UP, Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST, Direction.DOWN,
 	};
 
 	/**
