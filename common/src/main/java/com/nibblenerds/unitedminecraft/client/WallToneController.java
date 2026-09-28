@@ -4,13 +4,8 @@ import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.Map;
 
-import com.nibblenerds.unitedminecraft.client.mixin.SoundEngineAccessorMixin;
-import com.nibblenerds.unitedminecraft.client.mixin.SoundManagerAccessorMixin;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.sounds.ChannelAccess;
-import net.minecraft.client.sounds.SoundEngine;
 import net.minecraft.client.sounds.SoundManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -45,9 +40,9 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * tunnel from a cavern from the open sky.
  *
  * <p>Responsiveness over smoothing, as in Grimdark and Wrath Access: volumes are applied
- * directly with no glide, and pushed straight to the playing channel (see {@link
- * #setVolumeNow}). {@code AccessibilityTickHandler} calls this last, after every turn and
- * rotation-owning mode has run, so a snap turn is heard the same tick it happens.
+ * directly with no glide, and {@code AccessibilityTickHandler} calls this last, after every
+ * turn and rotation-owning mode has run, so a snap turn is heard on vanilla's very next sound
+ * tick.
  *
  * <p>Voices are only started once something is in range and released after a couple of seconds
  * of silence, so open ground costs no sound channels.
@@ -262,6 +257,7 @@ public final class WallToneController {
 			// style setting changed - forget it so it's restarted below if it's still wanted.
 			sounds.stop(sound);
 			playing.remove(voice);
+			silentTicks.remove(voice);
 			sound = null;
 		}
 
@@ -274,11 +270,11 @@ public final class WallToneController {
 				sounds.play(sound);
 				playing.put(voice, sound);
 			} else {
-				setVolumeNow(sounds, sound, target);
+				sound.setVolume(target);
 			}
 			silentTicks.put(voice, 0);
 		} else if (sound != null) {
-			setVolumeNow(sounds, sound, 0.0f);
+			sound.setVolume(0.0f);
 			int silent = silentTicks.getOrDefault(voice, 0) + 1;
 			if (silent >= SILENT_TICKS_BEFORE_RELEASE) {
 				sounds.stop(sound);
@@ -287,22 +283,6 @@ public final class WallToneController {
 			} else {
 				silentTicks.put(voice, silent);
 			}
-		}
-	}
-
-	/**
-	 * Sets the voice's volume and pushes it to its playing channel now, rather than waiting for
-	 * vanilla's own sound tick - which runs before this (end-of-tick) update, so it would only
-	 * pick the change up a whole tick later. See {@link SoundEngineAccessorMixin}.
-	 */
-	private static void setVolumeNow(SoundManager sounds, WallToneSound sound, float volume) {
-		sound.setVolume(volume);
-		SoundEngine engine = ((SoundManagerAccessorMixin) sounds).unitedMinecraft$getSoundEngine();
-		SoundEngineAccessorMixin access = (SoundEngineAccessorMixin) engine;
-		ChannelAccess.ChannelHandle handle = access.unitedMinecraft$getInstanceToChannel().get(sound);
-		if (handle != null) {
-			float gain = access.unitedMinecraft$calculateVolume(sound);
-			handle.execute(channel -> channel.setVolume(gain));
 		}
 	}
 

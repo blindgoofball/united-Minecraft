@@ -56,7 +56,7 @@ public final class UnitedMinecraftConfig {
 	public boolean preciseCoordinatesEnabled = false;
 	public boolean mountJumpCueEnabled = true;
 	public boolean mapBeaconEnabled = true;
-	public boolean wallTonesEnabled = true;
+	public boolean wallTonesEnabled = false;
 	public int wallToneRange = 8;
 	public int wallToneVolume = 60;
 	public boolean wallToneObstaclesEnabled = true;

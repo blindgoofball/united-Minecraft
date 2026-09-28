@@ -1,6 +1,8 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import java.util.EnumMap;
 import java.util.Locale;
+import java.util.Map;
 
 import net.minecraft.resources.Identifier;
 
@@ -37,6 +39,14 @@ public enum WallToneVoice {
 
 	/** How far from the listener each voice is placed - close enough to be clearly directional, never so close it's "inside the head". */
 	private static final double EAR_DISTANCE = 2.0;
+
+	/** Built once so {@link #of} is a lookup rather than a per-call scan of {@link #values}. */
+	private static final Map<Kind, Map<Direction, WallToneVoice>> BY_KIND_AND_DIRECTION = new EnumMap<>(Kind.class);
+	static {
+		for (WallToneVoice voice : values()) {
+			BY_KIND_AND_DIRECTION.computeIfAbsent(voice.kind, k -> new EnumMap<>(Direction.class)).put(voice.direction, voice);
+		}
+	}
 
 	public enum Kind {
 		WALL, OBSTACLE, CEILING
@@ -120,11 +130,10 @@ public enum WallToneVoice {
 
 	/** The wall or obstacle voice for a horizontal direction. */
 	public static WallToneVoice of(Kind kind, Direction direction) {
-		for (WallToneVoice voice : values()) {
-			if (voice.kind == kind && voice.direction == direction) {
-				return voice;
-			}
+		WallToneVoice voice = BY_KIND_AND_DIRECTION.getOrDefault(kind, Map.of()).get(direction);
+		if (voice == null) {
+			throw new IllegalArgumentException(kind + " " + direction);
 		}
-		throw new IllegalArgumentException(kind + " " + direction);
+		return voice;
 	}
 }
