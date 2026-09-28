@@ -129,6 +129,22 @@ public final class SettingsScreen extends Screen {
 				config.mountJumpCueEnabled, value -> config.mountJumpCueEnabled = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.map_beacon_enabled",
 				config.mapBeaconEnabled, value -> config.mapBeaconEnabled = value);
+		y = addToggle(x, y, "united_minecraft.settings_screen.wall_tones_enabled",
+				config.wallTonesEnabled, value -> config.wallTonesEnabled = value);
+		y = addSlider(x, y, 2.0, 16.0, 1.0, config.wallToneRange,
+				"united_minecraft.settings_screen.wall_tone_range",
+				value -> config.wallToneRange = (int) Math.round(value));
+		y = addSlider(x, y, 5.0, 100.0, 5.0, config.wallToneVolume,
+				"united_minecraft.settings_screen.wall_tone_volume",
+				value -> config.wallToneVolume = (int) Math.round(value));
+		y = addCycle(x, y, "united_minecraft.settings_screen.wall_tone_style",
+				List.of(UnitedMinecraftConfig.WallToneStyle.values()), config.wallToneStyle,
+				style -> Component.translatable("united_minecraft.settings_screen.wall_tone_style." + style.name().toLowerCase(Locale.ROOT)),
+				value -> config.wallToneStyle = value);
+		y = addToggle(x, y, "united_minecraft.settings_screen.wall_tone_obstacles_enabled",
+				config.wallToneObstaclesEnabled, value -> config.wallToneObstaclesEnabled = value);
+		y = addToggle(x, y, "united_minecraft.settings_screen.wall_tone_ceiling_enabled",
+				config.wallToneCeilingEnabled, value -> config.wallToneCeilingEnabled = value);
 
 		registerRow(addRenderableWidget(Button.builder(Component.translatable("united_minecraft.settings_screen.sound_glossary"),
 				button -> Minecraft.getInstance().gui.setScreen(new SoundGlossaryScreen()))

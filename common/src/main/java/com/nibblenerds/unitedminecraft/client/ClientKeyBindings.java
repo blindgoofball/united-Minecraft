@@ -101,6 +101,9 @@ public final class ClientKeyBindings {
 	public static final KeybindAction TOGGLE_NAV_RADAR =
 			new KeybindAction("toggle_nav_radar", KeybindCategory.MOVEMENT_AND_MODES, new Keybind(InputConstants.KEY_N, 0));
 
+	public static final KeybindAction TOGGLE_WALL_TONES = new KeybindAction(
+			"toggle_wall_tones", KeybindCategory.MOVEMENT_AND_MODES, new Keybind(InputConstants.KEY_N, InputConstants.MOD_SHIFT));
+
 	public static final KeybindAction TOGGLE_MINING_RADAR =
 			new KeybindAction("toggle_mining_radar", KeybindCategory.MOVEMENT_AND_MODES, new Keybind(InputConstants.KEY_M, 0));
 

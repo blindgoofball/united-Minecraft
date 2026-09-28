@@ -276,6 +276,46 @@ Toggleable audio radar covering front, left, and right as you walk - a sound
 for an obstruction (pitched differently if it's low enough to jump), a chime
 for a clear direction - so you can navigate by ear.
 
+### Wall Tones
+
+Continuous looping sounds for ahead, behind, left, and right (relative to the
+way you're facing), each louder the closer a wall is in that direction and
+silent when nothing is in range - a way to feel the shape of the space around
+you by ear. Shift+N turns them on and off. They're positioned in 3D around your
+head, so they work best with Minecraft's Directional Audio setting on.
+
+Heavily inspired by the wall tones in
+[Wrath Access](https://github.com/bradjrenshaw/wotr-access) (Pathfinder: Wrath
+of the Righteous) and [Grimdark](https://github.com/ahicks92/grimdark) (Grim
+Dawn), adapted here for a 3D, first-person world.
+
+**What you're listening for:**
+
+- **Which direction:** each has its own pitch - ahead is highest, behind is
+  lowest, and left and right sit in between, right a little higher than left.
+- **How close:** louder means closer, rising sharply in the last couple of
+  blocks. Silence means that direction is open for at least the full range
+  (8 blocks by default).
+- **Steady vs. pulsing:** steady is a wall - anything at head or waist height
+  you can't walk through, fences included. Pulsing is a one-block step you
+  could jump onto. You can hear both in one direction: a step close by, with a
+  wall farther behind it.
+- **Common shapes:** a corridor is both side sounds holding steady; one of them
+  dropping out as you walk is a doorway or side passage. A room plays all four,
+  loudest toward the nearest wall. A corner is ahead plus one side; a dead end
+  is ahead plus both sides. Outdoors is mostly silence, with pulses for hilly
+  ground.
+- **Not included:** drops and holes (Fall Warning covers those), water, lava,
+  tall grass, flowers, and mobs. Each direction checks one straight line from
+  your center, so stopping and turning slowly in place sweeps the room.
+
+Settings has the range, volume, a choice between **Tones** and **Noise**
+(band-filtered pink noise in the same low-to-high order, which some people find
+easier to place in 3D), the separate obstacle sound, and an optional ceiling
+sound above your head that gets louder as the ceiling gets lower - telling a
+tight tunnel from a cavern from open sky. Every sound can be previewed from the
+Sound Glossary.
+
 ### Mining Radar
 
 Toggleable passive alert for valuable ore exposed nearby while mining - a
@@ -571,6 +611,7 @@ Options > Controls.
 | J (Alt+J reverses) | Build Mode: cycle placement facing |
 | Ctrl+J | Build Mode: toggle upper/lower half placement (upside-down stairs, top slabs, a trapdoor that opens from the top) |
 | N | Toggle Navigation Radar |
+| Shift+N | Toggle Wall Tones |
 | M | Toggle Mining Radar |
 | K | Toggle Combat Mode |
 | Y (Shift = swim there) | Find the nearest way out of water |

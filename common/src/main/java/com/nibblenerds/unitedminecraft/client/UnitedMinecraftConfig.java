@@ -56,10 +56,21 @@ public final class UnitedMinecraftConfig {
 	public boolean preciseCoordinatesEnabled = false;
 	public boolean mountJumpCueEnabled = true;
 	public boolean mapBeaconEnabled = true;
+	public boolean wallTonesEnabled = true;
+	public int wallToneRange = 8;
+	public int wallToneVolume = 60;
+	public boolean wallToneObstaclesEnabled = true;
+	public boolean wallToneCeilingEnabled = false;
+	public WallToneStyle wallToneStyle = WallToneStyle.TONES;
 
 	/** Governs the audio cue for the weapon attack-strength meter refilling - see {@link CombatModeController#tickAttackCue}. */
 	public enum CombatCueMode {
 		OFF, COMBAT_MODE_ONLY, ALWAYS
+	}
+
+	/** What the wall tones sound like - see {@link WallToneSynth}. */
+	public enum WallToneStyle {
+		TONES, NOISE
 	}
 
 	private UnitedMinecraftConfig() {
@@ -84,11 +95,17 @@ public final class UnitedMinecraftConfig {
 		miningRadarRange = (int) clamp("miningRadarRange", miningRadarRange, 4, 16);
 		navRadarRange = (int) clamp("navRadarRange", navRadarRange, 4, 16);
 		scannerRange = clamp("scannerRange", scannerRange, 8.0, 64.0);
+		wallToneRange = (int) clamp("wallToneRange", wallToneRange, 2, 16);
+		wallToneVolume = (int) clamp("wallToneVolume", wallToneVolume, 5, 100);
 		durabilityWarningThreshold = (int) clamp("durabilityWarningThreshold", durabilityWarningThreshold, 1, 50);
 		// Deliberately capped by the warning threshold rather than a fixed 50: "critical" above
 		// "getting low" would mean the critical warning always fired first and the other never.
 		durabilityCriticalThreshold =
 				(int) clamp("durabilityCriticalThreshold", durabilityCriticalThreshold, 1, durabilityWarningThreshold);
+		if (wallToneStyle == null) {
+			LOGGER.warn("Setting wallToneStyle was missing or not a recognised value, using {}", WallToneStyle.TONES);
+			wallToneStyle = WallToneStyle.TONES;
+		}
 		if (combatCueMode == null) {
 			LOGGER.warn("Setting combatCueMode was missing or not a recognised value, using {}", CombatCueMode.COMBAT_MODE_ONLY);
 			combatCueMode = CombatCueMode.COMBAT_MODE_ONLY;
