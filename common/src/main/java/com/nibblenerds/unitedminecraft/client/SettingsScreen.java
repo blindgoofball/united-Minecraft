@@ -39,15 +39,17 @@ import net.minecraft.util.Mth;
  * list-widget framework (which would make each row two narrated elements - a label plus a
  * control - instead of one). {@link #rows} remembers each row's natural ("unscrolled") Y
  * position; {@link #applyScroll()} offsets every row by {@link #scrollOffset} and hides
- * ({@code visible = false}) any row that ends up entirely outside {@code [0, height]}. That
+ * ({@code visible = false}) any row that isn't <em>fully</em> inside {@code [0, height]}. That
  * last part isn't cosmetic: on a small logical GUI resolution (e.g. a high-DPI display with
  * "Auto" GUI scale) this screen's rows can be taller than the screen itself, and vanilla's
- * 26.2 renderer throws {@code IllegalArgumentException: Scissor size must be >0} if it's ever
- * asked to draw a widget whose scissor rectangle doesn't intersect the screen at all -
- * {@link AbstractWidget#extractRenderState} already skips extraction entirely when
- * {@code visible} is false, which is exactly the guard we need. Tab/Shift+Tab
- * ({@link #keyPressed}) and the mouse wheel ({@link #mouseScrolled}) both funnel through
- * {@link #applyScroll()} so focus, narration, and rendering never disagree about what's
+ * renderer throws an {@code IllegalArgumentException} if it's ever asked to draw a widget whose
+ * scissor rectangle isn't entirely contained in the screen - not merely a row poking a few
+ * pixels off the bottom edge, confirmed against {@code FrontendRenderPass#enableScissor} in the
+ * 26.3 sources, which is stricter than the "must be non-zero-size" check an earlier version of
+ * this screen was written against. {@link AbstractWidget#extractRenderState} already skips
+ * extraction entirely when {@code visible} is false, which is exactly the guard we need.
+ * Tab/Shift+Tab ({@link #keyPressed}) and the mouse wheel ({@link #mouseScrolled}) both funnel
+ * through {@link #applyScroll()} so focus, narration, and rendering never disagree about what's
  * on screen.
  */
 public final class SettingsScreen extends Screen {
@@ -222,17 +224,19 @@ public final class SettingsScreen extends Screen {
 
 	/**
 	 * Offsets every row by {@link #scrollOffset} from its recorded base position, and hides
-	 * (via {@code visible = false}) any row that ends up entirely above or below the screen so
-	 * it's skipped by rendering instead of handed to the scissor-clipping renderer with a
-	 * zero-area rectangle. Mouse focus/click hit-testing follows the same repositioned bounds,
-	 * so an off-screen row is also unreachable by mouse until it's scrolled into view.
+	 * (via {@code visible = false}) any row that isn't <em>fully</em> within {@code [0, height]}
+	 * so it's skipped by rendering instead of handed to the scissor-clipping renderer with a
+	 * rectangle that pokes past the screen's own edge - not just a zero-area one, which is all
+	 * an earlier version of this check excluded (see the class doc). Mouse focus/click
+	 * hit-testing follows the same repositioned bounds, so a row this hides is also unreachable
+	 * by mouse until it's scrolled fully into view.
 	 */
 	private void applyScroll() {
 		for (int i = 0; i < rows.size(); i++) {
 			AbstractWidget widget = rows.get(i);
 			int top = rowBaseY.get(i) - scrollOffset;
 			widget.setY(top);
-			widget.visible = top + widget.getHeight() > 0 && top < this.height;
+			widget.visible = top >= 0 && top + widget.getHeight() <= this.height;
 		}
 	}
 
