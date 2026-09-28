@@ -435,22 +435,38 @@ result - pressing Up again from the very first result returns to the field.
 
 ### Settings
 
-A dedicated key opens a settings screen for the things worth tuning to
-taste: on/off switches for Hostile Radar, its melee-range alert, Fall
-Warning, Durability Awareness, Tool Harvest Awareness (all otherwise
-always-on with no toggle of their own), skipping empty Scanner categories,
-auto-locking onto a mob after walking to it, and re-narrating Build Mode's
-cursor after a successful place/break/interact (on by default - turn it off
-if you'd rather rely on the sound/visual feedback alone for a routine
-action), a three-way switch for the Combat Mode attack-ready cue (off,
-Combat Mode only, or always), and range/threshold sliders for Hostile
-Radar, Fall Warning (including how many seconds ahead it looks), Mining
-Radar, Navigation Radar, the Scanner, and Durability Awareness's
-warning/critical thresholds. Saved to a config file shared across every
-world and server, and built from the same vanilla screen widgets as the
-rest of Minecraft's Options menus rather than a third-party settings
-toolkit, so it narrates exactly as reliably - including scrolling to keep
-whatever's focused on screen as the list of settings grows past what fits.
+A dedicated key opens a Settings hub with four categories, so no single
+page grows into a long scroll of unrelated toggles as more settings get
+added:
+
+- **Detection & Alerts** - on/off switches for Hostile Radar and its
+  melee-range alert and Fall Warning (all otherwise always-on with no
+  toggle of their own), range/threshold sliders for Hostile Radar, Fall
+  Warning (including how many seconds ahead it looks), Mining Radar,
+  Navigation Radar, and the Scanner, plus the Scanner's own toggles for
+  skipping empty categories and auto-locking onto a mob after walking
+  to it.
+- **Wall Tones** - range, volume, Tones/Noise style, the separate
+  pulsing obstacle sound, and the ceiling sound.
+- **Modes & Movement** - re-narrating Build Mode's cursor after a
+  successful place/break/interact (on by default - turn it off if you'd
+  rather rely on the sound/visual feedback alone for a routine action),
+  a three-way switch for the Combat Mode attack-ready cue (off, Combat
+  Mode only, or always), Auto-Walk's always-sprint toggle, and the mount
+  jump charge audio cue.
+- **General** - Durability Awareness and its warning/critical
+  thresholds, Tool Harvest Awareness, Precise Coordinates, and Map
+  Beacon (all otherwise always-on with no toggle of their own, same as
+  the alerts above).
+
+Each category page is its own short, scrollable list rather than every
+setting the mod has in one long one, with a Back button (or Escape)
+returning to the hub. Saved to a config file shared across every world
+and server, and built from the same vanilla screen widgets as the rest
+of Minecraft's Options menus rather than a third-party settings toolkit,
+so it narrates exactly as reliably - including scrolling to keep
+whatever's focused on screen as a category's own list grows past what
+fits.
 
 A button on that screen opens the Sound and Cue Glossary - a scrollable,
 keyboard-navigable list of every audio cue this mod plays and what it means,
