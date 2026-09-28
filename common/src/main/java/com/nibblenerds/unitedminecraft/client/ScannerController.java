@@ -783,13 +783,22 @@ public final class ScannerController {
 	 * hierarchies don't share a common tamed/owned supertype despite both implementing {@link
 	 * OwnableEntity}. Sitting is reported first, matching how a player would describe an animal
 	 * ("sitting, tamed by X") - its posture is the more immediately observable fact.
+	 *
+	 * <p>Deliberately {@link TamableAnimal#isInSittingPose} rather than {@link
+	 * TamableAnimal#isOrderedToSit} - the latter is a plain field the client only ever sets
+	 * itself, as a local prediction of the very right-click that toggles it, and is never
+	 * corrected by anything from the server; a pet that was already sitting before this player
+	 * came in range, or was ordered to sit by someone else, would read as not sitting forever.
+	 * {@code isInSittingPose} is the actual synced flag - the server's own {@code
+	 * SitWhenOrderedToGoal} keeps it matching the real order for every client watching the
+	 * entity, which is what the visible sitting animation is driven by anyway.
 	 */
 	private static List<Component> tameStatusFragments(Entity entity) {
 		List<Component> fragments = new ArrayList<>();
 		boolean tamed;
 		if (entity instanceof TamableAnimal tamable) {
 			tamed = tamable.isTame();
-			if (tamed && tamable.isOrderedToSit()) {
+			if (tamed && tamable.isInSittingPose()) {
 				fragments.add(Component.translatable("united_minecraft.narrate.mob_sitting"));
 			}
 		} else if (entity instanceof AbstractHorse horse) {
