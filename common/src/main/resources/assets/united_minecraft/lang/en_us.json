@@ -474,7 +474,6 @@
 	"united_minecraft.settings_screen.precise_coordinates_enabled": "Precise Coordinates (One Decimal Place)",
 	"united_minecraft.settings_screen.mount_jump_cue_enabled": "Mount Jump Charge Audio Cue",
 	"united_minecraft.settings_screen.map_beacon_enabled": "Map Beacon (Treasure/Explorer Map Audio Cue)",
-	"united_minecraft.settings_screen.wall_tones_enabled": "Wall Tones",
 	"united_minecraft.settings_screen.wall_tone_range": "Wall Tone Range (blocks)",
 	"united_minecraft.settings_screen.wall_tone_volume": "Wall Tone Volume (percent)",
 	"united_minecraft.settings_screen.wall_tone_style": "Wall Tone Sound",

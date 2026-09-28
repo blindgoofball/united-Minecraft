@@ -129,8 +129,6 @@ public final class SettingsScreen extends Screen {
 				config.mountJumpCueEnabled, value -> config.mountJumpCueEnabled = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.map_beacon_enabled",
 				config.mapBeaconEnabled, value -> config.mapBeaconEnabled = value);
-		y = addToggle(x, y, "united_minecraft.settings_screen.wall_tones_enabled",
-				config.wallTonesEnabled, value -> config.wallTonesEnabled = value);
 		y = addSlider(x, y, 2.0, 16.0, 1.0, config.wallToneRange,
 				"united_minecraft.settings_screen.wall_tone_range",
 				value -> config.wallToneRange = (int) Math.round(value));
