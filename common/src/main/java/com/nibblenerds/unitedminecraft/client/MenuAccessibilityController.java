@@ -10,6 +10,7 @@ import java.util.function.Predicate;
 import com.mojang.blaze3d.platform.InputConstants;
 
 import com.nibblenerds.unitedminecraft.client.access.AnvilScreenAccess;
+import com.nibblenerds.unitedminecraft.client.access.BeaconScreenAccess;
 import com.nibblenerds.unitedminecraft.client.access.CreativeModeInventoryScreenAccess;
 import com.nibblenerds.unitedminecraft.client.access.RecipeBookComponentAccess;
 import com.nibblenerds.unitedminecraft.client.access.RecipeBookScreenAccess;
@@ -29,16 +30,20 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.protocol.game.ServerboundSelectTradePacket;
+import net.minecraft.network.protocol.game.ServerboundSetBeaconPacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.context.ContextMap;
+import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.StackedItemContents;
 import net.minecraft.world.inventory.AbstractCraftingMenu;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.AbstractFurnaceMenu;
 import net.minecraft.world.inventory.AnvilMenu;
+import net.minecraft.world.inventory.BeaconMenu;
 import net.minecraft.world.inventory.BrewingStandMenu;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.EnchantmentMenu;
@@ -51,6 +56,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeBookCategory;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.MerchantOffers;
+import net.minecraft.world.level.block.entity.BeaconBlockEntity;
 import net.minecraft.world.item.crafting.display.FurnaceRecipeDisplay;
 import net.minecraft.world.item.crafting.display.RecipeDisplay;
 import net.minecraft.world.item.crafting.display.RecipeDisplayEntry;
@@ -145,6 +151,19 @@ import net.minecraft.world.item.enchantment.Enchantment;
  * (they used to fall through every {@code instanceof} check in {@link #slotRole} to a generic
  * "Storage", since none of them recognized {@link MerchantMenu} at all).
  *
+ * <p>{@link BeaconMenu} gets its own Beacon Effects section for the same reason as Enchant
+ * Options and Trades - the effect grid, and the Confirm/Cancel buttons below it, are all real
+ * {@code AbstractButton}s, not slots, so without a dedicated section they'd be as unreachable
+ * from the keyboard as Enchant Options and Trades were before those existed. Every tier's
+ * effect choices flatten into one Up/Down list in the screen's own top-to-bottom order (see
+ * {@link #resolveBeaconOption}), and Enter applies whichever is focused exactly like the real
+ * button would: a primary/secondary pick mirrors {@code BeaconPowerButton#onPress} (including
+ * "choosing a different primary clears a non-matching secondary"), and Confirm sends the same
+ * {@link ServerboundSetBeaconPacket} the real Confirm button does. None of this is reachable
+ * through {@link BeaconMenu} itself - the pending, not-yet-confirmed choice only ever lives in
+ * {@code BeaconScreen}'s own private fields until Confirm is pressed, which is what {@link
+ * BeaconScreenAccess} exists to reach.
+ *
  * <p>The Container section's own announced name is the screen's real {@link
  * AbstractContainerScreen#getTitle}, not a fixed "Container" label - so a chest says "Chest", a
  * furnace says "Furnace", the villager's own menu says the villager's name, and so on, matching
@@ -178,6 +197,8 @@ public final class MenuAccessibilityController {
 	private static String recipeSearchTerm = "";
 
 	private static int enchantOptionIndex = 0;
+
+	private static int beaconOptionIndex = 0;
 
 	private static int tradeIndex = 0;
 
@@ -298,7 +319,7 @@ public final class MenuAccessibilityController {
 			return;
 		}
 		if (currentSection == Section.RECIPE_BOOK || currentSection == Section.ENCHANT_OPTIONS
-				|| currentSection == Section.TRADES) {
+				|| currentSection == Section.BEACON_OPTIONS || currentSection == Section.TRADES) {
 			trackedScreen.setFocused(null);
 		}
 	}
@@ -342,7 +363,8 @@ public final class MenuAccessibilityController {
 		// focusedSlot worth watching - the others narrate off their own virtual index and may
 		// still hold a stale focusedSlot reference from whichever slot section was current before.
 		if (currentSection == Section.RECIPE_BOOK || currentSection == Section.ENCHANT_OPTIONS
-				|| currentSection == Section.RENAME || currentSection == Section.TRADES) {
+				|| currentSection == Section.BEACON_OPTIONS || currentSection == Section.RENAME
+				|| currentSection == Section.TRADES) {
 			return;
 		}
 		Slot slot = currentSlot(trackedScreen.getMenu());
@@ -416,6 +438,9 @@ public final class MenuAccessibilityController {
 		}
 		if (currentSection == Section.ENCHANT_OPTIONS) {
 			return handleEnchantOptionKey(screen, player, event);
+		}
+		if (currentSection == Section.BEACON_OPTIONS) {
+			return handleBeaconOptionKey(screen, player, event);
 		}
 		if (currentSection == Section.TRADES) {
 			return handleTradeKey(screen, event);
@@ -546,6 +571,11 @@ public final class MenuAccessibilityController {
 		if (menu instanceof MerchantMenu) {
 			sections.add(Section.TRADES);
 		}
+		// Leads for the same reason: the effect grid is the actual point of a beacon, and sits
+		// well above the single payment slot the CONTAINER section below would otherwise cover.
+		if (menu instanceof BeaconMenu) {
+			sections.add(Section.BEACON_OPTIONS);
+		}
 		// Creative's Inventory tab has no real "container" section of its own - its crafting
 		// slots are parked off-screen (filtered out by sectionSlots' x < 0 check already), and
 		// its one other non-player-inventory slot is just the "drag here to delete" trash icon,
@@ -613,6 +643,9 @@ public final class MenuAccessibilityController {
 		} else if (currentSection == Section.ENCHANT_OPTIONS) {
 			enchantOptionIndex = 0;
 			narrateEnchantOption(screen, player, true);
+		} else if (currentSection == Section.BEACON_OPTIONS) {
+			beaconOptionIndex = 0;
+			narrateBeaconOption(screen, true);
 		} else if (currentSection == Section.RENAME) {
 			enterRenameSection(screen);
 		} else if (currentSection == Section.TRADES) {
@@ -672,7 +705,7 @@ public final class MenuAccessibilityController {
 			// moveFocus is never called while any of these sections is active - each routes its
 			// own keys to a dedicated handler (or straight to vanilla) before this method is
 			// ever reached.
-			case RECIPE_BOOK, ENCHANT_OPTIONS, RENAME, TRADES -> null;
+			case RECIPE_BOOK, ENCHANT_OPTIONS, BEACON_OPTIONS, RENAME, TRADES -> null;
 		};
 		if (next != null) {
 			focusedSlot = next;
@@ -1212,6 +1245,207 @@ public final class MenuAccessibilityController {
 				.orElse(Component.translatable("united_minecraft.menu.enchant_option_none"));
 	}
 
+	/**
+	 * A beacon's own effect-selection grid is a column of real {@code AbstractButton}s, not
+	 * slots, for the same reason Enchant Options needs its own section above - vanilla's own Tab
+	 * order would find them, but {@link #handleKey} always claims Tab first for this class's own
+	 * Container/Inventory/Hotbar switching, so without a dedicated section they'd never be
+	 * reachable from the keyboard at all. Every unlocked tier's effect choices are flattened into
+	 * one Up/Down list, in the same order the screen lays them out top to bottom: tier 1-3's
+	 * primary choices, tier 4's secondary choices (plus the "duplicate the primary effect"
+	 * option vanilla only shows once a primary is picked), then Confirm and Cancel. Locked tiers
+	 * stay in the list rather than being hidden, same as a locked Enchant Options slot - see
+	 * {@link #resolveBeaconOption}.
+	 */
+	private static final int BEACON_SECONDARY_TIER = 3;
+
+	/**
+	 * One flattened list entry. {@code effect} is only meaningful for a plain primary/secondary
+	 * pick; {@code isDuplicate} resolves its effect dynamically to whatever the primary is at
+	 * selection time, exactly like the real {@code BeaconUpgradePowerButton} does every frame.
+	 */
+	private record BeaconOption(int tier, boolean isPrimary, Holder<MobEffect> effect, boolean isDuplicate,
+			boolean isConfirm, boolean isCancel) {
+	}
+
+	private static int[] beaconTierSizes() {
+		int[] sizes = new int[4];
+		for (int tier = 0; tier < sizes.length; tier++) {
+			sizes[tier] = BeaconBlockEntity.BEACON_EFFECTS.get(tier).size();
+		}
+		return sizes;
+	}
+
+	/** Every tier's effect choices, plus the duplicate-primary option and Confirm/Cancel. */
+	private static int beaconOptionCount() {
+		int[] sizes = beaconTierSizes();
+		return sizes[0] + sizes[1] + sizes[2] + sizes[3] + 3;
+	}
+
+	private static BeaconOption resolveBeaconOption(int index) {
+		int[] sizes = beaconTierSizes();
+		int cursor = index;
+		for (int tier = 0; tier < BEACON_SECONDARY_TIER; tier++) {
+			if (cursor < sizes[tier]) {
+				return new BeaconOption(tier, true, BeaconBlockEntity.BEACON_EFFECTS.get(tier).get(cursor), false, false, false);
+			}
+			cursor -= sizes[tier];
+		}
+		if (cursor < sizes[BEACON_SECONDARY_TIER]) {
+			return new BeaconOption(BEACON_SECONDARY_TIER, false,
+					BeaconBlockEntity.BEACON_EFFECTS.get(BEACON_SECONDARY_TIER).get(cursor), false, false, false);
+		}
+		cursor -= sizes[BEACON_SECONDARY_TIER];
+		if (cursor == 0) {
+			return new BeaconOption(BEACON_SECONDARY_TIER, false, null, true, false, false);
+		}
+		return cursor == 1
+				? new BeaconOption(-1, false, null, false, true, false)
+				: new BeaconOption(-1, false, null, false, false, true);
+	}
+
+	/** Matches the real button's own {@code active} field exactly (see {@code BeaconScreen$BeaconPowerButton#updateStatus}). */
+	private static boolean isBeaconOptionActive(BeaconOption option, BeaconMenu menu, BeaconScreenAccess access) {
+		if (option.isConfirm()) {
+			return menu.hasPayment() && access.unitedMinecraft$getPrimary() != null;
+		}
+		if (option.isCancel()) {
+			return true;
+		}
+		if (option.isDuplicate()) {
+			return access.unitedMinecraft$getPrimary() != null && BEACON_SECONDARY_TIER < menu.getLevels();
+		}
+		return option.tier() < menu.getLevels();
+	}
+
+	private static boolean isBeaconOptionSelected(BeaconOption option, BeaconScreenAccess access) {
+		if (option.isConfirm() || option.isCancel()) {
+			return false;
+		}
+		Holder<MobEffect> current = option.isPrimary() ? access.unitedMinecraft$getPrimary() : access.unitedMinecraft$getSecondary();
+		Holder<MobEffect> effect = option.isDuplicate() ? access.unitedMinecraft$getPrimary() : option.effect();
+		return effect != null && effect.equals(current);
+	}
+
+	private static boolean handleBeaconOptionKey(AbstractContainerScreen<?> screen, LocalPlayer player, KeyEvent event) {
+		if (ClientKeyBindings.CONTAINER_NAV_UP.current().matches(event)) {
+			moveBeaconOption(screen, -1);
+		} else if (ClientKeyBindings.CONTAINER_NAV_DOWN.current().matches(event)) {
+			moveBeaconOption(screen, 1);
+		} else if (ClientKeyBindings.CONTAINER_PICKUP.current().matches(event)
+				|| ClientKeyBindings.CONTAINER_PICKUP_SPLIT.current().matches(event)) {
+			selectBeaconOption(screen, player);
+		} else {
+			return true;
+		}
+		return false;
+	}
+
+	private static void moveBeaconOption(AbstractContainerScreen<?> screen, int direction) {
+		int next = beaconOptionIndex + direction;
+		if (next < 0 || next >= beaconOptionCount()) {
+			return;
+		}
+		beaconOptionIndex = next;
+		narrateBeaconOption(screen, false);
+	}
+
+	/**
+	 * Applies the focused option exactly like the real button it stands in for would: a
+	 * primary/secondary pick mirrors {@code BeaconPowerButton#onPress} (including "picking a
+	 * different primary clears a non-matching secondary"), Confirm sends the same {@link
+	 * ServerboundSetBeaconPacket} the real Confirm button does and closes the screen, and Cancel
+	 * just closes it. None of this is reachable through {@link BeaconMenu} itself - the pending,
+	 * not-yet-confirmed choice only ever lives in {@code BeaconScreen}'s own fields until
+	 * Confirm is pressed, which is what {@link BeaconScreenAccess} exists to reach.
+	 */
+	private static void selectBeaconOption(AbstractContainerScreen<?> screen, LocalPlayer player) {
+		if (!(screen.getMenu() instanceof BeaconMenu menu) || !(screen instanceof BeaconScreenAccess access)) {
+			return;
+		}
+		BeaconOption option = resolveBeaconOption(beaconOptionIndex);
+		if (!isBeaconOptionActive(option, menu, access)) {
+			narrateBeaconOption(screen, false);
+			return;
+		}
+		if (option.isConfirm()) {
+			Minecraft.getInstance().getConnection().send(new ServerboundSetBeaconPacket(
+					Optional.ofNullable(access.unitedMinecraft$getPrimary()), Optional.ofNullable(access.unitedMinecraft$getSecondary())));
+			player.closeContainer();
+			return;
+		}
+		if (option.isCancel()) {
+			player.closeContainer();
+			return;
+		}
+		if (!isBeaconOptionSelected(option, access)) {
+			Holder<MobEffect> effect = option.isDuplicate() ? access.unitedMinecraft$getPrimary() : option.effect();
+			if (option.isPrimary()) {
+				access.unitedMinecraft$setPrimary(effect);
+				if (!effect.equals(access.unitedMinecraft$getSecondary())) {
+					access.unitedMinecraft$setSecondary(null);
+				}
+			} else {
+				access.unitedMinecraft$setSecondary(effect);
+			}
+		}
+		narrateBeaconOption(screen, false);
+	}
+
+	/** {@link net.minecraft.client.gui.screens.inventory.BeaconScreen}'s own primary/secondary labels, reused verbatim. */
+	private static MutableComponent beaconEffectLabel(BeaconOption option, Holder<MobEffect> effect) {
+		Component tierLabel = Component.translatable(
+				option.isPrimary() ? "block.minecraft.beacon.primary" : "block.minecraft.beacon.secondary");
+		return tierLabel.copy().append(Component.literal(", ")).append(Component.translatable(effect.value().getDescriptionId()));
+	}
+
+	private static MutableComponent appendBeaconOptionStatus(MutableComponent message, BeaconOption option, boolean active, boolean selected) {
+		if (!active) {
+			int requiredLevel = (option.isDuplicate() ? BEACON_SECONDARY_TIER : option.tier()) + 1;
+			return message.append(Component.literal(", "))
+					.append(Component.translatable("united_minecraft.menu.beacon_requires_level", requiredLevel));
+		}
+		if (selected) {
+			return message.append(Component.literal(", ")).append(Component.translatable("united_minecraft.menu.beacon_selected"));
+		}
+		return message;
+	}
+
+	private static void narrateBeaconOption(AbstractContainerScreen<?> screen, boolean announceSection) {
+		if (!(screen.getMenu() instanceof BeaconMenu menu) || !(screen instanceof BeaconScreenAccess access)) {
+			return;
+		}
+		BeaconOption option = resolveBeaconOption(beaconOptionIndex);
+		boolean active = isBeaconOptionActive(option, menu, access);
+		MutableComponent message;
+		if (option.isConfirm()) {
+			message = CommonComponents.GUI_DONE.copy();
+			if (!active) {
+				message = message.append(Component.literal(", "))
+						.append(Component.translatable("united_minecraft.menu.beacon_confirm_unavailable"));
+			}
+		} else if (option.isCancel()) {
+			message = CommonComponents.GUI_CANCEL.copy();
+		} else if (option.isDuplicate()) {
+			Holder<MobEffect> primary = access.unitedMinecraft$getPrimary();
+			if (primary == null) {
+				message = Component.translatable("united_minecraft.menu.beacon_upgrade_locked");
+			} else {
+				message = appendBeaconOptionStatus(
+						beaconEffectLabel(option, primary).append(Component.literal(" II")),
+						option, active, isBeaconOptionSelected(option, access));
+			}
+		} else {
+			message = appendBeaconOptionStatus(
+					beaconEffectLabel(option, option.effect()), option, active, isBeaconOptionSelected(option, access));
+		}
+
+		if (announceSection) {
+			message = sectionLabel(Section.BEACON_OPTIONS).copy().append(Component.literal(". ")).append(message);
+		}
+		Minecraft.getInstance().getNarrator().saySystemNow(message);
+	}
+
 	/** Up/Down/Enter reuse the same general container actions as ordinary slot navigation - no dedicated Trades actions needed. */
 	private static boolean handleTradeKey(AbstractContainerScreen<?> screen, KeyEvent event) {
 		if (ClientKeyBindings.CONTAINER_NAV_UP.current().matches(event)) {
@@ -1318,7 +1552,7 @@ public final class MenuAccessibilityController {
 				case EQUIPMENT -> isPlayerInventory && containerSlotOf(slot) >= 36;
 				case CONTAINER -> !isPlayerInventory;
 				// None of these are slot-based; sectionSlots is never called for any of them.
-				case RECIPE_BOOK, ENCHANT_OPTIONS, RENAME, TRADES -> false;
+				case RECIPE_BOOK, ENCHANT_OPTIONS, BEACON_OPTIONS, RENAME, TRADES -> false;
 			};
 			if (matches) {
 				result.add(slot);
@@ -1427,6 +1661,7 @@ public final class MenuAccessibilityController {
 			case RECIPE_BOOK -> Component.translatable("united_minecraft.menu.section.recipe_book");
 			case EQUIPMENT -> Component.translatable("united_minecraft.menu.section.equipment");
 			case ENCHANT_OPTIONS -> Component.translatable("united_minecraft.menu.section.enchant_options");
+			case BEACON_OPTIONS -> Component.translatable("united_minecraft.menu.section.beacon_options");
 			case RENAME -> Component.translatable("united_minecraft.menu.section.rename");
 			case TRADES -> Component.translatable("united_minecraft.menu.section.trades");
 		};
@@ -1501,6 +1736,9 @@ public final class MenuAccessibilityController {
 					? Component.translatable("united_minecraft.menu.slot.item")
 					: Component.translatable("united_minecraft.menu.slot.lapis");
 		}
+		if (menu instanceof BeaconMenu) {
+			return Component.translatable("united_minecraft.menu.slot.payment");
+		}
 		// MerchantMenu.PAYMENT1_SLOT/PAYMENT2_SLOT/RESULT_SLOT are protected, not public (unlike
 		// every other menu type handled here), so these are the same 0/1/2 literals they're
 		// defined as - confirmed against the game's own MerchantMenu class file.
@@ -1533,7 +1771,7 @@ public final class MenuAccessibilityController {
 	 * then the container's own slots, then the player's main inventory, then the hotbar.
 	 */
 	private enum Section {
-		RENAME, TRADES, CONTAINER, RECIPE_BOOK, ENCHANT_OPTIONS, EQUIPMENT, INVENTORY, HOTBAR
+		RENAME, TRADES, BEACON_OPTIONS, CONTAINER, RECIPE_BOOK, ENCHANT_OPTIONS, EQUIPMENT, INVENTORY, HOTBAR
 	}
 
 	private enum Direction {

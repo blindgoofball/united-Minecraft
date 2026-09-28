@@ -9,6 +9,7 @@
 		"CreativeModeInventoryScreenAccessorMixin",
 		"CreativeSlotWrapperAccessorMixin",
 		"AnvilScreenAccessorMixin",
+		"BeaconScreenAccessorMixin",
 		"AbstractRecipeBookScreenAccessorMixin",
 		"RecipeBookComponentAccessorMixin",
 		"EditBoxMixin",
