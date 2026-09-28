@@ -125,6 +125,7 @@ public final class AccessibilityTickHandler {
 			TrailController.reset();
 			MovementAssistController.reset();
 			NavRadarController.reset();
+			WallToneController.reset();
 			MiningRadarController.reset();
 			MapBeaconController.reset();
 			HostileRadarController.reset();
@@ -295,6 +296,13 @@ public final class AccessibilityTickHandler {
 			// the offhand slot there, and vanilla's swap-hands key does nothing over a screen.
 			handleOffhandNarration(client, player);
 		}
+
+		// Deliberately last: every snap turn, look key, and rotation-owning mode above has
+		// already moved the player this tick, so the tones describe where the player is facing
+		// right now rather than a tick ago. Runs whatever mode owns rotation - walls matter just
+		// as much while auto-walking or locked on - and an open screen silences rather than
+		// skips it, so the tones don't hang at their last volume behind an inventory.
+		WallToneController.tick(client, player, client.gui.screen() == null);
 	}
 
 	/** Which of the four snap-turn keys ({@link ClientKeyBindings#SNAP_TURN_LEFT} etc.) were just pressed this tick - see {@link #handleKeybindActions}. */
@@ -347,6 +355,9 @@ public final class AccessibilityTickHandler {
 		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_NAV_RADAR)) {
 			NavRadarController.toggle(client);
+		}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_WALL_TONES)) {
+			WallToneController.toggle(client);
 		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_MINING_RADAR)) {
 			MiningRadarController.toggle(client);

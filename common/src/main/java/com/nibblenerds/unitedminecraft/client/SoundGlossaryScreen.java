@@ -1,6 +1,7 @@
 package com.nibblenerds.unitedminecraft.client;
 
 import java.util.List;
+import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 import com.mojang.blaze3d.platform.InputConstants;
@@ -13,6 +14,7 @@ import net.minecraft.client.gui.components.ObjectSelectionList;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvent;
@@ -33,24 +35,42 @@ public final class SoundGlossaryScreen extends Screen {
 	private static final int TOP_MARGIN = 32;
 	private static final int BOTTOM_MARGIN = 36;
 
-	/** Volume/pitch mirror exactly what the source controller actually plays - see each one's {@code playXxxCue}. */
-	private record GlossaryEntry(String descriptionKey, Supplier<SoundEvent> sound, float volume, float pitch) {
+	private record GlossaryEntry(String descriptionKey, BiConsumer<Minecraft, LocalPlayer> preview) {
+		/** Volume/pitch mirror exactly what the source controller actually plays - see each one's {@code playXxxCue}. */
+		static GlossaryEntry vanilla(String descriptionKey, Supplier<SoundEvent> sound, float volume, float pitch) {
+			return new GlossaryEntry(descriptionKey, (client, player) -> {
+				var pos = player.position();
+				client.getSoundManager().play(new SimpleSoundInstance(sound.get(), SoundSource.MASTER,
+						volume, pitch, player.getRandom(), pos.x(), pos.y(), pos.z()));
+			});
+		}
+
+		/** A short sample of a looping wall tone voice, from the direction it normally plays in. */
+		static GlossaryEntry wallTone(String descriptionKey, WallToneVoice voice) {
+			return new GlossaryEntry(descriptionKey, (client, player) -> WallToneController.preview(client, player, voice));
+		}
 	}
 
 	private static final List<GlossaryEntry> ENTRIES = List.of(
-			new GlossaryEntry("united_minecraft.glossary.hostile_radar_alert", SoundEvents.NOTE_BLOCK_BELL::value, 0.7f, 1.0f),
-			new GlossaryEntry("united_minecraft.glossary.melee_alert", SoundEvents.NOTE_BLOCK_HAT::value, 0.6f, 1.4f),
-			new GlossaryEntry("united_minecraft.glossary.fall_warning_safe", SoundEvents.NOTE_BLOCK_PLING::value, 1.5f, 1.3f),
-			new GlossaryEntry("united_minecraft.glossary.fall_warning_damaging", () -> SoundEvents.ANVIL_LAND, 1.0f, 0.8f),
-			new GlossaryEntry("united_minecraft.glossary.fall_warning_hazard", SoundEvents.NOTE_BLOCK_DIDGERIDOO::value, 1.0f, 0.7f),
-			new GlossaryEntry("united_minecraft.glossary.mining_radar_ore", () -> SoundEvents.PLAYER_LEVELUP, 0.6f, 1.6f),
-			new GlossaryEntry("united_minecraft.glossary.nav_radar_clear", () -> SoundEvents.EXPERIENCE_ORB_PICKUP, 0.6f, 1.0f),
-			new GlossaryEntry("united_minecraft.glossary.arrow_hit", () -> SoundEvents.ARROW_HIT_PLAYER, 1.0f, 1.0f),
-			new GlossaryEntry("united_minecraft.glossary.autowalk_arrived", SoundEvents.NOTE_BLOCK_CHIME::value, 0.7f, 1.4f),
-			new GlossaryEntry("united_minecraft.glossary.autowalk_stopped", SoundEvents.NOTE_BLOCK_BASS::value, 0.7f, 0.7f),
-			new GlossaryEntry("united_minecraft.glossary.combat_cue", SoundEvents.NOTE_BLOCK_XYLOPHONE::value, 0.5f, 1.4f),
-			new GlossaryEntry("united_minecraft.glossary.mount_jump_ready", SoundEvents.NOTE_BLOCK_HARP::value, 0.6f, 1.6f),
-			new GlossaryEntry("united_minecraft.glossary.map_beacon_chime", () -> SoundEvents.BELL_BLOCK, 1.0f, 1.0f));
+			GlossaryEntry.vanilla("united_minecraft.glossary.hostile_radar_alert", SoundEvents.NOTE_BLOCK_BELL::value, 0.7f, 1.0f),
+			GlossaryEntry.vanilla("united_minecraft.glossary.melee_alert", SoundEvents.NOTE_BLOCK_HAT::value, 0.6f, 1.4f),
+			GlossaryEntry.vanilla("united_minecraft.glossary.fall_warning_safe", SoundEvents.NOTE_BLOCK_PLING::value, 1.5f, 1.3f),
+			GlossaryEntry.vanilla("united_minecraft.glossary.fall_warning_damaging", () -> SoundEvents.ANVIL_LAND, 1.0f, 0.8f),
+			GlossaryEntry.vanilla("united_minecraft.glossary.fall_warning_hazard", SoundEvents.NOTE_BLOCK_DIDGERIDOO::value, 1.0f, 0.7f),
+			GlossaryEntry.vanilla("united_minecraft.glossary.mining_radar_ore", () -> SoundEvents.PLAYER_LEVELUP, 0.6f, 1.6f),
+			GlossaryEntry.vanilla("united_minecraft.glossary.nav_radar_clear", () -> SoundEvents.EXPERIENCE_ORB_PICKUP, 0.6f, 1.0f),
+			GlossaryEntry.vanilla("united_minecraft.glossary.arrow_hit", () -> SoundEvents.ARROW_HIT_PLAYER, 1.0f, 1.0f),
+			GlossaryEntry.vanilla("united_minecraft.glossary.autowalk_arrived", SoundEvents.NOTE_BLOCK_CHIME::value, 0.7f, 1.4f),
+			GlossaryEntry.vanilla("united_minecraft.glossary.autowalk_stopped", SoundEvents.NOTE_BLOCK_BASS::value, 0.7f, 0.7f),
+			GlossaryEntry.vanilla("united_minecraft.glossary.combat_cue", SoundEvents.NOTE_BLOCK_XYLOPHONE::value, 0.5f, 1.4f),
+			GlossaryEntry.vanilla("united_minecraft.glossary.mount_jump_ready", SoundEvents.NOTE_BLOCK_HARP::value, 0.6f, 1.6f),
+			GlossaryEntry.vanilla("united_minecraft.glossary.map_beacon_chime", () -> SoundEvents.BELL_BLOCK, 1.0f, 1.0f),
+			GlossaryEntry.wallTone("united_minecraft.glossary.wall_tone_ahead", WallToneVoice.WALL_AHEAD),
+			GlossaryEntry.wallTone("united_minecraft.glossary.wall_tone_left", WallToneVoice.WALL_LEFT),
+			GlossaryEntry.wallTone("united_minecraft.glossary.wall_tone_right", WallToneVoice.WALL_RIGHT),
+			GlossaryEntry.wallTone("united_minecraft.glossary.wall_tone_behind", WallToneVoice.WALL_BEHIND),
+			GlossaryEntry.wallTone("united_minecraft.glossary.wall_tone_obstacle", WallToneVoice.OBSTACLE_AHEAD),
+			GlossaryEntry.wallTone("united_minecraft.glossary.wall_tone_ceiling", WallToneVoice.CEILING));
 
 	private GlossaryList list;
 
@@ -137,9 +157,7 @@ public final class SoundGlossaryScreen extends Screen {
 				if (player == null) {
 					return;
 				}
-				var pos = player.position();
-				client.getSoundManager().play(new SimpleSoundInstance(entry.sound().get(), SoundSource.MASTER,
-						entry.volume(), entry.pitch(), player.getRandom(), pos.x(), pos.y(), pos.z()));
+				entry.preview().accept(client, player);
 			}
 		}
 	}

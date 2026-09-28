@@ -26,7 +26,10 @@
 		"TutorialToastMixin",
 		"FriendToastMixin",
 		"NowPlayingToastMixin",
-		"ChatOverlayNarrationMixin"
+		"ChatOverlayNarrationMixin",
+		"SoundBufferLibraryMixin",
+		"SoundManagerAccessorMixin",
+		"SoundEngineAccessorMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
