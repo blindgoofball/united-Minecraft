@@ -339,7 +339,7 @@ public final class ScannerController {
 		if (categoryIndex == -1 || CATEGORIES[categoryIndex] == ScannerCategory.MARKERS) {
 			return;
 		}
-		if (CATEGORIES[categoryIndex] == ScannerCategory.BIOMES || CATEGORIES[categoryIndex] == ScannerCategory.STRUCTURES) {
+		if (CATEGORIES[categoryIndex] == ScannerCategory.BIOMES_AND_STRUCTURES) {
 			// A biome entry's position is an arbitrary surface sample point on a 4-block grid,
 			// and a structure's is just its nearest point to wherever the player scanned from,
 			// not a block the player pointed at - a name keyed to it would never be read back
@@ -593,9 +593,10 @@ public final class ScannerController {
 		if (category == ScannerCategory.MARKERS) {
 			return false;
 		}
-		if (category == ScannerCategory.STRUCTURES) {
-			// By spoken name, so every kind of village (plains, taiga, ...) counts as one type.
-			return a.label().equals(b.label());
+		if (category == ScannerCategory.BIOMES_AND_STRUCTURES) {
+			// Structures match by spoken name, so every kind of village (plains, taiga, ...) counts as
+			// one type. Biome entries carry no label and are already one per biome type.
+			return a.label() != null && a.label().equals(b.label());
 		}
 		if (a.entity() != null && b.entity() != null) {
 			return a.entity().getType() == b.entity().getType();
@@ -1072,7 +1073,7 @@ public final class ScannerController {
 		// Biomes are the one exclusion - their blockPos is an arbitrary surface sample point on a
 		// 4-block grid, not a block the player ever pointed at, so a name saved for that exact
 		// position from some other category isn't about this biome entry at all.
-		if (category != ScannerCategory.BIOMES) {
+		if (category != ScannerCategory.BIOMES_AND_STRUCTURES) {
 			String customName = NamedBlockController.findAt(level.dimension(), item.blockPos());
 			if (customName != null) {
 				return Component.literal(customName);
@@ -1081,7 +1082,7 @@ public final class ScannerController {
 		if (category == ScannerCategory.TREES) {
 			return describeTree(level, item.blockPos());
 		}
-		if (category == ScannerCategory.BIOMES) {
+		if (category == ScannerCategory.BIOMES_AND_STRUCTURES) {
 			return AccessibilityTickHandler.biomeName(level.getBiome(item.blockPos()));
 		}
 		BlockState state = level.getBlockState(item.blockPos());
@@ -1213,8 +1214,7 @@ public final class ScannerController {
 			case CROPS -> scanCrops(player);
 			case CLIMBABLE -> scanClimbable(player);
 			case SEARCH -> scanSearch(player);
-			case BIOMES -> scanBiomes(player);
-			case STRUCTURES -> scanStructures(player);
+			case BIOMES_AND_STRUCTURES -> scanBiomesAndStructures(player);
 			// instanceof Animal alone missed anything that isn't a beast - villagers, wandering
 			// traders, iron/snow/copper golems, bats, squids, allays - since none of those extend
 			// Animal. Classify by Enemy instead of MobCategory: vanilla buckets some non-hostile
@@ -2057,6 +2057,18 @@ public final class ScannerController {
 		addStalkClusters(eye, weepingVinePositions, results);
 		addStalkClusters(eye, twistingVinePositions, results);
 		addStalkClusters(eye, caveVinePositions, results);
+		results.sort(Comparator.comparingDouble(ScannerItem::distance));
+		return results;
+	}
+
+	/**
+	 * Biomes and structures in one list, nearest first - see {@link #scanBiomes} and {@link #scanStructures}.
+	 * Structure entries carry a label (their spoken name) and biome entries do not, which is how the
+	 * rest of this class tells them apart.
+	 */
+	private static List<ScannerItem> scanBiomesAndStructures(LocalPlayer player) {
+		List<ScannerItem> results = new ArrayList<>(scanBiomes(player));
+		results.addAll(scanStructures(player));
 		results.sort(Comparator.comparingDouble(ScannerItem::distance));
 		return results;
 	}

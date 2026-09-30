@@ -4,8 +4,9 @@ An accessibility mod for Minecraft, by NibbleNerds, built primarily for blind an
 low-vision players.
 
 Runs on the [Fabric](https://fabricmc.net/) and [NeoForge](https://neoforged.net/)
-mod loaders. Everything is client-side - no server-side install needed, and it
-works on any vanilla server.
+mod loaders. It is a client-side mod - no server-side install needed, and it
+works on any vanilla server. (One optional feature, Structure Voices, can also use
+the same jar on the server; see below.)
 
 ## Features
 
@@ -86,7 +87,7 @@ Cycle through nearby things by category and get full narration, targeting, and
 navigation without needing to see or aim at them.
 
 - Categories: Interactables, Mechanisms, Items, Passive Mobs, Hostile Mobs, Trees,
-  Ores, Liquids, Crops, Climbable, Search, Biomes, Structures, Markers (see Map Markers below),
+  Ores, Liquids, Crops, Climbable, Search, Biomes and Structures, Markers (see Map Markers below),
   Players, and Entities (minecarts, boats, armor stands, item frames and glow item
   frames - narrating what they're holding, if anything - paintings by their actual
   name rather than just "Painting", end crystals, and leash knots).
@@ -139,15 +140,16 @@ navigation without needing to see or aim at them.
   other category) opens a prompt for the term, then finds anything nearby whose
   name contains it, e.g. typing "glowstone" locates glowstone blocks. Same "no
   x-ray" rule as Ores and Liquids.
-- Biomes covers nearby distinct biomes worth exploring toward - one entry per
-  biome type, at the nearest surface point of it - out to a fixed 64 blocks
-  regardless of your configured Scanner range, since it's meant for
-  exploration-scale distances. Sampled at ground level, so a biome that only
-  exists underground (dripstone caves, the deep dark) won't show up here.
-- Structures covers villages, ocean monuments, ruined portals and every other
-  generated structure within your Scanner range, at its nearest point - the
-  same list Structure Voices announces from (see below), so it's only filled
-  in single player or on a server that also has United Minecraft.
+- Biomes and Structures covers places worth exploring toward, nearest first, in
+  one list. Biomes are nearby distinct biomes - one entry per biome type, at the
+  nearest surface point of it - out to a fixed 64 blocks regardless of your
+  configured Scanner range, since it's meant for exploration-scale distances.
+  Sampled at ground level, so a biome that only exists underground (dripstone
+  caves, the deep dark) won't show up here. Structures are villages, ocean
+  monuments, ruined portals and every other generated structure within your
+  Scanner range, at its nearest point - the same list Structure Voices
+  announces from (see below), so structures only appear in single player or on
+  a server that also has United Minecraft; biomes work everywhere.
   Alt+Page Up/Down jumps between structures of the same kind, e.g. from one
   village to the next.
 - Targeting a block aims at it. Targeting a mob starts a continuous lock-on that
@@ -331,7 +333,7 @@ you hear "Village" in your left ear. Distance is measured to the structure's
 nearest piece in 3D, so a buried ancient city is only announced once you're
 really near it. Each structure is announced once per visit, and again only
 after you've gone well away and come back. It's passive - there's no key to
-press; the Scanner's Structures category lists what's nearby on demand.
+press; the Scanner's Biomes and Structures category lists what's nearby on demand.
 
 Direction is kept simple and fixed for the whole word, rather than 3D audio
 that can slide around if you're moving fast: left/right is stereo balance
@@ -530,8 +532,8 @@ part is the Minecraft version that jar is for.
 
 Either way, United Minecraft is a client-side mod. Nothing needs to be
 installed on the server you play on, and it works against ordinary vanilla
-servers. The one exception is optional: Structure Voices (and the Scanner's
-Structures category) need to know where structures are, which only the server
+servers. The one exception is optional: Structure Voices (and the structures in
+the Scanner's Biomes and Structures category) need to know where structures are, which only the server
 does. They work in single player as-is; for multiplayer, put the same jar in
 the server's `mods` folder too (Fabric servers also need Fabric API). Players
 without the mod can still join that server, and it changes nothing else.

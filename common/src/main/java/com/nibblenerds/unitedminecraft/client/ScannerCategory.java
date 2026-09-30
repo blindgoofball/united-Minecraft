@@ -15,8 +15,7 @@ public enum ScannerCategory {
 	CROPS("united_minecraft.scanner.category.crops"),
 	CLIMBABLE("united_minecraft.scanner.category.climbable"),
 	SEARCH("united_minecraft.scanner.category.search"),
-	BIOMES("united_minecraft.scanner.category.biomes"),
-	STRUCTURES("united_minecraft.scanner.category.structures"),
+	BIOMES_AND_STRUCTURES("united_minecraft.scanner.category.biomes_and_structures"),
 	MARKERS("united_minecraft.scanner.category.markers"),
 	PLAYERS("united_minecraft.scanner.category.players"),
 	ENTITIES("united_minecraft.scanner.category.entities");
