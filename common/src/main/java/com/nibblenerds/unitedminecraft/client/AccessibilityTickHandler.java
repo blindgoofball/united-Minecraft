@@ -131,6 +131,7 @@ public final class AccessibilityTickHandler {
 			MapBeaconController.reset();
 			HostileRadarController.reset();
 			ArrowHitController.reset();
+			EyeOfEnderController.reset();
 			FishingCatchController.reset();
 			FallWarningController.reset();
 			TreeChoppingAssist.reset();
@@ -256,6 +257,9 @@ public final class AccessibilityTickHandler {
 			// Same reasoning - a fired arrow keeps flying, and needs watching for a hit,
 			// regardless of what else the player is doing once it's loosed.
 			ArrowHitController.tick(client, player);
+			// Same reasoning - a thrown eye flies on its own for a few seconds and then ends
+			// whether or not anything else is going on.
+			EyeOfEnderController.tick(client, player);
 			// Same reasoning - a cast line keeps waiting for a bite regardless of what else
 			// the player is doing meanwhile.
 			FishingCatchController.tick(client, player);
@@ -387,6 +391,12 @@ public final class AccessibilityTickHandler {
 			TrailController.start(client, player);
 		} else if (rotationFree && ClientKeyBindings.pressed(ClientKeyBindings.TRAIL)) {
 			TrailController.narrate(client, player);
+		}
+
+		if (rotationFree && ClientKeyBindings.pressed(ClientKeyBindings.FACE_EYE_OF_ENDER)) {
+			// Turns the camera, so it is blocked against the same rotation-owning modes as the
+			// other turning keys above.
+			EyeOfEnderController.faceLastBearing(client, player);
 		}
 
 		if (ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_NAME_FOCUSED_ITEM)) {

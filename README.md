@@ -324,6 +324,22 @@ sound above your head that gets louder as the ceiling gets lower - telling a
 tight tunnel from a cavern from open sky. Every sound can be previewed from the
 Sound Glossary.
 
+### Eye of Ender
+
+Throw an Eye of Ender and the mod follows it for you. Once it has flown a few
+blocks you hear the heading ("Eye of Ender heading northeast") and a ping from
+the eye's own direction; when it ends you're told whether it dropped, so you can
+pick it up and reuse it, or shattered. The heading is remembered, so Alt+B turns
+you to face the way the last eye flew at any point afterwards, even if you
+missed the flight.
+
+An eye that is far from the stronghold always flies the same fixed distance.
+One that stops noticeably short is near it, so the mod then also tells you the
+stronghold is close, with roughly how many blocks away and in which direction.
+That is worked out from how the eye moved, since the game never tells the
+client where the stronghold is, so treat it as a good estimate rather than an
+exact figure. The sounds can be switched off in Settings > Modes & Movement.
+
 ### Structure Voices
 
 When a village, ocean monument, ruined portal, shipwreck, stronghold, trial
@@ -664,7 +680,7 @@ Options > Controls.
 | --- | --- |
 | C (Shift = light level, of Build Mode's cursor if active) | Narrate coordinates, standing block, and biome |
 | H (Shift = experience level, Alt = armor and status effects) | Narrate health and hunger |
-| B (Shift+B resets facing to north) | Narrate facing direction and pitch |
+| B (Shift+B resets facing to north, Alt+B faces the last Eye of Ender's direction) | Narrate facing direction and pitch |
 | R (Shift = toggle Auto Crosshair Narration) | Read what's in front of me |
 | V (Shift = weather and, at night, moon phase) | Narrate time of day |
 | U (Shift = name the Scanner's focused item, or enter a Search term while Search is selected) | Place a named map marker at your current location |
