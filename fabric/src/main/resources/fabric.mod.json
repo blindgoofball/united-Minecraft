@@ -14,8 +14,11 @@
 	},
 	"license": "GPL-3.0-or-later",
 	"icon": "assets/united_minecraft/icon.png",
-	"environment": "client",
+	"environment": "*",
 	"entrypoints": {
+		"main": [
+			"com.nibblenerds.unitedminecraft.fabric.UnitedMinecraftFabricCommon"
+		],
 		"client": [
 			"com.nibblenerds.unitedminecraft.fabric.UnitedMinecraftFabric"
 		]

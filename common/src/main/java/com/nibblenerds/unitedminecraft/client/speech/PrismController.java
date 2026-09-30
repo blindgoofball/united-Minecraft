@@ -10,10 +10,13 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -46,7 +49,9 @@ public final class PrismController {
 
 	private static final Optional<PrismController> INSTANCE = tryLoad();
 
+	private static final long BACKEND_SUPPORTS_SPEAK_TO_MEMORY = 1L << 3;
 	private static final long BACKEND_SUPPORTS_BRAILLE = 1L << 4;
+	private static final int PRISM_ERROR_ALREADY_INITIALIZED = 15;
 	private static final long BACKEND_SUPPORTS_OUTPUT = 1L << 5;
 
 	private final Arena arena;
@@ -66,12 +71,22 @@ public final class PrismController {
 	private boolean brailleSupported;
 	private boolean outputSupported;
 
+	/** Null when this Prism build lacks the calls {@link #renderToMemory} needs. */
+	private final MemoryApi memoryApi;
+	/** Guards everything below - separate from {@code this} so rendering never holds up screen reader speech. */
+	private final Object memoryLock = new Object();
+	private boolean memoryBackendSearched;
+	private MemorySegment memoryBackend;
+	private MemorySegment audioCallbackStub;
+	private volatile AudioCollector collector;
+
 	private PrismController(Arena arena, MethodHandle prismShutdown, MethodHandle registryCreateBest,
 			MethodHandle backendFree, MethodHandle backendName, MethodHandle backendGetFeatures,
 			MethodHandle backendSpeak, MethodHandle backendBraille, MethodHandle backendOutput,
 			MethodHandle backendStop, MethodHandle errorString,
-			MemorySegment context, MemorySegment backend) {
+			MemorySegment context, MemorySegment backend, MemoryApi memoryApi) {
 		this.arena = arena;
+		this.memoryApi = memoryApi;
 		this.prismShutdown = prismShutdown;
 		this.registryCreateBest = registryCreateBest;
 		this.backendFree = backendFree;
@@ -156,6 +171,8 @@ public final class PrismController {
 					lookup.find("prism_error_string").orElseThrow(),
 					FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
 
+			MemoryApi memoryApi = MemoryApi.find(lookup, linker);
+
 			// NULL is a documented valid config: it makes Prism use its defaults
 			// (built-in registry, availability polling disabled).
 			MemorySegment context = (MemorySegment) prismInit.invoke(MemorySegment.NULL);
@@ -179,7 +196,7 @@ public final class PrismController {
 
 			PrismController controller = new PrismController(arena, prismShutdown, registryCreateBest, backendFree,
 					backendName, backendGetFeatures, backendSpeak, backendBraille, backendOutput, backendStop,
-					errorString, context, backend);
+					errorString, context, backend, memoryApi);
 			handedOff = true;
 			return Optional.of(controller);
 		} catch (Throwable t) {
@@ -367,6 +384,14 @@ public final class PrismController {
 	/** Releases the Prism backend and context. Call once, on client shutdown. */
 	public synchronized void shutdown() {
 		try {
+			synchronized (memoryLock) {
+				if (memoryBackend != null) {
+					backendFree.invoke(memoryBackend);
+					memoryBackend = null;
+				}
+				// Stops a later renderToMemory from searching again against a shut-down context.
+				memoryBackendSearched = true;
+			}
 			if (backend != null) {
 				backendFree.invoke(backend);
 				backend = null;
@@ -376,6 +401,145 @@ public final class PrismController {
 			LOGGER.warn("Failed to shut down Prism cleanly", t);
 		} finally {
 			arena.close();
+		}
+	}
+
+	/**
+	 * Synthesizes {@code text} to audio samples instead of speaking it, for sounds the game plays
+	 * itself (positioned in 3D, unlike screen reader speech) - see {@code StructureVoiceAudio}.
+	 * Screen reader backends can't do this, so it uses a backend of its own: the highest-priority
+	 * one that can render to memory, which is OneCore or SAPI on Windows and AVSpeech on macOS.
+	 * Linux's Speech Dispatcher can't, so this is always empty there.
+	 *
+	 * <p>Blocking - the backends render the whole utterance before returning - so call it off the
+	 * client thread.
+	 */
+	public Optional<RenderedSpeech> renderToMemory(String text) {
+		synchronized (memoryLock) {
+			if (!memoryBackendSearched) {
+				memoryBackendSearched = true;
+				memoryBackend = findMemoryBackend();
+			}
+			if (memoryBackend == null) {
+				return Optional.empty();
+			}
+			AudioCollector target = new AudioCollector();
+			collector = target;
+			try (Arena callArena = Arena.ofConfined()) {
+				int result = (int) memoryApi.speakToMemory().invoke(memoryBackend, toCString(callArena, text),
+						audioCallbackStub, MemorySegment.NULL);
+				if (result != PRISM_OK) {
+					LOGGER.debug("prism_backend_speak_to_memory failed for '{}' ({})", text, describeError(errorString, result));
+					return Optional.empty();
+				}
+				return target.result();
+			} catch (Throwable t) {
+				LOGGER.warn("Failed to render speech to memory through Prism", t);
+				return Optional.empty();
+			} finally {
+				collector = null;
+			}
+		}
+	}
+
+	/** Called with {@link #memoryLock} held. */
+	private MemorySegment findMemoryBackend() {
+		if (memoryApi == null) {
+			LOGGER.info("This Prism build can't render speech to memory");
+			return null;
+		}
+		try {
+			audioCallbackStub = Linker.nativeLinker().upcallStub(
+					MethodHandles.lookup().findVirtual(PrismController.class, "onAudio",
+							MethodType.methodType(void.class, MemorySegment.class, MemorySegment.class,
+									long.class, long.class, long.class)).bindTo(this),
+					FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS,
+							ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG),
+					arena);
+			long count = (long) memoryApi.registryCount().invoke(context);
+			// The registry lists backends highest priority first.
+			for (long i = 0; i < count; i++) {
+				long id = (long) memoryApi.registryIdAt().invoke(context, i);
+				MemorySegment candidate = (MemorySegment) memoryApi.registryCreate().invoke(context, id);
+				if (candidate.equals(MemorySegment.NULL)) {
+					continue;
+				}
+				// Features are known before initializing, so screen reader backends are skipped
+				// without ever connecting to the screen reader.
+				long features = (long) backendGetFeatures.invoke(candidate);
+				if ((features & BACKEND_SUPPORTS_SPEAK_TO_MEMORY) != 0) {
+					int result = (int) memoryApi.backendInitialize().invoke(candidate);
+					if (result == PRISM_OK || result == PRISM_ERROR_ALREADY_INITIALIZED) {
+						LOGGER.info("Rendering speech to memory with Prism backend '{}'",
+								readCString((MemorySegment) backendName.invoke(candidate)));
+						return candidate;
+					}
+				}
+				backendFree.invoke(candidate);
+			}
+			LOGGER.info("No Prism backend on this system can render speech to memory");
+		} catch (Throwable t) {
+			LOGGER.warn("Failed to find a Prism backend that renders speech to memory", t);
+		}
+		return null;
+	}
+
+	/** Prism's {@code PrismAudioCallback}: {@code count} interleaved float samples. May be called more than once per utterance. */
+	@SuppressWarnings("unused")
+	private void onAudio(MemorySegment userdata, MemorySegment samples, long count, long channels, long sampleRate) {
+		AudioCollector target = collector;
+		if (target != null && count > 0 && channels > 0 && sampleRate > 0) {
+			target.add(samples.reinterpret(count * Float.BYTES).toArray(ValueLayout.JAVA_FLOAT),
+					(int) channels, (int) sampleRate);
+		}
+	}
+
+	/**
+	 * Speech rendered by {@link #renderToMemory}.
+	 *
+	 * @param samples interleaved, {@code channels} per frame, nominally -1..1
+	 */
+	public record RenderedSpeech(float[] samples, int channels, int sampleRate) {
+	}
+
+	private static final class AudioCollector {
+		private float[] samples = new float[0];
+		private int channels;
+		private int sampleRate;
+
+		synchronized void add(float[] more, int channels, int sampleRate) {
+			float[] joined = Arrays.copyOf(samples, samples.length + more.length);
+			System.arraycopy(more, 0, joined, samples.length, more.length);
+			this.samples = joined;
+			this.channels = channels;
+			this.sampleRate = sampleRate;
+		}
+
+		synchronized Optional<RenderedSpeech> result() {
+			return samples.length == 0 ? Optional.empty() : Optional.of(new RenderedSpeech(samples, channels, sampleRate));
+		}
+	}
+
+	/** The registry and speak-to-memory calls - looked up separately so a Prism build without them still speaks. */
+	private record MemoryApi(MethodHandle registryCount, MethodHandle registryIdAt, MethodHandle registryCreate,
+			MethodHandle backendInitialize, MethodHandle speakToMemory) {
+		static MemoryApi find(SymbolLookup lookup, Linker linker) {
+			Optional<MemorySegment> count = lookup.find("prism_registry_count");
+			Optional<MemorySegment> idAt = lookup.find("prism_registry_id_at");
+			Optional<MemorySegment> create = lookup.find("prism_registry_create");
+			Optional<MemorySegment> initialize = lookup.find("prism_backend_initialize");
+			Optional<MemorySegment> speakToMemory = lookup.find("prism_backend_speak_to_memory");
+			if (count.isEmpty() || idAt.isEmpty() || create.isEmpty() || initialize.isEmpty() || speakToMemory.isEmpty()) {
+				return null;
+			}
+			// size_t and PrismBackendId (uint64_t) are both 64-bit on every platform Prism ships for.
+			return new MemoryApi(
+					linker.downcallHandle(count.get(), FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS)),
+					linker.downcallHandle(idAt.get(), FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG)),
+					linker.downcallHandle(create.get(), FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG)),
+					linker.downcallHandle(initialize.get(), FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS)),
+					linker.downcallHandle(speakToMemory.get(), FunctionDescriptor.of(ValueLayout.JAVA_INT,
+							ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS)));
 		}
 	}
 

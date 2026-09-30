@@ -86,7 +86,7 @@ Cycle through nearby things by category and get full narration, targeting, and
 navigation without needing to see or aim at them.
 
 - Categories: Interactables, Mechanisms, Items, Passive Mobs, Hostile Mobs, Trees,
-  Ores, Liquids, Crops, Climbable, Search, Biomes, Markers (see Map Markers below),
+  Ores, Liquids, Crops, Climbable, Search, Biomes, Structures, Markers (see Map Markers below),
   Players, and Entities (minecarts, boats, armor stands, item frames and glow item
   frames - narrating what they're holding, if anything - paintings by their actual
   name rather than just "Painting", end crystals, and leash knots).
@@ -144,6 +144,12 @@ navigation without needing to see or aim at them.
   regardless of your configured Scanner range, since it's meant for
   exploration-scale distances. Sampled at ground level, so a biome that only
   exists underground (dripstone caves, the deep dark) won't show up here.
+- Structures covers villages, ocean monuments, ruined portals and every other
+  generated structure within your Scanner range, at its nearest point - the
+  same list Structure Voices announces from (see below), so it's only filled
+  in single player or on a server that also has United Minecraft.
+  Alt+Page Up/Down jumps between structures of the same kind, e.g. from one
+  village to the next.
 - Targeting a block aims at it. Targeting a mob starts a continuous lock-on that
   keeps facing it until released. Drawing a bow while locked on aims with a real
   ballistic arc, so shots land at real range instead of dropping short.
@@ -316,6 +322,37 @@ sound above your head that gets louder as the ceiling gets lower - telling a
 tight tunnel from a cavern from open sky. Every sound can be previewed from the
 Sound Glossary.
 
+### Structure Voices
+
+When a village, ocean monument, ruined portal, shipwreck, stronghold, trial
+chamber or any other generated structure comes within your Scanner range, its
+name is spoken once, from its direction: fly past a village on your left and
+you hear "Village" in your left ear. Distance is measured to the structure's
+nearest piece in 3D, so a buried ancient city is only announced once you're
+really near it. Each structure is announced once per visit, and again only
+after you've gone well away and come back. It's passive - there's no key to
+press; the Scanner's Structures category lists what's nearby on demand.
+
+Direction is kept simple and fixed for the whole word, rather than 3D audio
+that can slide around if you're moving fast: left/right is stereo balance
+(fully in one ear at 90 degrees to that side), height relative to where you're
+looking is pitch (higher above, lower below), and a structure behind you sounds
+muffled and a little quieter, since balance alone can't tell front from back.
+
+The voice is your system's own text-to-speech, rendered to audio so the game
+can pan and pitch it: OneCore or SAPI voices on Windows (the ones Narrator
+uses), AVSpeech (or `say`) on macOS, and `espeak-ng` on Linux. Where none of
+those can render audio, structures are narrated through your screen reader
+instead. Structure names come from the language file, so every village variant
+is just "Village"; a modded structure is spoken from its id.
+
+Where structures are is only known to the server, so structure voices work in
+single player out of the box, and in multiplayer when United Minecraft is also
+installed on the server (see Installation). On or off, volume, and whether to
+also narrate the distance and compass direction are in Settings; specific
+structures can be silenced by adding their ids (for example
+`"minecraft:mineshaft"`) to `structureVoiceMuted` in the config file.
+
 ### Mining Radar
 
 Toggleable passive alert for valuable ore exposed nearby while mining - a
@@ -445,7 +482,8 @@ added:
   Warning (including how many seconds ahead it looks), Mining Radar,
   Navigation Radar, and the Scanner, plus the Scanner's own toggles for
   skipping empty categories and auto-locking onto a mob after walking
-  to it.
+  to it, and Structure Voices (on/off, volume, and also narrating distance
+  and direction - announced within the Scanner range).
 - **Wall Tones** - range, volume, Tones/Noise style, the separate
   pulsing obstacle sound, and the ceiling sound.
 - **Modes & Movement** - re-narrating Build Mode's cursor after a
@@ -490,9 +528,13 @@ apart: `united-minecraft-1.2.0+mc26.3-fabric.jar` ends in `-fabric`, and
 `united-minecraft-1.2.0+mc26.3-neoforge.jar` ends in `-neoforge`. The `mc26.3`
 part is the Minecraft version that jar is for.
 
-Either way, United Minecraft is entirely client-side. Nothing needs to be
+Either way, United Minecraft is a client-side mod. Nothing needs to be
 installed on the server you play on, and it works against ordinary vanilla
-servers.
+servers. The one exception is optional: Structure Voices (and the Scanner's
+Structures category) need to know where structures are, which only the server
+does. They work in single player as-is; for multiplayer, put the same jar in
+the server's `mods` folder too (Fabric servers also need Fabric API). Players
+without the mod can still join that server, and it changes nothing else.
 
 ### Installing on Fabric
 
