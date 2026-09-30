@@ -573,7 +573,7 @@ without the mod can still join that server, and it changes nothing else.
    Open the official Minecraft Launcher, choose the Fabric profile from the
    installations dropdown, and click Play.
 
-Then turn on the narrator - see below.
+The first time the mod runs it turns the narrator on for you - see below.
 
 ### Installing on NeoForge
 
@@ -633,15 +633,19 @@ Then turn on the narrator - see below.
    Open the official Minecraft Launcher, choose the NeoForge profile from the
    installations dropdown, and click Play.
 
-Then turn on the narrator - see below.
+The first time the mod runs it turns the narrator on for you - see below.
 
 ### Turning on the narrator
 
-This step is the same on both loaders, and the mod stays silent without it.
+The same on both loaders. United Minecraft narrates through Minecraft's
+narrator setting rather than replacing it, so the mod stays silent while that
+setting is off - and Minecraft ships with it off. To save you having to find it,
+the mod switches the narrator to All the very first time it runs, before the
+main menu. That happens once: if you turn the narrator off afterwards it stays
+off.
 
-Either press Ctrl+B in-game to toggle the narrator on, or go through Options >
-Accessibility Settings > Narrator. This is what actually triggers speech;
-United Minecraft narrates through it rather than replacing it.
+To change it yourself at any time, press Ctrl+B in-game to toggle the narrator,
+or go through Options > Accessibility Settings > Narrator.
 
 If a screen reader (or other Prism-supported speech backend) is available,
 United Minecraft speaks through it automatically for better screen-reader

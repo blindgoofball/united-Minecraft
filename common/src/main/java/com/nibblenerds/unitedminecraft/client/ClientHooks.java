@@ -4,6 +4,7 @@ import com.nibblenerds.unitedminecraft.client.speech.PrismController;
 import com.nibblenerds.unitedminecraft.structure.StructuresNearbyPayload;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.NarratorStatus;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
@@ -59,11 +60,42 @@ public final class ClientHooks {
 	 * between them at key-handling time rather than here.
 	 */
 	public static void onScreenInit(Screen screen) {
+		enableNarratorOnFirstLaunch();
 		if (screen instanceof AbstractContainerScreen<?> container) {
 			MenuAccessibilityController.onScreenInit(container);
 		}
 		if (screen instanceof CreativeModeInventoryScreen creative) {
 			CreativeInventoryController.onScreenInit(creative);
+		}
+	}
+
+	private static boolean narratorCheckDone;
+
+	/**
+	 * Turns the vanilla narrator on the first time this mod ever runs, since every narration
+	 * this mod does goes through it and it ships switched off - a new player would otherwise
+	 * hear nothing until they found Ctrl+B or the Accessibility menu. Done on the first screen
+	 * to initialize (the title screen, in practice) because the options and narrator both exist
+	 * by then and it is still before the player can reach the main menu. Only ever once, recorded
+	 * in the config, so a player who turns the narrator off later is never overridden.
+	 */
+	private static void enableNarratorOnFirstLaunch() {
+		if (narratorCheckDone) {
+			return;
+		}
+		narratorCheckDone = true;
+		UnitedMinecraftConfig config = UnitedMinecraftConfig.get();
+		if (config.narratorAutoEnableDone) {
+			return;
+		}
+		config.narratorAutoEnableDone = true;
+		UnitedMinecraftConfig.save();
+		Minecraft client = Minecraft.getInstance();
+		if (client.options.narrator().get() == NarratorStatus.OFF) {
+			// Goes through the option's own update callback, so the narrator engine starts and
+			// announces the change exactly as if it had been switched on in the menu.
+			client.options.narrator().set(NarratorStatus.ALL);
+			client.options.save();
 		}
 	}
 
