@@ -6,7 +6,7 @@ import java.util.Locale;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
-/** Build Mode action narration, Combat cue mode, Auto-Walk auto-sprint, and Mount jump cue - see {@link SettingsScreen}. */
+/** Build Mode action narration, Combat cue mode, mode on/off sounds, Auto-Walk auto-sprint, and Mount jump cue - see {@link SettingsScreen}. */
 final class ModesMovementSettingsScreen extends SettingsListScreen {
 	ModesMovementSettingsScreen() {
 		super(Component.translatable("united_minecraft.modes_movement_screen.title"));
@@ -24,6 +24,8 @@ final class ModesMovementSettingsScreen extends SettingsListScreen {
 				List.of(UnitedMinecraftConfig.CombatCueMode.values()), config.combatCueMode,
 				mode -> Component.translatable("united_minecraft.settings_screen.combat_cue_mode." + mode.name().toLowerCase(Locale.ROOT)),
 				value -> config.combatCueMode = value);
+		y = addToggle(x, y, "united_minecraft.settings_screen.mode_toggle_sounds_enabled",
+				config.modeToggleSoundsEnabled, value -> config.modeToggleSoundsEnabled = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.auto_walk_auto_sprint",
 				config.autoWalkAutoSprint, value -> config.autoWalkAutoSprint = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.mount_jump_cue_enabled",

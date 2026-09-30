@@ -57,6 +57,7 @@ public final class CombatModeController {
 
 	public static void toggle(Minecraft client, LocalPlayer player) {
 		enabled = !enabled;
+		ModeToggleSound.playCombatMode(client, player, enabled);
 		if (!enabled) {
 			target = null;
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.combat_mode_off"));

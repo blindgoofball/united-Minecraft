@@ -247,6 +247,7 @@ public final class BuildModeController {
 
 	public static void toggle(Minecraft client, LocalPlayer player) {
 		active = !active;
+		ModeToggleSound.playBuildMode(client, player, active);
 		if (active) {
 			breakHeld = ClientKeyBindings.BUILD_BREAK.isDown();
 			selectedFacing = null;

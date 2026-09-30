@@ -487,6 +487,7 @@
 	"united_minecraft.settings_screen.scanner_auto_lock_after_walk": "Scanner: Auto-Lock After Walking to a Mob",
 	"united_minecraft.settings_screen.auto_walk_auto_sprint": "Auto-Walk: Always Sprint",
 	"united_minecraft.settings_screen.precise_coordinates_enabled": "Precise Coordinates (One Decimal Place)",
+	"united_minecraft.settings_screen.mode_toggle_sounds_enabled": "Build/Combat Mode On/Off Sounds",
 	"united_minecraft.settings_screen.mount_jump_cue_enabled": "Mount Jump Charge Audio Cue",
 	"united_minecraft.settings_screen.map_beacon_enabled": "Map Beacon (Treasure/Explorer Map Audio Cue)",
 	"united_minecraft.settings_screen.wall_tone_range": "Wall Tone Range (blocks)",

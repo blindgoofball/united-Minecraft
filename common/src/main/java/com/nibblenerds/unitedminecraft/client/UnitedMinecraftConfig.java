@@ -55,6 +55,7 @@ public final class UnitedMinecraftConfig {
 	public boolean autoCrosshairNarrationEnabled = false;
 	public boolean preciseCoordinatesEnabled = false;
 	public boolean mountJumpCueEnabled = true;
+	public boolean modeToggleSoundsEnabled = true;
 	public boolean mapBeaconEnabled = true;
 	public boolean wallTonesEnabled = false;
 	public int wallToneRange = 8;
