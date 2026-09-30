@@ -11,13 +11,15 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.mojang.blaze3d.audio.SoundBuffer;
+import com.nibblenerds.unitedminecraft.client.StructureVoiceAudio;
 import com.nibblenerds.unitedminecraft.client.WallToneSynth;
 
 import net.minecraft.client.sounds.SoundBufferLibrary;
 import net.minecraft.resources.Identifier;
 
 /**
- * Supplies the wall tone loops from {@link WallToneSynth} instead of looking for {@code .ogg}
+ * Supplies the wall tone loops from {@link WallToneSynth}, and spoken structure names from {@link
+ * StructureVoiceAudio}, instead of looking for {@code .ogg}
  * files that don't exist. Goes through vanilla's own {@code cache} rather than around it, so
  * each tone's OpenAL buffer is created once and released by vanilla's own {@code clear()} on
  * a resource reload or sound device change, exactly like a file-backed sound.
@@ -32,6 +34,9 @@ public abstract class SoundBufferLibraryMixin {
 	private void unitedMinecraft$synthesizeWallTone(Identifier path, CallbackInfoReturnable<CompletableFuture<SoundBuffer>> cir) {
 		if (WallToneSynth.handles(path)) {
 			cir.setReturnValue(cache.computeIfAbsent(path, key -> CompletableFuture.completedFuture(WallToneSynth.create(key))));
+		} else if (StructureVoiceAudio.handles(path)) {
+			// Spoken structure names - only ever played once their audio has been rendered.
+			cir.setReturnValue(cache.computeIfAbsent(path, key -> CompletableFuture.completedFuture(StructureVoiceAudio.create(key))));
 		}
 	}
 }

@@ -6,6 +6,8 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -62,6 +64,12 @@ public final class UnitedMinecraftConfig {
 	public boolean wallToneObstaclesEnabled = true;
 	public boolean wallToneCeilingEnabled = false;
 	public WallToneStyle wallToneStyle = WallToneStyle.TONES;
+	public boolean structureVoicesEnabled = true;
+	public int structureVoiceVolume = 80;
+	/** Also narrate "Village, 20 blocks, northeast" through the screen reader when a voice plays. */
+	public boolean structureVoiceNarrate = false;
+	/** Structure ids never announced, e.g. {@code "minecraft:mineshaft"} - only editable in the file for now. */
+	public List<String> structureVoiceMuted = new ArrayList<>();
 
 	/** Governs the audio cue for the weapon attack-strength meter refilling - see {@link CombatModeController#tickAttackCue}. */
 	public enum CombatCueMode {
@@ -97,6 +105,10 @@ public final class UnitedMinecraftConfig {
 		scannerRange = clamp("scannerRange", scannerRange, 8.0, 64.0);
 		wallToneRange = (int) clamp("wallToneRange", wallToneRange, 2, 16);
 		wallToneVolume = (int) clamp("wallToneVolume", wallToneVolume, 5, 100);
+		structureVoiceVolume = (int) clamp("structureVoiceVolume", structureVoiceVolume, 5, 100);
+		if (structureVoiceMuted == null) {
+			structureVoiceMuted = new ArrayList<>();
+		}
 		durabilityWarningThreshold = (int) clamp("durabilityWarningThreshold", durabilityWarningThreshold, 1, 50);
 		// Deliberately capped by the warning threshold rather than a fixed 50: "critical" above
 		// "getting low" would mean the critical warning always fired first and the other never.

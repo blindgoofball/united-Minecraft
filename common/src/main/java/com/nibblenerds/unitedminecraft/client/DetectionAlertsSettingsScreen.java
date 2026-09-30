@@ -3,7 +3,7 @@ package com.nibblenerds.unitedminecraft.client;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
-/** Hostile Radar, Melee Range Alert, Fall Warning, Mining/Nav Radar range, and Scanner - see {@link SettingsScreen}. */
+/** Hostile Radar, Melee Range Alert, Fall Warning, Mining/Nav Radar range, Scanner, and Structure Voices - see {@link SettingsScreen}. */
 final class DetectionAlertsSettingsScreen extends SettingsListScreen {
 	DetectionAlertsSettingsScreen() {
 		super(Component.translatable("united_minecraft.detection_alerts_screen.title"));
@@ -40,6 +40,14 @@ final class DetectionAlertsSettingsScreen extends SettingsListScreen {
 				config.scannerSkipEmptyCategories, value -> config.scannerSkipEmptyCategories = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.scanner_auto_lock_after_walk",
 				config.scannerAutoLockAfterWalk, value -> config.scannerAutoLockAfterWalk = value);
+		// No range of their own - structures are announced within the Scanner Range above.
+		y = addToggle(x, y, "united_minecraft.settings_screen.structure_voices_enabled",
+				config.structureVoicesEnabled, value -> config.structureVoicesEnabled = value);
+		y = addSlider(x, y, 5.0, 100.0, 5.0, config.structureVoiceVolume,
+				"united_minecraft.settings_screen.structure_voice_volume",
+				value -> config.structureVoiceVolume = (int) Math.round(value));
+		y = addToggle(x, y, "united_minecraft.settings_screen.structure_voice_narrate",
+				config.structureVoiceNarrate, value -> config.structureVoiceNarrate = value);
 
 		addButton(x, y + ROW_SPACING, "united_minecraft.settings_screen.back",
 				() -> Minecraft.getInstance().gui.setScreen(new SettingsScreen()));

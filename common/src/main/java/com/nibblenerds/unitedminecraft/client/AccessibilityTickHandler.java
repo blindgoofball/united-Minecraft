@@ -126,6 +126,7 @@ public final class AccessibilityTickHandler {
 			MovementAssistController.reset();
 			NavRadarController.reset();
 			WallToneController.reset();
+			StructureVoiceController.reset();
 			MiningRadarController.reset();
 			MapBeaconController.reset();
 			HostileRadarController.reset();
@@ -303,6 +304,8 @@ public final class AccessibilityTickHandler {
 		// as much while auto-walking or locked on - and an open screen silences rather than
 		// skips it, so the tones don't hang at their last volume behind an inventory.
 		WallToneController.tick(client, player, client.gui.screen() == null);
+		// Holds its queue while a screen is open rather than talking over it.
+		StructureVoiceController.tick(client, player, client.gui.screen() == null);
 	}
 
 	/** Which of the four snap-turn keys ({@link ClientKeyBindings#SNAP_TURN_LEFT} etc.) were just pressed this tick - see {@link #handleKeybindActions}. */

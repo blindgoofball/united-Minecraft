@@ -28,7 +28,8 @@
 		"FriendToastMixin",
 		"NowPlayingToastMixin",
 		"ChatOverlayNarrationMixin",
-		"SoundBufferLibraryMixin"
+		"SoundBufferLibraryMixin",
+		"StructureVoiceChannelMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

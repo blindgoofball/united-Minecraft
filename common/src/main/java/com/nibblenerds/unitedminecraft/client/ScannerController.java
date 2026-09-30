@@ -339,8 +339,9 @@ public final class ScannerController {
 		if (categoryIndex == -1 || CATEGORIES[categoryIndex] == ScannerCategory.MARKERS) {
 			return;
 		}
-		if (CATEGORIES[categoryIndex] == ScannerCategory.BIOMES) {
+		if (CATEGORIES[categoryIndex] == ScannerCategory.BIOMES || CATEGORIES[categoryIndex] == ScannerCategory.STRUCTURES) {
 			// A biome entry's position is an arbitrary surface sample point on a 4-block grid,
+			// and a structure's is just its nearest point to wherever the player scanned from,
 			// not a block the player pointed at - a name keyed to it would never be read back
 			// (see itemName's own exclusion). Said out loud rather than silently ignored, so
 			// it's clear the key did something and this category simply can't carry a name.
@@ -591,6 +592,10 @@ public final class ScannerController {
 	private static boolean sameType(ScannerCategory category, ScannerItem a, ScannerItem b, Level level) {
 		if (category == ScannerCategory.MARKERS) {
 			return false;
+		}
+		if (category == ScannerCategory.STRUCTURES) {
+			// By spoken name, so every kind of village (plains, taiga, ...) counts as one type.
+			return a.label().equals(b.label());
 		}
 		if (a.entity() != null && b.entity() != null) {
 			return a.entity().getType() == b.entity().getType();
@@ -1209,6 +1214,7 @@ public final class ScannerController {
 			case CLIMBABLE -> scanClimbable(player);
 			case SEARCH -> scanSearch(player);
 			case BIOMES -> scanBiomes(player);
+			case STRUCTURES -> scanStructures(player);
 			// instanceof Animal alone missed anything that isn't a beast - villagers, wandering
 			// traders, iron/snow/copper golems, bats, squids, allays - since none of those extend
 			// Animal. Classify by Enemy instead of MobCategory: vanilla buckets some non-hostile
@@ -2109,6 +2115,24 @@ public final class ScannerController {
 		return results;
 	}
 
+	/**
+	 * Villages, monuments, ruined portals and every other generated structure the server reported
+	 * within the Scanner's range (see {@link StructureVoiceController#nearby}), one entry each at
+	 * its nearest point. Only the server knows where structures are, so this is always empty on a
+	 * server without United Minecraft - and skipped when cycling categories, like any other empty
+	 * one.
+	 */
+	private static List<ScannerItem> scanStructures(LocalPlayer player) {
+		Vec3 eye = player.getEyePosition();
+		List<ScannerItem> results = new ArrayList<>();
+		for (StructureVoiceController.NearbyStructure structure : StructureVoiceController.nearby(player)) {
+			results.add(new ScannerItem(BlockPos.containing(structure.point()), null,
+					eye.distanceTo(structure.point()), structure.name()));
+		}
+		results.sort(Comparator.comparingDouble(ScannerItem::distance));
+		return results;
+	}
+
 	/** Every marker in the player's current dimension, distance-sorted but never range-filtered - the whole point of a marker is reaching something you already know is far away. */
 	private static List<ScannerItem> scanMarkers(LocalPlayer player) {
 		Vec3 eye = player.getEyePosition();
@@ -2222,8 +2246,8 @@ public final class ScannerController {
 	}
 
 	/**
-	 * {@code label} is only ever set for Markers, whose name is the marker itself and has no
-	 * block to derive one from. Every other category derives its narrated name from the live
+	 * {@code label} is only ever set for Markers and Structures, whose name has no block to
+	 * derive it from. Every other category derives its narrated name from the live
 	 * block/entity, with any player-assigned name applied on top in {@link #itemName}.
 	 */
 	private record ScannerItem(BlockPos blockPos, Entity entity, double distance, String label) {

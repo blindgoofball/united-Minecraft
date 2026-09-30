@@ -1,6 +1,7 @@
 package com.nibblenerds.unitedminecraft.client;
 
 import com.nibblenerds.unitedminecraft.client.speech.PrismController;
+import com.nibblenerds.unitedminecraft.structure.StructuresNearbyPayload;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
@@ -104,6 +105,14 @@ public final class ClientHooks {
 	 */
 	public static void onEntityInteract(Player player, Level level, InteractionHand hand, Entity entity) {
 		AnimalFeedingController.onUseEntity(player, level, hand, entity);
+	}
+
+	/**
+	 * The server sent the structures near the player - see {@link StructuresNearbyPayload}. The
+	 * loader's handler calls this on the client thread.
+	 */
+	public static void onStructuresNearby(StructuresNearbyPayload payload) {
+		StructureVoiceController.onStructuresNearby(payload);
 	}
 
 	/** The client is shutting down. */

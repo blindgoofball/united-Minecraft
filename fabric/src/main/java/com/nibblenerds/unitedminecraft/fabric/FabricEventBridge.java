@@ -1,9 +1,11 @@
 package com.nibblenerds.unitedminecraft.fabric;
 
 import com.nibblenerds.unitedminecraft.client.ClientHooks;
+import com.nibblenerds.unitedminecraft.structure.StructuresNearbyPayload;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
@@ -51,5 +53,10 @@ public final class FabricEventBridge {
 		});
 
 		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> ClientHooks.onClientStopping());
+
+		// Registered by UnitedMinecraftFabricCommon; Fabric runs play payload handlers on the
+		// client thread.
+		ClientPlayNetworking.registerGlobalReceiver(StructuresNearbyPayload.TYPE,
+				(payload, context) -> ClientHooks.onStructuresNearby(payload));
 	}
 }
