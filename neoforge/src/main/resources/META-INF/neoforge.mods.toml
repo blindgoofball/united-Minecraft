@@ -20,11 +20,11 @@ modId = "neoforge"
 type = "required"
 versionRange = "[26.3,)"
 ordering = "NONE"
-side = "CLIENT"
+side = "BOTH"
 
 [[dependencies.united_minecraft]]
 modId = "minecraft"
 type = "required"
 versionRange = "[26.3,26.4)"
 ordering = "NONE"
-side = "CLIENT"
+side = "BOTH"
