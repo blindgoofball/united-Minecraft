@@ -35,8 +35,9 @@ the same jar on the server; see below.)
 - Automatic narration as things change: facing direction, hotbar slot,
   offhand/main-hand swaps, entering a new biome, and the time of day reaching
   sunrise, noon, sunset, night (when mobs can start spawning in the dark), or
-  midnight. A dedicated key instead reads the full picture on demand - day
-  count, current period, and a clock-style time. Shift on that same key
+  midnight. A dedicated key instead reads the full picture on demand - the
+  current period and a clock-style time, then the day count. None of this speaks in
+  the Nether or the End, which have no day or night. Shift on that same key
   instead reads current weather (clear, rain, snow, or thunderstorm) and, at
   night, the moon phase - useful since it affects spawn rates and mob gear
   drops.

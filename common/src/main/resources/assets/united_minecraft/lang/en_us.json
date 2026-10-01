@@ -113,6 +113,7 @@
 	"united_minecraft.narrate.time_night": "Night",
 	"united_minecraft.narrate.time_midnight": "Midnight",
 	"united_minecraft.narrate.time_day": "Day %s",
+	"united_minecraft.narrate.time_none": "No day or night in this dimension",
 	"united_minecraft.narrate.time_clock": "%s:%s %s",
 	"united_minecraft.narrate.time_am": "AM",
 	"united_minecraft.narrate.time_pm": "PM",

@@ -30,6 +30,7 @@ import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.MoonPhase;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.scores.DisplaySlot;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.PlayerScoreEntry;
@@ -645,11 +646,16 @@ public final class AccessibilityTickHandler {
 	/**
 	 * Announces sunrise, noon, sunset, night (when mobs can start spawning in the dark -
 	 * distinct from the merely visual sunset a bit earlier), and midnight as each begins.
-	 * Wherever the player's current dimension has no day/night cycle at all (the Nether,
-	 * say), its clock just always reads 0 and this narrates "sunrise" once on arrival and
-	 * then never again, same as anywhere else that stops changing.
+	 * Silent in a dimension with no day/night cycle (the Nether, the End), where the clock
+	 * just reads 0 and would otherwise announce a meaningless "sunrise" on arrival. Forgetting
+	 * the last period there also means coming back to the Overworld doesn't announce whatever
+	 * time it happens to be as though it had just changed.
 	 */
 	private static void handleTimeOfDayNarration(Minecraft client, LocalPlayer player) {
+		if (!hasDayCycle(player)) {
+			lastTimePeriod = -1;
+			return;
+		}
 		int period = timePeriodIndex(player);
 		if (period != lastTimePeriod) {
 			if (lastTimePeriod != -1) {
@@ -657,6 +663,12 @@ public final class AccessibilityTickHandler {
 			}
 			lastTimePeriod = period;
 		}
+	}
+
+	/** Whether the player's dimension has a day/night cycle at all - not the Nether or the End. */
+	private static boolean hasDayCycle(LocalPlayer player) {
+		DimensionType dimension = player.level().dimensionType();
+		return dimension.hasSkyLight() && !dimension.hasFixedTime();
 	}
 
 	private static int timePeriodIndex(LocalPlayer player) {
@@ -672,6 +684,10 @@ public final class AccessibilityTickHandler {
 	}
 
 	private static void narrateTimeOfDay(Minecraft client, LocalPlayer player) {
+		if (!hasDayCycle(player)) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.time_none"));
+			return;
+		}
 		long clockTicks = player.level().getDefaultClockTime();
 		long timeOfDay = Math.floorMod(clockTicks, TICKS_PER_DAY);
 		long day = Math.floorDiv(clockTicks, TICKS_PER_DAY) + 1;
@@ -685,12 +701,13 @@ public final class AccessibilityTickHandler {
 				? "united_minecraft.narrate.time_am"
 				: "united_minecraft.narrate.time_pm");
 
-		Component message = Component.translatable("united_minecraft.narrate.time_day", day)
-				.append(Component.literal(". "))
-				.append(Component.translatable(TIME_PERIOD_KEYS[timePeriodIndex(player)]))
+		// The time first, the day count last - the time is what's usually wanted.
+		Component message = Component.translatable(TIME_PERIOD_KEYS[timePeriodIndex(player)])
 				.append(Component.literal(". "))
 				.append(Component.translatable("united_minecraft.narrate.time_clock",
-						hour12, String.format(Locale.ROOT, "%02d", minute), amPm));
+						hour12, String.format(Locale.ROOT, "%02d", minute), amPm))
+				.append(Component.literal(". "))
+				.append(Component.translatable("united_minecraft.narrate.time_day", day));
 		client.getNarrator().saySystemNow(message);
 	}
 
