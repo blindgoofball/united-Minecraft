@@ -27,6 +27,7 @@ import net.minecraft.world.level.block.BaseRailBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.ComparatorBlock;
 import net.minecraft.world.level.block.DaylightDetectorBlock;
+import net.minecraft.world.level.block.EndPortalFrameBlock;
 import net.minecraft.world.level.block.HopperBlock;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.ObserverBlock;
@@ -680,6 +681,11 @@ public final class BuildModeController {
 			// dedicated face search below.
 			if ((isInteractable(cursorState.getBlock()) || placingBlock(player) == null) && interactWithCursor(client, player)) {
 				narrateAfterAction(client, player);
+			} else if (cursorState.getBlock() instanceof EndPortalFrameBlock && cursorState.getValue(EndPortalFrameBlock.HAS_EYE)) {
+				// An Eye of Ender can only go into an empty frame, so a filled one refuses it - say
+				// that, rather than the vague "something's already there" that doesn't tell the
+				// player the frame is simply full.
+				client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_frame_full"));
 			} else {
 				client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_occupied"));
 			}
@@ -1378,6 +1384,10 @@ public final class BuildModeController {
 		}
 		if (ScannerController.isCrop(state.getBlock()) && ScannerController.isRipe(state)) {
 			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.scanner_ripe"));
+		}
+		Component frameStatus = ScannerController.endPortalFrameStatus(level, cursor);
+		if (frameStatus != null) {
+			message = message.append(Component.literal(" ")).append(frameStatus);
 		}
 		if (state.getBlock() instanceof RepeaterBlock) {
 			message = message.append(Component.literal(" ")).append(

@@ -77,6 +77,10 @@ public final class SurroundingsScanner {
 		Component name = state.getBlock().getName().copy()
 				.append(Component.literal(", "))
 				.append(faceName(hit.getDirection()));
+		Component frameStatus = ScannerController.endPortalFrameStatus(level, pos);
+		if (frameStatus != null) {
+			name = name.copy().append(Component.literal(", ")).append(frameStatus);
+		}
 		return new BlockHit(name, distance);
 	}
 

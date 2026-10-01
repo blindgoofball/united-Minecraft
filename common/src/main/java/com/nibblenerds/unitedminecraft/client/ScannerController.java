@@ -991,6 +991,10 @@ public final class ScannerController {
 			if (state.hasProperty(BlockStateProperties.OPEN) && state.getValue(BlockStateProperties.OPEN)) {
 				name = name.copy().append(Component.literal(", ")).append(Component.translatable("united_minecraft.narrate.scanner_open"));
 			}
+			Component frameStatus = endPortalFrameStatus(player.level(), item.blockPos());
+			if (frameStatus != null) {
+				name = name.copy().append(Component.literal(", ")).append(frameStatus);
+			}
 		}
 		if (category == ScannerCategory.CLIMBABLE) {
 			ClimbableRun run = climbableRun(player.level(), item.blockPos());
@@ -1271,6 +1275,52 @@ public final class ScannerController {
 			}
 			return state.getMenuProvider(player.level(), pos) != null;
 		};
+	}
+
+	// A real stronghold frame is a 12-block ring; this only bounds the live count below so a
+	// sprawling modded or player-built mass of frames can't make narration walk forever.
+	private static final int FRAME_RING_SEARCH_LIMIT = 64;
+
+	/**
+	 * Whether this end portal frame holds an Eye of Ender, plus how many of the ring it belongs
+	 * to are filled ("Empty, 9 of 12 eyes placed") - the frame's {@code HAS_EYE} state is purely
+	 * visual otherwise, so nothing else would ever say. The ring is found live (same 26-connected
+	 * adjacency {@link #addPortalClusters} uses for the Scanner's one-entry-per-ring grouping) so
+	 * it is always current, not a scan-time snapshot. Package-private - Build Mode's cursor and
+	 * the look-ahead key reuse it. Null when {@code pos} isn't an end portal frame.
+	 */
+	static Component endPortalFrameStatus(Level level, BlockPos pos) {
+		BlockState state = level.getBlockState(pos);
+		if (!(state.getBlock() instanceof EndPortalFrameBlock)) {
+			return null;
+		}
+		Component own = Component.translatable(state.getValue(EndPortalFrameBlock.HAS_EYE)
+				? "united_minecraft.narrate.frame_has_eye" : "united_minecraft.narrate.frame_empty");
+
+		Set<BlockPos> ring = new HashSet<>();
+		Deque<BlockPos> queue = new ArrayDeque<>();
+		ring.add(pos);
+		queue.add(pos);
+		int filled = 0;
+		while (!queue.isEmpty() && ring.size() <= FRAME_RING_SEARCH_LIMIT) {
+			BlockPos current = queue.poll();
+			if (level.getBlockState(current).getValue(EndPortalFrameBlock.HAS_EYE)) {
+				filled++;
+			}
+			for (BlockPos neighbor : BlockPos.betweenClosed(current.offset(-1, -1, -1), current.offset(1, 1, 1))) {
+				if (!ring.contains(neighbor)
+						&& level.getBlockState(neighbor).getBlock() instanceof EndPortalFrameBlock) {
+					BlockPos immutable = neighbor.immutable();
+					ring.add(immutable);
+					queue.add(immutable);
+				}
+			}
+		}
+		if (ring.size() < 2) {
+			return own;
+		}
+		return own.copy().append(Component.literal(", ")).append(
+				Component.translatable("united_minecraft.narrate.frame_ring_count", filled, ring.size()));
 	}
 
 	private static boolean isMechanism(Block block) {
