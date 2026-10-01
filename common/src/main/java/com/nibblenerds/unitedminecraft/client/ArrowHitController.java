@@ -1,7 +1,9 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import net.minecraft.client.Minecraft;
@@ -11,6 +13,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -23,12 +26,17 @@ import net.minecraft.world.phys.Vec3;
  * <p>The client never learns "this arrow just hit an entity" directly - hitting a living
  * target discards the arrow entity outright, the same client-visible signal as flying out
  * of tracked range or otherwise disappearing, and {@code AbstractArrow.isInGround()} isn't
- * accessible from here. So a hit is inferred instead: every arrow the player fires is
- * watched, and it counts as a hit if it disappears from the world while still actually
- * moving. An arrow that embeds in a block instead goes stationary first and stays that way
- * for a long time (until it despawns or is picked up), so requiring the disappearance to
- * happen while movement is still fresh - not after several ticks of sitting still - tells
- * the two cases apart without needing arrow-specific internals.
+ * accessible from here. So a hit is inferred in two steps. First, every arrow the player
+ * fires is watched, and one that disappears while still actually moving is a candidate (an
+ * arrow that embeds in a block goes stationary first and stays that way for a long time, so
+ * requiring fresh movement rules it out). Second, a candidate only counts if something living
+ * near where it was last seen was just hurt or has just died - the client gets that for any
+ * damage, including the killing blow. Disappearing alone is not enough: an arrow flying past
+ * the range the client tracks entities vanishes the same way, and that used to be reported
+ * as a hit.
+ *
+ * <p>A hit that also kills its target gets its own cue (a low thud under a higher ding) instead of
+ * the plain hit ding, so the two can be told apart by ear.
  *
  * <p>Played at the player's own position rather than the target's, deliberately breaking
  * from this mod's other positional cues (Hostile/Mining Radar, Fall Warning) - a shot
@@ -49,11 +57,36 @@ public final class ArrowHitController {
 	// miss) - its eventual despawn/pickup no longer counts as a hit.
 	private static final int STILL_TICKS_FOR_SETTLED = 2;
 
+	// How far from its last seen position a hurt entity can be and still count as the arrow's
+	// victim - a full-draw arrow covers about this much in the tick it lands.
+	private static final double VICTIM_SEARCH_RADIUS = 4.0;
+
+	// Ticks to wait after an arrow vanishes for the target's hurt/death to show up client-side.
+	private static final int VERDICT_WAIT_TICKS = 3;
+
+	// "Just hurt" and "just died", in ticks - an entity's hurt timer counts down from its full
+	// duration and its death timer counts up from zero, so both are measured from those ends.
+	private static final int RECENT_HURT_TICKS = 4;
+	private static final int RECENT_DEATH_TICKS = 4;
+
 	private static final Map<Integer, Tracked> watched = new HashMap<>();
+	private static final List<Candidate> candidates = new ArrayList<>();
 
 	private static final class Tracked {
 		Vec3 lastPos;
 		int stillTicks;
+	}
+
+	private static final class Candidate {
+		final Vec3 lastPos;
+		int ticksLeft = VERDICT_WAIT_TICKS;
+		// A plain hurt was seen but not yet a death - held one more tick in case the death
+		// event is still on its way, so a killing blow isn't announced as an ordinary hit.
+		boolean sawHurt;
+
+		Candidate(Vec3 lastPos) {
+			this.lastPos = lastPos;
+		}
 	}
 
 	private ArrowHitController() {
@@ -61,6 +94,7 @@ public final class ArrowHitController {
 
 	public static void reset() {
 		watched.clear();
+		candidates.clear();
 	}
 
 	public static void tick(Minecraft client, LocalPlayer player) {
@@ -81,7 +115,7 @@ public final class ArrowHitController {
 			Entity entity = player.level().getEntity(entry.getKey());
 			if (entity == null) {
 				if (tracked.stillTicks < STILL_TICKS_FOR_SETTLED) {
-					playHitCue(client, player);
+					candidates.add(new Candidate(tracked.lastPos));
 				}
 				iterator.remove();
 				continue;
@@ -90,6 +124,63 @@ public final class ArrowHitController {
 			tracked.stillTicks = pos.distanceToSqr(tracked.lastPos) < STILL_EPSILON_SQ ? tracked.stillTicks + 1 : 0;
 			tracked.lastPos = pos;
 		}
+
+		resolveCandidates(client, player);
+	}
+
+	private static void resolveCandidates(Minecraft client, LocalPlayer player) {
+		Iterator<Candidate> iterator = candidates.iterator();
+		while (iterator.hasNext()) {
+			Candidate candidate = iterator.next();
+			Outcome outcome = victimNear(player, candidate.lastPos);
+			if (outcome == Outcome.KILL) {
+				playKillCue(client, player);
+				iterator.remove();
+				continue;
+			}
+			if (outcome == Outcome.HURT) {
+				if (candidate.sawHurt) {
+					playHitCue(client, player);
+					iterator.remove();
+					continue;
+				}
+				candidate.sawHurt = true;
+			}
+			if (--candidate.ticksLeft <= 0) {
+				if (candidate.sawHurt) {
+					playHitCue(client, player);
+				}
+				iterator.remove();
+			}
+		}
+	}
+
+	private enum Outcome {
+		NONE, HURT, KILL
+	}
+
+	/** The strongest thing that just happened to something living other than the player near {@code pos}: it died, it was hurt, or nothing. */
+	private static Outcome victimNear(LocalPlayer player, Vec3 pos) {
+		AABB box = new AABB(pos, pos).inflate(VICTIM_SEARCH_RADIUS);
+		Outcome outcome = Outcome.NONE;
+		for (LivingEntity living : player.level().getEntitiesOfClass(LivingEntity.class, box, living -> living != player)) {
+			if (living.isDeadOrDying() && living.deathTime <= RECENT_DEATH_TICKS) {
+				return Outcome.KILL;
+			}
+			if (living.hurtTime > 0 && living.hurtTime > living.hurtDuration - RECENT_HURT_TICKS) {
+				outcome = Outcome.HURT;
+			}
+		}
+		return outcome;
+	}
+
+	/** The usual hit ding, lower and heavier, with a thud under it - a kill is meant to be told apart from a hit by ear alone. */
+	private static void playKillCue(Minecraft client, LocalPlayer player) {
+		RandomSource random = player.getRandom();
+		client.getSoundManager().play(new SimpleSoundInstance(SoundEvents.NOTE_BLOCK_BASEDRUM.value(), SoundSource.MASTER,
+				1.0f, 0.8f, random, player.getX(), player.getEyeY(), player.getZ()));
+		client.getSoundManager().play(new SimpleSoundInstance(SoundEvents.ARROW_HIT_PLAYER, SoundSource.MASTER,
+				1.0f, 1.6f, random, player.getX(), player.getEyeY(), player.getZ()));
 	}
 
 	private static void playHitCue(Minecraft client, LocalPlayer player) {
