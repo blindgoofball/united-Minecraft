@@ -21,6 +21,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
@@ -129,7 +130,7 @@ public final class StructureScanner {
 			if (cached.id() == null) {
 				continue;
 			}
-			Vec3 nearest = cached.nearestPoint(eye);
+			Vec3 nearest = cached.nearestPoint(level, eye);
 			if (nearest != null && nearest.distanceToSqr(eye) <= (double) MAX_RANGE * MAX_RANGE) {
 				entries.add(new StructuresNearbyPayload.Entry(cached.id(), start.getKey().start(),
 						nearest.x(), nearest.y(), nearest.z()));
@@ -164,13 +165,53 @@ public final class StructureScanner {
 	private record StartKey(ResourceKey<Level> dimension, Structure structure, long start) {
 	}
 
-	/** @param id null for a start that has no pieces, cached so it isn't looked up again */
-	private record CachedStart(Identifier id, List<BoundingBox> boxes) {
-		/** The closest point to {@code from} on any of this structure's pieces. */
-		Vec3 nearestPoint(Vec3 from) {
+	/**
+	 * One structure's pieces, with whether each is visible from the surface world or buried below
+	 * it. Buried pieces are never reported - strongholds, mineshafts, ancient cities and buried
+	 * treasure are meant to be found by exploring, and announcing them through solid rock would
+	 * be an x-ray (the same rule the Scanner applies to ore). A piece counts as buried when its
+	 * top sits more than one block below the terrain at its centre; only worked out for
+	 * dimensions with a sky, since the Nether and End have no surface to be buried under.
+	 *
+	 * <p>Whether a piece is buried is decided once and kept, but only when its chunk is loaded,
+	 * so a piece in a chunk that is not ready yet is simply left out until it is, never guessed
+	 * at - and never loaded on purpose just to find out.
+	 *
+	 * @param id null for a start that has no pieces, cached so it isn't looked up again
+	 */
+	private static final class CachedStart {
+		private static final byte UNKNOWN = 0;
+		private static final byte EXPOSED = 1;
+		private static final byte BURIED = 2;
+		/** How far below the terrain a piece's top may sit and still count as exposed. */
+		private static final int BURIAL_TOLERANCE = 1;
+
+		private final Identifier id;
+		private final List<BoundingBox> boxes;
+		private final byte[] state;
+
+		CachedStart(Identifier id, List<BoundingBox> boxes) {
+			this.id = id;
+			this.boxes = boxes;
+			this.state = new byte[boxes.size()];
+		}
+
+		Identifier id() {
+			return id;
+		}
+
+		/** The closest point to {@code from} on any exposed piece of this structure, or null if none is. */
+		Vec3 nearestPoint(ServerLevel level, Vec3 from) {
 			Vec3 best = null;
 			double bestDistance = Double.MAX_VALUE;
-			for (BoundingBox box : boxes) {
+			for (int i = 0; i < boxes.size(); i++) {
+				if (state[i] == UNKNOWN) {
+					state[i] = classify(level, boxes.get(i));
+				}
+				if (state[i] != EXPOSED) {
+					continue;
+				}
+				BoundingBox box = boxes.get(i);
 				// Block boxes are inclusive, so a piece's far faces are at max + 1.
 				double x = Math.clamp(from.x(), box.minX(), box.maxX() + 1.0);
 				double y = Math.clamp(from.y(), box.minY(), box.maxY() + 1.0);
@@ -182,6 +223,22 @@ public final class StructureScanner {
 				}
 			}
 			return best;
+		}
+
+		private static byte classify(ServerLevel level, BoundingBox box) {
+			if (!level.dimensionType().hasSkyLight()) {
+				return EXPOSED;
+			}
+			int x = box.getCenter().getX();
+			int z = box.getCenter().getZ();
+			LevelChunk chunk = level.getChunkSource().getChunkNow(x >> 4, z >> 4);
+			if (chunk == null) {
+				return UNKNOWN;
+			}
+			// The top of the terrain ignoring water, so a monument or wreck on the sea floor is
+			// measured against the floor, not the waves above it.
+			int terrain = chunk.getHeight(Heightmap.Types.OCEAN_FLOOR, x, z);
+			return box.maxY() >= terrain - BURIAL_TOLERANCE ? EXPOSED : BURIED;
 		}
 	}
 }

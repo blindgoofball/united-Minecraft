@@ -344,13 +344,16 @@ exact figure. The sounds can be switched off in Settings > Modes & Movement.
 
 ### Structure Voices
 
-When a village, ocean monument, ruined portal, shipwreck, stronghold, trial
-chamber or any other generated structure comes within your Scanner range, its
-name is spoken once, from its direction: fly past a village on your left and
-you hear "Village" in your left ear. Distance is measured to the structure's
-nearest piece in 3D, so a buried ancient city is only announced once you're
-really near it. Each structure is announced once per visit, and again only
-after you've gone well away and come back. It's passive - there's no key to
+When a village, ocean monument, ruined portal, shipwreck or any other
+structure you could come across above ground comes within your Scanner range,
+its name is spoken once, from its direction: fly past a village on your left and
+you hear "Village" in your left ear. Anything buried below the terrain -
+strongholds, mineshafts, ancient cities, trial chambers, buried treasure - is
+deliberately never announced, the same "no x-ray" rule the Scanner applies to
+ore, so finding those stays a matter of exploring (an Eye of Ender, for
+strongholds). Dimensions with no surface, like the Nether and End, aren't
+filtered. Each structure is announced once per visit, and again only after
+you've gone well away and come back. It's passive - there's no key to
 press; the Scanner's Biomes and Structures category lists what's nearby on demand.
 
 Direction is kept simple and fixed for the whole word, rather than 3D audio
