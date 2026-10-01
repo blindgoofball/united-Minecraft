@@ -3,7 +3,14 @@ package com.nibblenerds.unitedminecraft.client;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.BowItem;
+import net.minecraft.world.item.CrossbowItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.TridentItem;
+import net.minecraft.world.item.component.ChargedProjectiles;
+import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.phys.Vec3;
 
 /** Shared "snap the player's look direction at a point" math, used by build mode and the scanner. */
@@ -75,21 +82,72 @@ public final class CameraUtil {
 
 	/**
 	 * Aims at an entity the way any lock-on feature (Scanner, Combat Mode) wants to: a flat
-	 * look normally, or - if a bow is currently being drawn - a real ballistic arc instead,
-	 * continuously matching however far the draw has progressed.
+	 * look normally, or - while a bow is being drawn, a crossbow is loaded, or a trident is
+	 * being held back for a throw - a real ballistic arc instead, continuously matching the
+	 * projectile's actual launch speed (for a bow, however far the draw has progressed).
 	 */
 	public static void aimAtEntity(LocalPlayer player, Entity target) {
 		Vec3 center = target.getBoundingBox().getCenter();
-		float drawPower = drawingBowPower(player);
-		// Below BowItem's own 0.1 firing threshold there's not enough draw speed to solve a
-		// sane arc from yet - a barely-started draw would otherwise snap the pitch to a wild
-		// extreme. Plain aim is a fine placeholder until the draw is far enough along to mean
-		// something.
-		if (drawPower >= 0.1f) {
-			aimBallisticAt(player, center, drawPower * 3.0f);
+		double speed = launchSpeed(player);
+		if (speed > 0.0) {
+			aimBallisticAt(player, center, speed);
 		} else {
 			aimAt(player, center);
 		}
+	}
+
+	// Launch speeds in blocks/tick, read from the game: a trident is always thrown at 2.5
+	// (TridentItem.PROJECTILE_SHOOT_POWER), a crossbow fires an arrow at 3.15 and a firework
+	// rocket at 1.6 regardless of any charge.
+	private static final double TRIDENT_SPEED = 2.5;
+	private static final double CROSSBOW_ARROW_SPEED = 3.15;
+
+	/**
+	 * How fast the projectile the player is about to release would leave, or 0 when there is
+	 * nothing to solve an arc for yet (plain aim is the right fallback then):
+	 * <ul>
+	 * <li>A bow scales with how far it is drawn. Below BowItem's own 0.1 firing threshold there
+	 * is not enough draw speed to solve a sane arc from, and a barely-started draw would snap
+	 * the pitch to a wild extreme.
+	 * <li>A crossbow is a fixed speed once loaded and fires the instant it is used, so it counts
+	 * whenever a loaded one is held. A firework rocket flies under its own rules, so it is left
+	 * to plain aim.
+	 * <li>A trident is thrown on release after being held back, so it counts while that hold is
+	 * in progress. A Riptide trident launches the player instead of being thrown, so it never
+	 * counts.
+	 * </ul>
+	 */
+	private static double launchSpeed(LocalPlayer player) {
+		float drawPower = drawingBowPower(player);
+		if (drawPower >= 0.1f) {
+			return drawPower * 3.0f;
+		}
+		if (player.isUsingItem() && player.getUseItem().getItem() instanceof TridentItem) {
+			return EnchantmentHelper.getTridentSpinAttackStrength(player.getUseItem(), player) > 0.0f ? 0.0 : TRIDENT_SPEED;
+		}
+		ItemStack crossbow = loadedCrossbow(player);
+		if (crossbow != null) {
+			ChargedProjectiles loaded = crossbow.get(DataComponents.CHARGED_PROJECTILES);
+			return loaded != null && !loaded.contains(Items.FIREWORK_ROCKET) ? CROSSBOW_ARROW_SPEED : 0.0;
+		}
+		return 0.0;
+	}
+
+	/**
+	 * The loaded crossbow the player would fire, or null. The main hand's wins; an off-hand one
+	 * only counts while the main hand is empty, so a loaded crossbow carried in the off-hand
+	 * doesn't bend the aim while the player is fighting with a sword.
+	 */
+	private static ItemStack loadedCrossbow(LocalPlayer player) {
+		ItemStack main = player.getMainHandItem();
+		if (main.getItem() instanceof CrossbowItem && CrossbowItem.isCharged(main)) {
+			return main;
+		}
+		ItemStack off = player.getOffhandItem();
+		if (main.isEmpty() && off.getItem() instanceof CrossbowItem && CrossbowItem.isCharged(off)) {
+			return off;
+		}
+		return null;
 	}
 
 	/** Current bow draw power (0..1, matching {@link BowItem#getPowerForTime}), or 0 if not drawing a bow. */

@@ -15,6 +15,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
+import net.minecraft.world.entity.projectile.arrow.ThrownTrident;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -72,9 +73,24 @@ public final class ArrowHitController {
 	private static final Map<Integer, Tracked> watched = new HashMap<>();
 	private static final List<Candidate> candidates = new ArrayList<>();
 
+	// A trident that strikes something bounces off and stays in the world rather than vanishing
+	// the way an arrow does, so for a trident the moment of impact is its speed collapsing
+	// instead: from at least this many blocks/tick, down to under this fraction of its peak.
+	private static final double TRIDENT_MIN_IMPACT_SPEED = 0.5;
+	private static final double TRIDENT_IMPACT_SPEED_FRACTION = 0.5;
+
 	private static final class Tracked {
+		final boolean trident;
 		Vec3 lastPos;
 		int stillTicks;
+		// Fastest per-tick movement seen since the last impact - what a trident's slowdown is
+		// measured against.
+		double peakSpeed;
+
+		Tracked(boolean trident, Vec3 lastPos) {
+			this.trident = trident;
+			this.lastPos = lastPos;
+		}
 	}
 
 	private static final class Candidate {
@@ -102,9 +118,7 @@ public final class ArrowHitController {
 		for (Entity entity : player.level().getEntities(player, box,
 				e -> e instanceof AbstractArrow arrow && arrow.getOwner() == player)) {
 			watched.computeIfAbsent(entity.getId(), id -> {
-				Tracked tracked = new Tracked();
-				tracked.lastPos = entity.position();
-				return tracked;
+				return new Tracked(entity instanceof ThrownTrident, entity.position());
 			});
 		}
 
@@ -114,13 +128,27 @@ public final class ArrowHitController {
 			Tracked tracked = entry.getValue();
 			Entity entity = player.level().getEntity(entry.getKey());
 			if (entity == null) {
-				if (tracked.stillTicks < STILL_TICKS_FOR_SETTLED) {
+				// A trident that disappears has been picked up or recalled, never hit anything on
+				// the way out - its impacts are caught by the speed check below instead.
+				if (!tracked.trident && tracked.stillTicks < STILL_TICKS_FOR_SETTLED) {
 					candidates.add(new Candidate(tracked.lastPos));
 				}
 				iterator.remove();
 				continue;
 			}
 			Vec3 pos = entity.position();
+			if (tracked.trident) {
+				double speed = pos.distanceTo(tracked.lastPos);
+				if (speed > tracked.peakSpeed) {
+					tracked.peakSpeed = speed;
+				} else if (tracked.peakSpeed >= TRIDENT_MIN_IMPACT_SPEED
+						&& speed < tracked.peakSpeed * TRIDENT_IMPACT_SPEED_FRACTION) {
+					candidates.add(new Candidate(pos));
+					// Starts over, so a trident that comes back (Loyalty) and strikes again is
+					// judged afresh instead of against its old peak.
+					tracked.peakSpeed = 0.0;
+				}
+			}
 			tracked.stillTicks = pos.distanceToSqr(tracked.lastPos) < STILL_EPSILON_SQ ? tracked.stillTicks + 1 : 0;
 			tracked.lastPos = pos;
 		}

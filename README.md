@@ -155,8 +155,11 @@ navigation without needing to see or aim at them.
   Alt+Page Up/Down jumps between structures of the same kind, e.g. from one
   village to the next.
 - Targeting a block aims at it. Targeting a mob starts a continuous lock-on that
-  keeps facing it until released. Drawing a bow while locked on aims with a real
-  ballistic arc, so shots land at real range instead of dropping short.
+  keeps facing it until released. Drawing a bow, holding a loaded crossbow, or
+  holding a trident back to throw it while locked on aims with a real ballistic
+  arc, so shots land at real range instead of dropping short. (Riptide tridents
+  launch you rather than flying, and crossbow fireworks fly their own way, so
+  those aim plain.)
 - While locked onto a mob, the target key (Enter) doesn't target - there's
   nothing to target while already locked - so it interacts with the locked
   entity directly instead (feeding, trading, saddling, etc.), the same real
@@ -173,9 +176,9 @@ navigation without needing to see or aim at them.
 - Walking to a mob (Shift+target) just faces it once you arrive, the same
   as walking to a block already does - turn on the auto-lock Settings
   toggle if you'd rather it lock on automatically instead.
-- Any bow shot that actually connects - locked on or not - gets a confirmation cue
+- Any arrow shot that actually connects - locked on or not - gets a confirmation cue
   at full volume regardless of distance, since a hit at real range is easy to miss
-  both by eye and by ear.
+  both by eye and by ear, and a shot that kills gets its own, lower thud-and-ding.
 - Killing a locked-on hostile mob automatically re-locks onto the next nearest
   one, so tracking a fight doesn't mean re-scanning after every kill.
 - Shift+target instead walks there automatically (see Auto-Walk below).
