@@ -72,6 +72,8 @@ import net.minecraft.world.level.block.CaveVinesBlock;
 import net.minecraft.world.level.block.CaveVinesPlantBlock;
 import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.CocoaBlock;
+import net.minecraft.world.level.block.ChorusFlowerBlock;
+import net.minecraft.world.level.block.ChorusPlantBlock;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.EndPortalBlock;
@@ -154,7 +156,7 @@ import net.minecraft.world.phys.Vec3;
  * otherwise, same as Build Mode's powered-block narration - covering farmland crops, pumpkin
  * and melon stems (and the pumpkin/melon fruit itself, once one has actually grown), nether
  * wart, cocoa, sweet berry bushes, saplings (including bamboo's own sapling stage and mangrove
- * propagules), and cave vine segments actually bearing glow berries (see {@link #isCrop} and
+ * propagules), and cave vine segments actually bearing glow berries (see {@link #isCrop}, chorus plants clustered by {@link #addChorusClusters} and
  * {@link #isRipe}). Grown bamboo, sugar cane, and kelp are covered too, each narrating its
  * height instead of "Ripe" - one Scanner entry per stalk rather than per block, or per
  * horizontally-connected clump - see {@link #scanCrops}, {@link #addStalkClusters}, and {@link
@@ -1412,6 +1414,8 @@ public final class ScannerController {
 	 */
 	private static boolean cropMatches(Block block) {
 		return block instanceof BambooStalkBlock
+				|| block instanceof ChorusPlantBlock
+				|| block instanceof ChorusFlowerBlock
 				|| block instanceof SugarCaneBlock
 				|| block instanceof KelpBlock
 				|| block instanceof KelpPlantBlock
@@ -1947,9 +1951,14 @@ public final class ScannerController {
 		Set<BlockPos> bambooPositions = new HashSet<>();
 		Set<BlockPos> canePositions = new HashSet<>();
 		Set<BlockPos> kelpPositions = new HashSet<>();
+		Set<BlockPos> chorusPositions = new HashSet<>();
 		List<ScannerItem> results = new ArrayList<>();
 		forEachBlockInRange(level, center, r, (pos, state) -> {
 			Block block = state.getBlock();
+			if (block instanceof ChorusPlantBlock || block instanceof ChorusFlowerBlock) {
+				chorusPositions.add(pos.immutable());
+				return true;
+			}
 			if (block instanceof BambooStalkBlock) {
 				bambooPositions.add(pos.immutable());
 				return true;
@@ -1975,8 +1984,48 @@ public final class ScannerController {
 		addStalkClusters(eye, bambooPositions, results);
 		addStalkClusters(eye, canePositions, results);
 		addStalkClusters(eye, kelpPositions, results);
+		addChorusClusters(level, eye, chorusPositions, results);
 		results.sort(Comparator.comparingDouble(ScannerItem::distance));
 		return results;
+	}
+
+	/**
+	 * One entry per connected chorus plant (stems and flowers together), not per block - a single
+	 * plant is dozens of branching blocks, which would otherwise bury everything else in the
+	 * category. Unlike the stalk crops it branches in every direction, so it clusters with the
+	 * same flood fill trees and liquids use. Reported at the cluster's nearest stem block when it
+	 * has any, since chorus fruit drops from breaking stems rather than flowers, falling back to
+	 * the nearest flower for a plant that is only a lone flower so far.
+	 */
+	private static void addChorusClusters(Level level, Vec3 eye, Set<BlockPos> positions, List<ScannerItem> results) {
+		Set<BlockPos> visited = new HashSet<>();
+		for (BlockPos start : positions) {
+			if (visited.contains(start)) {
+				continue;
+			}
+			Set<BlockPos> cluster = new HashSet<>();
+			floodFillCluster(start, positions, visited, cluster);
+			BlockPos nearestStem = null;
+			BlockPos nearestAny = null;
+			double stemDistance = Double.MAX_VALUE;
+			double anyDistance = Double.MAX_VALUE;
+			for (BlockPos pos : cluster) {
+				double distance = eye.distanceTo(Vec3.atCenterOf(pos));
+				if (distance < anyDistance) {
+					anyDistance = distance;
+					nearestAny = pos;
+				}
+				if (distance < stemDistance && level.getBlockState(pos).getBlock() instanceof ChorusPlantBlock) {
+					stemDistance = distance;
+					nearestStem = pos;
+				}
+			}
+			BlockPos chosen = nearestStem != null ? nearestStem : nearestAny;
+			double distance = nearestStem != null ? stemDistance : anyDistance;
+			if (chosen != null && distance <= scanRange()) {
+				results.add(new ScannerItem(chosen, null, distance, null));
+			}
+		}
 	}
 
 	/**

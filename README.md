@@ -120,7 +120,9 @@ navigation without needing to see or aim at them.
   actually bearing glow berries, narrating "Ripe" once one's actually ready to
   harvest - silent otherwise, so it doesn't get in the way while you're just
   checking what's growing. Grown bamboo stalks are here too, but clustered into
-  whole clumps like Trees, not one entry per block.
+  whole clumps like Trees, not one entry per block. Chorus plants (the source of
+  chorus fruit) are clustered the same way - one entry per whole plant, at its
+  nearest stem.
 - Liquids covers water and lava, each clustered into whole connected bodies (a lake
   or ocean is one entry, not one per block) and reported at the nearest visible
   point - same "no x-ray" rule as Ores, so a lava pool sealed behind unmined stone
