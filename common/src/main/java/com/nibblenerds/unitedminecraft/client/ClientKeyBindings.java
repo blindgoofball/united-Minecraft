@@ -199,6 +199,9 @@ public final class ClientKeyBindings {
 	public static final KeybindAction SCANNER_TARGET_WALK_THERE = new KeybindAction("scanner_target_walk_there",
 			KeybindCategory.SCANNER, new Keybind(InputConstants.KEY_RETURN, InputConstants.MOD_SHIFT));
 
+	/** Locks straight onto the nearest Ender Dragon or Wither - see {@link ScannerController#lockOnBoss}. */
+	public static final KeybindAction SCANNER_LOCK_BOSS = new KeybindAction("scanner_lock_boss",
+			KeybindCategory.SCANNER, new Keybind(InputConstants.KEY_SEMICOLON, InputConstants.MOD_ALT));
 	public static final KeybindAction SCANNER_STOP_LOCK =
 			new KeybindAction("scanner_stop_lock", KeybindCategory.SCANNER, new Keybind(InputConstants.KEY_BACKSPACE, 0));
 	public static final KeybindAction SCANNER_REMOVE_MARKER =

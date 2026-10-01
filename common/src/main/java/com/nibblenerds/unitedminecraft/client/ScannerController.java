@@ -42,6 +42,8 @@ import net.minecraft.world.entity.animal.equine.AbstractHorse;
 import net.minecraft.world.entity.animal.parrot.Parrot;
 import net.minecraft.world.entity.animal.sheep.Sheep;
 import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
+import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
+import net.minecraft.world.entity.boss.wither.WitherBoss;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.decoration.Cushion;
 import net.minecraft.world.entity.decoration.ItemFrame;
@@ -660,6 +662,34 @@ public final class ScannerController {
 			return;
 		}
 		lockOnto(client, player, entity);
+	}
+
+	// The furthest away a boss is looked for - well past where the Ender Dragon circles the End
+	// island, while still only covering entities the client actually knows about.
+	private static final double BOSS_SEARCH_RANGE = 256.0;
+
+	/**
+	 * Locks straight onto the nearest Ender Dragon or Wither, wherever it is, without finding it in
+	 * the Hostile Mobs list first. Package-private - reached from the tick handler's global key
+	 * handling, which keeps it from firing under Build Mode or Combat Mode.
+	 */
+	static void lockOnBoss(Minecraft client, LocalPlayer player) {
+		Entity nearest = null;
+		double nearestDistance = Double.MAX_VALUE;
+		AABB box = player.getBoundingBox().inflate(BOSS_SEARCH_RANGE);
+		for (Entity entity : player.level().getEntities(player, box,
+				e -> e.isAlive() && (e instanceof EnderDragon || e instanceof WitherBoss))) {
+			double distance = player.distanceToSqr(entity);
+			if (distance < nearestDistance) {
+				nearestDistance = distance;
+				nearest = entity;
+			}
+		}
+		if (nearest == null) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.scanner_no_boss"));
+			return;
+		}
+		lockOnto(client, player, nearest);
 	}
 
 	private static void lockOnto(Minecraft client, LocalPlayer player, Entity entity) {

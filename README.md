@@ -154,6 +154,10 @@ navigation without needing to see or aim at them.
   a server that also has United Minecraft; biomes work everywhere.
   Alt+Page Up/Down jumps between structures of the same kind, e.g. from one
   village to the next.
+- Alt+; locks straight onto the nearest Ender Dragon or Wither, wherever it is, so
+  you don't have to find it in the Hostile Mobs list. Release the lock with
+  Backspace. It does nothing under Build Mode or Combat Mode, which choose their
+  own targets.
 - Targeting a block aims at it. Targeting a mob starts a continuous lock-on that
   keeps facing it until released. Drawing a bow, holding a loaded crossbow, or
   holding a trident back to throw it while locked on aims with a real ballistic

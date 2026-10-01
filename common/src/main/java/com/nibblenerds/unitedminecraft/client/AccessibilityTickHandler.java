@@ -393,6 +393,12 @@ public final class AccessibilityTickHandler {
 			TrailController.narrate(client, player);
 		}
 
+		if (!BuildModeController.isActive() && !CombatModeController.isActive()
+				&& ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_LOCK_BOSS)) {
+			// Build Mode and Combat Mode both own the camera and the target, so the key does
+			// nothing under either - Combat Mode picks its own (nearest) target.
+			ScannerController.lockOnBoss(client, player);
+		}
 		if (rotationFree && ClientKeyBindings.pressed(ClientKeyBindings.FACE_EYE_OF_ENDER)) {
 			// Turns the camera, so it is blocked against the same rotation-owning modes as the
 			// other turning keys above.
