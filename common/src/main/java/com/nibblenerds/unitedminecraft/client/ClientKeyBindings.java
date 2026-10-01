@@ -124,6 +124,9 @@ public final class ClientKeyBindings {
 	/** Turns to face the direction the last thrown Eye of Ender flew - see {@link EyeOfEnderController}. */
 	public static final KeybindAction FACE_EYE_OF_ENDER = new KeybindAction("face_eye_of_ender",
 			KeybindCategory.MOVEMENT_AND_MODES, new Keybind(InputConstants.KEY_B, InputConstants.MOD_ALT));
+	/** Cycles Angle Assist: off, bridge, tunnel, staircase - see {@link AngleAssistController}. */
+	public static final KeybindAction ANGLE_ASSIST_CYCLE = new KeybindAction("angle_assist_cycle",
+			KeybindCategory.MOVEMENT_AND_MODES, new Keybind(InputConstants.KEY_G, InputConstants.MOD_ALT));
 	public static final KeybindAction TRAIL_MARK_START = new KeybindAction(
 			"trail_mark_start", KeybindCategory.MOVEMENT_AND_MODES, new Keybind(InputConstants.KEY_X, InputConstants.MOD_ALT));
 

@@ -333,6 +333,29 @@ sound above your head that gets louder as the ceiling gets lower - telling a
 tight tunnel from a cavern from open sky. Every sound can be previewed from the
 Sound Glossary.
 
+### Angle Assist
+
+Alt+G cycles a mode that keeps your camera's pitch on whatever block a repetitive
+job needs next, so you only have to keep your facing square (Alt+arrow snap-turns
+do that) and hold the attack or use key: off, bridge, tunnel, staircase. Only
+pitch is ever touched. Because it always aims at the first block of the pattern
+still standing, a fast pickaxe that breaks a block the instant it's hit just moves
+the crosshair on to the next one - never to something beyond it, which is how
+holding the attack key used to dig extra.
+
+- Tunnel: a two-high tunnel straight ahead, head-height block then foot-height
+  block, nearest first.
+- Staircase: a staircase going down one block for every block forward. Each step
+  clears three blocks - the two you walk through plus the one you drop onto.
+- Bridge: aims at the side of the block you're bridging out from, ready for a
+  block to be placed against it. That side faces the void, so face the block and
+  back up until you're over its edge - it tells you "Back up to the edge" until
+  you are, then "Ready to place". (Looking forward at the edge only ever hits the
+  top of the block, never its side.)
+
+It stands down while Build Mode, Combat Mode, a Scanner lock, or Auto-Walk have
+the camera.
+
 ### Eye of Ender
 
 Throw an Eye of Ender and the mod follows it for you. Once it has flown a few

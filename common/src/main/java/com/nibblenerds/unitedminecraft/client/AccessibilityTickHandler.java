@@ -132,6 +132,7 @@ public final class AccessibilityTickHandler {
 			HostileRadarController.reset();
 			ArrowHitController.reset();
 			EyeOfEnderController.reset();
+			AngleAssistController.reset();
 			FishingCatchController.reset();
 			FallWarningController.reset();
 			TreeChoppingAssist.reset();
@@ -228,6 +229,9 @@ public final class AccessibilityTickHandler {
 				// so handleCameraLook's isDown() reads are already false on any axis a snap-turn
 				// just won - see ClientKeyBindings#updateAll's own doc.
 				handleCameraLook(player);
+				// After camera look, so it has the last word on pitch from the arrow keys - it only
+				// ever touches pitch, and does nothing at all unless a mode has been switched on.
+				AngleAssistController.tick(client, player);
 				if (snapTurn.left() || snapTurn.right() || snapTurn.up() || snapTurn.down()) {
 					handleSnapTurn(client, player, snapTurn.left(), snapTurn.right(), snapTurn.up(), snapTurn.down());
 				}
@@ -393,6 +397,9 @@ public final class AccessibilityTickHandler {
 			TrailController.narrate(client, player);
 		}
 
+		if (ClientKeyBindings.pressed(ClientKeyBindings.ANGLE_ASSIST_CYCLE)) {
+			AngleAssistController.cycle(client);
+		}
 		if (!BuildModeController.isActive() && !CombatModeController.isActive()
 				&& ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_LOCK_BOSS)) {
 			// Build Mode and Combat Mode both own the camera and the target, so the key does
