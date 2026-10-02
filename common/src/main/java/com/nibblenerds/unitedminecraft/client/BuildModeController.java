@@ -9,6 +9,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.InteractionHand;
@@ -225,6 +226,11 @@ public final class BuildModeController {
 	private static boolean breakHeld;
 
 	private BuildModeController() {
+	}
+
+	/** Whether the break key is currently driving a mining action - see {@code MinecraftContinueAttackMixin}. */
+	public static boolean isBreaking() {
+		return active && breakHeld;
 	}
 
 	public static boolean isActive() {
@@ -776,6 +782,12 @@ public final class BuildModeController {
 	private static boolean hasUseOnBehavior(ItemStack stack) {
 		if (stack.isEmpty()) {
 			return false;
+		}
+		// Hoes, axes and shovels no longer subclass anything with its own useOn - the base
+		// Item.useOn runs whatever BLOCK_TRANSFORMER component the stack carries, so the
+		// reflective override check below can't see them at all.
+		if (stack.has(DataComponents.BLOCK_TRANSFORMER)) {
+			return true;
 		}
 		return USE_ON_CACHE.computeIfAbsent(stack.getItem(), BuildModeController::declaresUseOn);
 	}
