@@ -73,6 +73,11 @@ import net.minecraft.world.level.block.CaveVines;
 import net.minecraft.world.level.block.CaveVinesBlock;
 import net.minecraft.world.level.block.CaveVinesPlantBlock;
 import net.minecraft.world.level.block.ChestBlock;
+import net.minecraft.world.level.block.CommandBlock;
+import net.minecraft.world.level.block.JigsawBlock;
+import net.minecraft.world.level.block.StructureBlock;
+import net.minecraft.world.level.block.TestBlock;
+import net.minecraft.world.level.block.TestInstanceBlock;
 import net.minecraft.world.level.block.CocoaBlock;
 import net.minecraft.world.level.block.ChorusFlowerBlock;
 import net.minecraft.world.level.block.ChorusPlantBlock;
@@ -1296,6 +1301,13 @@ public final class ScannerController {
 			// in and out by right-clicking a specific slot directly, not through a screen - so the
 			// getMenuProvider check below misses them the same way it misses Vaults.
 			if (state.getBlock() instanceof SelectableSlotContainer) {
+				return true;
+			}
+			// Command, structure, jigsaw and test blocks open their editor client-side from a packet rather than
+			// through a menu provider, so the getMenuProvider check below misses them too.
+			if (state.getBlock() instanceof CommandBlock || state.getBlock() instanceof StructureBlock
+					|| state.getBlock() instanceof JigsawBlock || state.getBlock() instanceof TestBlock
+					|| state.getBlock() instanceof TestInstanceBlock) {
 				return true;
 			}
 			// Vaults have no menu provider - you insert a key by right-clicking rather than
