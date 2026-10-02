@@ -457,12 +457,11 @@ public final class BuildModeController {
 	 * why "within reach" alone can land the player somewhere unpredictable. A cursor sitting on a
 	 * solid, non-replaceable block (examining existing terrain/structure) obviously can't be
 	 * walked into, so that case keeps the ordinary "stand adjacent" behavior.
+	 *
+	 * <p>Works regardless of whether the cursor is already within reach - walking to a spot you
+	 * could already reach is still useful (to stand exactly in the cell, or to get closer).
 	 */
 	private static void walkToCursor(Minecraft client, LocalPlayer player) {
-		if (isInReach(player, cursor)) {
-			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_already_in_reach"));
-			return;
-		}
 		Component name = Component.translatable("united_minecraft.narrate.build_cursor_name");
 		if (player.level().getBlockState(cursor).canBeReplaced()) {
 			AutoWalkController.startExact(client, player, cursor, name, null);

@@ -173,7 +173,6 @@
 	"united_minecraft.narrate.build_cannot_break": "Nothing to break",
 	"united_minecraft.narrate.build_not_visible": "Can't see it",
 	"united_minecraft.narrate.build_edge_of_area": "Edge of build area",
-	"united_minecraft.narrate.build_already_in_reach": "Already in reach",
 	"united_minecraft.narrate.build_cursor_name": "the cursor",
 	"united_minecraft.narrate.build_facing": "Facing %s",
 	"united_minecraft.narrate.build_powered": "Powered",
