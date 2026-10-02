@@ -46,6 +46,11 @@ public final class MovementAssistController {
 	}
 
 	public static void tick(Minecraft client, LocalPlayer player) {
+		if (!UnitedMinecraftConfig.get().movementAssistEnabled) {
+			stuckTicks = 0;
+			return;
+		}
+
 		double horizontalSpeedSqr = player.getDeltaMovement().x * player.getDeltaMovement().x
 				+ player.getDeltaMovement().z * player.getDeltaMovement().z;
 

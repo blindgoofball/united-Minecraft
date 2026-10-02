@@ -21,6 +21,8 @@ final class DetectionAlertsSettingsScreen extends SettingsListScreen {
 				"united_minecraft.settings_screen.hostile_radar_range", value -> config.hostileRadarRange = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.melee_range_alert_enabled",
 				config.meleeRangeAlertEnabled, value -> config.meleeRangeAlertEnabled = value);
+		y = addToggle(x, y, "united_minecraft.settings_screen.movement_assist_enabled",
+				config.movementAssistEnabled, value -> config.movementAssistEnabled = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.fall_warning_enabled",
 				config.fallWarningEnabled, value -> config.fallWarningEnabled = value);
 		y = addSlider(x, y, 1.0, 10.0, 1.0, config.fallWarningThreshold,

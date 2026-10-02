@@ -433,6 +433,7 @@
 	"united_minecraft.settings_screen.hostile_radar_enabled": "Hostile Radar",
 	"united_minecraft.settings_screen.hostile_radar_range": "Hostile Radar Range (blocks)",
 	"united_minecraft.settings_screen.melee_range_alert_enabled": "Melee Range Alert",
+	"united_minecraft.settings_screen.movement_assist_enabled": "Movement Assist (Blocked Ahead Alerts)",
 	"united_minecraft.settings_screen.fall_warning_enabled": "Fall Warning",
 	"united_minecraft.settings_screen.fall_warning_threshold": "Fall Warning Threshold (blocks)",
 	"united_minecraft.settings_screen.fall_warning_lookahead_seconds": "Fall Warning Lookahead (Seconds)",
