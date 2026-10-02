@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import it.unimi.dsi.fastutil.longs.LongIterator;
@@ -50,6 +51,12 @@ public final class StructureScanner {
 	/** How often an empty list is still sent, so the client knows this server reports structures at all. */
 	private static final int EMPTY_HEARTBEAT_TICKS = 40;
 	private static final int CACHE_SIZE = 1024;
+	/**
+	 * Structures never reported, whatever their position - a buried treasure chest and a nether
+	 * fossil are hidden finds, not landmarks, and announcing them would give away exactly what
+	 * the depth rule below exists to keep secret. Vanilla ids; compared by string form.
+	 */
+	private static final Set<String> EXCLUDED = Set.of("minecraft:buried_treasure", "minecraft:nether_fossil");
 
 	private static final Map<StartKey, CachedStart> cache = new LinkedHashMap<>(256, 0.75f, true) {
 		@Override
@@ -144,6 +151,9 @@ public final class StructureScanner {
 
 	private static CachedStart load(ServerLevel level, Registry<Structure> registry, Structure structure, long start) {
 		Identifier id = registry.getKey(structure);
+		if (id != null && EXCLUDED.contains(id.toString())) {
+			return new CachedStart(null, List.of());
+		}
 		List<BoundingBox> boxes = new ArrayList<>();
 		// Loads the start's chunk to STRUCTURE_STARTS if it isn't already - the same call vanilla
 		// makes for /locate and structure-bound mob spawns - and skips starts that turned out
