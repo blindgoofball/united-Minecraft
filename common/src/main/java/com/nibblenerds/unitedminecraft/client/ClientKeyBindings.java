@@ -261,6 +261,9 @@ public final class ClientKeyBindings {
 	/** Creative's Inventory tab only - discards whatever's picked up on the cursor; see {@link MenuAccessibilityController#discardCarriedItem}. */
 	public static final KeybindAction CONTAINER_DISCARD = new KeybindAction(
 			"container_discard", KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_DELETE, 0), KeybindContext.CONTAINER_SCREEN);
+	/** Drops the focused slot's item (Ctrl: the whole stack). Not vanilla's drop key, which is a plain letter and so is taken by first-letter navigation. */
+	public static final KeybindAction CONTAINER_DROP = new KeybindAction(
+			"container_drop", KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_BACKSPACE, 0), KeybindContext.CONTAINER_SCREEN);
 	public static final KeybindAction CONTAINER_DESCRIBE_SLOT = new KeybindAction(
 			"container_describe_slot", KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_SPACE, 0), KeybindContext.CONTAINER_SCREEN);
 

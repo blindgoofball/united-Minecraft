@@ -490,7 +490,50 @@ public final class MenuAccessibilityController {
 			return false;
 		}
 
+		if (handleFirstLetterJump(screen, player, event)) {
+			return false;
+		}
+
 		return true;
+	}
+
+	/**
+	 * First-letter navigation: a plain letter key jumps focus to the next slot in the current
+	 * section whose item name starts with that letter, wrapping around, so pressing the same
+	 * letter repeatedly cycles through every match. Runs last, after every keybinding this class
+	 * owns. That includes E, which this swallows rather than letting vanilla close the screen
+	 * with it (Escape still does), and Q, whose drop role moved to {@link
+	 * ClientKeyBindings#CONTAINER_DROP}. Ctrl/Alt/Meta combinations are ignored.
+	 */
+	private static boolean handleFirstLetterJump(AbstractContainerScreen<?> screen, LocalPlayer player, KeyEvent event) {
+		if ((event.modifiers() & ~InputConstants.MOD_SHIFT) != 0
+				|| event.key() < InputConstants.KEY_A || event.key() > InputConstants.KEY_Z) {
+			return false;
+		}
+
+		char letter = (char) ('a' + event.key() - InputConstants.KEY_A);
+
+		List<Slot> sectionSlots = sectionSlots(screen.getMenu(), player, currentSection);
+		if (sectionSlots.isEmpty()) {
+			return true;
+		}
+		int start = sectionSlots.indexOf(currentSlot(screen.getMenu()));
+		for (int offset = 1; offset <= sectionSlots.size(); offset++) {
+			Slot candidate = sectionSlots.get(Math.floorMod(start + offset, sectionSlots.size()));
+			if (candidate.hasItem() && startsWithLetter(candidate.getItem(), letter)) {
+				focusedSlot = candidate;
+				narrateFocusedSlot(screen, player, false);
+				return true;
+			}
+		}
+		Minecraft.getInstance().getNarrator().saySystemNow(
+				Component.translatable("united_minecraft.narrate.menu_no_item_with_letter", String.valueOf(letter).toUpperCase(Locale.ROOT)));
+		return true;
+	}
+
+	private static boolean startsWithLetter(ItemStack stack, char letter) {
+		String name = stack.getHoverName().getString().strip();
+		return !name.isEmpty() && Character.toLowerCase(name.charAt(0)) == letter;
 	}
 
 	/**
@@ -527,7 +570,7 @@ public final class MenuAccessibilityController {
 	 * mouse happens to be hovering - keyboard navigation moves {@link #focusedSlot} without
 	 * moving the actual cursor, so vanilla's own hover-only handling of these two keybindings
 	 * never fires for a screen-reader user at all. Reads the real (rebindable) {@code
-	 * Options.keyHotbarSlots}/{@code Options.keyDrop} keybindings rather than fixed key codes,
+	 * Options.keyHotbarSlots}/{@link ClientKeyBindings#CONTAINER_DROP} keybindings rather than fixed key codes,
 	 * matching whatever vanilla itself has bound. Same guards as vanilla: hotbar-swap only
 	 * fires with an empty cursor (swapping while carrying something is undefined there), drop
 	 * only fires on a non-empty slot.
@@ -539,7 +582,7 @@ public final class MenuAccessibilityController {
 			return false;
 		}
 
-		if (slot.hasItem() && Minecraft.getInstance().options.keyDrop.matches(event)) {
+		if (slot.hasItem() && ClientKeyBindings.CONTAINER_DROP.current().matches(event)) {
 			// Button 0 = drop one item, button 1 (Ctrl held) = drop the whole stack.
 			click(screen, player, ContainerInput.THROW, ctrlHeld ? 1 : 0);
 			return true;
