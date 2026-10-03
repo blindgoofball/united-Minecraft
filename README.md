@@ -87,11 +87,16 @@ the same jar on the server; see below.)
 Cycle through nearby things by category and get full narration, targeting, and
 navigation without needing to see or aim at them.
 
-- Categories: Interactables, Mechanisms, Items, Passive Mobs, Hostile Mobs, Trees,
+- Categories: Storage, Workstations, Mechanisms, Items, Passive Mobs, Hostile Mobs, Trees,
   Ores, Liquids, Crops, Climbable, Search, Biomes and Structures, Markers (see Map Markers below),
   Players, and Entities (minecarts, boats, armor stands, item frames and glow item
   frames - narrating what they're holding, if anything - paintings by their actual
   name rather than just "Painting", end crystals, and leash knots).
+- Storage holds chests, barrels, shulker boxes, hoppers, droppers, dispensers,
+  decorated pots, vaults and shelves; Workstations holds everything else that opens
+  a menu (crafting tables, furnaces, anvils...) plus beds and command blocks;
+  Mechanisms holds doors, levers, buttons, pressure plates, repeaters,
+  comparators, note blocks, bells, daylight sensors, jukeboxes, portals and signs.
 - An optional Settings toggle skips empty categories entirely when cycling with
   Home/End, instead of stopping on them to announce "empty" - off by default.
 - Selecting a category announces how many items it found (e.g. "Trees, 13"),

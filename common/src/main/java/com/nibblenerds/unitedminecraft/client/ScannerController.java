@@ -63,6 +63,17 @@ import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.AbstractBedBlock;
+import net.minecraft.world.level.block.AbstractChestBlock;
+import net.minecraft.world.level.block.BarrelBlock;
+import net.minecraft.world.level.block.BasePressurePlateBlock;
+import net.minecraft.world.level.block.BellBlock;
+import net.minecraft.world.level.block.DaylightDetectorBlock;
+import net.minecraft.world.level.block.DecoratedPotBlock;
+import net.minecraft.world.level.block.DiodeBlock;
+import net.minecraft.world.level.block.DispenserBlock;
+import net.minecraft.world.level.block.HopperBlock;
+import net.minecraft.world.level.block.NoteBlock;
+import net.minecraft.world.level.block.ShulkerBoxBlock;
 import net.minecraft.world.level.block.AttachedStemBlock;
 import net.minecraft.world.level.block.BambooSaplingBlock;
 import net.minecraft.world.level.block.BambooStalkBlock;
@@ -510,7 +521,7 @@ public final class ScannerController {
 			// narrate it as empty below, same as with the setting off.
 			//
 			// categoryHasAny is a cheap existence probe, not a full scan() - a full scan of
-			// every block-cube category (Interactables, Mechanisms, Ores, Liquids, Crops,
+			// every block-cube category (Storage, Workstations, Mechanisms, Ores, Liquids, Crops,
 			// Climbable, Search, Trees) in the same pass this loop can make up to CATEGORIES.length - 1
 			// times would mean hundreds of thousands of block reads on a single Home/End press.
 			// Only the category actually settled on below gets the real, full scan().
@@ -999,17 +1010,14 @@ public final class ScannerController {
 				name = name.copy().append(Component.literal(", ")).append(height);
 			}
 		}
-		if (category == ScannerCategory.INTERACTABLES) {
+		if (category == ScannerCategory.WORKSTATIONS) {
 			BlockState state = player.level().getBlockState(item.blockPos());
 			if (state.getBlock() instanceof AbstractBedBlock && state.getValue(AbstractBedBlock.OCCUPIED)) {
 				name = name.copy().append(Component.literal(", ")).append(Component.translatable("united_minecraft.narrate.scanner_occupied"));
 			}
-			if (state.getBlock() instanceof SignBlock) {
-				Component signText = describeSignText(player.level(), item.blockPos());
-				name = signText != null
-						? name.copy().append(Component.literal(", ")).append(signText)
-						: name.copy().append(Component.literal(", ")).append(Component.translatable("united_minecraft.narrate.scanner_sign_blank"));
-			}
+		}
+		if (category == ScannerCategory.STORAGE) {
+			BlockState state = player.level().getBlockState(item.blockPos());
 			// Covers both the Chiseled Bookshelf and (as of Minecraft 26.3) the Poplar Shelf -
 			// both implement SelectableSlotContainer and back their contents with a
 			// ListBackedContainer block entity, so this needs no per-block-type special-casing.
@@ -1021,6 +1029,12 @@ public final class ScannerController {
 		}
 		if (category == ScannerCategory.MECHANISMS) {
 			BlockState state = player.level().getBlockState(item.blockPos());
+			if (state.getBlock() instanceof SignBlock) {
+				Component signText = describeSignText(player.level(), item.blockPos());
+				name = signText != null
+						? name.copy().append(Component.literal(", ")).append(signText)
+						: name.copy().append(Component.literal(", ")).append(Component.translatable("united_minecraft.narrate.scanner_sign_blank"));
+			}
 			// Shared by DoorBlock, TrapDoorBlock, and FenceGateBlock alike - see BuildModeController's
 			// own describeCursor for why this one BlockStateProperties constant covers all three.
 			if (state.hasProperty(BlockStateProperties.OPEN) && state.getValue(BlockStateProperties.OPEN)) {
@@ -1129,7 +1143,7 @@ public final class ScannerController {
 		BlockState state = level.getBlockState(item.blockPos());
 		// Vault and Ominous Vault are the same block with an OMINOUS blockstate property, not
 		// separate blocks, so getName() alone can't tell them apart - narrate it explicitly.
-		if (category == ScannerCategory.INTERACTABLES && state.getBlock() instanceof VaultBlock
+		if (category == ScannerCategory.STORAGE && state.getBlock() instanceof VaultBlock
 				&& state.getValue(VaultBlock.OMINOUS)) {
 			return Component.translatable("united_minecraft.narrate.ominous_vault");
 		}
@@ -1226,14 +1240,13 @@ public final class ScannerController {
 
 	private static List<ScannerItem> scan(ScannerCategory category, LocalPlayer player) {
 		return switch (category) {
-			// Beds don't have a menu (sleeping/setting spawn isn't a GUI), but they're
-			// still something you right-click to do something with, not a lever/button/door
-			// style toggle - closer in spirit to this category than to Mechanisms. Both beds
-			// and double chests are two blocks sharing one real-world object - only match the
-			// head half of a bed and the non-right half of a chest, so each shows up once.
-			// Signs have no menu either, but reading one is the same kind of "approach and get
-			// information from it" action as everything else here.
-			case INTERACTABLES -> scanBlocks(player, interactablesPredicate(player));
+			// Double chests are two blocks sharing one real-world object - only match the
+			// non-right half, so each shows up once.
+			case STORAGE -> scanBlocks(player, storagePredicate());
+			// Beds are two blocks too - only match the head half. Beds have no menu (sleeping/
+			// setting spawn isn't a GUI), but they're something you go to and use, which is
+			// closer to a crafting table than to a lever.
+			case WORKSTATIONS -> scanBlocks(player, workstationsPredicate(player));
 			// A door is two block positions (HALF=LOWER/UPPER) sharing one real-world object -
 			// only match the lower half so each door shows up once, the same fix already applied
 			// to beds and double chests above.
@@ -1282,37 +1295,49 @@ public final class ScannerController {
 		};
 	}
 
+	/** Blocks whose job is holding items - the Storage category. */
+	private static boolean isStorageBlock(Block block) {
+		return block instanceof AbstractChestBlock<?>
+				|| block instanceof BarrelBlock
+				|| block instanceof ShulkerBoxBlock
+				|| block instanceof HopperBlock
+				|| block instanceof DispenserBlock
+				|| block instanceof DecoratedPotBlock
+				// Vaults have no menu provider - you insert a key by right-clicking rather than
+				// opening a screen. Chiseled Bookshelf and Poplar Shelf alike have none either -
+				// items are swapped in and out by right-clicking a specific slot directly.
+				|| block instanceof VaultBlock
+				|| block instanceof SelectableSlotContainer;
+	}
+
 	/**
-	 * Shared between {@link #scan}'s INTERACTABLES case and {@link #categoryHasAny}'s cheap
+	 * Shared between {@link #scan}'s STORAGE case and {@link #categoryHasAny}'s cheap
 	 * existence probe for it, so the two can never quietly drift apart.
 	 */
-	private static BiPredicate<BlockPos, BlockState> interactablesPredicate(LocalPlayer player) {
+	private static BiPredicate<BlockPos, BlockState> storagePredicate() {
+		return (pos, state) -> isStorageBlock(state.getBlock())
+				&& !(state.hasProperty(ChestBlock.TYPE) && state.getValue(ChestBlock.TYPE) == ChestType.RIGHT);
+	}
+
+	/**
+	 * Shared between {@link #scan}'s WORKSTATIONS case and {@link #categoryHasAny}'s probe, like
+	 * {@link #storagePredicate}. Anything that opens a menu and isn't storage, plus beds and the
+	 * editor-opening command-style blocks.
+	 */
+	private static BiPredicate<BlockPos, BlockState> workstationsPredicate(LocalPlayer player) {
 		return (pos, state) -> {
-			if (state.getBlock() instanceof AbstractBedBlock) {
-				return state.getValue(AbstractBedBlock.PART) == BedPart.HEAD;
-			}
-			if (state.hasProperty(ChestBlock.TYPE) && state.getValue(ChestBlock.TYPE) == ChestType.RIGHT) {
+			Block block = state.getBlock();
+			if (isStorageBlock(block)) {
 				return false;
 			}
-			if (state.getBlock() instanceof SignBlock) {
-				return true;
-			}
-			// Chiseled Bookshelf and Poplar Shelf alike have no menu provider - items are swapped
-			// in and out by right-clicking a specific slot directly, not through a screen - so the
-			// getMenuProvider check below misses them the same way it misses Vaults.
-			if (state.getBlock() instanceof SelectableSlotContainer) {
-				return true;
+			if (block instanceof AbstractBedBlock) {
+				return state.getValue(AbstractBedBlock.PART) == BedPart.HEAD;
 			}
 			// Command, structure, jigsaw and test blocks open their editor client-side from a packet rather than
-			// through a menu provider, so the getMenuProvider check below misses them too.
-			if (state.getBlock() instanceof CommandBlock || state.getBlock() instanceof StructureBlock
-					|| state.getBlock() instanceof JigsawBlock || state.getBlock() instanceof TestBlock
-					|| state.getBlock() instanceof TestInstanceBlock) {
-				return true;
-			}
-			// Vaults have no menu provider - you insert a key by right-clicking rather than
-			// opening a screen - so the getMenuProvider check below misses them entirely.
-			if (state.getBlock() instanceof VaultBlock) {
+			// through a menu provider, so the getMenuProvider check below misses them.
+			if (block instanceof CommandBlock || block instanceof StructureBlock
+					|| block instanceof JigsawBlock || block instanceof TestBlock
+					|| block instanceof TestInstanceBlock) {
 				return true;
 			}
 			return state.getMenuProvider(player.level(), pos) != null;
@@ -1374,7 +1399,15 @@ public final class ScannerController {
 				|| block instanceof NetherPortalBlock
 				|| block instanceof EndPortalBlock
 				|| block instanceof EndPortalFrameBlock
-				|| block instanceof JukeboxBlock;
+				|| block instanceof JukeboxBlock
+				// Signs have no menu, but reading one is the same kind of "approach and get
+				// information from it" action as the rest of this category.
+				|| block instanceof SignBlock
+				|| block instanceof DiodeBlock
+				|| block instanceof NoteBlock
+				|| block instanceof BellBlock
+				|| block instanceof BasePressurePlateBlock
+				|| block instanceof DaylightDetectorBlock;
 	}
 
 	/**
@@ -1768,7 +1801,8 @@ public final class ScannerController {
 		Vec3 eye = player.getEyePosition();
 		FastBlockAccess fastAccess = new FastBlockAccess(level);
 		return switch (category) {
-			case INTERACTABLES -> scanBlocksAny(player, interactablesPredicate(player));
+			case STORAGE -> scanBlocksAny(player, storagePredicate());
+			case WORKSTATIONS -> scanBlocksAny(player, workstationsPredicate(player));
 			case MECHANISMS -> scanBlocksAny(player, (pos, state) -> mechanismMatches(state));
 			// Deliberately not x-ray, matching scan()'s own ORES case.
 			case ORES -> scanBlocksAny(player, (pos, state) ->

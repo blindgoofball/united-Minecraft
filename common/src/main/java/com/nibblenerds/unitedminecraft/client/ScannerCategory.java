@@ -4,7 +4,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 
 public enum ScannerCategory {
-	INTERACTABLES("united_minecraft.scanner.category.interactables"),
+	STORAGE("united_minecraft.scanner.category.storage"),
+	WORKSTATIONS("united_minecraft.scanner.category.workstations"),
 	MECHANISMS("united_minecraft.scanner.category.mechanisms"),
 	ITEMS("united_minecraft.scanner.category.items"),
 	PASSIVE_MOBS("united_minecraft.scanner.category.passive_mobs"),
