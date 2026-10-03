@@ -490,7 +490,10 @@ keys move within a section in a proper 2D grid; Enter picks up/places
 or places one item at a time back from it - the keyboard equivalent of a
 right-click). Hovering a slot and pressing 1-9 swaps its contents into that
 hotbar slot, and Backspace (Ctrl+Backspace for the whole stack) drops it, the
-same as they would with a real mouse cursor. Holding Ctrl while moving with the arrow keys, with a stack picked up, drags it
+same as they would with a real mouse cursor. Alt+Enter on a stack gathers every other stack of the same item, from anywhere
+on the screen, into it - up to a full stack - the keyboard version of double-clicking
+a stack. Alt+Shift+Enter quick-moves every stack of that item out of the same
+inventory in one go - the keyboard version of Shift+double-clicking. Holding Ctrl while moving with the arrow keys, with a stack picked up, drags it
 across every slot you pass over - an even split, like holding the left mouse
 button - and Alt does the same but puts one item in each slot, like the right
 button; the stack drops when you let go of the key, and Escape backs out first.

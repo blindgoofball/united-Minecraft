@@ -269,6 +269,21 @@ public final class ClientKeyBindings {
 	public static final KeybindAction CONTAINER_DROP = new KeybindAction(
 			"container_drop", KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_BACKSPACE, 0), KeybindContext.CONTAINER_SCREEN);
 	/**
+	 * The keyboard counterpart of double-clicking a stack: gathers every matching item from the
+	 * rest of the screen into the focused stack, up to a full stack - see {@link
+	 * MenuAccessibilityController#gatherMatching}.
+	 */
+	public static final KeybindAction CONTAINER_GATHER = new KeybindAction("container_gather",
+			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_RETURN, InputConstants.MOD_ALT), KeybindContext.CONTAINER_SCREEN, ContainerScope.ORDINARY_SLOTS);
+	/**
+	 * The keyboard counterpart of Shift+double-clicking a stack: quick-moves every stack of the
+	 * focused item out of the focused slot's whole inventory in one go - see {@link
+	 * MenuAccessibilityController#quickMoveAllMatching}.
+	 */
+	public static final KeybindAction CONTAINER_QUICK_MOVE_ALL = new KeybindAction("container_quick_move_all",
+			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_RETURN, InputConstants.MOD_ALT | InputConstants.MOD_SHIFT),
+			KeybindContext.CONTAINER_SCREEN, ContainerScope.ORDINARY_SLOTS);
+	/**
 	 * Drag modifiers: hold one while moving between slots with the arrow keys, with a stack on the
 	 * cursor, to drag across slots like holding a mouse button - left-drag (an even split) for
 	 * this one, right-drag (one item per slot) for {@link #CONTAINER_DRAG_ONE}. Releasing the key

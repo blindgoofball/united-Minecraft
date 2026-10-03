@@ -498,6 +498,14 @@ public final class MenuAccessibilityController {
 			click(screen, player, ContainerInput.QUICK_MOVE, 0);
 			return false;
 		}
+		if (ClientKeyBindings.CONTAINER_QUICK_MOVE_ALL.current().matches(event)) {
+			quickMoveAllMatching(screen, player);
+			return false;
+		}
+		if (ClientKeyBindings.CONTAINER_GATHER.current().matches(event)) {
+			gatherMatching(screen, player);
+			return false;
+		}
 
 		if (ClientKeyBindings.CONTAINER_DISCARD.current().matches(event)) {
 			return !discardCarriedItem(screen);
@@ -931,12 +939,122 @@ public final class MenuAccessibilityController {
 		dragModifier = null;
 	}
 
-	private static void click(AbstractContainerScreen<?> screen, LocalPlayer player, ContainerInput input, int button) {
+	/**
+	 * Combines every matching stack on the screen into the focused one, the way double-clicking a
+	 * stack does with a mouse (vanilla's "pickup all"): picks the focused stack up, gathers every
+	 * other stack of the same item from anywhere in the menu into it (up to a full stack), then
+	 * puts the result back where it came from. Needs an empty cursor - gathering onto something
+	 * already being carried is a different action.
+	 */
+	private static void gatherMatching(AbstractContainerScreen<?> screen, LocalPlayer player) {
 		Minecraft client = Minecraft.getInstance();
 		AbstractContainerMenu menu = screen.getMenu();
 		Slot slot = currentSlot(menu);
 		if (slot == null) {
 			return;
+		}
+		if (slot instanceof SlotWrapperAccess) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.gather_unavailable"));
+			return;
+		}
+		if (!menu.getCarried().isEmpty()) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.gather_cursor_full"));
+			return;
+		}
+		ItemStack original = slot.getItem();
+		if (original.isEmpty()) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.gather_nothing"));
+			return;
+		}
+		// The stack has to be able to go straight back where it came from (so a crafting result
+		// slot, which can be taken from but never placed into, is out).
+		if (!slot.mayPickup(player) || !slot.mayPlace(original)) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.gather_unavailable"));
+			return;
+		}
+		int before = original.getCount();
+
+		performClick(screen, player, ContainerInput.PICKUP, 0);
+		// The slot is now empty, which is what vanilla's pickup-all keys off of.
+		performClick(screen, player, ContainerInput.PICKUP_ALL, 0);
+		performClick(screen, player, ContainerInput.PICKUP, 0);
+
+		ItemStack result = slot.getItem();
+		MutableComponent message = result.getCount() > before
+				? Component.translatable("united_minecraft.narrate.gather_done", ItemDescriptions.describe(result, player))
+				: Component.translatable("united_minecraft.narrate.gather_none", ItemDescriptions.describe(result, player));
+		ItemStack carried = menu.getCarried();
+		if (!carried.isEmpty()) {
+			message = message.append(Component.literal(", ")).append(
+					Component.translatable("united_minecraft.narrate.menu_carrying", ItemDescriptions.describe(carried, player)));
+		}
+		client.getNarrator().saySystemNow(message);
+	}
+
+	/**
+	 * Quick-moves every stack of the focused item that sits in the same inventory as the focused
+	 * slot - the whole of the player's inventory and hotbar, or the whole of the open container -
+	 * across to the other side, the way Shift+double-clicking a stack does with a mouse. Each stack
+	 * goes through the ordinary quick-move, so it lands wherever Shift+Enter would have put it.
+	 */
+	private static void quickMoveAllMatching(AbstractContainerScreen<?> screen, LocalPlayer player) {
+		Minecraft client = Minecraft.getInstance();
+		AbstractContainerMenu menu = screen.getMenu();
+		Slot focused = currentSlot(menu);
+		if (focused == null) {
+			return;
+		}
+		if (focused instanceof SlotWrapperAccess) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.gather_unavailable"));
+			return;
+		}
+		if (!menu.getCarried().isEmpty()) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.gather_cursor_full"));
+			return;
+		}
+		ItemStack kind = focused.getItem().copy();
+		if (kind.isEmpty()) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.gather_nothing"));
+			return;
+		}
+
+		int before = countMatching(menu, focused, kind);
+		for (Slot target : menu.slots) {
+			if (target.hasItem() && target.mayPickup(player) && target.container == focused.container
+					&& AbstractContainerMenu.canItemQuickReplace(target, kind, true)) {
+				client.gameMode.handleContainerInput(menu.containerId, target.index, 0, ContainerInput.QUICK_MOVE, player);
+			}
+		}
+		int moved = before - countMatching(menu, focused, kind);
+
+		client.getNarrator().saySystemNow(moved > 0
+				? Component.translatable("united_minecraft.narrate.quick_move_all_done", moved, ItemDescriptions.describe(kind.copyWithCount(1), player))
+				: Component.translatable("united_minecraft.narrate.quick_move_all_none"));
+	}
+
+	private static int countMatching(AbstractContainerMenu menu, Slot reference, ItemStack kind) {
+		int total = 0;
+		for (Slot slot : menu.slots) {
+			if (slot.hasItem() && slot.container == reference.container && AbstractContainerMenu.canItemQuickReplace(slot, kind, true)) {
+				total += slot.getItem().getCount();
+			}
+		}
+		return total;
+	}
+
+	private static void click(AbstractContainerScreen<?> screen, LocalPlayer player, ContainerInput input, int button) {
+		if (performClick(screen, player, input, button)) {
+			narrateFocusedSlot(screen, player, false);
+		}
+	}
+
+	/** Sends one click at the focused slot without narrating it; false if there was no focused slot to click. */
+	private static boolean performClick(AbstractContainerScreen<?> screen, LocalPlayer player, ContainerInput input, int button) {
+		Minecraft client = Minecraft.getInstance();
+		AbstractContainerMenu menu = screen.getMenu();
+		Slot slot = currentSlot(menu);
+		if (slot == null) {
+			return false;
 		}
 
 		if (slot instanceof SlotWrapperAccess wrapper) {
@@ -948,16 +1066,14 @@ public final class MenuAccessibilityController {
 			Slot target = wrapper.unitedMinecraft$getTarget();
 			player.inventoryMenu.clicked(target.index, button, input, player);
 			player.inventoryMenu.broadcastChanges();
-			narrateFocusedSlot(screen, player, false);
-			return;
+			return true;
 		}
 
 		// handleContainerInput already calls menu.clicked(...) internally (to diff slots for
 		// the outgoing packet) before sending it to the server, so calling menu.clicked()
 		// ourselves too would apply the click twice - e.g. splitting an already-split stack.
 		client.gameMode.handleContainerInput(menu.containerId, slot.index, button, input, player);
-
-		narrateFocusedSlot(screen, player, false);
+		return true;
 	}
 
 	/**
