@@ -502,11 +502,11 @@ public final class MenuAccessibilityController {
 			click(screen, player, ContainerInput.QUICK_MOVE, 0);
 			return false;
 		}
-		if (ClientKeyBindings.CONTAINER_BUNDLE_NEXT.current().matches(event)) {
+		if (ClientKeyBindings.CONTAINER_PAGE_NEXT.current().matches(event)) {
 			cycleBundleSelection(screen, player, 1);
 			return false;
 		}
-		if (ClientKeyBindings.CONTAINER_BUNDLE_PREV.current().matches(event)) {
+		if (ClientKeyBindings.CONTAINER_PAGE_PREV.current().matches(event)) {
 			cycleBundleSelection(screen, player, -1);
 			return false;
 		}
@@ -1178,9 +1178,9 @@ public final class MenuAccessibilityController {
 			jumpRecipeGroup(player, true);
 		} else if (ClientKeyBindings.RECIPE_BOOK_JUMP_TO_LAST_GROUP.current().matches(event)) {
 			jumpRecipeGroup(player, false);
-		} else if (ClientKeyBindings.RECIPE_BOOK_PREV_CATEGORY.current().matches(event)) {
+		} else if (ClientKeyBindings.CONTAINER_PAGE_PREV.current().matches(event)) {
 			cycleRecipeCategory(player, -1);
-		} else if (ClientKeyBindings.RECIPE_BOOK_NEXT_CATEGORY.current().matches(event)) {
+		} else if (ClientKeyBindings.CONTAINER_PAGE_NEXT.current().matches(event)) {
 			cycleRecipeCategory(player, 1);
 		} else if (ClientKeyBindings.RECIPE_BOOK_SEARCH.current().matches(event)) {
 			// Deferred a tick rather than opened immediately - see pendingSearchPromptScreen's

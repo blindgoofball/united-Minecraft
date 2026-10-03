@@ -268,11 +268,18 @@ public final class ClientKeyBindings {
 	/** Drops the focused slot's item (Ctrl: the whole stack). Not vanilla's drop key, which is a plain letter and so is taken by first-letter navigation. */
 	public static final KeybindAction CONTAINER_DROP = new KeybindAction(
 			"container_drop", KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_BACKSPACE, 0), KeybindContext.CONTAINER_SCREEN);
-	/** With a bundle focused: selects the next / previous stack in it, the keyboard counterpart of scrolling the mouse wheel over a bundle - see {@link MenuAccessibilityController#cycleBundleSelection}. */
-	public static final KeybindAction CONTAINER_BUNDLE_NEXT = new KeybindAction("container_bundle_next",
-			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_PAGEDOWN, 0), KeybindContext.CONTAINER_SCREEN, ContainerScope.ORDINARY_SLOTS);
-	public static final KeybindAction CONTAINER_BUNDLE_PREV = new KeybindAction("container_bundle_prev",
-			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_PAGEUP, 0), KeybindContext.CONTAINER_SCREEN, ContainerScope.ORDINARY_SLOTS);
+	/**
+	 * Page Down / Page Up inside container screens: steps to the next / previous thing of whatever kind
+	 * the current spot has - a recipe category in the Recipe Book section, a stack within a focused bundle
+	 * (the keyboard counterpart of scrolling the mouse wheel over one) in the ordinary slot sections.
+	 * One pair of actions rather than one per use, so they rebind together; the sections are mutually
+	 * exclusive, so the same key never means two things at once. Reachable from more than one place, so
+	 * unscoped - see {@link ContainerScope}.
+	 */
+	public static final KeybindAction CONTAINER_PAGE_NEXT = new KeybindAction("container_page_next",
+			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_PAGEDOWN, 0), KeybindContext.CONTAINER_SCREEN);
+	public static final KeybindAction CONTAINER_PAGE_PREV = new KeybindAction("container_page_prev",
+			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_PAGEUP, 0), KeybindContext.CONTAINER_SCREEN);
 	/** Swaps the focused slot's item with the off-hand - vanilla's F over a hovered slot, which is a plain letter here and so taken by first-letter navigation. */
 	public static final KeybindAction CONTAINER_SWAP_OFFHAND = new KeybindAction("container_swap_offhand",
 			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_F, InputConstants.MOD_CONTROL), KeybindContext.CONTAINER_SCREEN, ContainerScope.ORDINARY_SLOTS);
@@ -332,10 +339,6 @@ public final class ClientKeyBindings {
 			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_HOME, 0), KeybindContext.CONTAINER_SCREEN, ContainerScope.RECIPE_BOOK);
 	public static final KeybindAction RECIPE_BOOK_JUMP_TO_LAST_GROUP = new KeybindAction("recipe_book_jump_to_last_group",
 			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_END, 0), KeybindContext.CONTAINER_SCREEN, ContainerScope.RECIPE_BOOK);
-	public static final KeybindAction RECIPE_BOOK_PREV_CATEGORY = new KeybindAction("recipe_book_prev_category",
-			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_PAGEUP, 0), KeybindContext.CONTAINER_SCREEN, ContainerScope.RECIPE_BOOK);
-	public static final KeybindAction RECIPE_BOOK_NEXT_CATEGORY = new KeybindAction("recipe_book_next_category",
-			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_PAGEDOWN, 0), KeybindContext.CONTAINER_SCREEN, ContainerScope.RECIPE_BOOK);
 	public static final KeybindAction RECIPE_BOOK_SEARCH = new KeybindAction("recipe_book_search",
 			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_SPACE, 0), KeybindContext.CONTAINER_SCREEN, ContainerScope.RECIPE_BOOK);
 	public static final KeybindAction RECIPE_BOOK_TOGGLE_CRAFTABLE_FILTER = new KeybindAction("recipe_book_toggle_craftable_filter",

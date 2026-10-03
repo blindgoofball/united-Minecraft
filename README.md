@@ -767,7 +767,7 @@ Options > Controls.
 | Shift+N | Toggle Wall Tones |
 | M | Toggle Mining Radar |
 | K | Toggle Combat Mode |
-| Y (Shift = swim there) | Find the nearest way out of water |
+| Y (Shift = go there) | Find the nearest way out of water - or, while gliding on an elytra, the nearest place you can land - and with Shift swim or fly there |
 | X (Shift = walk there, Alt = mark start) | Find the way back along the recorded cave trail |
 | Left/Right/Up/Down arrows | Turn camera (Alt = snap-turn 45 degrees), or move the Build Mode cursor relative to its own orientation (Alt+Left/Right = turn the cursor's orientation a quarter turn) |
 | Page Up/Down (Alt = jump to the next/previous item of the same kind) | Build Mode cursor up/down, or cycle the Scanner's nearest items |
