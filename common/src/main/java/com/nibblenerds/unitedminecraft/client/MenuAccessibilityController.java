@@ -508,7 +508,18 @@ public final class MenuAccessibilityController {
 		}
 
 		if (ClientKeyBindings.CONTAINER_DISCARD.current().matches(event)) {
-			return !discardCarriedItem(screen);
+			return !(discardCarriedItem(screen) || dropCarried(screen, 0));
+		}
+		if (ClientKeyBindings.CONTAINER_DROP_CARRIED_ONE.current().matches(event)) {
+			return !dropCarried(screen, 1);
+		}
+		if (ClientKeyBindings.CONTAINER_SWAP_OFFHAND.current().matches(event)) {
+			if (currentSlot(screen.getMenu()) != null && screen.getMenu().getCarried().isEmpty()) {
+				// Button 40 is vanilla's own marker for "swap with the off-hand" - the same click
+				// pressing its swap-offhand key over a hovered slot sends.
+				click(screen, player, ContainerInput.SWAP, 40);
+			}
+			return false;
 		}
 
 		if (ClientKeyBindings.CONTAINER_DESCRIBE_SLOT.current().matches(event)) {
@@ -582,6 +593,28 @@ public final class MenuAccessibilityController {
 		menu.setCarried(ItemStack.EMPTY);
 		Minecraft.getInstance().getNarrator().saySystemNow(
 				Component.translatable("united_minecraft.narrate.menu_item_discarded", itemName));
+		return true;
+	}
+
+	/**
+	 * Drops what's on the cursor into the world - all of it ({@code button} 0) or one item (1) -
+	 * the same click a mouse makes outside the window. Not for Creative's own item-picker
+	 * screens, whose cursor is cleared (Delete) rather than dropped, and which handle drops
+	 * through their own path.
+	 */
+	private static boolean dropCarried(AbstractContainerScreen<?> screen, int button) {
+		AbstractContainerMenu menu = screen.getMenu();
+		ItemStack carried = menu.getCarried();
+		if (carried.isEmpty() || menu instanceof CreativeModeInventoryScreen.ItemPickerMenu) {
+			return false;
+		}
+		LocalPlayer player = Minecraft.getInstance().player;
+		if (player == null) {
+			return false;
+		}
+		Component itemName = ItemDescriptions.describe(button == 0 ? carried : carried.copyWithCount(1), player);
+		Minecraft.getInstance().gameMode.handleContainerInput(menu.containerId, -999, button, ContainerInput.PICKUP, player);
+		Minecraft.getInstance().getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.menu_item_dropped", itemName));
 		return true;
 	}
 

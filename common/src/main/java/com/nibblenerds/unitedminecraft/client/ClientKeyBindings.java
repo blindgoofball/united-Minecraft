@@ -262,12 +262,18 @@ public final class ClientKeyBindings {
 	// CreativeInventoryController's item-grid/hotbar sections (see each method's own doc) - not
 	// scoped to ContainerScope.ORDINARY_SLOTS, since that would understate where they can
 	// actually fire; null (universally-conflicting) is the correct, conservative scope here.
-	/** Creative's Inventory tab only - discards whatever's picked up on the cursor; see {@link MenuAccessibilityController#discardCarriedItem}. */
+	/** Discards whatever's picked up on the cursor in Creative (see {@link MenuAccessibilityController#discardCarriedItem}); everywhere else it drops the whole carried stack. */
 	public static final KeybindAction CONTAINER_DISCARD = new KeybindAction(
 			"container_discard", KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_DELETE, 0), KeybindContext.CONTAINER_SCREEN);
 	/** Drops the focused slot's item (Ctrl: the whole stack). Not vanilla's drop key, which is a plain letter and so is taken by first-letter navigation. */
 	public static final KeybindAction CONTAINER_DROP = new KeybindAction(
 			"container_drop", KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_BACKSPACE, 0), KeybindContext.CONTAINER_SCREEN);
+	/** Swaps the focused slot's item with the off-hand - vanilla's F over a hovered slot, which is a plain letter here and so taken by first-letter navigation. */
+	public static final KeybindAction CONTAINER_SWAP_OFFHAND = new KeybindAction("container_swap_offhand",
+			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_F, InputConstants.MOD_CONTROL), KeybindContext.CONTAINER_SCREEN, ContainerScope.ORDINARY_SLOTS);
+	/** Drops one item from the stack on the cursor; plain {@link #CONTAINER_DISCARD} (Delete) drops the whole stack. */
+	public static final KeybindAction CONTAINER_DROP_CARRIED_ONE = new KeybindAction("container_drop_carried_one",
+			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_DELETE, InputConstants.MOD_CONTROL), KeybindContext.CONTAINER_SCREEN);
 	/**
 	 * The keyboard counterpart of double-clicking a stack: gathers every matching item from the
 	 * rest of the screen into the focused stack, up to a full stack - see {@link
