@@ -338,10 +338,13 @@ public final class ScannerController {
 			return;
 		}
 		MapMarkerController.MapMarker marker = MapMarkerController.findAt(player.level().dimension(), item.blockPos());
-		if (marker == null) {
+		if (marker != null) {
+			MapMarkerController.remove(client, marker);
+		} else if (NamedBlockController.isMarker(player.level().dimension(), item.blockPos())) {
+			NamedBlockController.unmark(client, player.level().dimension(), item.blockPos());
+		} else {
 			return;
 		}
-		MapMarkerController.remove(client, marker);
 		items = scan(ScannerCategory.MARKERS, player);
 		itemIndex = items.isEmpty() ? 0 : Math.min(itemIndex, items.size() - 1);
 	}
@@ -364,8 +367,16 @@ public final class ScannerController {
 			openSearchPrompt(client, player);
 			return;
 		}
-		if (categoryIndex == -1 || CATEGORIES[categoryIndex] == ScannerCategory.MARKERS) {
+		if (categoryIndex == -1) {
 			return;
+		}
+		if (CATEGORIES[categoryIndex] == ScannerCategory.MARKERS) {
+			// A plain marker is renamed by placing a new one, but a marked block is just a
+			// named block, so its name and Markers flag are edited the same way as anywhere else.
+			ScannerItem focused = currentItem();
+			if (focused == null || !NamedBlockController.isMarker(player.level().dimension(), focused.blockPos())) {
+				return;
+			}
 		}
 		if (CATEGORIES[categoryIndex] == ScannerCategory.BIOMES_AND_STRUCTURES) {
 			// A biome entry's position is an arbitrary surface sample point on a 4-block grid,
@@ -667,9 +678,26 @@ public final class ScannerController {
 			} else {
 				targetEntity(client, player, item.entity(), walkThere);
 			}
+		} else if (category == ScannerCategory.MARKERS && !isLiveBlockMarker(player.level(), item.blockPos())) {
+			targetMarkerSpot(client, player, item.blockPos(), itemName(category, item, player), walkThere);
 		} else {
 			targetBlock(client, player, category, item.blockPos(), itemName(category, item, player), walkThere);
 		}
+	}
+
+	/**
+	 * A plain marker is a spot, not a block: walking there goes to those exact coordinates (the
+	 * same {@link AutoWalkController#startExact} Build Mode's walk-to-cursor uses) rather than to
+	 * somewhere beside them, and there's nothing to turn and face once the player is standing on it.
+	 * Without walking it just aims at the spot, as before.
+	 */
+	private static void targetMarkerSpot(Minecraft client, LocalPlayer player, BlockPos pos, Component name, boolean walkThere) {
+		if (walkThere) {
+			AutoWalkController.startExact(client, player, pos, name,
+					() -> rescanAndRefocus(player, item -> pos.equals(item.blockPos())));
+			return;
+		}
+		aimOnceAtBlock(client, player, pos, name);
 	}
 
 	private static void targetEntity(Minecraft client, LocalPlayer player, Entity entity, boolean walkThere) {
@@ -957,7 +985,8 @@ public final class ScannerController {
 			// AutoWalkController#startExact's own doc for why the ordinary "stand adjacent"
 			// pathing could otherwise land the player on the wrong side of it entirely, unable
 			// to climb even after aimOnceAtBlock faces them the right way.
-			if (category == ScannerCategory.TERRAIN && player.level().getBlockState(pos).is(BlockTags.CLIMBABLE)) {
+			if ((category == ScannerCategory.TERRAIN || category == ScannerCategory.MARKERS)
+					&& player.level().getBlockState(pos).is(BlockTags.CLIMBABLE)) {
 				AutoWalkController.startExact(client, player, pos, name, onArrival);
 			} else {
 				AutoWalkController.start(client, player, pos, name, onArrival);
@@ -1033,13 +1062,15 @@ public final class ScannerController {
 				name = name.copy().append(Component.literal(", ")).append(height);
 			}
 		}
-		if (category == ScannerCategory.WORKSTATIONS) {
+		// A marked block narrates like the block it is, whichever category it would otherwise be in.
+		boolean markedBlock = category == ScannerCategory.MARKERS && isLiveBlockMarker(player.level(), item.blockPos());
+		if (category == ScannerCategory.WORKSTATIONS || markedBlock) {
 			BlockState state = player.level().getBlockState(item.blockPos());
 			if (state.getBlock() instanceof AbstractBedBlock && state.getValue(AbstractBedBlock.OCCUPIED)) {
 				name = name.copy().append(Component.literal(", ")).append(Component.translatable("united_minecraft.narrate.scanner_occupied"));
 			}
 		}
-		if (category == ScannerCategory.STORAGE) {
+		if (category == ScannerCategory.STORAGE || markedBlock) {
 			BlockState state = player.level().getBlockState(item.blockPos());
 			// Covers both the Chiseled Bookshelf and (as of Minecraft 26.3) the Poplar Shelf -
 			// both implement SelectableSlotContainer and back their contents with a
@@ -1050,7 +1081,7 @@ public final class ScannerController {
 						"united_minecraft.narrate.scanner_shelf_items", container.count(), container.getContainerSize()));
 			}
 		}
-		if (category == ScannerCategory.MECHANISMS) {
+		if (category == ScannerCategory.MECHANISMS || markedBlock) {
 			BlockState state = player.level().getBlockState(item.blockPos());
 			if (state.getBlock() instanceof SignBlock) {
 				Component signText = describeSignText(player.level(), item.blockPos());
@@ -1068,7 +1099,7 @@ public final class ScannerController {
 				name = name.copy().append(Component.literal(", ")).append(frameStatus);
 			}
 		}
-		if (category == ScannerCategory.TERRAIN && player.level().getBlockState(item.blockPos()).is(BlockTags.CLIMBABLE)) {
+		if ((category == ScannerCategory.TERRAIN || markedBlock) && player.level().getBlockState(item.blockPos()).is(BlockTags.CLIMBABLE)) {
 			ClimbableRun run = climbableRun(player.level(), item.blockPos());
 			if (run != null) {
 				name = name.copy().append(Component.literal(", "))
@@ -2354,6 +2385,15 @@ public final class ScannerController {
 		return results;
 	}
 
+	/**
+	 * Whether {@code pos} holds a block the player named and flagged to appear under Markers,
+	 * and that block is still there. A marked block that's since been removed falls back to
+	 * behaving like a plain marker at that spot.
+	 */
+	private static boolean isLiveBlockMarker(Level level, BlockPos pos) {
+		return NamedBlockController.isMarker(level.dimension(), pos) && !level.getBlockState(pos).isAir();
+	}
+
 	/** Every marker in the player's current dimension, distance-sorted but never range-filtered - the whole point of a marker is reaching something you already know is far away. */
 	private static List<ScannerItem> scanMarkers(LocalPlayer player) {
 		Vec3 eye = player.getEyePosition();
@@ -2362,6 +2402,10 @@ public final class ScannerController {
 			BlockPos pos = marker.pos();
 			double distance = eye.distanceTo(Vec3.atCenterOf(pos));
 			results.add(new ScannerItem(pos, null, distance, marker.name()));
+		}
+		// Named blocks flagged "also show in Markers" - behave like the block itself (see target()).
+		for (NamedBlockController.MarkedBlock marked : NamedBlockController.markedBlocksIn(player.level().dimension())) {
+			results.add(new ScannerItem(marked.pos(), null, eye.distanceTo(Vec3.atCenterOf(marked.pos())), marked.name()));
 		}
 		results.sort(Comparator.comparingDouble(ScannerItem::distance));
 		return results;

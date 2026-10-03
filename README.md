@@ -207,6 +207,14 @@ Markers ignores distance entirely and always lists everything you've
 placed in your current dimension. Persists to disk per-world, so your
 markers are still there next time you load that world.
 
+Shift+Enter on a plain marker walks you to its exact coordinates. You can also
+mark a block instead of a spot: name it with Shift+U and tick "Also show in
+Markers", and it appears in the Markers list under that name, from any distance.
+Targeting it behaves exactly like targeting the block itself - you walk up beside
+it and face it, with the same narration (open or closed, shelf contents, sign text) -
+so marking your front door lets you find your way back to it. Delete takes a
+block out of Markers but keeps its name.
+
 ### Combat Mode
 
 Toggleable continuous lock-on: keeps you facing whichever hostile mob is
