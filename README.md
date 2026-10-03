@@ -475,8 +475,11 @@ keys move within a section in a proper 2D grid; Enter picks up/places
 (Shift+Enter quick-moves, Ctrl+Enter splits a stack in half onto the cursor
 or places one item at a time back from it - the keyboard equivalent of a
 right-click). Hovering a slot and pressing 1-9 swaps its contents into that
-hotbar slot, and Q (Ctrl+Q for the whole stack) drops it, the same as they
-would with a real mouse cursor. Space on a focused slot holding a block
+hotbar slot, and Backspace (Ctrl+Backspace for the whole stack) drops it, the
+same as they would with a real mouse cursor. Typing a letter jumps to the next
+slot in the current section whose item name starts with that letter, wrapping
+around, so pressing it again cycles through every match. That includes E, which
+no longer closes these screens - Escape still does. Space on a focused slot holding a block
 narrates what it's actually made of - a visual, tactile description (grain,
 color, texture) written per material rather than per block, so a slab,
 stairs, wall, and fence of the same wood or stone all share one description
