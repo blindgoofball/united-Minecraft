@@ -2,6 +2,7 @@ package com.nibblenerds.unitedminecraft.client;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Deque;
@@ -230,6 +231,7 @@ public final class ScannerController {
 	public static void tick(Minecraft client, LocalPlayer player) {
 		boolean prevCategory = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_PREV_CATEGORY);
 		boolean nextCategory = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_NEXT_CATEGORY);
+		boolean jumpToCategory = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_JUMP_TO_CATEGORY);
 		boolean pageDown = ClientKeyBindings.pressed(ClientKeyBindings.PAGE_DOWN);
 		boolean pageDownSameType = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_PAGE_DOWN_SAME_TYPE);
 		boolean pageUp = ClientKeyBindings.pressed(ClientKeyBindings.PAGE_UP);
@@ -260,6 +262,9 @@ public final class ScannerController {
 			}
 			if (nextCategory) {
 				switchCategory(client, player, 1);
+			}
+			if (jumpToCategory) {
+				client.gui.setScreen(new CategoryJumpScreen());
 			}
 			if (pageDownSameType) {
 				stepItemSameType(client, player, 1);
@@ -296,6 +301,9 @@ public final class ScannerController {
 		}
 		if (nextCategory) {
 			switchCategory(client, player, 1);
+		}
+		if (jumpToCategory) {
+			client.gui.setScreen(new CategoryJumpScreen());
 		}
 		if (pageDownSameType) {
 			stepItemSameType(client, player, 1);
@@ -539,7 +547,22 @@ public final class ScannerController {
 			}
 		}
 		itemIndex = 0;
+		narrateCategory(client, player, category);
+	}
 
+	/**
+	 * Jumps straight to {@code target} (from {@link CategoryJumpScreen}), narrating it the same
+	 * way Home/End does. Unlike cycling, an explicit jump to an empty category is honoured and
+	 * reported as empty rather than skipped - the player asked for it by name.
+	 */
+	static void jumpToCategory(Minecraft client, LocalPlayer player, ScannerCategory target) {
+		categoryIndex = Arrays.asList(CATEGORIES).indexOf(target);
+		items = scan(target, player);
+		itemIndex = 0;
+		narrateCategory(client, player, target);
+	}
+
+	private static void narrateCategory(Minecraft client, LocalPlayer player, ScannerCategory category) {
 		if (category == ScannerCategory.SEARCH && searchTerm.isBlank()) {
 			client.getNarrator().saySystemNow(category.label().append(Component.literal(", "))
 					.append(Component.translatable("united_minecraft.narrate.search_no_term")));

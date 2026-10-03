@@ -744,6 +744,7 @@ Options > Controls.
 | Left/Right/Up/Down arrows | Turn camera (Alt = snap-turn 45 degrees), or move the Build Mode cursor relative to its own orientation (Alt+Left/Right = turn the cursor's orientation a quarter turn) |
 | Page Up/Down (Alt = jump to the next/previous item of the same kind) | Build Mode cursor up/down, or cycle the Scanner's nearest items |
 | Home/End | Cycle the Scanner's category |
+| Z | Jump straight to a Scanner category by typing the first letters of its name (S asks Storage or Search, then St or Se; likewise M, P and T) |
 | Enter (Shift = walk there) | Target the Scanner's focused item, or interact with it directly while locked on |
 | Enter (Shift = quick-move, Ctrl = split stack), inside container menus and the Creative inventory | Pick up/place the focused slot's stack |
 | Backspace | Stop Scanner lock-on / cancel Auto-Walk, swim, or trail retrace |
