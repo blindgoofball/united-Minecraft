@@ -385,7 +385,13 @@ public final class AccessibilityTickHandler {
 		if (rotationFree && ClientKeyBindings.pressed(ClientKeyBindings.WATER_ESCAPE_AUTO_SWIM)) {
 			WaterExitController.start(client, player);
 		} else if (rotationFree && ClientKeyBindings.pressed(ClientKeyBindings.WATER_ESCAPE)) {
-			WaterExitController.narrate(client, player);
+			// The same key answers "where can I get out" for whichever of the two the player is
+			// actually in the middle of: gliding on an elytra, or (the long-standing case) water.
+			if (player.isFallFlying()) {
+				ElytraLandingController.narrate(client, player);
+			} else {
+				WaterExitController.narrate(client, player);
+			}
 		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.TRAIL_MARK_START)) {
 			// Doesn't touch rotation or movement, so it isn't gated behind the rotation-owning

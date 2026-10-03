@@ -261,6 +261,11 @@ connected route through the water you're actually in (never through walls or
 across open air), so it never points you at a ledge you can't actually reach.
 Cancel a swim any time with the stop-lock key, same as Auto-Walk.
 
+While gliding on an elytra, the same key instead reports the nearest safe place to
+land that you can actually glide to: flat, solid ground (never water, lava, leaves or
+anything harmful) with a clear line down to it, within the distance your current height
+allows. If there isn't one, it says so.
+
 ### Cave Trail
 
 Solves the other half of "I'm lost underground": as you walk, your actual
