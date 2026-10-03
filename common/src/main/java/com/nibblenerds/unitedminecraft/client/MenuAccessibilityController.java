@@ -28,12 +28,14 @@ import net.minecraft.client.gui.screens.recipebook.RecipeCollection;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.Holder;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.protocol.game.ServerboundSelectBundleItemPacket;
 import net.minecraft.network.protocol.game.ServerboundSelectTradePacket;
 import net.minecraft.network.protocol.game.ServerboundSetBeaconPacket;
 import net.minecraft.resources.Identifier;
@@ -53,8 +55,10 @@ import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.inventory.MerchantMenu;
 import net.minecraft.world.inventory.RecipeBookMenu;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.BundleItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.crafting.RecipeBookCategory;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.MerchantOffers;
@@ -496,6 +500,14 @@ public final class MenuAccessibilityController {
 		}
 		if (ClientKeyBindings.CONTAINER_QUICK_MOVE.current().matches(event)) {
 			click(screen, player, ContainerInput.QUICK_MOVE, 0);
+			return false;
+		}
+		if (ClientKeyBindings.CONTAINER_BUNDLE_NEXT.current().matches(event)) {
+			cycleBundleSelection(screen, player, 1);
+			return false;
+		}
+		if (ClientKeyBindings.CONTAINER_BUNDLE_PREV.current().matches(event)) {
+			cycleBundleSelection(screen, player, -1);
 			return false;
 		}
 		if (ClientKeyBindings.CONTAINER_QUICK_MOVE_ALL.current().matches(event)) {
@@ -1022,6 +1034,42 @@ public final class MenuAccessibilityController {
 					Component.translatable("united_minecraft.narrate.menu_carrying", ItemDescriptions.describe(carried, player)));
 		}
 		client.getNarrator().saySystemNow(message);
+	}
+
+	/**
+	 * With a bundle focused, steps its selected stack forward or back through the ones vanilla
+	 * lets the mouse wheel reach (wrapping), then says which is now selected - the keyboard
+	 * counterpart of scrolling over a bundle. Selection decides which stack Ctrl+Enter takes out.
+	 * Sent exactly as {@code BundleMouseActions} sends it: updated on the local stack and
+	 * reported to the server in a select-bundle-item packet.
+	 */
+	private static void cycleBundleSelection(AbstractContainerScreen<?> screen, LocalPlayer player, int step) {
+		Minecraft client = Minecraft.getInstance();
+		Slot slot = currentSlot(screen.getMenu());
+		if (slot == null) {
+			return;
+		}
+		ItemStack stack = slot.getItem();
+		if (!stack.has(DataComponents.BUNDLE_CONTENTS) || slot instanceof SlotWrapperAccess) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.bundle_not_a_bundle"));
+			return;
+		}
+		int selectable = BundleItem.getNumberOfItemsToShow(stack);
+		if (selectable == 0) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.bundle_empty_short"));
+			return;
+		}
+		int current = BundleItem.getSelectedItemIndex(stack);
+		int next = current < 0 ? (step > 0 ? 0 : selectable - 1) : Math.floorMod(current + step, selectable);
+		if (next != current && client.getConnection() != null) {
+			BundleItem.toggleSelectedItem(stack, next);
+			client.getConnection().send(new ServerboundSelectBundleItemPacket(slot.index, next));
+		}
+		ItemStackTemplate selected = BundleItem.getSelectedItem(stack);
+		if (selected != null) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.bundle_selected",
+					ItemDescriptions.describe(selected.create(), player, false, false), BundleItem.getSelectedItemIndex(stack) + 1, selectable));
+		}
 	}
 
 	/**

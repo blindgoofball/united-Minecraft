@@ -268,6 +268,11 @@ public final class ClientKeyBindings {
 	/** Drops the focused slot's item (Ctrl: the whole stack). Not vanilla's drop key, which is a plain letter and so is taken by first-letter navigation. */
 	public static final KeybindAction CONTAINER_DROP = new KeybindAction(
 			"container_drop", KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_BACKSPACE, 0), KeybindContext.CONTAINER_SCREEN);
+	/** With a bundle focused: selects the next / previous stack in it, the keyboard counterpart of scrolling the mouse wheel over a bundle - see {@link MenuAccessibilityController#cycleBundleSelection}. */
+	public static final KeybindAction CONTAINER_BUNDLE_NEXT = new KeybindAction("container_bundle_next",
+			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_PAGEDOWN, 0), KeybindContext.CONTAINER_SCREEN, ContainerScope.ORDINARY_SLOTS);
+	public static final KeybindAction CONTAINER_BUNDLE_PREV = new KeybindAction("container_bundle_prev",
+			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_PAGEUP, 0), KeybindContext.CONTAINER_SCREEN, ContainerScope.ORDINARY_SLOTS);
 	/** Swaps the focused slot's item with the off-hand - vanilla's F over a hovered slot, which is a plain letter here and so taken by first-letter navigation. */
 	public static final KeybindAction CONTAINER_SWAP_OFFHAND = new KeybindAction("container_swap_offhand",
 			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_F, InputConstants.MOD_CONTROL), KeybindContext.CONTAINER_SCREEN, ContainerScope.ORDINARY_SLOTS);

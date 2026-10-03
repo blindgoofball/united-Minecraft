@@ -1,13 +1,21 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import java.util.ArrayList;
 import java.util.List;
 
+import com.mojang.serialization.DataResult;
+
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.BundleContents;
+
+import org.apache.commons.lang3.math.Fraction;
 
 /**
  * Shared "describe this stack for narration" logic: name, count (if more than one),
@@ -57,6 +65,10 @@ public final class ItemDescriptions {
 		}
 
 		if (includeTooltip) {
+			BundleContents bundle = stack.get(DataComponents.BUNDLE_CONTENTS);
+			if (bundle != null) {
+				name = name.append(Component.literal(", ")).append(describeBundle(bundle, player));
+			}
 			List<Component> tooltip = stack.getTooltipLines(Item.TooltipContext.of(player.level()), player, TooltipFlag.NORMAL);
 			for (int i = 1; i < tooltip.size(); i++) {
 				Component line = tooltip.get(i);
@@ -66,5 +78,39 @@ public final class ItemDescriptions {
 			}
 		}
 		return name;
+	}
+
+	/**
+	 * What a bundle's tooltip picture shows, as text: how full it is (as a percentage - vanilla only
+	 * draws a bar) and what's in it, with the selected stack first (see {@link #bundleOrder}).
+	 * Stacks inside are described by name and count only, so a bundle inside a bundle doesn't
+	 * recurse into its own contents.
+	 */
+	private static MutableComponent describeBundle(BundleContents bundle, Player player) {
+		if (bundle.isEmpty()) {
+			return Component.translatable("united_minecraft.narrate.bundle_empty");
+		}
+		DataResult<Fraction> weight = bundle.weight();
+		int percent = weight.isError() ? 100 : Math.min(100, (int) Math.floor(weight.getOrThrow().doubleValue() * 100));
+		MutableComponent entries = Component.empty();
+		boolean first = true;
+		for (ItemStackTemplate entry : bundleOrder(bundle)) {
+			if (!first) {
+				entries.append(Component.literal(", "));
+			}
+			first = false;
+			entries.append(describe(entry.create(), player, false, false));
+		}
+		return Component.translatable("united_minecraft.narrate.bundle_contents", percent, entries);
+	}
+
+	/** A bundle's stacks with the selected one (if any) moved to the front, the rest in their own order. */
+	private static List<ItemStackTemplate> bundleOrder(BundleContents bundle) {
+		List<ItemStackTemplate> ordered = new ArrayList<>(bundle.items());
+		int selected = bundle.getSelectedItemIndex();
+		if (selected > 0 && selected < ordered.size()) {
+			ordered.add(0, ordered.remove(selected));
+		}
+		return ordered;
 	}
 }

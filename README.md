@@ -490,7 +490,10 @@ keys move within a section in a proper 2D grid; Enter picks up/places
 or places one item at a time back from it - the keyboard equivalent of a
 right-click). Hovering a slot and pressing 1-9 swaps its contents into that
 hotbar slot, and Backspace (Ctrl+Backspace for the whole stack) drops it, the
-same as they would with a real mouse cursor. Ctrl+F swaps the focused slot with your off-hand. With a stack picked up, Delete
+same as they would with a real mouse cursor. A bundle narrates how full it is, as a percentage, and what's inside it, with the
+selected stack first; Page Up/Down on a focused bundle selects the previous/next
+stack (the keyboard version of scrolling over it), which is the one Ctrl+Enter takes
+out. Ctrl+F swaps the focused slot with your off-hand. With a stack picked up, Delete
 drops all of it into the world (Creative discards it instead) and Ctrl+Delete drops
 one item. Alt+Enter on a stack gathers every other stack of the same item, from anywhere
 on the screen, into it - up to a full stack - the keyboard version of double-clicking
