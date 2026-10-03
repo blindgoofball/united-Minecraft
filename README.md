@@ -88,7 +88,7 @@ Cycle through nearby things by category and get full narration, targeting, and
 navigation without needing to see or aim at them.
 
 - Categories: Storage, Workstations, Mechanisms, Items, Passive Mobs, Hostile Mobs, Trees,
-  Ores, Liquids, Crops, Climbable, Search, Biomes and Structures, Markers (see Map Markers below),
+  Ores, Terrain, Crops, Search, Biomes and Structures, Markers (see Map Markers below),
   Players, and Entities (minecarts, boats, armor stands, item frames and glow item
   frames - narrating what they're holding, if anything - paintings by their actual
   name rather than just "Painting", end crystals, and leash knots).
@@ -110,7 +110,7 @@ navigation without needing to see or aim at them.
 - Sheep narrate their wool color (e.g. "White Sheep"), including sheared
   ones, which still narrate their last color alongside "sheared".
 - Mechanisms now also includes nether and end portals - clustered into one
-  entry per portal, the same way Liquids clusters a lake into one entry
+  entry per portal, the same way Terrain clusters a lake into one entry
   instead of one per block - alongside doors, buttons, levers, and the rest
   of Mechanisms' usual redstone-adjacent contents.
 - Like Markers, Players ignores the Scanner's normal range - every other player in
@@ -129,13 +129,13 @@ navigation without needing to see or aim at them.
   whole clumps like Trees, not one entry per block. Chorus plants (the source of
   chorus fruit) are clustered the same way - one entry per whole plant, at its
   nearest stem.
-- Liquids covers water and lava, each clustered into whole connected bodies (a lake
+- Terrain covers liquids and climbables in one list. Liquids are water and lava, each clustered into whole connected bodies (a lake
   or ocean is one entry, not one per block) and reported at the nearest visible
   point - same "no x-ray" rule as Ores, so a lava pool sealed behind unmined stone
   won't show up until there's an actual way to see it.
 - Ore detection (here and in the Mining Radar) only flags ore you could actually
   see - not ore sealed behind an unmined wall.
-- Climbable covers ladders, vines, scaffolding, weeping/twisting vines, and cave
+- Terrain's climbables are ladders, vines, scaffolding, weeping/twisting vines, and cave
   vines - anything you can climb up or down - reporting each vertical run as one
   entry at its base, narrating how many blocks tall it currently is (not one entry
   per rung/segment) and whether it leads up, down, or both relative to your
@@ -147,7 +147,7 @@ navigation without needing to see or aim at them.
   while it's the selected category (instead of naming, which it does for every
   other category) opens a prompt for the term, then finds anything nearby whose
   name contains it, e.g. typing "glowstone" locates glowstone blocks. Same "no
-  x-ray" rule as Ores and Liquids.
+  x-ray" rule as Ores and Terrain's liquids.
 - Biomes and Structures covers places worth exploring toward, nearest first, in
   one list. Biomes are nearby distinct biomes - one entry per biome type, at the
   nearest surface point of it - out to a fixed 64 blocks regardless of your

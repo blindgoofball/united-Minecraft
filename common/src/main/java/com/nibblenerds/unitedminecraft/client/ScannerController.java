@@ -521,8 +521,8 @@ public final class ScannerController {
 			// narrate it as empty below, same as with the setting off.
 			//
 			// categoryHasAny is a cheap existence probe, not a full scan() - a full scan of
-			// every block-cube category (Storage, Workstations, Mechanisms, Ores, Liquids, Crops,
-			// Climbable, Search, Trees) in the same pass this loop can make up to CATEGORIES.length - 1
+			// every block-cube category (Storage, Workstations, Mechanisms, Ores, Terrain, Crops,
+			// Search, Trees) in the same pass this loop can make up to CATEGORIES.length - 1
 			// times would mean hundreds of thousands of block reads on a single Home/End press.
 			// Only the category actually settled on below gets the real, full scan().
 			for (int step = 1; step < CATEGORIES.length; step++) {
@@ -934,7 +934,7 @@ public final class ScannerController {
 			// AutoWalkController#startExact's own doc for why the ordinary "stand adjacent"
 			// pathing could otherwise land the player on the wrong side of it entirely, unable
 			// to climb even after aimOnceAtBlock faces them the right way.
-			if (category == ScannerCategory.CLIMBABLE) {
+			if (category == ScannerCategory.TERRAIN && player.level().getBlockState(pos).is(BlockTags.CLIMBABLE)) {
 				AutoWalkController.startExact(client, player, pos, name, onArrival);
 			} else {
 				AutoWalkController.start(client, player, pos, name, onArrival);
@@ -1045,7 +1045,7 @@ public final class ScannerController {
 				name = name.copy().append(Component.literal(", ")).append(frameStatus);
 			}
 		}
-		if (category == ScannerCategory.CLIMBABLE) {
+		if (category == ScannerCategory.TERRAIN && player.level().getBlockState(item.blockPos()).is(BlockTags.CLIMBABLE)) {
 			ClimbableRun run = climbableRun(player.level(), item.blockPos());
 			if (run != null) {
 				name = name.copy().append(Component.literal(", "))
@@ -1264,9 +1264,8 @@ public final class ScannerController {
 				yield scanBlocks(player, (pos, state) ->
 						OreDetection.isValuableOre(state) && OreDetection.isExposed(player.level(), fastAccess::getBlockState, pos, eye));
 			}
-			case LIQUIDS -> scanLiquids(player);
+			case TERRAIN -> scanTerrain(player);
 			case CROPS -> scanCrops(player);
-			case CLIMBABLE -> scanClimbable(player);
 			case SEARCH -> scanSearch(player);
 			case BIOMES_AND_STRUCTURES -> scanBiomesAndStructures(player);
 			// instanceof Animal alone missed anything that isn't a beast - villagers, wandering
@@ -1811,10 +1810,10 @@ public final class ScannerController {
 			// per-cluster search, so "any water/lava block passes" is exactly equivalent to
 			// "some cluster has an exposed member" for existence purposes - clustering only
 			// changes how many entries get reported, never whether any given block qualifies.
-			case LIQUIDS -> scanBlocksAny(player, (pos, state) ->
-					(state.is(Blocks.WATER) || state.is(Blocks.LAVA)) && OreDetection.isExposed(level, fastAccess::getBlockState, pos, eye));
+			case TERRAIN -> scanBlocksAny(player, (pos, state) ->
+					(state.is(Blocks.WATER) || state.is(Blocks.LAVA)) && OreDetection.isExposed(level, fastAccess::getBlockState, pos, eye))
+					|| scanBlocksAny(player, (pos, state) -> state.is(BlockTags.CLIMBABLE));
 			case CROPS -> scanBlocksAny(player, (pos, state) -> cropMatches(state.getBlock()));
-			case CLIMBABLE -> scanBlocksAny(player, (pos, state) -> state.is(BlockTags.CLIMBABLE));
 			case SEARCH -> !searchTerm.isBlank() && scanBlocksAny(player, (pos, state) -> !state.isAir()
 					&& searchMatches().contains(state.getBlock())
 					&& OreDetection.isExposed(level, fastAccess::getBlockState, pos, eye));
@@ -1940,6 +1939,18 @@ public final class ScannerController {
 				results.add(new ScannerItem(trunkBase, null, distance, null));
 			}
 		}
+		results.sort(Comparator.comparingDouble(ScannerItem::distance));
+		return results;
+	}
+
+	/**
+	 * Liquids plus everything climbable, merged into one list - both are short, rarely-used
+	 * lists about getting around, so they share a category (and one Home/End stop). Each half
+	 * keeps its own scan, clustering and narration; only the sort is shared.
+	 */
+	private static List<ScannerItem> scanTerrain(LocalPlayer player) {
+		List<ScannerItem> results = new ArrayList<>(scanLiquids(player));
+		results.addAll(scanClimbable(player));
 		results.sort(Comparator.comparingDouble(ScannerItem::distance));
 		return results;
 	}
