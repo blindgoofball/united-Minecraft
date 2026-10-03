@@ -268,6 +268,18 @@ public final class ClientKeyBindings {
 	/** Drops the focused slot's item (Ctrl: the whole stack). Not vanilla's drop key, which is a plain letter and so is taken by first-letter navigation. */
 	public static final KeybindAction CONTAINER_DROP = new KeybindAction(
 			"container_drop", KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_BACKSPACE, 0), KeybindContext.CONTAINER_SCREEN);
+	/**
+	 * Drag modifiers: hold one while moving between slots with the arrow keys, with a stack on the
+	 * cursor, to drag across slots like holding a mouse button - left-drag (an even split) for
+	 * this one, right-drag (one item per slot) for {@link #CONTAINER_DRAG_ONE}. Releasing the key
+	 * is what drops the stack. Bare modifier keys by default; read through {@link
+	 * #isHeldNow} rather than {@link KeybindAction#isDown()} because a drag has to notice the
+	 * key the instant it's pressed alongside an arrow, not up to a tick later.
+	 */
+	public static final KeybindAction CONTAINER_DRAG_EVEN = new KeybindAction("container_drag_even",
+			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_LCONTROL, 0), KeybindContext.CONTAINER_SCREEN, ContainerScope.ORDINARY_SLOTS);
+	public static final KeybindAction CONTAINER_DRAG_ONE = new KeybindAction("container_drag_one",
+			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_LALT, 0), KeybindContext.CONTAINER_SCREEN, ContainerScope.ORDINARY_SLOTS);
 	public static final KeybindAction CONTAINER_DESCRIBE_SLOT = new KeybindAction(
 			"container_describe_slot", KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_SPACE, 0), KeybindContext.CONTAINER_SCREEN);
 
@@ -483,6 +495,25 @@ public final class ClientKeyBindings {
 			mods |= InputConstants.MOD_SUPER;
 		}
 		return mods;
+	}
+
+	/**
+	 * Whether {@code action}'s key is physically down right now. A Ctrl, Alt or Shift binding counts
+	 * either side of that modifier, so a player's habit of reaching for the right-hand one still
+	 * works with a left-hand default.
+	 */
+	public static boolean isHeldNow(KeybindAction action) {
+		int key = action.current().key();
+		if (key < 0) {
+			return false;
+		}
+		int family = switch (key) {
+			case InputConstants.KEY_LCONTROL, InputConstants.KEY_RCONTROL -> InputConstants.MOD_CONTROL;
+			case InputConstants.KEY_LALT, InputConstants.KEY_RALT -> InputConstants.MOD_ALT;
+			case InputConstants.KEY_LSHIFT, InputConstants.KEY_RSHIFT -> InputConstants.MOD_SHIFT;
+			default -> 0;
+		};
+		return family != 0 ? (currentModifierBitmask() & family) != 0 : InputConstants.isKeyDown(key);
 	}
 
 	public static boolean isModifierKeycode(int key) {

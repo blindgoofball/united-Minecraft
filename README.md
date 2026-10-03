@@ -490,7 +490,11 @@ keys move within a section in a proper 2D grid; Enter picks up/places
 or places one item at a time back from it - the keyboard equivalent of a
 right-click). Hovering a slot and pressing 1-9 swaps its contents into that
 hotbar slot, and Backspace (Ctrl+Backspace for the whole stack) drops it, the
-same as they would with a real mouse cursor. Typing a letter jumps to the next
+same as they would with a real mouse cursor. Holding Ctrl while moving with the arrow keys, with a stack picked up, drags it
+across every slot you pass over - an even split, like holding the left mouse
+button - and Alt does the same but puts one item in each slot, like the right
+button; the stack drops when you let go of the key, and Escape backs out first.
+Both keys are rebindable. Typing a letter jumps to the next
 slot in the current section whose item name starts with that letter, wrapping
 around, so pressing it again cycles through every match. That includes E, which
 no longer closes these screens - Escape still does. Space on a focused slot holding a block

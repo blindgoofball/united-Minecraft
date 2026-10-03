@@ -47,6 +47,7 @@ public final class ClientHooks {
 		MenuAccessibilityController.recheckInitialSlotNarration(client);
 		MenuAccessibilityController.recheckFocusedSlotForExternalChange(client);
 		MenuAccessibilityController.clearStrayFocus(client);
+		MenuAccessibilityController.tickDrag(client);
 		MenuAccessibilityController.openPendingSearchPrompt(client);
 		CreativeInventoryController.recheckSearchResults(client);
 	}

@@ -2,9 +2,11 @@ package com.nibblenerds.unitedminecraft.client;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 
 import com.mojang.blaze3d.platform.InputConstants;
@@ -188,6 +190,13 @@ public final class MenuAccessibilityController {
 	// to slot 0 regardless of what was actually focused.
 	private static Slot focusedSlot;
 
+	// Keyboard drag across slots - see handleDragKey. dragType uses vanilla's own quick-craft type
+	// numbering: 0 = even split (left-drag), 1 = one per slot (right-drag).
+	private static final Set<Slot> dragSlots = new LinkedHashSet<>();
+	private static boolean dragging;
+	private static int dragType;
+	private static KeybindAction dragModifier;
+
 	private static List<RecipeCollection> recipeGroups = List.of();
 	private static int recipeGroupIndex = -1;
 	private static int recipeVariantIndex = 0;
@@ -274,6 +283,7 @@ public final class MenuAccessibilityController {
 			trackedScreen = null;
 			focusedSlot = null;
 			recipeGroups = List.of();
+			cancelDrag();
 		}
 	}
 
@@ -417,6 +427,14 @@ public final class MenuAccessibilityController {
 
 		boolean ctrlHeld = (event.modifiers() & InputConstants.MOD_CONTROL) != 0;
 
+		// Escape while dragging backs out of the drag instead of closing the screen - the modifier
+		// is still held at that point, so letting go afterwards drops nothing.
+		if (dragging && event.isEscape()) {
+			cancelDrag();
+			Minecraft.getInstance().getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.drag_cancelled"));
+			return false;
+		}
+
 		if (ClientKeyBindings.CONTAINER_SWITCH_SECTION_NEXT.current().matches(event)) {
 			switchSection(screen, player, 1);
 			return false;
@@ -444,6 +462,10 @@ public final class MenuAccessibilityController {
 		}
 		if (currentSection == Section.TRADES) {
 			return handleTradeKey(screen, event);
+		}
+
+		if (handleDragKey(screen, player, event)) {
+			return false;
 		}
 
 		Direction direction = null;
@@ -741,19 +763,172 @@ public final class MenuAccessibilityController {
 			return;
 		}
 
-		Slot next = switch (currentSection) {
-			case HOTBAR -> gridNeighbor(sectionSlots, focusedSlot, direction, sectionSlots.size(), 1);
-			case INVENTORY -> gridNeighbor(sectionSlots, focusedSlot, direction, 9, sectionSlots.size() / 9);
-			case CONTAINER, EQUIPMENT -> nearestSpatialNeighbor(sectionSlots, focusedSlot, direction);
-			// moveFocus is never called while any of these sections is active - each routes its
-			// own keys to a dedicated handler (or straight to vanilla) before this method is
-			// ever reached.
-			case RECIPE_BOOK, ENCHANT_OPTIONS, BEACON_OPTIONS, RENAME, TRADES -> null;
-		};
+		Slot next = neighborOf(sectionSlots, direction);
 		if (next != null) {
 			focusedSlot = next;
 			narrateFocusedSlot(screen, player, false);
 		}
+	}
+
+	/** The slot one step from {@link #focusedSlot} in {@code direction} within the current section, or null at an edge. */
+	private static Slot neighborOf(List<Slot> sectionSlots, Direction direction) {
+		return switch (currentSection) {
+			case HOTBAR -> gridNeighbor(sectionSlots, focusedSlot, direction, sectionSlots.size(), 1);
+			case INVENTORY -> gridNeighbor(sectionSlots, focusedSlot, direction, 9, sectionSlots.size() / 9);
+			case CONTAINER, EQUIPMENT -> nearestSpatialNeighbor(sectionSlots, focusedSlot, direction);
+			// Never reached while any of these sections is active - each routes its own keys to a
+			// dedicated handler (or straight to vanilla) before slot navigation is ever reached.
+			case RECIPE_BOOK, ENCHANT_OPTIONS, BEACON_OPTIONS, RENAME, TRADES -> null;
+		};
+	}
+
+	/**
+	 * Keyboard drag across slots, the counterpart of holding a mouse button down over several
+	 * slots with a stack on the cursor: hold {@link ClientKeyBindings#CONTAINER_DRAG_EVEN} (an even
+	 * split, like left-drag) or {@link ClientKeyBindings#CONTAINER_DRAG_ONE} (one item per slot,
+	 * like right-drag) and move with the arrow keys. The slot focus starts on and each one moved
+	 * onto after that are collected exactly as vanilla's own drag collects the slots a mouse
+	 * passes over, and {@link #tickDrag} sends them off the moment the modifier is let go.
+	 * Returns true if the key was consumed.
+	 */
+	private static boolean handleDragKey(AbstractContainerScreen<?> screen, LocalPlayer player, KeyEvent event) {
+		Direction direction = null;
+		if (ClientKeyBindings.CONTAINER_NAV_LEFT.current().key() == event.key()) {
+			direction = Direction.LEFT;
+		} else if (ClientKeyBindings.CONTAINER_NAV_RIGHT.current().key() == event.key()) {
+			direction = Direction.RIGHT;
+		} else if (ClientKeyBindings.CONTAINER_NAV_UP.current().key() == event.key()) {
+			direction = Direction.UP;
+		} else if (ClientKeyBindings.CONTAINER_NAV_DOWN.current().key() == event.key()) {
+			direction = Direction.DOWN;
+		}
+		if (direction == null) {
+			return false;
+		}
+		KeybindAction modifier = dragging ? dragModifier : heldDragModifier();
+		if (modifier == null) {
+			return false;
+		}
+
+		Minecraft client = Minecraft.getInstance();
+		AbstractContainerMenu menu = screen.getMenu();
+		Slot start = currentSlot(menu);
+		// Creative's Inventory tab shows the real inventory through wrapper slots that don't
+		// take part in the menu's own quick-craft - leave those to ordinary navigation.
+		if (start == null || start instanceof SlotWrapperAccess) {
+			return false;
+		}
+		ItemStack carried = menu.getCarried();
+		if (carried.isEmpty()) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.drag_nothing"));
+			return true;
+		}
+
+		List<Slot> sectionSlots = sectionSlots(menu, player, currentSection);
+		if (!sectionSlots.contains(start)) {
+			return false;
+		}
+		boolean justStarted = false;
+		if (!dragging) {
+			dragging = true;
+			justStarted = true;
+			dragModifier = modifier;
+			dragType = modifier == ClientKeyBindings.CONTAINER_DRAG_EVEN ? 0 : 1;
+			dragSlots.clear();
+			tryAddToDrag(menu, start, carried);
+		}
+
+		Slot next = neighborOf(sectionSlots, direction);
+		if (next == null && !justStarted) {
+			return true;
+		}
+		if (next != null) {
+			focusedSlot = next;
+			tryAddToDrag(menu, next, carried);
+		}
+		narrateDrag(menu, player, currentSlot(menu), justStarted);
+		return true;
+	}
+
+	/** Mirrors {@code AbstractContainerScreen#shouldAddSlotToQuickCraft}: the slot must be able to take the carried stack and there must still be enough of it to go round. */
+	private static void tryAddToDrag(AbstractContainerMenu menu, Slot slot, ItemStack carried) {
+		if (carried.getCount() > dragSlots.size()
+				&& AbstractContainerMenu.canItemQuickReplace(slot, carried, true)
+				&& slot.mayPlace(carried)
+				&& menu.canDragTo(slot)) {
+			dragSlots.add(slot);
+		}
+	}
+
+	private static KeybindAction heldDragModifier() {
+		if (ClientKeyBindings.isHeldNow(ClientKeyBindings.CONTAINER_DRAG_EVEN)) {
+			return ClientKeyBindings.CONTAINER_DRAG_EVEN;
+		}
+		if (ClientKeyBindings.isHeldNow(ClientKeyBindings.CONTAINER_DRAG_ONE)) {
+			return ClientKeyBindings.CONTAINER_DRAG_ONE;
+		}
+		return null;
+	}
+
+	private static void narrateDrag(AbstractContainerMenu menu, LocalPlayer player, Slot focused, boolean announceMode) {
+		if (focused == null) {
+			return;
+		}
+		ItemStack carried = menu.getCarried();
+		Component slotText = focused.getItem().isEmpty()
+				? Component.translatable("united_minecraft.narrate.hotbar_empty")
+				: ItemDescriptions.describe(focused.getItem(), player);
+		MutableComponent message = Component.empty();
+		if (announceMode) {
+			message = message.append(Component.translatable(dragType == 0
+					? "united_minecraft.narrate.drag_mode_even" : "united_minecraft.narrate.drag_mode_one")).append(Component.literal(". "));
+		}
+		message = message.append(slotText).append(Component.literal(", "));
+		if (!dragSlots.contains(focused)) {
+			message = message.append(Component.translatable("united_minecraft.narrate.drag_skipped"));
+		} else {
+			int count = dragSlots.size();
+			int each = dragType == 0 ? carried.getCount() / count : 1;
+			message = message.append(Component.translatable("united_minecraft.narrate.drag_added",
+					count, each, carried.getCount() - each * count));
+		}
+		Minecraft.getInstance().getNarrator().saySystemNow(message);
+	}
+
+	/**
+	 * Called every client tick: once the modifier a drag started with is let go, sends vanilla's
+	 * three quick-craft stages (begin, one per slot, end) exactly as {@code
+	 * AbstractContainerScreen#quickCraftToSlots} does on a mouse release, so the server sees an
+	 * ordinary drag.
+	 */
+	static void tickDrag(Minecraft client) {
+		if (!dragging || ClientKeyBindings.isHeldNow(dragModifier)) {
+			return;
+		}
+		LocalPlayer player = client.player;
+		if (trackedScreen == null || player == null || dragSlots.isEmpty()) {
+			cancelDrag();
+			return;
+		}
+		AbstractContainerMenu menu = trackedScreen.getMenu();
+		int type = dragType;
+		int placedInto = dragSlots.size();
+		int carriedBefore = menu.getCarried().getCount();
+		client.gameMode.handleContainerInput(menu.containerId, -999, AbstractContainerMenu.getQuickcraftMask(0, type), ContainerInput.QUICK_CRAFT, player);
+		for (Slot slot : dragSlots) {
+			client.gameMode.handleContainerInput(menu.containerId, slot.index, AbstractContainerMenu.getQuickcraftMask(1, type), ContainerInput.QUICK_CRAFT, player);
+		}
+		client.gameMode.handleContainerInput(menu.containerId, -999, AbstractContainerMenu.getQuickcraftMask(2, type), ContainerInput.QUICK_CRAFT, player);
+		cancelDrag();
+		int left = menu.getCarried().getCount();
+		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.drag_done",
+				placedInto, carriedBefore - left, left));
+	}
+
+	private static void cancelDrag() {
+		dragging = false;
+		dragSlots.clear();
+		dragModifier = null;
 	}
 
 	private static void click(AbstractContainerScreen<?> screen, LocalPlayer player, ContainerInput input, int button) {
