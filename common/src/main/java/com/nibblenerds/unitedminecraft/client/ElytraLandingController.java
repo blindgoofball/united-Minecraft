@@ -1,5 +1,8 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
@@ -15,9 +18,9 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Finds the nearest place an elytra glide can actually end safely, and says where it is - the
- * flying counterpart of {@link WaterExitController}'s "which way out", on the same key. Nothing
- * here moves the player; it only answers "is there somewhere I can land, and which way".
+ * Elytra landing help, on the same keys as {@link WaterExitController}: while gliding, Y reports the
+ * nearest safe landing spot you can reach ({@link #narrate}) and Shift+Y flies you onto it ({@link
+ * #start}), the flying counterpart of "which way out" and "swim there".
  *
  * <p>A spot qualifies when it is:
  * <ul>
@@ -28,24 +31,58 @@ import net.minecraft.world.phys.Vec3;
  * that isn't leaves, magma or a campfire, with open air above - so touching down and sliding
  * doesn't tip into a pit or onto something harmful. Water and lava never count.</li>
  * <li><b>Reachable.</b> A straight line from the player to just above the spot is clear of
- * terrain, trees and builds, since that line is the glide path.</li>
+ * terrain, trees and builds.</li>
  * </ul>
+ *
+ * <p>The flying itself is {@link ElytraAutopilot}: this class only feeds it the player's state each
+ * tick and applies the look it asks for, owning the camera while it runs (like Auto-Walk does) until
+ * the player touches down, cancels with the stop key, or it hands back control because terrain is
+ * in the way.
  */
 public final class ElytraLandingController {
-	// Blocks travelled forward per block of height lost. Real elytra glide is somewhat better than
-	// this, but a landing needs room to turn onto the spot and to level off, so range is judged
-	// conservatively rather than at the best case.
+	// Blocks travelled forward per block of height lost. Real elytra glide is better than this
+	// (about 10 in level flight), but a landing needs room to turn onto the spot and to level
+	// off, so range is judged conservatively rather than at the best case.
 	private static final double GLIDE_RATIO = 6.0;
 	// Height kept back above the spot for levelling off before touching down.
 	private static final double FLARE_HEIGHT = 3.0;
 	private static final int SEARCH_RADIUS = 96;
 	private static final double APPROACH_AIM_HEIGHT = 2.0;
+	// Below this height above the spot there is no room left to circle down, so a spot the autopilot
+	// can't line up on straight away is declined rather than attempted.
+	private static final double MIN_START_HEIGHT_TO_CIRCLE = 30.0;
+	private static final int STATUS_INTERVAL_TICKS = 100;
+	// Consecutive ticks of a predicted collision before control is handed back - a single tick of
+	// noise in the prediction shouldn't throw the player out of an otherwise fine landing.
+	private static final int HAZARD_TICKS_TO_ABORT = 5;
+
+	private static ElytraAutopilot autopilot;
+	private static Spot target;
+	private static ElytraAutopilot.Phase announcedPhase;
+	private static int ticksFlown;
+	private static int hazardTicks;
+	// Column surface heights already looked up this tick - the autopilot asks for the same columns
+	// over and over while predicting, and every one of them is a heightmap read.
+	private static final Map<Long, Double> SURFACE_CACHE = new HashMap<>();
 
 	private ElytraLandingController() {
 	}
 
 	/** The nearest landing spot: where to stand ({@code feet}) and how far away it is horizontally. */
 	private record Spot(BlockPos feet, double distance) {
+	}
+
+	public static boolean isActive() {
+		return autopilot != null;
+	}
+
+	public static void reset() {
+		autopilot = null;
+		target = null;
+		announcedPhase = null;
+		ticksFlown = 0;
+		hazardTicks = 0;
+		SURFACE_CACHE.clear();
 	}
 
 	/** Reports distance, direction and height to the nearest landing spot within glide range, or that there is none. */
@@ -60,6 +97,124 @@ public final class ElytraLandingController {
 		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.elytra_landing_direction",
 				(int) Math.round(spot.distance()), CameraUtil.compassDirectionTo(from, to),
 				(int) Math.round(from.y() - to.y())));
+	}
+
+	/** Takes over the glide and flies the player onto the nearest landing spot. */
+	public static void start(Minecraft client, LocalPlayer player) {
+		if (!player.isFallFlying()) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.elytra_landing_not_flying"));
+			return;
+		}
+		if (isActive()) {
+			reset();
+		}
+		if (AutoWalkController.isActive()) {
+			AutoWalkController.cancel(client, player);
+		}
+
+		Spot spot = findSpot(player);
+		if (spot == null) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.elytra_landing_none"));
+			return;
+		}
+		Level level = player.level();
+		ElytraAutopilot pilot = new ElytraAutopilot(spot.feet().getX() + 0.5, spot.feet().getY(), spot.feet().getZ() + 0.5,
+				(x, z) -> surfaceHeight(level, x, z, spot.feet().getY()));
+		SURFACE_CACHE.clear();
+		ElytraAutopilot.Command first = pilot.step(stateOf(player));
+		if (first.phase() == ElytraAutopilot.Phase.ORBIT && player.getY() - spot.feet().getY() < MIN_START_HEIGHT_TO_CIRCLE) {
+			// Not lined up for the spot and too low to circle down to it: better to say so than to
+			// start something that can only end short of it.
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.elytra_landing_too_low"));
+			return;
+		}
+
+		autopilot = pilot;
+		target = spot;
+		announcedPhase = null;
+		ticksFlown = 0;
+		hazardTicks = 0;
+		Vec3 from = player.position();
+		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.elytra_landing_started",
+				(int) Math.round(spot.distance()), CameraUtil.compassDirectionTo(from, Vec3.atBottomCenterOf(spot.feet()))));
+		apply(player, first);
+	}
+
+	public static void cancel(Minecraft client, LocalPlayer player) {
+		if (!isActive()) {
+			return;
+		}
+		reset();
+		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.elytra_landing_cancelled"));
+	}
+
+	public static void tick(Minecraft client, LocalPlayer player) {
+		if (!isActive()) {
+			return;
+		}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_STOP_LOCK)) {
+			cancel(client, player);
+			return;
+		}
+		if (!player.isFallFlying()) {
+			boolean landed = player.onGround();
+			reset();
+			client.getNarrator().saySystemNow(Component.translatable(landed
+					? "united_minecraft.narrate.elytra_landing_touchdown" : "united_minecraft.narrate.elytra_landing_ended"));
+			return;
+		}
+
+		SURFACE_CACHE.clear();
+		ElytraAutopilot.Command command = autopilot.step(stateOf(player));
+
+		hazardTicks = command.hazard() ? hazardTicks + 1 : 0;
+		if (hazardTicks >= HAZARD_TICKS_TO_ABORT) {
+			reset();
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.elytra_landing_hazard"));
+			return;
+		}
+
+		if (command.phase() != announcedPhase) {
+			announcedPhase = command.phase();
+			client.getNarrator().saySystemNow(Component.translatable(announcedPhase == ElytraAutopilot.Phase.ORBIT
+					? "united_minecraft.narrate.elytra_landing_circling" : "united_minecraft.narrate.elytra_landing_final"));
+		}
+		ticksFlown++;
+		if (ticksFlown % STATUS_INTERVAL_TICKS == 0) {
+			Vec3 to = Vec3.atBottomCenterOf(target.feet());
+			double horizontal = Math.hypot(to.x() - player.getX(), to.z() - player.getZ());
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.elytra_landing_status",
+					(int) Math.round(horizontal), (int) Math.round(player.getY() - to.y())));
+		}
+		apply(player, command);
+	}
+
+	private static ElytraAutopilot.State stateOf(LocalPlayer player) {
+		Vec3 velocity = player.getDeltaMovement();
+		return new ElytraAutopilot.State(player.getX(), player.getY(), player.getZ(),
+				velocity.x(), velocity.y(), velocity.z(), player.getYRot(), player.getXRot());
+	}
+
+	private static void apply(LocalPlayer player, ElytraAutopilot.Command command) {
+		player.setYRot(command.yaw());
+		player.setXRot(command.pitch());
+		player.setYHeadRot(command.yaw());
+	}
+
+	/** The top surface of the column at {@code (x, z)}, or {@code fallback} if that part of the world isn't loaded. */
+	private static double surfaceHeight(Level level, double x, double z, double fallback) {
+		int blockX = (int) Math.floor(x);
+		int blockZ = (int) Math.floor(z);
+		long key = (((long) blockX) << 32) ^ (blockZ & 0xffffffffL);
+		Double cached = SURFACE_CACHE.get(key);
+		if (cached != null) {
+			return cached;
+		}
+		double height = level.hasChunkAt(new BlockPos(blockX, 0, blockZ))
+				? level.getHeight(Heightmap.Types.MOTION_BLOCKING, blockX, blockZ)
+				: fallback;
+		SURFACE_CACHE.put(key, height);
+		return height;
 	}
 
 	private static Spot findSpot(LocalPlayer player) {

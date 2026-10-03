@@ -123,6 +123,7 @@ public final class AccessibilityTickHandler {
 			ScannerController.reset();
 			AutoWalkController.reset();
 			WaterExitController.reset();
+			ElytraLandingController.reset();
 			TrailController.reset();
 			MovementAssistController.reset();
 			NavRadarController.reset();
@@ -186,6 +187,11 @@ public final class AccessibilityTickHandler {
 			// player.input the exact same way.
 			WaterExitController.cancel(client, player);
 		}
+		if (client.gui.screen() != null && ElytraLandingController.isActive()) {
+			// ElytraLandingController.tick only runs below, under the screen == null branch - a
+			// screen opening mid-glide would otherwise leave it "active" but not flying anything.
+			ElytraLandingController.cancel(client, player);
+		}
 		if (client.gui.screen() != null && TrailController.isActive()) {
 			// Same reasoning again - TrailController swaps player.input the exact same way.
 			TrailController.cancel(client, player);
@@ -204,6 +210,9 @@ public final class AccessibilityTickHandler {
 			} else if (WaterExitController.isActive()) {
 				// Owns rotation and movement the same way Auto-Walk does, for the same reason.
 				WaterExitController.tick(client, player);
+			} else if (ElytraLandingController.isActive()) {
+				// Owns rotation for the whole glide, the same way the swim above does for a swim.
+				ElytraLandingController.tick(client, player);
 			} else if (TrailController.isActive()) {
 				// Owns rotation and movement the same way - mutually exclusive with the two
 				// auto-navigate modes just above, only one should ever be walking at once.
@@ -282,7 +291,8 @@ public final class AccessibilityTickHandler {
 		}
 
 		boolean rotationOwned = BuildModeController.isActive() || ScannerController.isLocked() || AutoWalkController.isActive()
-				|| CombatModeController.isActive() || WaterExitController.isActive() || TrailController.isActive();
+				|| CombatModeController.isActive() || WaterExitController.isActive() || ElytraLandingController.isActive()
+				|| TrailController.isActive();
 		if (!rotationOwned) {
 			if (rotationOwnedLastTick) {
 				// One of those modes just handed rotation back this very tick - it may have
@@ -383,7 +393,11 @@ public final class AccessibilityTickHandler {
 		// WaterExitController#start), since the two are never useful to run at once anyway.
 		boolean rotationFree = !ScannerController.isLocked() && !CombatModeController.isActive() && !BuildModeController.isActive();
 		if (rotationFree && ClientKeyBindings.pressed(ClientKeyBindings.WATER_ESCAPE_AUTO_SWIM)) {
-			WaterExitController.start(client, player);
+			if (player.isFallFlying()) {
+				ElytraLandingController.start(client, player);
+			} else {
+				WaterExitController.start(client, player);
+			}
 		} else if (rotationFree && ClientKeyBindings.pressed(ClientKeyBindings.WATER_ESCAPE)) {
 			// The same key answers "where can I get out" for whichever of the two the player is
 			// actually in the middle of: gliding on an elytra, or (the long-standing case) water.

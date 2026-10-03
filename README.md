@@ -264,7 +264,10 @@ Cancel a swim any time with the stop-lock key, same as Auto-Walk.
 While gliding on an elytra, the same key instead reports the nearest safe place to
 land that you can actually glide to: flat, solid ground (never water, lava, leaves or
 anything harmful) with a clear line down to it, within the distance your current height
-allows. If there isn't one, it says so.
+allows. If there isn't one, it says so. Shift+Y flies you onto it: the camera is taken over for the
+glide, steering and pitching to touch down on the spot gently - circling down first if you're too
+high to land on it directly - and handing control back when you land. Cancel any time with the
+stop-lock key (Backspace); it also hands control back if terrain is in the way.
 
 ### Cave Trail
 
