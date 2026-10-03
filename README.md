@@ -87,11 +87,12 @@ the same jar on the server; see below.)
 Cycle through nearby things by category and get full narration, targeting, and
 navigation without needing to see or aim at them.
 
-- Categories: Storage, Workstations, Mechanisms, Items, Passive Mobs, Hostile Mobs, Trees,
-  Ores, Terrain, Crops, Search, Biomes and Structures, Markers (see Map Markers below),
-  Players, and Entities (minecarts, boats, armor stands, item frames and glow item
+- Categories, in cycling order: Storage, Workstations, Mechanisms, Hostile Mobs,
+  Passive Mobs, Entities, Items, Ores, Trees, Crops, Terrain, Biomes and Structures,
+  Players, Markers (see Map Markers below), and Search.
+  Entities are minecarts, boats, armor stands, item frames and glow item
   frames - narrating what they're holding, if anything - paintings by their actual
-  name rather than just "Painting", end crystals, and leash knots).
+  name rather than just "Painting", end crystals, and leash knots.
 - Storage holds chests, barrels, shulker boxes, hoppers, droppers, dispensers,
   decorated pots, vaults and shelves; Workstations holds everything else that opens
   a menu (crafting tables, furnaces, anvils...) plus beds and command blocks;

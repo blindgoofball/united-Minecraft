@@ -7,18 +7,18 @@ public enum ScannerCategory {
 	STORAGE("united_minecraft.scanner.category.storage"),
 	WORKSTATIONS("united_minecraft.scanner.category.workstations"),
 	MECHANISMS("united_minecraft.scanner.category.mechanisms"),
-	ITEMS("united_minecraft.scanner.category.items"),
-	PASSIVE_MOBS("united_minecraft.scanner.category.passive_mobs"),
 	HOSTILE_MOBS("united_minecraft.scanner.category.hostile_mobs"),
-	TREES("united_minecraft.scanner.category.trees"),
+	PASSIVE_MOBS("united_minecraft.scanner.category.passive_mobs"),
+	ENTITIES("united_minecraft.scanner.category.entities"),
+	ITEMS("united_minecraft.scanner.category.items"),
 	ORES("united_minecraft.scanner.category.ores"),
-	TERRAIN("united_minecraft.scanner.category.terrain"),
+	TREES("united_minecraft.scanner.category.trees"),
 	CROPS("united_minecraft.scanner.category.crops"),
-	SEARCH("united_minecraft.scanner.category.search"),
+	TERRAIN("united_minecraft.scanner.category.terrain"),
 	BIOMES_AND_STRUCTURES("united_minecraft.scanner.category.biomes_and_structures"),
-	MARKERS("united_minecraft.scanner.category.markers"),
 	PLAYERS("united_minecraft.scanner.category.players"),
-	ENTITIES("united_minecraft.scanner.category.entities");
+	MARKERS("united_minecraft.scanner.category.markers"),
+	SEARCH("united_minecraft.scanner.category.search");
 
 	private final String translationKey;
 
