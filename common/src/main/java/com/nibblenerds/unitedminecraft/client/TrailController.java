@@ -213,7 +213,7 @@ public final class TrailController {
 		if (!isActive()) {
 			return;
 		}
-		finish(client, player, "united_minecraft.narrate.trail_cancelled");
+		finish(client, player, "united_minecraft.narrate.trail_cancelled", true);
 	}
 
 	public static void tick(Minecraft client, LocalPlayer player) {
@@ -263,11 +263,21 @@ public final class TrailController {
 	}
 
 	private static void finish(Minecraft client, LocalPlayer player, String messageKey) {
+		finish(client, player, messageKey, false);
+	}
+
+	private static void finish(Minecraft client, LocalPlayer player, String messageKey, boolean cancelledByKey) {
 		player.input = previousInput;
 		route = null;
 		routeIndex = 0;
 		previousInput = null;
-		client.getNarrator().saySystemNow(Component.translatable(messageKey));
+		// The cancel key answers at once; how the retrace ended (including a portal ending it)
+		// waits for whatever is being said.
+		if (cancelledByKey) {
+			client.getNarrator().saySystemNow(Component.translatable(messageKey));
+		} else {
+			client.getNarrator().saySystemQueued(Component.translatable(messageKey));
+		}
 	}
 
 	/**

@@ -234,9 +234,16 @@ public final class AutoWalkController {
 		if (messageKey == null) {
 			return;
 		}
-		client.getNarrator().saySystemNow(name != null
+		Component message = name != null
 				? Component.translatable(messageKey, name)
-				: Component.translatable(messageKey));
+				: Component.translatable(messageKey);
+		// Cancelling answers a keypress, so it speaks at once; an arrival is the result of a walk
+		// started earlier and waits for whatever is being said.
+		if (messageKey.equals("united_minecraft.narrate.autowalk_cancelled")) {
+			client.getNarrator().saySystemNow(message);
+		} else {
+			client.getNarrator().saySystemQueued(message);
+		}
 	}
 
 	/**
@@ -251,7 +258,7 @@ public final class AutoWalkController {
 		player.input = previousInput;
 		reset();
 		playStoppedCue(client, player);
-		client.getNarrator().saySystemNow(name != null
+		client.getNarrator().saySystemQueued(name != null
 				? Component.translatable("united_minecraft.narrate.autowalk_incomplete", remainingBlocks, name)
 				: Component.translatable("united_minecraft.narrate.autowalk_incomplete_unnamed", remainingBlocks));
 	}
@@ -274,7 +281,7 @@ public final class AutoWalkController {
 		player.input = previousInput;
 		reset();
 		playStoppedCue(client, player);
-		client.getNarrator().saySystemNow(name != null
+		client.getNarrator().saySystemQueued(name != null
 				? Component.translatable("united_minecraft.narrate.autowalk_stuck", remaining, name)
 				: Component.translatable("united_minecraft.narrate.autowalk_stuck_unnamed", remaining));
 	}

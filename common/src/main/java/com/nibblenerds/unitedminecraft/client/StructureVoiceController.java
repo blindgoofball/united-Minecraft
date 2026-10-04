@@ -179,10 +179,10 @@ public final class StructureVoiceController {
 					SoundInstance.createUnseededRandom()));
 			busyUntil = ticks + (long) Math.ceil(audio.get().durationTicks() / pitch) + GAP_TICKS;
 			if (config.structureVoiceNarrate) {
-				client.getNarrator().saySystemNow(describe(name, eye, point));
+				client.getNarrator().saySystemQueued(describe(name, eye, point));
 			}
 		} else {
-			client.getNarrator().saySystemNow(describe(name, eye, point));
+			client.getNarrator().saySystemQueued(describe(name, eye, point));
 			busyUntil = ticks + NARRATION_GAP_TICKS;
 		}
 	}

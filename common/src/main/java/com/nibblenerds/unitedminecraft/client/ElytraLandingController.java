@@ -159,8 +159,13 @@ public final class ElytraLandingController {
 		if (!player.isFallFlying()) {
 			boolean landed = player.onGround();
 			reset();
-			client.getNarrator().saySystemNow(Component.translatable(landed
-					? "united_minecraft.narrate.elytra_landing_touchdown" : "united_minecraft.narrate.elytra_landing_ended"));
+			// A touchdown is just the result of the landing, so it waits its turn; stopping the
+			// glide anywhere but the ground means falling, and is said at once.
+			if (landed) {
+				client.getNarrator().saySystemQueued(Component.translatable("united_minecraft.narrate.elytra_landing_touchdown"));
+			} else {
+				client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.elytra_landing_ended"));
+			}
 			return;
 		}
 

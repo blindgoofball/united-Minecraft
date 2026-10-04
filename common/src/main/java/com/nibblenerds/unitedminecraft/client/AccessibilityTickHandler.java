@@ -647,7 +647,7 @@ public final class AccessibilityTickHandler {
 				: Component.translatable(left
 						? "united_minecraft.narrate.shoulder_parrot_flew_off_left"
 						: "united_minecraft.narrate.shoulder_parrot_flew_off_right");
-		client.getNarrator().saySystemNow(message);
+		client.getNarrator().saySystemQueued(message);
 	}
 
 	private static Component describeHand(ItemStack stack, LocalPlayer player) {
@@ -660,7 +660,8 @@ public final class AccessibilityTickHandler {
 		Holder<Biome> biome = player.level().getBiome(player.blockPosition());
 		if (biome != lastBiome) {
 			if (lastBiome != null) {
-				client.getNarrator().saySystemNow(
+				// Queued, like every ambient announcement: never cut off something the player asked for.
+				client.getNarrator().saySystemQueued(
 						Component.translatable("united_minecraft.narrate.biome_entered", biomeName(biome)));
 			}
 			lastBiome = biome;
@@ -689,7 +690,7 @@ public final class AccessibilityTickHandler {
 		int period = timePeriodIndex(player);
 		if (period != lastTimePeriod) {
 			if (lastTimePeriod != -1) {
-				client.getNarrator().saySystemNow(Component.translatable(TIME_PERIOD_KEYS[period]));
+				client.getNarrator().saySystemQueued(Component.translatable(TIME_PERIOD_KEYS[period]));
 			}
 			lastTimePeriod = period;
 		}

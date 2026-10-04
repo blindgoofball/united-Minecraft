@@ -45,7 +45,7 @@ public final class TameNotificationController {
 			// already-tamed animal (tamedBefore == null) - otherwise every pet you already own
 			// would announce itself as freshly tamed the moment it first comes into range.
 			if (tamedNow && Boolean.FALSE.equals(tamedBefore) && isOwnedByPlayer(entity, player)) {
-				client.getNarrator().saySystemNow(
+				client.getNarrator().saySystemQueued(
 						Component.translatable("united_minecraft.narrate.mob_tamed_notification", entity.getDisplayName()));
 			}
 		}

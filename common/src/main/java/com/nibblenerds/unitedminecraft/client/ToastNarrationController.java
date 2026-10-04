@@ -29,6 +29,6 @@ public final class ToastNarrationController {
 			return;
 		}
 		lastNarratedText = text;
-		Minecraft.getInstance().getNarrator().saySystemNow(message);
+		Minecraft.getInstance().getNarrator().saySystemQueued(message);
 	}
 }

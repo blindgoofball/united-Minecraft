@@ -168,7 +168,12 @@ public final class WaterExitController {
 	private static void finish(Minecraft client, LocalPlayer player, String messageKey) {
 		player.input = previousInput;
 		reset();
-		client.getNarrator().saySystemNow(Component.translatable(messageKey));
+		// Cancelling answers a keypress, so it speaks at once; how the swim ended waits its turn.
+		if (messageKey.equals("united_minecraft.narrate.water_exit_cancelled")) {
+			client.getNarrator().saySystemNow(Component.translatable(messageKey));
+		} else {
+			client.getNarrator().saySystemQueued(Component.translatable(messageKey));
+		}
 	}
 
 	/**

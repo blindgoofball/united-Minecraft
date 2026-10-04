@@ -67,9 +67,9 @@ public final class FishingCatchController {
 	}
 
 	/**
-	 * Narrates only the nearest candidate item, not every one found - {@code saySystemNow}
-	 * interrupts, so narrating each match in turn would just leave whichever one happened to be
-	 * last in iteration order as the only one actually heard, silently dropping the rest.
+	 * Narrates only the nearest candidate item, not every one found - anything else floating
+	 * nearby (a dropped stack, a previous catch) isn't what this cast reeled in. Queued, since a
+	 * catch lands on its own time and shouldn't cut off whatever is being said.
 	 */
 	private static void announceCatch(Minecraft client, LocalPlayer player) {
 		AABB box = player.getBoundingBox().inflate(CATCH_RADIUS);
@@ -87,6 +87,6 @@ public final class FishingCatchController {
 			return;
 		}
 		MutableComponent description = ItemDescriptions.describe(nearest.getItem(), player);
-		client.getNarrator().saySystemNow(description);
+		client.getNarrator().saySystemQueued(description);
 	}
 }

@@ -127,7 +127,7 @@ public final class EyeOfEnderController {
 	}
 
 	private static void announceHeading(Minecraft client, LocalPlayer player, Tracked tracked) {
-		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.eye_heading",
+		client.getNarrator().saySystemQueued(Component.translatable("united_minecraft.narrate.eye_heading",
 				CameraUtil.compassDirectionTo(tracked.start, tracked.lastPos)));
 		// Played at the eye itself, so the ping arrives from the direction it is flying.
 		playAt(client, player, SoundEvents.NOTE_BLOCK_FLUTE.value(), tracked.lastPos, 1.0f, 1.2f);
@@ -145,7 +145,7 @@ public final class EyeOfEnderController {
 					CameraUtil.compassDirectionTo(ended.start, ended.lastPos)));
 			playAt(client, player, SoundEvents.NOTE_BLOCK_COW_BELL.value(), player.position(), 1.0f, 2.0f);
 		}
-		client.getNarrator().saySystemNow(message);
+		client.getNarrator().saySystemQueued(message);
 		playAt(client, player, dropped ? SoundEvents.NOTE_BLOCK_IRON_XYLOPHONE.value() : SoundEvents.NOTE_BLOCK_SNARE.value(),
 				ended.lastPos, 1.0f, dropped ? 1.4f : 1.0f);
 	}

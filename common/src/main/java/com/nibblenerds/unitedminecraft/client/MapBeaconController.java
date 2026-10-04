@@ -176,7 +176,7 @@ public final class MapBeaconController {
 		double distance = horizontalDistance(player.position(), currentTarget);
 		if (!hasAnnouncedArrival && distance <= ARRIVAL_RADIUS_BLOCKS) {
 			hasAnnouncedArrival = true;
-			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.map_beacon_arrived"));
+			client.getNarrator().saySystemQueued(Component.translatable("united_minecraft.narrate.map_beacon_arrived"));
 		}
 
 		if (chimeTicks <= 0) {
