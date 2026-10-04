@@ -53,6 +53,8 @@ public final class PrismController {
 	private static final long BACKEND_SUPPORTS_BRAILLE = 1L << 4;
 	private static final int PRISM_ERROR_ALREADY_INITIALIZED = 15;
 	private static final long BACKEND_SUPPORTS_OUTPUT = 1L << 5;
+	/** How often a fallen-back controller checks whether the backend it lost has come back - see {@link #probeIfDue}. */
+	private static final long PROBE_INTERVAL_MILLIS = 10_000;
 
 	private final Arena arena;
 	private final MethodHandle prismShutdown;
@@ -70,6 +72,10 @@ public final class PrismController {
 	private MemorySegment backend;
 	private boolean brailleSupported;
 	private boolean outputSupported;
+	/** The backend in use before a failure forced a fallback; null while nothing has failed. */
+	private String lostBackendName;
+	private long nextProbeMillis;
+	private boolean shutDown;
 
 	/** Null when this Prism build lacks the calls {@link #renderToMemory} needs. */
 	private final MemoryApi memoryApi;
@@ -273,25 +279,92 @@ public final class PrismController {
 	 * Outputs {@code text} through every modality the backend supports (speech and,
 	 * where available, a connected braille display), interrupting any speech in
 	 * progress first if {@code interrupt} is set.
+	 *
+	 * @return false if Prism couldn't say it, so the caller should fall back to another narrator
 	 */
-	public synchronized void speak(String text, boolean interrupt) {
+	public synchronized boolean speak(String text, boolean interrupt) {
+		probeIfDue();
 		if (backend == null) {
-			return;
+			return false;
 		}
 		try {
 			int result = doOutput(text, interrupt);
-			if (result != PRISM_OK) {
-				// The backend may have entered an unrecoverable state (e.g. the screen
-				// reader it was talking to was closed) - Prism's own docs say backends
-				// don't reconnect on their own, so re-acquire the best backend and retry once.
-				LOGGER.debug("Prism output failed ({}), re-acquiring the best backend",
-						describeError(errorString, result));
-				if (reacquireBackend()) {
-					doOutput(text, interrupt);
-				}
+			if (result == PRISM_OK) {
+				return true;
 			}
+			// The backend may have entered an unrecoverable state (e.g. the screen
+			// reader it was talking to was closed) - Prism's own docs say backends
+			// don't reconnect on their own, so re-acquire the best backend and retry once.
+			LOGGER.debug("Prism output failed ({}), re-acquiring the best backend",
+					describeError(errorString, result));
+			String failedName = backendNameOrNull(backend);
+			if (reacquireBackend()) {
+				String newName = backendNameOrNull(backend);
+				if (failedName != null && !failedName.equals(newName)) {
+					// Fell back to a different backend - typically the screen reader was closed and
+					// SAPI or OneCore took over. Remember what was lost so probeIfDue can switch
+					// back once it's running again, instead of staying on the fallback voice until
+					// the game restarts.
+					lostBackendName = failedName;
+					nextProbeMillis = System.currentTimeMillis() + PROBE_INTERVAL_MILLIS;
+					LOGGER.info("Prism fell back from '{}' to '{}'", failedName, newName);
+				}
+				return doOutput(text, interrupt) == PRISM_OK;
+			}
+			if (failedName != null) {
+				lostBackendName = failedName;
+			}
+			nextProbeMillis = System.currentTimeMillis() + PROBE_INTERVAL_MILLIS;
+			return false;
 		} catch (Throwable t) {
 			LOGGER.warn("Failed to speak through Prism", t);
+			return false;
+		}
+	}
+
+	/**
+	 * After a fallback (see {@link #speak}), periodically asks Prism for its best backend again
+	 * and switches to it if it's the one that was lost (the screen reader has been restarted), or
+	 * if there was no backend at all and now there is one. Only runs while fallen back, so a
+	 * healthy backend is never disturbed.
+	 */
+	private void probeIfDue() {
+		if (shutDown || (backend != null && lostBackendName == null)) {
+			return;
+		}
+		long now = System.currentTimeMillis();
+		if (now < nextProbeMillis) {
+			return;
+		}
+		nextProbeMillis = now + PROBE_INTERVAL_MILLIS;
+		try {
+			MemorySegment candidate = (MemorySegment) registryCreateBest.invoke(context);
+			if (candidate.equals(MemorySegment.NULL)) {
+				return;
+			}
+			String candidateName = backendNameOrNull(candidate);
+			boolean recovered = backend == null || (candidateName != null && candidateName.equals(lostBackendName));
+			if (!recovered) {
+				backendFree.invoke(candidate);
+				return;
+			}
+			if (backend != null) {
+				backendFree.invoke(backend);
+			}
+			backend = candidate;
+			lostBackendName = null;
+			updateSupportedFeatures();
+			LOGGER.info("Prism switched back to backend '{}'", candidateName);
+		} catch (Throwable t) {
+			LOGGER.debug("Failed to probe for a better Prism backend", t);
+		}
+	}
+
+	private String backendNameOrNull(MemorySegment candidate) {
+		try {
+			return readCString((MemorySegment) backendName.invoke(candidate));
+		} catch (Throwable t) {
+			return null;
 		}
 	}
 
@@ -383,6 +456,7 @@ public final class PrismController {
 
 	/** Releases the Prism backend and context. Call once, on client shutdown. */
 	public synchronized void shutdown() {
+		shutDown = true;
 		try {
 			synchronized (memoryLock) {
 				if (memoryBackend != null) {

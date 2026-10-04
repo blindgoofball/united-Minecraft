@@ -27,9 +27,9 @@ public class PrismNarrator implements Narrator {
 
 	@Override
 	public void say(String text, boolean interrupt, float volume) {
-		if (prism.isAvailable()) {
-			prism.speak(text, interrupt);
-		} else {
+		// Falls back per message rather than once for good: Prism may have lost its backend and be
+		// waiting to pick it back up (see PrismController#speak).
+		if (!prism.speak(text, interrupt)) {
 			fallback.say(text, interrupt, volume);
 		}
 	}
@@ -50,7 +50,7 @@ public class PrismNarrator implements Narrator {
 		// Deliberately does not shut Prism down: PrismController is a process-wide
 		// singleton, but a Narrator can be destroyed and rebuilt without the process
 		// exiting (e.g. toggling the accessibility narrator setting). Prism's own
-		// shutdown is tied to CLIENT_STOPPING instead - see PrismController.register().
+		// shutdown is tied to CLIENT_STOPPING instead - see ClientHooks#onClientStopping.
 		fallback.destroy();
 	}
 }
