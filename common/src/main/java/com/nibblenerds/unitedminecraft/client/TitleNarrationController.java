@@ -38,39 +38,46 @@ public final class TitleNarrationController {
 			return;
 		}
 		HudTitleAccess hud = (HudTitleAccess) client.gui.hud;
-		Component title = hud.unitedMinecraft$getVisibleTitle();
+		Component message = update(hud.unitedMinecraft$getVisibleTitle(), hud.unitedMinecraft$getSubtitle(),
+				UnitedMinecraftConfig.get().titleNarrationEnabled);
+		if (message != null) {
+			client.getNarrator().saySystemQueued(message);
+		}
+	}
+
+	/**
+	 * Takes in what the Hud is showing this tick and returns what to say, or null for nothing.
+	 *
+	 * @param title the visible title, or null when none is showing
+	 * @param enabled the setting - still tracks what's on screen while off, so switching it on
+	 *        mid-title doesn't read a title that was already up
+	 */
+	static Component update(Component title, Component subtitle, boolean enabled) {
 		if (title == null) {
 			// Faded out or cleared - the same text showing again later is a new title.
 			reset();
-			return;
+			return null;
 		}
 		String titleText = title.getString().strip();
-		Component subtitle = hud.unitedMinecraft$getSubtitle();
 		String subtitleText = subtitle == null ? "" : subtitle.getString().strip();
 		boolean titleChanged = !titleText.equals(lastTitle);
 		boolean subtitleChanged = !subtitleText.equals(lastSubtitle);
 		lastTitle = titleText;
 		lastSubtitle = subtitleText;
-		if (!UnitedMinecraftConfig.get().titleNarrationEnabled || (!titleChanged && !subtitleChanged)) {
-			return;
+		if (!enabled || (!titleChanged && !subtitleChanged)) {
+			return null;
 		}
 
-		Component message;
 		if (titleChanged) {
 			if (titleText.isEmpty() && subtitleText.isEmpty()) {
-				return;
+				return null;
 			}
 			// A blank title with a subtitle is a common way to show the subtitle line alone.
-			message = titleText.isEmpty() ? subtitle
+			return titleText.isEmpty() ? subtitle
 					: subtitleText.isEmpty() ? title
 					: title.copy().append(Component.literal(". ")).append(subtitle);
-		} else {
-			// Only the subtitle changed under a title already read - just the new part.
-			if (subtitleText.isEmpty()) {
-				return;
-			}
-			message = subtitle;
 		}
-		client.getNarrator().saySystemQueued(message);
+		// Only the subtitle changed under a title already read - just the new part.
+		return subtitleText.isEmpty() ? null : subtitle;
 	}
 }

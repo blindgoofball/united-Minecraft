@@ -310,7 +310,7 @@ public final class AccessibilityTickHandler {
 				// facing its target on arrival), so silently resync instead of narrating
 				// whatever octant it happens to leave the player facing as if it were a
 				// deliberate turn.
-				lastOctant = Math.floorMod(Math.round(player.getYRot() / 45.0f), 8);
+				lastOctant = facingOctant(player.getYRot());
 			} else {
 				handleFacingNarration(client, player);
 			}
@@ -572,8 +572,22 @@ public final class AccessibilityTickHandler {
 		return (float) (Math.ceil(degrees / 45.0 + SNAP_EPSILON) * 45.0);
 	}
 
+	/** Which of {@link #DIRECTION_KEYS} a Minecraft yaw is nearest to - 0 is south, counting toward west. */
+	static int facingOctant(float yaw) {
+		return Math.floorMod(Math.round(yaw / 45.0f), 8);
+	}
+
+	/**
+	 * A Minecraft yaw as a whole-degree compass bearing. Minecraft's yaw is 0 at south, going
+	 * towards west as it increases; this shifts it to the usual compass convention (0 = north,
+	 * 90 = east).
+	 */
+	static int compassBearing(float yaw) {
+		return Math.floorMod(Math.round(yaw) + 180, 360);
+	}
+
 	private static void handleFacingNarration(Minecraft client, LocalPlayer player) {
-		int octant = Math.floorMod(Math.round(player.getYRot() / 45.0f), 8);
+		int octant = facingOctant(player.getYRot());
 		if (octant != lastOctant) {
 			if (lastOctant != -1) {
 				client.getNarrator().saySystemNow(Component.translatable(DIRECTION_KEYS[octant]));
@@ -906,9 +920,7 @@ public final class AccessibilityTickHandler {
 	}
 
 	private static void narrateBearing(Minecraft client, LocalPlayer player) {
-		// Minecraft's yaw is 0 at south, going towards west as it increases; shift it so
-		// the reported bearing instead follows the usual compass convention (0 = north).
-		int bearing = Math.floorMod(Math.round(player.getYRot()) + 180, 360);
+		int bearing = compassBearing(player.getYRot());
 		int pitch = Math.round(player.getXRot());
 		client.getNarrator().saySystemNow(
 				Component.translatable("united_minecraft.narrate.bearing", bearing, pitch));

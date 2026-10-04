@@ -168,7 +168,7 @@ public final class StructureVoiceController {
 		Vec3 point = point(state.entry);
 		Optional<StructureVoiceAudio.Clip> audio = clip.isCompletedExceptionally() ? Optional.empty() : clip.join();
 		if (audio.isPresent()) {
-			Direction direction = direction(player, eye, point);
+			Direction direction = direction(player.getYRot(), player.getXRot(), eye, point);
 			double distance = eye.distanceTo(point);
 			float nearness = 1.0f - (float) Math.min(1.0, distance / config.scannerRange);
 			float volume = config.structureVoiceVolume / 100.0f * (FAR_GAIN + (1.0f - FAR_GAIN) * nearness)
@@ -230,17 +230,18 @@ public final class StructureVoiceController {
 	 * @param height -1 well below where you're looking to +1 well above
 	 * @param behind 0 anywhere in front of you to 1 directly behind
 	 */
-	private record Direction(float pan, float height, float behind) {
+	record Direction(float pan, float height, float behind) {
 	}
 
-	private static Direction direction(LocalPlayer player, Vec3 eye, Vec3 point) {
+	/** Where {@code point} is relative to a view at {@code eye} with the given yaw and pitch ({@code xRot}). */
+	static Direction direction(float yRot, float xRot, Vec3 eye, Vec3 point) {
 		Vec3 offset = point.subtract(eye);
 		if (offset.length() < INSIDE_DISTANCE) {
 			return new Direction(0.0f, 0.0f, 0.0f);
 		}
 		double horizontal = Math.sqrt(offset.x() * offset.x() + offset.z() * offset.z());
 		// Minecraft yaw 0 faces south (+Z), and your right is then west (-X).
-		double yaw = Math.toRadians(player.getYRot());
+		double yaw = Math.toRadians(yRot);
 		double ahead = offset.x() * -Math.sin(yaw) + offset.z() * Math.cos(yaw);
 		double right = offset.x() * -Math.cos(yaw) + offset.z() * -Math.sin(yaw);
 		// Straight up or down there's no meaningful side, so keep it centred.
@@ -248,7 +249,7 @@ public final class StructureVoiceController {
 		float pan = (float) Math.clamp(side / FULL_PAN_DEGREES, -1.0, 1.0);
 		float behind = (float) Math.clamp((Math.abs(side) - 90.0) / 90.0, 0.0, 1.0);
 		// Pitch (xRot) is positive looking down, so the view's own elevation is -xRot.
-		double elevation = Math.toDegrees(Math.atan2(offset.y(), horizontal)) + player.getXRot();
+		double elevation = Math.toDegrees(Math.atan2(offset.y(), horizontal)) + xRot;
 		float height = (float) Math.clamp(elevation / FULL_PITCH_DEGREES, -1.0, 1.0);
 		return new Direction(pan, height, behind);
 	}

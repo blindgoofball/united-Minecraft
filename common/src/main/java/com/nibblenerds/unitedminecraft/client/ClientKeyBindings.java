@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.IntPredicate;
+import java.util.function.Predicate;
 
 import com.mojang.blaze3d.platform.InputConstants;
 
@@ -447,9 +449,16 @@ public final class ClientKeyBindings {
 	 * full reasoning.
 	 */
 	public static void updateAll() {
-		int heldMods = currentModifierBitmask();
+		updateAll(InputConstants::isKeyDown, currentModifierBitmask(), KeybindAction::isEligibleNow);
+	}
+
+	/**
+	 * {@link #updateAll()} with the keyboard and each action's context passed in rather than read
+	 * live, so the resolution rules can be exercised without a game running.
+	 */
+	static void updateAll(IntPredicate isKeyDown, int heldMods, Predicate<KeybindAction> isEligible) {
 		for (Map.Entry<Integer, List<KeybindAction>> entry : BY_PRIMARY_KEY.entrySet()) {
-			boolean physicallyDown = InputConstants.isKeyDown(entry.getKey());
+			boolean physicallyDown = isKeyDown.test(entry.getKey());
 			// A tap pressed and released entirely between two ticks is gone by the time this
 			// polls, so it counts as down for this one tick, with the modifiers held when it was
 			// pressed - see recordKeyPress.
@@ -460,7 +469,7 @@ public final class ClientKeyBindings {
 			if (keyDown) {
 				for (KeybindAction action : entry.getValue()) {
 					Keybind keybind = action.current();
-					if (!action.isEligibleNow()) {
+					if (!isEligible.test(action)) {
 						continue;
 					}
 					if ((keybind.modifiers() & mods) != keybind.modifiers()) {
@@ -492,8 +501,13 @@ public final class ClientKeyBindings {
 	 */
 	public static void recordKeyPress(int key, boolean screenOpen) {
 		if (!screenOpen) {
-			PRESSES_SINCE_LAST_TICK.put(key, currentModifierBitmask());
+			recordKeyPress(key, currentModifierBitmask());
 		}
+	}
+
+	/** {@link #recordKeyPress(int, boolean)} with the modifiers held at the time passed in. */
+	static void recordKeyPress(int key, int heldMods) {
+		PRESSES_SINCE_LAST_TICK.put(key, heldMods);
 	}
 
 	/** Whether {@code candidate} should win over {@code current} for the same primary key - see {@link #updateAll}. */

@@ -222,7 +222,7 @@ public final class StructureVoiceAudio {
 		return new Clip(slug, samples, pcm.sampleRate());
 	}
 
-	private record Pcm(float[] samples, int channels, int sampleRate) {
+	record Pcm(float[] samples, int channels, int sampleRate) {
 	}
 
 	/** Command-line fallbacks for systems where Prism can't render to memory. */

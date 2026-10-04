@@ -93,7 +93,7 @@ public final class NavRadarController {
 		ticks++;
 
 		Level level = player.level();
-		int playerBearing = Math.floorMod(Math.round(player.getYRot()) + 180, 360);
+		int playerBearing = AccessibilityTickHandler.compassBearing(player.getYRot());
 		int facing = Math.floorMod(Math.round(playerBearing / 90.0f) * 90, 360);
 
 		for (int offset : DIRECTION_OFFSETS) {
