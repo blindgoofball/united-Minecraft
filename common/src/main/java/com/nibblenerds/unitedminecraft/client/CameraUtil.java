@@ -1,6 +1,15 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.core.component.DataComponents;
@@ -11,6 +20,8 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.TridentItem;
 import net.minecraft.world.item.component.ChargedProjectiles;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 /** Shared "snap the player's look direction at a point" math, used by build mode and the scanner. */
@@ -54,6 +65,60 @@ public final class CameraUtil {
 		player.setXRot(pitch);
 		player.setOldRot();
 		player.setYHeadRot(yaw);
+	}
+
+	/**
+	 * A point on {@code pos} that the player's crosshair actually lands on when aimed at it - what
+	 * aiming at a block needs, since the crosshair stops at the first thing in the way and pointing
+	 * at a block's centre doesn't guarantee that thing is the block.
+	 *
+	 * <p>The case that matters most is a column: standing beside a tree trunk, the line from the
+	 * eyes down to the bottom log's centre crosses into the trunk's column above that log -
+	 * typically a block up, inside the log above it - so the crosshair lands on the second log
+	 * and the bottom one never gets chopped. The middle of the bottom log's near face can't be
+	 * reached through the log above, because the line only enters the column at that face.
+	 *
+	 * <p>Tries the shape's centre first (unchanged for everything that worked already - see
+	 * {@link BlockShapes#centreOf}), then the centres of the faces turned toward the player, most
+	 * squarely facing first, keeping the first one the crosshair's own raycast lands on. Falls back
+	 * to the centre when none does (something solid fully in the way).
+	 */
+	public static Vec3 aimPointOn(LocalPlayer player, BlockPos pos) {
+		Level level = player.level();
+		VoxelShape shape = level.getBlockState(pos).getShape(level, pos);
+		Vec3 eye = player.getEyePosition();
+		Vec3 centre = BlockShapes.centreOf(shape, pos);
+		if (shape.isEmpty() || crosshairLandsOn(player, eye, centre, pos)) {
+			return centre;
+		}
+
+		Vec3 towardEye = eye.subtract(centre).normalize();
+		List<Direction> faces = new ArrayList<>();
+		for (Direction face : Direction.values()) {
+			if (face.getUnitVec3().dot(towardEye) > 0.0) {
+				faces.add(face);
+			}
+		}
+		faces.sort(Comparator.comparingDouble(face -> -face.getUnitVec3().dot(towardEye)));
+		for (Direction face : faces) {
+			Vec3 point = BlockShapes.centreOfFace(shape, pos, face);
+			if (crosshairLandsOn(player, eye, point, pos)) {
+				return point;
+			}
+		}
+		return centre;
+	}
+
+	/**
+	 * Whether looking from {@code eye} toward {@code point} puts the crosshair on {@code pos} - the
+	 * same outline raycast vanilla's own block picking uses, carried a little past the point so a
+	 * point exactly on a face isn't lost to rounding.
+	 */
+	private static boolean crosshairLandsOn(LocalPlayer player, Vec3 eye, Vec3 point, BlockPos pos) {
+		Vec3 direction = point.subtract(eye);
+		Vec3 end = point.add(direction.normalize().scale(0.5));
+		BlockHitResult hit = player.level().clip(new ClipContext(eye, end, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, player));
+		return hit.getType() == HitResult.Type.BLOCK && hit.getBlockPos().equals(pos);
 	}
 
 	/**

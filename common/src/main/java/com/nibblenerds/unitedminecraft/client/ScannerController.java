@@ -997,7 +997,7 @@ public final class ScannerController {
 	}
 
 	private static void aimOnceAtBlock(Minecraft client, LocalPlayer player, BlockPos pos, Component name) {
-		CameraUtil.aimAt(player, interactionPoint(player.level(), pos));
+		CameraUtil.aimAt(player, CameraUtil.aimPointOn(player, pos));
 		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.scanner_facing", name));
 	}
 
@@ -1020,19 +1020,6 @@ public final class ScannerController {
 			}
 		}
 		itemIndex = items.isEmpty() ? 0 : Math.min(itemIndex, items.size() - 1);
-	}
-
-	/**
-	 * The point actually worth aiming at to interact with a block - the center of its real
-	 * outline shape, not the full-cube center {@link Vec3#atCenterOf} would give. For a full
-	 * block those are the same point, but a door, trapdoor, fence gate, button, or lever only
-	 * occupies a thin slice of its block space, and that slice moves as the block's state
-	 * changes (a door swings open, say) - aiming at the cube center can land outside the real
-	 * shape entirely, which is exactly why re-targeting an open door to close it used to need a
-	 * manual nudge left or right to actually land back on it.
-	 */
-	private static Vec3 interactionPoint(Level level, BlockPos pos) {
-		return BlockShapes.centreOf(level.getBlockState(pos).getShape(level, pos), pos);
 	}
 
 	private static ScannerItem currentItem() {

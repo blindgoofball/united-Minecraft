@@ -41,7 +41,7 @@ public final class TreeChoppingAssist {
 				// It just got broken since the last tick we checked.
 				BlockPos next = findAdjacentLog(level, trackedLogPos);
 				if (next != null) {
-					CameraUtil.aimAt(player, Vec3.atCenterOf(next));
+					CameraUtil.aimAt(player, CameraUtil.aimPointOn(player, next));
 					trackedLogPos = next;
 				} else {
 					trackedLogPos = null;
