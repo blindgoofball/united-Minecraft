@@ -269,6 +269,15 @@ glide, steering and pitching to touch down on the spot gently - circling down fi
 high to land on it directly - and handing control back when you land. Cancel any time with the
 stop-lock key (Backspace); it also hands control back if terrain is in the way.
 
+Elytra flight alerts (on by default, Settings > Modes & Movement) watch the glide for you:
+the rest of your flight is predicted every tick, assuming you keep looking where you are,
+and checked against the real blocks. A wall, a landing too fast to survive unhurt, harmful
+ground (cactus, magma, a campfire) or lava coming up is spoken as soon as it's a few
+seconds away - "Wall ahead", "Pull up" - then a beeping that quickens as it nears. A gentle
+landing is good news instead: a chime, "Safe landing", then the height above the ground called
+out as you come down (50, 30, 20, 10 and 5 blocks). Only hits that would actually hurt count;
+a graze or a gentle skim doesn't set it off. Armor isn't counted, so it errs on the cautious side.
+
 ### Cave Trail
 
 Solves the other half of "I'm lost underground": as you walk, your actual

@@ -65,6 +65,8 @@ public final class SoundGlossaryScreen extends Screen {
 			GlossaryEntry.vanilla("united_minecraft.glossary.combat_cue", SoundEvents.NOTE_BLOCK_XYLOPHONE::value, 0.5f, 1.4f),
 			GlossaryEntry.vanilla("united_minecraft.glossary.mount_jump_ready", SoundEvents.NOTE_BLOCK_HARP::value, 0.6f, 1.6f),
 			GlossaryEntry.vanilla("united_minecraft.glossary.map_beacon_chime", () -> SoundEvents.BELL_BLOCK, 1.0f, 1.0f),
+			GlossaryEntry.vanilla("united_minecraft.glossary.elytra_warning", SoundEvents.NOTE_BLOCK_BIT::value, 0.8f, 1.8f),
+			GlossaryEntry.vanilla("united_minecraft.glossary.elytra_safe_landing", SoundEvents.NOTE_BLOCK_BANJO::value, 0.8f, 1.5f),
 			GlossaryEntry.wallTone("united_minecraft.glossary.wall_tone_ahead", WallToneVoice.WALL_AHEAD),
 			GlossaryEntry.wallTone("united_minecraft.glossary.wall_tone_left", WallToneVoice.WALL_LEFT),
 			GlossaryEntry.wallTone("united_minecraft.glossary.wall_tone_right", WallToneVoice.WALL_RIGHT),

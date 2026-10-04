@@ -59,6 +59,8 @@ public final class UnitedMinecraftConfig {
 	public boolean preciseCoordinatesEnabled = false;
 	public boolean mountJumpCueEnabled = true;
 	public boolean modeToggleSoundsEnabled = true;
+	/** Spoken and audio alerts while gliding on an elytra - see {@link ElytraAwarenessController}. */
+	public boolean elytraAwarenessEnabled = true;
 	public boolean eyeOfEnderCuesEnabled = true;
 	/** Set once the first-launch narrator auto-enable has run - see {@link ClientHooks#enableNarratorOnFirstLaunch}. */
 	public boolean narratorAutoEnableDone = false;

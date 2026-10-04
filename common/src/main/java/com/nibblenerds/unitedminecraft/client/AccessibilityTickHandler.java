@@ -124,6 +124,7 @@ public final class AccessibilityTickHandler {
 			AutoWalkController.reset();
 			WaterExitController.reset();
 			ElytraLandingController.reset();
+			ElytraAwarenessController.reset();
 			TrailController.reset();
 			MovementAssistController.reset();
 			NavRadarController.reset();
@@ -263,6 +264,9 @@ public final class AccessibilityTickHandler {
 			// Runs no matter which mode owns rotation - a nearby, visible hostile mob is
 			// worth a warning regardless of what else you're doing.
 			HostileRadarController.tick(client, player);
+			// Same reasoning - the ground comes up whether or not another mode is flying the camera,
+			// and the landing autopilot is the very case where an unavoidable wall is worth hearing about.
+			ElytraAwarenessController.tick(client, player);
 			// Same reasoning - it's purely observational audio/narration and never touches
 			// rotation, so gating it behind Build Mode/Combat Mode/Auto-Walk/Scanner-lock
 			// exclusivity would silence it exactly when it's most useful (e.g. auto-walking

@@ -6,7 +6,7 @@ import java.util.Locale;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
-/** Build Mode action narration, Combat cue mode, mode on/off sounds, Eye of Ender cues, Auto-Walk auto-sprint, and Mount jump cue - see {@link SettingsScreen}. */
+/** Build Mode action narration, Combat cue mode, mode on/off sounds, elytra flight alerts, Eye of Ender cues, Auto-Walk auto-sprint, and Mount jump cue - see {@link SettingsScreen}. */
 final class ModesMovementSettingsScreen extends SettingsListScreen {
 	ModesMovementSettingsScreen() {
 		super(Component.translatable("united_minecraft.modes_movement_screen.title"));
@@ -26,6 +26,8 @@ final class ModesMovementSettingsScreen extends SettingsListScreen {
 				value -> config.combatCueMode = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.mode_toggle_sounds_enabled",
 				config.modeToggleSoundsEnabled, value -> config.modeToggleSoundsEnabled = value);
+		y = addToggle(x, y, "united_minecraft.settings_screen.elytra_awareness_enabled",
+				config.elytraAwarenessEnabled, value -> config.elytraAwarenessEnabled = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.eye_of_ender_cues_enabled",
 				config.eyeOfEnderCuesEnabled, value -> config.eyeOfEnderCuesEnabled = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.auto_walk_auto_sprint",
