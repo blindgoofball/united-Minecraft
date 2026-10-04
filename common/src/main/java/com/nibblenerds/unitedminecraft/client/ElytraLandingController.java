@@ -43,18 +43,18 @@ public final class ElytraLandingController {
 	// Blocks travelled forward per block of height lost. Real elytra glide is better than this
 	// (about 10 in level flight), but a landing needs room to turn onto the spot and to level
 	// off, so range is judged conservatively rather than at the best case.
-	private static final double GLIDE_RATIO = 6.0;
+	static final double GLIDE_RATIO = 6.0;
 	// Height kept back above the spot for levelling off before touching down.
-	private static final double FLARE_HEIGHT = 3.0;
+	static final double FLARE_HEIGHT = 3.0;
 	private static final int SEARCH_RADIUS = 96;
 	private static final double APPROACH_AIM_HEIGHT = 2.0;
 	// Below this height above the spot there is no room left to circle down, so a spot the autopilot
 	// can't line up on straight away is declined rather than attempted.
-	private static final double MIN_START_HEIGHT_TO_CIRCLE = 30.0;
+	static final double MIN_START_HEIGHT_TO_CIRCLE = 30.0;
 	private static final int STATUS_INTERVAL_TICKS = 100;
 	// Consecutive ticks of a predicted collision before control is handed back - a single tick of
 	// noise in the prediction shouldn't throw the player out of an otherwise fine landing.
-	private static final int HAZARD_TICKS_TO_ABORT = 5;
+	static final int HAZARD_TICKS_TO_ABORT = 5;
 
 	private static ElytraAutopilot autopilot;
 	private static Spot target;
@@ -250,6 +250,11 @@ public final class ElytraLandingController {
 		return best;
 	}
 
+	/** Whether a spot {@code height} below and {@code distance} away (horizontally) is close enough to glide to. */
+	static boolean inGlideRange(double height, double distance) {
+		return height > FLARE_HEIGHT && distance <= (height - FLARE_HEIGHT) * GLIDE_RATIO;
+	}
+
 	private static Spot candidateAt(Level level, LocalPlayer player, Vec3 eye, int x, int z) {
 		if (!level.hasChunkAt(new BlockPos(x, 0, z))) {
 			return null;
@@ -260,7 +265,7 @@ public final class ElytraLandingController {
 		int top = level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z);
 		double height = player.getY() - top;
 		double distance = Math.hypot(x + 0.5 - player.getX(), z + 0.5 - player.getZ());
-		if (height <= FLARE_HEIGHT || distance > (height - FLARE_HEIGHT) * GLIDE_RATIO) {
+		if (!inGlideRange(height, distance)) {
 			return null;
 		}
 		if (!isFlatSafePatch(level, x, top, z)) {

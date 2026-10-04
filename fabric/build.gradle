@@ -41,8 +41,7 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
-test {
-	useJUnitPlatform()
+tasks.withType(Test).configureEach {
 	// Minecraft's logging writes a logs/ folder into the working directory - keep it in build/.
 	def testRunDir = layout.buildDirectory.dir('test-run').get().asFile
 	workingDir = testRunDir
@@ -52,6 +51,25 @@ test {
 	testLogging {
 		events 'failed'
 		exceptionFormat 'full'
+	}
+}
+
+test {
+	useJUnitPlatform {
+		// Long-running sweeps - see the elytraSweep task.
+		excludeTags 'sweep'
+	}
+}
+
+// Flies the elytra landing autopilot from every start the landing controller would take on -
+// a couple of minutes, so not part of build. Run after changing ElytraAutopilot or ElytraPhysics.
+tasks.register('elytraSweep', Test) {
+	description = 'Runs the full elytra autopilot flight sweep.'
+	group = 'verification'
+	testClassesDirs = sourceSets.test.output.classesDirs
+	classpath = sourceSets.test.runtimeClasspath
+	useJUnitPlatform {
+		includeTags 'sweep'
 	}
 }
 
