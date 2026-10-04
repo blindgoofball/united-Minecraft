@@ -831,6 +831,9 @@ Installation above for that. For cutting an actual release, see
 - `fabric/build/libs/united-minecraft-{version}+mc{mc_version}-fabric.jar`
 - `neoforge/build/libs/united-minecraft-{version}+mc{mc_version}-neoforge.jar`
 
+`./gradlew :fabric:test` runs the unit tests on their own; `build` runs them
+too, so a failing test fails the build.
+
 To launch a development client, pick the loader: `./gradlew :fabric:runClient`
 or `./gradlew :neoforge:runClient`. Each keeps its own game directory
 (`fabric/run/` and `neoforge/run/`), so their worlds and settings are separate.

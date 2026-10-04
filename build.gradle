@@ -14,9 +14,9 @@ tasks.register('checkSharedSources') {
 	description = 'Fails if shared sources under common/ reference a mod loader API.'
 	group = 'verification'
 
-	def sharedSources = fileTree(rootProject.file('common/src/main/java')) {
-		include '**/*.java'
-	}
+	def sharedSources = files(
+			fileTree(rootProject.file('common/src/main/java')) { include '**/*.java' },
+			fileTree(rootProject.file('common/src/test/java')) { include '**/*.java' })
 	inputs.files(sharedSources).withPropertyName('sharedSources')
 
 	doLast {
