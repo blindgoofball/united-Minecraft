@@ -320,11 +320,12 @@ public final class AccessibilityTickHandler {
 		handleBiomeNarration(client, player);
 		handleTimeOfDayNarration(client, player);
 		handleShoulderParrotNarration(client, player);
-		if (client.gui.screen() == null) {
-			// Only relevant in-world: the menu's own inventory-screen narration already covers
-			// the offhand slot there, and vanilla's swap-hands key does nothing over a screen.
-			handleOffhandNarration(client, player);
-		}
+		// Only narrated in-world: the menu's own inventory-screen narration already covers the
+		// offhand slot there, and vanilla's swap-hands key does nothing over a screen. Still
+		// tracked while a screen is open, though - otherwise moving something into the offhand
+		// slot through the inventory left the tracker stale, and closing the screen announced a
+		// swap that never happened.
+		handleOffhandNarration(client, player, client.gui.screen() == null);
 
 		// Deliberately last: every snap turn, look key, and rotation-owning mode above has
 		// already moved the player this tick, so the tones describe where the player is facing
@@ -605,10 +606,10 @@ public final class AccessibilityTickHandler {
 	 * which would announce a false "swap" for something as ordinary as eating one item off an
 	 * offhand food stack or a shield/totem taking damage.
 	 */
-	private static void handleOffhandNarration(Minecraft client, LocalPlayer player) {
+	private static void handleOffhandNarration(Minecraft client, LocalPlayer player, boolean narrate) {
 		ItemStack offhand = player.getOffhandItem();
 		Item offhandItem = offhand.getItem();
-		if (lastOffhandItem != null && offhandItem != lastOffhandItem) {
+		if (narrate && lastOffhandItem != null && offhandItem != lastOffhandItem) {
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.hands_swapped",
 					describeHand(player.getMainHandItem(), player), describeHand(offhand, player)));
 		}
