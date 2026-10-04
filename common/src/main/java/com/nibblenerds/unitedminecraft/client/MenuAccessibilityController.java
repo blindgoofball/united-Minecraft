@@ -26,6 +26,7 @@ import net.minecraft.client.gui.screens.inventory.AnvilScreen;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.gui.screens.recipebook.RecipeCollection;
 import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
@@ -39,6 +40,7 @@ import net.minecraft.network.protocol.game.ServerboundSelectBundleItemPacket;
 import net.minecraft.network.protocol.game.ServerboundSelectTradePacket;
 import net.minecraft.network.protocol.game.ServerboundSetBeaconPacket;
 import net.minecraft.resources.Identifier;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.context.ContextMap;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.entity.player.Inventory;
@@ -52,11 +54,14 @@ import net.minecraft.world.inventory.BrewingStandMenu;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.EnchantmentMenu;
 import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.world.inventory.LoomMenu;
 import net.minecraft.world.inventory.MerchantMenu;
 import net.minecraft.world.inventory.RecipeBookMenu;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.inventory.StonecutterMenu;
 import net.minecraft.world.item.BundleItem;
 import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.crafting.RecipeBookCategory;
@@ -215,6 +220,8 @@ public final class MenuAccessibilityController {
 
 	private static int tradeIndex = 0;
 
+	private static int pickerIndex = 0;
+
 	// The container's real contents haven't necessarily synced yet at ScreenEvents.AFTER_INIT
 	// time - the server sends the open-screen packet and the initial ClientboundContainerSetContentPacket
 	// separately, and the screen (so AFTER_INIT) fires as soon as the first is handled, before the
@@ -333,7 +340,8 @@ public final class MenuAccessibilityController {
 			return;
 		}
 		if (currentSection == Section.RECIPE_BOOK || currentSection == Section.ENCHANT_OPTIONS
-				|| currentSection == Section.BEACON_OPTIONS || currentSection == Section.TRADES) {
+				|| currentSection == Section.BEACON_OPTIONS || currentSection == Section.TRADES
+				|| currentSection == Section.PICKER) {
 			trackedScreen.setFocused(null);
 		}
 	}
@@ -378,7 +386,7 @@ public final class MenuAccessibilityController {
 		// still hold a stale focusedSlot reference from whichever slot section was current before.
 		if (currentSection == Section.RECIPE_BOOK || currentSection == Section.ENCHANT_OPTIONS
 				|| currentSection == Section.BEACON_OPTIONS || currentSection == Section.RENAME
-				|| currentSection == Section.TRADES) {
+				|| currentSection == Section.TRADES || currentSection == Section.PICKER) {
 			return;
 		}
 		Slot slot = currentSlot(trackedScreen.getMenu());
@@ -466,6 +474,9 @@ public final class MenuAccessibilityController {
 		}
 		if (currentSection == Section.TRADES) {
 			return handleTradeKey(screen, event);
+		}
+		if (currentSection == Section.PICKER) {
+			return handlePickerKey(screen, player, event);
 		}
 
 		if (handleDragKey(screen, player, event)) {
@@ -701,6 +712,12 @@ public final class MenuAccessibilityController {
 		if (!(menu instanceof CreativeModeInventoryScreen.ItemPickerMenu)) {
 			sections.add(Section.CONTAINER);
 		}
+		// After the container's own slots rather than leading like Trades: the list is empty until
+		// something is in the input slot(s), so those come first - and the result slot to take the
+		// finished item from is back in the container section, one Shift+Tab away.
+		if (menu instanceof StonecutterMenu || menu instanceof LoomMenu) {
+			sections.add(Section.PICKER);
+		}
 		if (menu instanceof RecipeBookMenu) {
 			sections.add(Section.RECIPE_BOOK);
 		}
@@ -769,6 +786,11 @@ public final class MenuAccessibilityController {
 		} else if (currentSection == Section.TRADES) {
 			tradeIndex = 0;
 			narrateTradeFocus(screen, true);
+		} else if (currentSection == Section.PICKER) {
+			// Start on whatever is already selected, so coming back after taking a result reads
+			// the current choice rather than jumping to the top of the list.
+			pickerIndex = Math.max(0, pickerSelectedIndex(screen.getMenu()));
+			narratePickerFocus(screen, player, true);
 		} else {
 			// Release the rename box's real focus, if it still has it from a previous visit to
 			// that section - otherwise handleKey's own Rename bypass would keep swallowing every
@@ -831,7 +853,7 @@ public final class MenuAccessibilityController {
 			case CONTAINER, EQUIPMENT -> nearestSpatialNeighbor(sectionSlots, focusedSlot, direction);
 			// Never reached while any of these sections is active - each routes its own keys to a
 			// dedicated handler (or straight to vanilla) before slot navigation is ever reached.
-			case RECIPE_BOOK, ENCHANT_OPTIONS, BEACON_OPTIONS, RENAME, TRADES -> null;
+			case RECIPE_BOOK, ENCHANT_OPTIONS, BEACON_OPTIONS, RENAME, TRADES, PICKER -> null;
 		};
 	}
 
@@ -1937,6 +1959,115 @@ public final class MenuAccessibilityController {
 		Minecraft.getInstance().getNarrator().saySystemNow(message);
 	}
 
+	/**
+	 * The stonecutter's recipe grid and the loom's pattern grid - like Trades, clickable icons
+	 * rather than slots, so without a section of their own neither screen could be used from the
+	 * keyboard at all. Up/Down move through the options in the order the grid lists them; Enter
+	 * selects the focused one through the same two calls a mouse click on it makes ({@code
+	 * clickMenuButton} locally, then {@code handleInventoryButtonClick} to tell the server), after
+	 * which the result is waiting in the Container section's output slot.
+	 */
+	private static boolean handlePickerKey(AbstractContainerScreen<?> screen, LocalPlayer player, KeyEvent event) {
+		if (ClientKeyBindings.CONTAINER_NAV_UP.current().matches(event)) {
+			movePicker(screen, player, -1);
+		} else if (ClientKeyBindings.CONTAINER_NAV_DOWN.current().matches(event)) {
+			movePicker(screen, player, 1);
+		} else if (ClientKeyBindings.CONTAINER_PICKUP.current().matches(event)
+				|| ClientKeyBindings.CONTAINER_PICKUP_SPLIT.current().matches(event)) {
+			selectPicker(screen, player);
+		} else {
+			return true;
+		}
+		return false;
+	}
+
+	private static int pickerSize(AbstractContainerMenu menu) {
+		if (menu instanceof StonecutterMenu stonecutter) {
+			return stonecutter.getNumberOfVisibleRecipes();
+		}
+		if (menu instanceof LoomMenu loom) {
+			return loom.getSelectablePatterns().size();
+		}
+		return 0;
+	}
+
+	/** The option currently chosen on the screen, or -1 for none. */
+	private static int pickerSelectedIndex(AbstractContainerMenu menu) {
+		if (menu instanceof StonecutterMenu stonecutter) {
+			return stonecutter.getSelectedRecipeIndex();
+		}
+		if (menu instanceof LoomMenu loom) {
+			return loom.getSelectedBannerPatternIndex();
+		}
+		return -1;
+	}
+
+	private static void movePicker(AbstractContainerScreen<?> screen, LocalPlayer player, int direction) {
+		int size = pickerSize(screen.getMenu());
+		int next = pickerIndex + direction;
+		if (size == 0 || next < 0 || next >= size) {
+			return;
+		}
+		pickerIndex = next;
+		narratePickerFocus(screen, player, false);
+	}
+
+	private static void selectPicker(AbstractContainerScreen<?> screen, LocalPlayer player) {
+		AbstractContainerMenu menu = screen.getMenu();
+		if (pickerIndex < pickerSize(menu) && pickerIndex != pickerSelectedIndex(menu)
+				&& menu.clickMenuButton(player, pickerIndex)) {
+			Minecraft client = Minecraft.getInstance();
+			client.getSoundManager().play(SimpleSoundInstance.forUI(menu instanceof LoomMenu
+					? SoundEvents.UI_LOOM_SELECT_PATTERN : SoundEvents.UI_STONECUTTER_SELECT_RECIPE, 1.0f));
+			client.gameMode.handleInventoryButtonClick(menu.containerId, pickerIndex);
+		}
+		narratePickerFocus(screen, player, false);
+	}
+
+	private static void narratePickerFocus(AbstractContainerScreen<?> screen, LocalPlayer player, boolean announceSection) {
+		AbstractContainerMenu menu = screen.getMenu();
+		int size = pickerSize(menu);
+		MutableComponent message;
+		if (size == 0) {
+			message = Component.translatable(menu instanceof LoomMenu
+					? "united_minecraft.menu.picker.loom_empty" : "united_minecraft.menu.picker.stonecutter_empty");
+		} else {
+			// The list changes under the index whenever the input does (taking a result can use up
+			// the last input item), so clamp rather than trust it.
+			pickerIndex = Math.min(pickerIndex, size - 1);
+			message = pickerOptionName(menu, player, pickerIndex).copy();
+			if (pickerIndex == pickerSelectedIndex(menu)) {
+				message = message.append(Component.literal(", ")).append(
+						Component.translatable("united_minecraft.menu.picker.selected"));
+			}
+			message = message.append(Component.literal(", ")).append(Component.translatable(
+					"united_minecraft.menu.picker.number", pickerIndex + 1, size));
+		}
+		if (announceSection) {
+			message = pickerLabel(menu).copy().append(Component.literal(". ")).append(message);
+		}
+		Minecraft.getInstance().getNarrator().saySystemNow(message);
+	}
+
+	/** What the option's own tooltip shows: the item a stonecutter recipe makes, or the pattern in the loaded dye's colour. */
+	private static Component pickerOptionName(AbstractContainerMenu menu, LocalPlayer player, int index) {
+		if (menu instanceof StonecutterMenu stonecutter) {
+			ItemStack result = stonecutter.getVisibleRecipes().entries().get(index).recipe().optionDisplay()
+					.resolveForFirstStack(SlotDisplayContext.fromLevel(player.level()));
+			return ItemDescriptions.describe(result, player);
+		}
+		if (menu instanceof LoomMenu loom) {
+			DyeColor color = loom.getDyeSlot().getItem().getOrDefault(DataComponents.DYE, DyeColor.WHITE);
+			return Component.translatable(loom.getSelectablePatterns().get(index).value().translationKey() + "." + color.getName());
+		}
+		return Component.empty();
+	}
+
+	private static Component pickerLabel(AbstractContainerMenu menu) {
+		return Component.translatable(menu instanceof LoomMenu
+				? "united_minecraft.menu.section.loom_patterns" : "united_minecraft.menu.section.stonecutter_recipes");
+	}
+
 	/** {@link #focusedSlot} if it's still actually present in this menu, else null. */
 	private static Slot currentSlot(AbstractContainerMenu menu) {
 		return focusedSlot != null && menu.slots.contains(focusedSlot) ? focusedSlot : null;
@@ -1967,7 +2098,7 @@ public final class MenuAccessibilityController {
 				case EQUIPMENT -> isPlayerInventory && containerSlotOf(slot) >= 36;
 				case CONTAINER -> !isPlayerInventory;
 				// None of these are slot-based; sectionSlots is never called for any of them.
-				case RECIPE_BOOK, ENCHANT_OPTIONS, BEACON_OPTIONS, RENAME, TRADES -> false;
+				case RECIPE_BOOK, ENCHANT_OPTIONS, BEACON_OPTIONS, RENAME, TRADES, PICKER -> false;
 			};
 			if (matches) {
 				result.add(slot);
@@ -2079,6 +2210,8 @@ public final class MenuAccessibilityController {
 			case BEACON_OPTIONS -> Component.translatable("united_minecraft.menu.section.beacon_options");
 			case RENAME -> Component.translatable("united_minecraft.menu.section.rename");
 			case TRADES -> Component.translatable("united_minecraft.menu.section.trades");
+			// The picker's real label depends on the screen - see pickerLabel, which it's announced through.
+			case PICKER -> Component.translatable("united_minecraft.menu.section.stonecutter_recipes");
 		};
 	}
 
@@ -2186,7 +2319,7 @@ public final class MenuAccessibilityController {
 	 * then the container's own slots, then the player's main inventory, then the hotbar.
 	 */
 	private enum Section {
-		RENAME, TRADES, BEACON_OPTIONS, CONTAINER, RECIPE_BOOK, ENCHANT_OPTIONS, EQUIPMENT, INVENTORY, HOTBAR
+		RENAME, TRADES, BEACON_OPTIONS, CONTAINER, PICKER, RECIPE_BOOK, ENCHANT_OPTIONS, EQUIPMENT, INVENTORY, HOTBAR
 	}
 
 	private enum Direction {

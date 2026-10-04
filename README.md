@@ -560,6 +560,13 @@ exactly what hovering with a mouse would - the enchantment itself, whether
 your experience level meets the requirement, and its Lapis/XP cost - and
 Enter selects the focused one.
 
+The stonecutter's recipes and the loom's patterns are clickable icons rather
+than slots too, so each gets its own section, after the input slots (the
+list is empty until something's in them): Up/Down move through the options,
+narrating what each makes - the item and count for a stonecutter recipe, the
+pattern in your dye's colour for the loom - and Enter selects the focused
+one. The result is then waiting in the output slot, one Shift+Tab back.
+
 The anvil's rename box gets its own Rename section too, ahead of its slots -
 Tab reaches it and moves on from it like any other section, while every other
 key (typing, Backspace, arrow keys) reaches the text field itself normally.
