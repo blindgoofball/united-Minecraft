@@ -83,6 +83,10 @@ the same jar on the server; see below.)
   your team's own sidebar, server lines built from team prefixes, and scores
   a server has hidden or reformatted - the top 15 entries by default, the
   same as the sidebar itself; hold Alt to hear the whole thing.
+- Title and subtitle text that servers put in the middle of the screen
+  (countdowns, area names, minigame announcements) is narrated - vanilla
+  never says it aloud. A title a server keeps re-sending to hold it on
+  screen is read once, not on every resend. Can be turned off in Settings.
 
 ### The Scanner
 
@@ -603,7 +607,7 @@ added:
 - **General** - Audio Cue Volume (every short sound cue the mod plays -
   radar pings, fall warnings, arrival chimes and the rest - so they can be
   balanced against the game's own sound; Wall Tones and Structure Voices
-  keep their own volume settings), Durability Awareness
+  keep their own volume settings), title narration, Durability Awareness
   and its warning/critical thresholds, Tool Harvest Awareness, Precise
   Coordinates, and Map Beacon (all otherwise always-on with no toggle of
   their own, same as the alerts above).

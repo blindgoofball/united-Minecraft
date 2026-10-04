@@ -60,6 +60,8 @@ public final class UnitedMinecraftConfig {
 	public boolean modeToggleSoundsEnabled = true;
 	/** Percent; scales every short audio cue - see {@link CueVolume}. */
 	public int cueVolume = 100;
+	/** Narrate on-screen title and subtitle text - see {@link TitleNarrationController}. */
+	public boolean titleNarrationEnabled = true;
 	/** Spoken and audio alerts while gliding on an elytra - see {@link ElytraAwarenessController}. */
 	public boolean elytraAwarenessEnabled = true;
 	public boolean eyeOfEnderCuesEnabled = true;

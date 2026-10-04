@@ -16,6 +16,7 @@
 		"ChatScreenMixin",
 		"ChatComponentAccessorMixin",
 		"BossHealthOverlayAccessorMixin",
+		"HudTitleAccessorMixin",
 		"SuggestionsListMixin",
 		"BookViewScreenMixin",
 		"MultilineTextFieldMixin",
