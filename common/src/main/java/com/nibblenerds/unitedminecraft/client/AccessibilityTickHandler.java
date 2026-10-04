@@ -17,6 +17,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.numbers.NumberFormat;
+import net.minecraft.network.chat.numbers.StyledFormat;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.Util;
@@ -34,7 +36,9 @@ import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.scores.DisplaySlot;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.PlayerScoreEntry;
+import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Scoreboard;
+import net.minecraft.world.scores.TeamColor;
 
 /**
  * Drives United Minecraft's per-tick accessibility features: coordinate/health/bearing/
@@ -53,9 +57,10 @@ public final class AccessibilityTickHandler {
 	// step, even when already sitting exactly on a marker.
 	private static final double SNAP_EPSILON = 1.0e-3;
 
-	// Narrate Scoreboard's default cap - matching the sighted HUD's own on-screen row limit.
-	// See ClientKeyBindings#NARRATE_SCOREBOARD_FULL for the full-list alternative.
-	private static final int SCOREBOARD_DEFAULT_LIMIT = 10;
+	// Narrate Scoreboard's default cap - matching the sighted HUD's own on-screen row limit
+	// (vanilla's Hud draws at most 15). See ClientKeyBindings#NARRATE_SCOREBOARD_FULL for the
+	// full-list alternative.
+	private static final int SCOREBOARD_DEFAULT_LIMIT = 15;
 
 	// Ordered every 45 degrees starting at yaw 0 (south), matching Minecraft's yaw convention
 	// (0 = south, 90 = west, 180 = north, 270 = east).
@@ -941,26 +946,57 @@ public final class AccessibilityTickHandler {
 	 */
 	private static void narrateScoreboard(Minecraft client, LocalPlayer player, boolean full) {
 		Scoreboard scoreboard = player.level().getScoreboard();
-		Objective objective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR);
+		Objective objective = sidebarObjective(scoreboard, player);
 		if (objective == null) {
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.scoreboard_none"));
 			return;
 		}
-		List<PlayerScoreEntry> entries = new ArrayList<>(scoreboard.listPlayerScores(objective));
+		List<PlayerScoreEntry> entries = new ArrayList<>();
+		for (PlayerScoreEntry entry : scoreboard.listPlayerScores(objective)) {
+			if (!entry.isHidden()) {
+				entries.add(entry);
+			}
+		}
 		entries.sort(Comparator.comparingInt(PlayerScoreEntry::value).reversed()
 				.thenComparing(PlayerScoreEntry::owner, String.CASE_INSENSITIVE_ORDER));
 
+		NumberFormat scoreFormat = objective.numberFormatOrDefault(StyledFormat.SIDEBAR_DEFAULT);
 		int limit = full ? entries.size() : Math.min(SCOREBOARD_DEFAULT_LIMIT, entries.size());
 		MutableComponent message = Component.translatable("united_minecraft.narrate.scoreboard_header", objective.getDisplayName());
 		for (int i = 0; i < limit; i++) {
 			PlayerScoreEntry entry = entries.get(i);
-			message.append(Component.literal(". ")).append(Component.translatable(
-					"united_minecraft.narrate.scoreboard_line", entry.ownerName(), entry.value()));
+			// Exactly what the sidebar draws: servers commonly build each line out of a team's
+			// prefix and suffix around a placeholder owner name, and hide the number with a blank
+			// format - reading the raw owner and value there gives text nobody can see.
+			Component name = PlayerTeam.formatNameForTeam(scoreboard.getPlayersTeam(entry.owner()), entry.ownerName());
+			Component score = entry.formatValue(scoreFormat);
+			message.append(Component.literal(". ")).append(score.getString().isBlank()
+					? name
+					: Component.translatable("united_minecraft.narrate.scoreboard_line", name, score));
 		}
 		if (!full && entries.size() > limit) {
 			message.append(Component.literal(". ")).append(Component.translatable(
 					"united_minecraft.narrate.scoreboard_more", entries.size() - limit));
 		}
 		client.getNarrator().saySystemNow(message);
+	}
+
+	/**
+	 * The objective the sidebar actually shows: a team-coloured sidebar slot for the player's own
+	 * team takes priority over the general one, the same choice vanilla's {@code
+	 * Hud#extractScoreboardSidebar} makes.
+	 */
+	private static Objective sidebarObjective(Scoreboard scoreboard, LocalPlayer player) {
+		PlayerTeam team = scoreboard.getPlayersTeam(player.getScoreboardName());
+		if (team != null) {
+			Optional<TeamColor> color = team.getColor();
+			if (color.isPresent()) {
+				Objective teamObjective = scoreboard.getDisplayObjective(color.get().displaySlot());
+				if (teamObjective != null) {
+					return teamObjective;
+				}
+			}
+		}
+		return scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR);
 	}
 }

@@ -79,8 +79,10 @@ the same jar on the server; see below.)
 - Dedicated keys read the current boss bar(s) (name and percentage) and the
   sidebar scoreboard (objective name plus each line's score, highest first)
   on demand - vanilla shows both purely visually, with nothing narrating
-  either one. The scoreboard reads the top 10 entries by default; hold Alt
-  to hear the whole thing.
+  either one. The scoreboard reads exactly what the sidebar shows - including
+  your team's own sidebar, server lines built from team prefixes, and scores
+  a server has hidden or reformatted - the top 15 entries by default, the
+  same as the sidebar itself; hold Alt to hear the whole thing.
 
 ### The Scanner
 
