@@ -189,6 +189,7 @@ public final class KeybindConfig {
 	/** Must run after {@link ClientKeyBindings#register} has populated every action's default. */
 	public static void load() {
 		Path file = file();
+		boolean migratedLegacy = false;
 		if (Files.exists(file)) {
 			try (Reader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
 				JsonElement root = JsonParser.parseReader(reader);
@@ -228,17 +229,19 @@ public final class KeybindConfig {
 							}
 						}
 					}
-					if (legacy) {
-						LOGGER.info("Migrated {} from the pre-26.3 GLFW key scheme", file);
-						// Persist the migrated result immediately rather than leaving the file in
-						// the legacy schema and re-deriving it from scratch every future launch.
-						save();
-					}
+					migratedLegacy = legacy;
 				}
 			} catch (IOException | JsonParseException e) {
 				LOGGER.warn("Failed to load keybindings from {}", file, e);
 				SafeFiles.preserveUnreadable(file, LOGGER);
 			}
+		}
+		if (migratedLegacy) {
+			LOGGER.info("Migrated {} from the pre-26.3 GLFW key scheme", file);
+			// Persist the migrated result immediately rather than leaving the file in the legacy
+			// schema and re-deriving it from scratch every future launch. Only once the reader
+			// above is closed: the save replaces the file, which Windows refuses while it's open.
+			save();
 		}
 		ClientKeyBindings.rebuildIndex();
 	}
