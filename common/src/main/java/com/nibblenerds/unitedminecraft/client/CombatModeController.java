@@ -1,5 +1,8 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -10,6 +13,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.monster.Enderman;
+import net.minecraft.world.entity.monster.zombie.ZombifiedPiglin;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -35,12 +39,21 @@ import net.minecraft.world.phys.Vec3;
 public final class CombatModeController {
 	private static final double SCAN_RANGE = 32.0;
 	private static final double SWITCH_MARGIN = 1.0;
+	/**
+	 * How long a zombified piglin still counts as angry after its aggressive flag was last seen
+	 * set. The flag drops for half of every attack cooldown while the piglin is in melee range
+	 * (vanilla's {@code ZombieAttackGoal} only raises its arms for the second half), so reading it
+	 * on its own would drop the lock between every hit.
+	 */
+	private static final long PIGLIN_ANGER_MEMORY_TICKS = 100;
 
 	private static boolean enabled;
 	private static Entity target;
 	// Starts true so a fresh world/session doesn't immediately narrate a false "ready" cue -
 	// same reasoning as this mod's other edge-triggered ambient narration.
 	private static boolean attackReadyLastTick = true;
+	/** Game time each zombified piglin was last seen aggressive, by entity id - see {@link #isCalmNeutral}. */
+	private static final Map<Integer, Long> piglinLastAggressive = new HashMap<>();
 
 	private CombatModeController() {
 	}
@@ -53,6 +66,7 @@ public final class CombatModeController {
 		enabled = false;
 		target = null;
 		attackReadyLastTick = true;
+		piglinLastAggressive.clear();
 	}
 
 	public static void toggle(Minecraft client, LocalPlayer player) {
@@ -92,7 +106,7 @@ public final class CombatModeController {
 		// Also releases an Enderman target that's calmed back down since being locked onto -
 		// no sense continuing to stare (and risk re-provoking it) once it's not actually mad
 		// anymore.
-		if (target != null && (!target.isAlive() || target.level() != player.level() || isCalmEnderman(target))) {
+		if (target != null && (!target.isAlive() || target.level() != player.level() || isCalmNeutral(target))) {
 			target = null;
 		}
 
@@ -159,7 +173,9 @@ public final class CombatModeController {
 		AABB box = player.getBoundingBox().inflate(SCAN_RANGE);
 		Entity nearest = null;
 		double nearestDistSq = SCAN_RANGE * SCAN_RANGE;
-		for (Entity entity : player.level().getEntities(player, box, e -> e.isAlive() && e instanceof Enemy && !isCalmEnderman(e))) {
+		long now = player.level().getGameTime();
+		piglinLastAggressive.values().removeIf(seen -> now - seen > PIGLIN_ANGER_MEMORY_TICKS);
+		for (Entity entity : player.level().getEntities(player, box, e -> e.isAlive() && e instanceof Enemy && !isCalmNeutral(e))) {
 			double distSq = distanceSq(eye, entity);
 			if (distSq <= nearestDistSq) {
 				nearest = entity;
@@ -179,6 +195,33 @@ public final class CombatModeController {
 	 */
 	private static boolean isCalmEnderman(Entity entity) {
 		return entity instanceof Enderman enderMan && !enderMan.isCreepy();
+	}
+
+	/**
+	 * True for a mob that counts as {@link Enemy} but only fights once provoked, and hasn't been:
+	 * a calm Enderman (see {@link #isCalmEnderman}), or a calm zombified piglin. Hitting one of
+	 * those turns every zombified piglin nearby against you, so Combat Mode must never pick one
+	 * that isn't already angry.
+	 *
+	 * <p>A zombified piglin's anger itself is server-only, but vanilla syncs the {@link
+	 * net.minecraft.world.entity.Mob#isAggressive} flag its attack goal sets while chasing and
+	 * swinging (it's what raises its arms), so this works the same on any server, with or without
+	 * the mod installed there.
+	 */
+	private static boolean isCalmNeutral(Entity entity) {
+		if (isCalmEnderman(entity)) {
+			return true;
+		}
+		if (!(entity instanceof ZombifiedPiglin piglin)) {
+			return false;
+		}
+		long now = piglin.level().getGameTime();
+		if (piglin.isAggressive()) {
+			piglinLastAggressive.put(piglin.getId(), now);
+			return false;
+		}
+		Long seen = piglinLastAggressive.get(piglin.getId());
+		return seen == null || now - seen > PIGLIN_ANGER_MEMORY_TICKS;
 	}
 
 	private static double distanceSq(Vec3 eye, Entity entity) {

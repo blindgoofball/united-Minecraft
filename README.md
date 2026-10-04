@@ -225,6 +225,12 @@ it dies - built for fighting more than one attacker, where re-targeting by
 hand between hits isn't practical. Auto-disables Build Mode if it was on, and
 you can still walk, strafe, and jump freely while your aim stays locked.
 
+Mobs that only fight once provoked are left alone until they are: a calm
+Enderman, or a calm zombified piglin - hitting one of those turns the whole
+group on you. A zombified piglin counts once it's actually coming for you,
+which the game itself shows any client, so this works the same on every
+server.
+
 A separate audio cue plays the moment your weapon's attack-strength meter
 refills to full - the cooldown that reduces damage on an early swing - so you
 know when a hit will land at full strength without watching for it.
