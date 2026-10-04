@@ -353,6 +353,11 @@ public final class ClientKeyBindings {
 	private static final KeybindAction[] ALL_ACTIONS = discoverActions();
 
 	private static final Map<Integer, List<KeybindAction>> BY_PRIMARY_KEY = new HashMap<>();
+	/**
+	 * Keys pressed since the last {@link #updateAll}, each with the modifiers held at that moment
+	 * - see {@link #recordKeyPress}.
+	 */
+	private static final Map<Integer, Integer> PRESSES_SINCE_LAST_TICK = new HashMap<>();
 
 	private static final int[] MODIFIER_KEYS = {
 			InputConstants.KEY_LSHIFT, InputConstants.KEY_RSHIFT,
@@ -444,7 +449,13 @@ public final class ClientKeyBindings {
 	public static void updateAll() {
 		int heldMods = currentModifierBitmask();
 		for (Map.Entry<Integer, List<KeybindAction>> entry : BY_PRIMARY_KEY.entrySet()) {
-			boolean keyDown = InputConstants.isKeyDown(entry.getKey());
+			boolean physicallyDown = InputConstants.isKeyDown(entry.getKey());
+			// A tap pressed and released entirely between two ticks is gone by the time this
+			// polls, so it counts as down for this one tick, with the modifiers held when it was
+			// pressed - see recordKeyPress.
+			Integer tapMods = PRESSES_SINCE_LAST_TICK.get(entry.getKey());
+			boolean keyDown = physicallyDown || tapMods != null;
+			int mods = physicallyDown ? heldMods : keyDown ? tapMods : 0;
 			KeybindAction winner = null;
 			if (keyDown) {
 				for (KeybindAction action : entry.getValue()) {
@@ -452,7 +463,7 @@ public final class ClientKeyBindings {
 					if (!action.isEligibleNow()) {
 						continue;
 					}
-					if ((keybind.modifiers() & heldMods) != keybind.modifiers()) {
+					if ((keybind.modifiers() & mods) != keybind.modifiers()) {
 						continue;
 					}
 					if (winner == null || isMoreSpecific(action, winner)) {
@@ -461,8 +472,27 @@ public final class ClientKeyBindings {
 				}
 			}
 			for (KeybindAction action : entry.getValue()) {
-				action.updateHeld(action == winner);
+				// A fresh press counts even if the action was already held last tick: the key was
+				// released and pressed again in between, too quickly for polling to see the gap.
+				action.updateHeld(action == winner, action == winner && tapMods != null);
 			}
+		}
+		PRESSES_SINCE_LAST_TICK.clear();
+	}
+
+	/**
+	 * Records a key press as it happens, from the keyboard handler itself ({@code
+	 * KeyboardHandlerTapMixin}). {@link #updateAll} otherwise only polls which keys are down once a
+	 * tick, so a quick tap - pressed and released within the same 50 ms - was never seen at all,
+	 * and the keypress silently did nothing.
+	 *
+	 * <p>Only presses made with no screen open are recorded: every action resolved here needs
+	 * no screen open anyway (see {@link KeybindContext}), and a key typed into a screen must never
+	 * replay as an in-world action once that screen closes.
+	 */
+	public static void recordKeyPress(int key, boolean screenOpen) {
+		if (!screenOpen) {
+			PRESSES_SINCE_LAST_TICK.put(key, currentModifierBitmask());
 		}
 	}
 
@@ -507,6 +537,7 @@ public final class ClientKeyBindings {
 		for (KeybindAction action : ALL_ACTIONS) {
 			action.resetPressState();
 		}
+		PRESSES_SINCE_LAST_TICK.clear();
 	}
 
 	private static int currentModifierBitmask() {

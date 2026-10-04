@@ -78,9 +78,14 @@ public final class KeybindAction {
 		return context.isActive();
 	}
 
-	/** Set once per tick by {@link ClientKeyBindings#updateAll()} after resolution - true only if this action won its key this tick. */
-	void updateHeld(boolean down) {
-		justPressed = down && !held;
+	/**
+	 * Set once per tick by {@link ClientKeyBindings#updateAll()} after resolution - true only if
+	 * this action won its key this tick. {@code freshPress} marks a real key press since last tick,
+	 * which counts as just pressed even if the action was already held then (released and pressed
+	 * again between two ticks).
+	 */
+	void updateHeld(boolean down, boolean freshPress) {
+		justPressed = down && (!held || freshPress);
 		held = down;
 	}
 

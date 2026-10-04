@@ -23,6 +23,7 @@
 		"MultiLineEditBoxMixin",
 		"BookEditScreenMixin",
 		"MinecraftContinueAttackMixin",
+		"KeyboardHandlerTapMixin",
 		"SystemToastMixin",
 		"AdvancementToastMixin",
 		"RecipeToastMixin",
