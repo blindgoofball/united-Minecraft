@@ -145,7 +145,7 @@ public final class HostileRadarController {
 		Vec3 pos = entity.position();
 		RandomSource random = player.getRandom();
 		client.getSoundManager().play(new SimpleSoundInstance(
-				SoundEvents.NOTE_BLOCK_BELL.value(), SoundSource.MASTER, 0.7f, 1.0f, random, pos.x(), pos.y(), pos.z()));
+				SoundEvents.NOTE_BLOCK_BELL.value(), SoundSource.MASTER, CueVolume.scale(0.7f), 1.0f, random, pos.x(), pos.y(), pos.z()));
 
 		int distance = (int) Math.round(player.getEyePosition().distanceTo(entity.position()));
 		Component direction = CameraUtil.fullDirectionTo(player.position(), pos);
@@ -157,7 +157,7 @@ public final class HostileRadarController {
 		RandomSource random = player.getRandom();
 		Vec3 pos = player.position();
 		client.getSoundManager().play(new SimpleSoundInstance(
-				SoundEvents.NOTE_BLOCK_HAT.value(), SoundSource.MASTER, 0.6f, 1.4f, random, pos.x(), pos.y(), pos.z()));
+				SoundEvents.NOTE_BLOCK_HAT.value(), SoundSource.MASTER, CueVolume.scale(0.6f), 1.4f, random, pos.x(), pos.y(), pos.z()));
 	}
 
 	private static boolean hasLineOfSight(Level level, Vec3 from, Vec3 to) {

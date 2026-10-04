@@ -138,7 +138,7 @@ public final class MiningRadarController {
 		RandomSource random = player.getRandom();
 		Vec3 center = Vec3.atCenterOf(pos);
 		client.getSoundManager().play(new SimpleSoundInstance(
-				SoundEvents.PLAYER_LEVELUP, SoundSource.MASTER, 0.6f, 1.6f, random, center.x(), center.y(), center.z()));
+				SoundEvents.PLAYER_LEVELUP, SoundSource.MASTER, CueVolume.scale(0.6f), 1.6f, random, center.x(), center.y(), center.z()));
 
 		int distance = (int) Math.round(player.getEyePosition().distanceTo(center));
 		Component direction = CameraUtil.fullDirectionTo(player.position(), center);

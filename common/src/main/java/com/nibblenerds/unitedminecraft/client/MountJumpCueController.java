@@ -43,7 +43,7 @@ public final class MountJumpCueController {
 		RandomSource random = player.getRandom();
 		Vec3 pos = player.position();
 		client.getSoundManager().play(new SimpleSoundInstance(
-				SoundEvents.NOTE_BLOCK_HARP.value(), SoundSource.MASTER, 0.6f, 1.6f, random, pos.x(), pos.y(), pos.z()));
+				SoundEvents.NOTE_BLOCK_HARP.value(), SoundSource.MASTER, CueVolume.scale(0.6f), 1.6f, random, pos.x(), pos.y(), pos.z()));
 	}
 
 	/** Called when the player unloads, so a charge held across a world/session boundary doesn't leak in as a stale "already ready" state. */

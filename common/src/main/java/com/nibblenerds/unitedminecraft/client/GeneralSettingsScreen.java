@@ -3,7 +3,7 @@ package com.nibblenerds.unitedminecraft.client;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
-/** Durability/Tool Harvest awareness, Precise Coordinates, and Map Beacon - everything else, see {@link SettingsScreen}. */
+/** Audio Cue Volume, Durability/Tool Harvest awareness, Precise Coordinates, and Map Beacon - everything else, see {@link SettingsScreen}. */
 final class GeneralSettingsScreen extends SettingsListScreen {
 	GeneralSettingsScreen() {
 		super(Component.translatable("united_minecraft.general_settings_screen.title"));
@@ -15,6 +15,9 @@ final class GeneralSettingsScreen extends SettingsListScreen {
 		int x = this.width / 2 - ROW_WIDTH / 2;
 		int y = 0;
 
+		y = addSlider(x, y, 5.0, 100.0, 5.0, config.cueVolume,
+				"united_minecraft.settings_screen.cue_volume",
+				value -> config.cueVolume = (int) Math.round(value));
 		y = addToggle(x, y, "united_minecraft.settings_screen.durability_awareness_enabled",
 				config.durabilityAwarenessEnabled, value -> config.durabilityAwarenessEnabled = value);
 		y = addSlider(x, y, 1.0, 50.0, 1.0, config.durabilityWarningThreshold,

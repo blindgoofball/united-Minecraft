@@ -48,7 +48,7 @@ public final class AnimalFeedingController {
 		}
 		Minecraft client = Minecraft.getInstance();
 		client.getSoundManager().play(new SimpleSoundInstance(SoundEvents.GENERIC_EAT.value(), SoundSource.NEUTRAL,
-				1.0f, 1.0f, animal.getRandom(), animal.getX(), animal.getY(), animal.getZ()));
+				CueVolume.scale(1.0f), 1.0f, animal.getRandom(), animal.getX(), animal.getY(), animal.getZ()));
 	}
 
 	/**

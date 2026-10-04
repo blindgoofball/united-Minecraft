@@ -33,7 +33,7 @@ final class ModeToggleSound {
 		if (!UnitedMinecraftConfig.get().modeToggleSoundsEnabled) {
 			return;
 		}
-		client.getSoundManager().play(new SimpleSoundInstance(sound, SoundSource.MASTER, 0.8f,
+		client.getSoundManager().play(new SimpleSoundInstance(sound, SoundSource.MASTER, CueVolume.scale(0.8f),
 				on ? PITCH_ON : PITCH_OFF, player.getRandom(), player.getX(), player.getY(), player.getZ()));
 	}
 }

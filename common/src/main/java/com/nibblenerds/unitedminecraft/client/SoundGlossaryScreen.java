@@ -41,7 +41,7 @@ public final class SoundGlossaryScreen extends Screen {
 			return new GlossaryEntry(descriptionKey, (client, player) -> {
 				var pos = player.position();
 				client.getSoundManager().play(new SimpleSoundInstance(sound.get(), SoundSource.MASTER,
-						volume, pitch, player.getRandom(), pos.x(), pos.y(), pos.z()));
+						CueVolume.scale(volume), pitch, player.getRandom(), pos.x(), pos.y(), pos.z()));
 			});
 		}
 

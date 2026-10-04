@@ -284,7 +284,7 @@ public final class ElytraAwarenessController {
 	}
 
 	private static void play(Minecraft client, LocalPlayer player, SoundEvent sound, float volume, float pitch) {
-		client.getSoundManager().play(new SimpleSoundInstance(sound, SoundSource.MASTER, volume, pitch,
+		client.getSoundManager().play(new SimpleSoundInstance(sound, SoundSource.MASTER, CueVolume.scale(volume), pitch,
 				player.getRandom(), player.getX(), player.getY(), player.getZ()));
 	}
 }

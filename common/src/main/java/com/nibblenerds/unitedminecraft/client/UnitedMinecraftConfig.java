@@ -58,6 +58,8 @@ public final class UnitedMinecraftConfig {
 	public boolean preciseCoordinatesEnabled = false;
 	public boolean mountJumpCueEnabled = true;
 	public boolean modeToggleSoundsEnabled = true;
+	/** Percent; scales every short audio cue - see {@link CueVolume}. */
+	public int cueVolume = 100;
 	/** Spoken and audio alerts while gliding on an elytra - see {@link ElytraAwarenessController}. */
 	public boolean elytraAwarenessEnabled = true;
 	public boolean eyeOfEnderCuesEnabled = true;
@@ -112,6 +114,7 @@ public final class UnitedMinecraftConfig {
 		wallToneRange = (int) clamp("wallToneRange", wallToneRange, 2, 16);
 		wallToneVolume = (int) clamp("wallToneVolume", wallToneVolume, 5, 100);
 		structureVoiceVolume = (int) clamp("structureVoiceVolume", structureVoiceVolume, 5, 100);
+		cueVolume = (int) clamp("cueVolume", cueVolume, 5, 100);
 		if (structureVoiceMuted == null) {
 			structureVoiceMuted = new ArrayList<>();
 		}

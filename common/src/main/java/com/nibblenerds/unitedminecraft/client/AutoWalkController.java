@@ -182,7 +182,7 @@ public final class AutoWalkController {
 				if (currentPath.canReach() && hasClearLineToTarget(player.level(), player, currentPath.getTarget())) {
 					Runnable callback = onArrival;
 					client.getSoundManager().play(new SimpleSoundInstance(SoundEvents.NOTE_BLOCK_CHIME.value(),
-							SoundSource.MASTER, 0.7f, 1.4f, player.getRandom(), player.getX(), player.getY(), player.getZ()));
+							SoundSource.MASTER, CueVolume.scale(0.7f), 1.4f, player.getRandom(), player.getX(), player.getY(), player.getZ()));
 					// A caller with its own onArrival callback narrates something more specific
 					// ("Facing X", a lock-on) - saying "Arrived" first would just be immediately
 					// talked over. Only narrate it here when there's no callback to say anything
@@ -285,7 +285,7 @@ public final class AutoWalkController {
 	 * this mod already uses elsewhere. */
 	private static void playStoppedCue(Minecraft client, LocalPlayer player) {
 		client.getSoundManager().play(new SimpleSoundInstance(SoundEvents.NOTE_BLOCK_BASS.value(),
-				SoundSource.MASTER, 0.7f, 0.7f, player.getRandom(), player.getX(), player.getY(), player.getZ()));
+				SoundSource.MASTER, CueVolume.scale(0.7f), 0.7f, player.getRandom(), player.getX(), player.getY(), player.getZ()));
 	}
 
 	/**

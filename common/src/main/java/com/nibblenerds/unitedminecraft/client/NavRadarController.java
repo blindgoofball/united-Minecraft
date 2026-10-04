@@ -169,7 +169,7 @@ public final class NavRadarController {
 			double x = player.getX() + dirX;
 			double z = player.getZ() + dirZ;
 			client.getSoundManager().play(new SimpleSoundInstance(
-					SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.MASTER, 0.6f, 1.0f, random, x, player.getY(), z));
+					SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.MASTER, CueVolume.scale(0.6f), 1.0f, random, x, player.getY(), z));
 			return;
 		}
 
@@ -179,7 +179,7 @@ public final class NavRadarController {
 		double x = player.getX() + dirX * distance;
 		double z = player.getZ() + dirZ * distance;
 		client.getSoundManager().play(new SimpleSoundInstance(
-				sound, SoundSource.MASTER, 1.0f, pitch, random, x, player.getY(), z));
+				sound, SoundSource.MASTER, CueVolume.scale(1.0f), pitch, random, x, player.getY(), z));
 	}
 
 	private enum ObstacleState {

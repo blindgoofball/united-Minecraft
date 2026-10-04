@@ -206,14 +206,14 @@ public final class ArrowHitController {
 	private static void playKillCue(Minecraft client, LocalPlayer player) {
 		RandomSource random = player.getRandom();
 		client.getSoundManager().play(new SimpleSoundInstance(SoundEvents.NOTE_BLOCK_BASEDRUM.value(), SoundSource.MASTER,
-				1.0f, 0.8f, random, player.getX(), player.getEyeY(), player.getZ()));
+				CueVolume.scale(1.0f), 0.8f, random, player.getX(), player.getEyeY(), player.getZ()));
 		client.getSoundManager().play(new SimpleSoundInstance(SoundEvents.ARROW_HIT_PLAYER, SoundSource.MASTER,
-				1.0f, 1.6f, random, player.getX(), player.getEyeY(), player.getZ()));
+				CueVolume.scale(1.0f), 1.6f, random, player.getX(), player.getEyeY(), player.getZ()));
 	}
 
 	private static void playHitCue(Minecraft client, LocalPlayer player) {
 		RandomSource random = player.getRandom();
 		client.getSoundManager().play(new SimpleSoundInstance(SoundEvents.ARROW_HIT_PLAYER, SoundSource.MASTER,
-				1.0f, 1.0f, random, player.getX(), player.getEyeY(), player.getZ()));
+				CueVolume.scale(1.0f), 1.0f, random, player.getX(), player.getEyeY(), player.getZ()));
 	}
 }

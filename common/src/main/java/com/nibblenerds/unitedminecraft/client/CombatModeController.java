@@ -159,7 +159,7 @@ public final class CombatModeController {
 		RandomSource random = player.getRandom();
 		Vec3 pos = player.position();
 		client.getSoundManager().play(new SimpleSoundInstance(
-				SoundEvents.NOTE_BLOCK_XYLOPHONE.value(), SoundSource.MASTER, 0.5f, 1.4f, random, pos.x(), pos.y(), pos.z()));
+				SoundEvents.NOTE_BLOCK_XYLOPHONE.value(), SoundSource.MASTER, CueVolume.scale(0.5f), 1.4f, random, pos.x(), pos.y(), pos.z()));
 	}
 
 	private static boolean shouldSwitchTo(Vec3 eye, Entity candidate) {

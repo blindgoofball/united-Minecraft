@@ -326,7 +326,7 @@ public final class FallWarningController {
 			// block tone reads as its own specific kind of bad while staying in the same
 			// note-block sonic family as this mod's other cues (safe/mining/nav radar).
 			client.getSoundManager().play(new SimpleSoundInstance(
-					SoundEvents.NOTE_BLOCK_DIDGERIDOO.value(), SoundSource.MASTER, 1.0f, 0.7f, random, pos.x(), pos.y(), pos.z()));
+					SoundEvents.NOTE_BLOCK_DIDGERIDOO.value(), SoundSource.MASTER, CueVolume.scale(1.0f), 0.7f, random, pos.x(), pos.y(), pos.z()));
 			client.getNarrator().saySystemNow(Component.translatable(
 					"united_minecraft.narrate.fall_warning_hazard", blocks, hazardName));
 			return;
@@ -336,8 +336,8 @@ public final class FallWarningController {
 		// inherently loud and unmistakably "bad", a clear contrast against the bright pling
 		// for a safe drop.
 		client.getSoundManager().play(damaging
-				? new SimpleSoundInstance(SoundEvents.ANVIL_LAND, SoundSource.MASTER, 1.0f, 0.8f, random, pos.x(), pos.y(), pos.z())
-				: new SimpleSoundInstance(SoundEvents.NOTE_BLOCK_PLING.value(), SoundSource.MASTER, 1.5f, 1.3f, random, pos.x(), pos.y(), pos.z()));
+				? new SimpleSoundInstance(SoundEvents.ANVIL_LAND, SoundSource.MASTER, CueVolume.scale(1.0f), 0.8f, random, pos.x(), pos.y(), pos.z())
+				: new SimpleSoundInstance(SoundEvents.NOTE_BLOCK_PLING.value(), SoundSource.MASTER, CueVolume.scale(1.5f), 1.3f, random, pos.x(), pos.y(), pos.z()));
 
 		client.getNarrator().saySystemNow(Component.translatable(damaging
 				? "united_minecraft.narrate.fall_warning_damaging"

@@ -187,7 +187,7 @@ public final class EyeOfEnderController {
 		if (!UnitedMinecraftConfig.get().eyeOfEnderCuesEnabled) {
 			return;
 		}
-		client.getSoundManager().play(new SimpleSoundInstance(sound, SoundSource.MASTER, volume, pitch,
+		client.getSoundManager().play(new SimpleSoundInstance(sound, SoundSource.MASTER, CueVolume.scale(volume), pitch,
 				player.getRandom(), pos.x(), pos.y(), pos.z()));
 	}
 }

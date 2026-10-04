@@ -600,10 +600,13 @@ added:
   a three-way switch for the Combat Mode attack-ready cue (off, Combat
   Mode only, or always), Auto-Walk's always-sprint toggle, and the mount
   jump charge audio cue.
-- **General** - Durability Awareness and its warning/critical
-  thresholds, Tool Harvest Awareness, Precise Coordinates, and Map
-  Beacon (all otherwise always-on with no toggle of their own, same as
-  the alerts above).
+- **General** - Audio Cue Volume (every short sound cue the mod plays -
+  radar pings, fall warnings, arrival chimes and the rest - so they can be
+  balanced against the game's own sound; Wall Tones and Structure Voices
+  keep their own volume settings), Durability Awareness
+  and its warning/critical thresholds, Tool Harvest Awareness, Precise
+  Coordinates, and Map Beacon (all otherwise always-on with no toggle of
+  their own, same as the alerts above).
 
 Each category page is its own short, scrollable list rather than every
 setting the mod has in one long one, with a Back button (or Escape)

@@ -314,7 +314,7 @@ public final class MapBeaconController {
 		double z = player.getZ() + (dz / length) * CHIME_FIXED_OFFSET_BLOCKS;
 		RandomSource random = player.getRandom();
 		client.getSoundManager().play(new SimpleSoundInstance(
-				SoundEvents.BELL_BLOCK, SoundSource.MASTER, 1.0f, pitchFor(distance), random, x, player.getY(), z));
+				SoundEvents.BELL_BLOCK, SoundSource.MASTER, CueVolume.scale(1.0f), pitchFor(distance), random, x, player.getY(), z));
 	}
 
 	private static void narrateBearing(Minecraft client, LocalPlayer player, Vec3 target, double distance) {
