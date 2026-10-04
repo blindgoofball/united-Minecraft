@@ -247,7 +247,14 @@ public final class KeybindConfig {
 		Map<String, StoredKeybind> stored = new LinkedHashMap<>();
 		for (KeybindAction action : ClientKeyBindings.allActions()) {
 			Keybind keybind = action.current();
-			stored.put(action.id(), new StoredKeybind(keybind.key(), keybind.modifiers()));
+			// Only what the player actually changed. Writing every action's current binding
+			// instead froze all of them at whatever their defaults were on the day the player
+			// first rebound anything, so a later version's changed default never reached them -
+			// and could end up silently clashing with a newly added action. An action missing
+			// from the file just keeps its default (see load).
+			if (!keybind.equals(action.default_())) {
+				stored.put(action.id(), new StoredKeybind(keybind.key(), keybind.modifiers()));
+			}
 		}
 		JsonObject root = new JsonObject();
 		root.addProperty(SCHEMA_VERSION_FIELD, CURRENT_SCHEMA_VERSION);
