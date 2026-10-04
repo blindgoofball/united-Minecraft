@@ -23,7 +23,9 @@ the same jar on the server; see below.)
 - Action-bar HUDs (health/mana readouts, cooldowns, etc.) that some servers
   keep alive by resending the same message every second or two are only
   narrated when the text actually changes, instead of vanilla's own behavior
-  of re-narrating every resend even when nothing changed.
+  of re-narrating every resend even when nothing changed. The same message
+  coming back after it has faded from the screen is still read again - a
+  second "You may not rest now" at a bed isn't swallowed.
 - On-demand readouts for coordinates/standing block/biome, health and hunger
   (on the same 10-heart/10-shank scale the sighted heart bar uses, half-point
   precision included), and facing direction in compass degrees with pitch,
