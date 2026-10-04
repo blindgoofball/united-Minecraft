@@ -71,6 +71,8 @@ final class ElytraAutopilot {
 	// Ticks of circling flown ahead to check for terrain, and how close to the target a ground contact still counts as the landing.
 	private static final int ORBIT_LOOKAHEAD_TICKS = 80;
 	private static final double LANDING_ZONE = 10.0;
+	// How far above the spot's own ground a contact has to be to count as terrain in the way.
+	private static final double TERRAIN_RISE = 1.0;
 
 	private final double tx;
 	private final double ty;
@@ -134,7 +136,12 @@ final class ElytraAutopilot {
 		return new Command(yaw, pitch, phase, best.miss(), best.path(), orbitHazard(s));
 	}
 
-	/** Whether circling on from {@code s} is predicted to hit terrain somewhere other than the landing zone. */
+	/**
+	 * Whether circling on from {@code s} is predicted to hit terrain somewhere other than the landing
+	 * zone. Only ground standing higher than the spot counts: over ground no higher than the spot, a
+	 * circle that runs low just levels out (see {@link #orbit}) into a gentle landing short of it,
+	 * which is no reason to hand control back.
+	 */
 	private boolean orbitHazard(State s) {
 		double x = s.x();
 		double y = s.y();
@@ -160,8 +167,9 @@ final class ElytraAutopilot {
 			x += vx;
 			y += vy;
 			z += vz;
-			if (y <= ground.height(x, z)) {
-				return Math.hypot(x - tx, z - tz) > LANDING_ZONE;
+			double surface = ground.height(x, z);
+			if (y <= surface) {
+				return surface > ty + TERRAIN_RISE && Math.hypot(x - tx, z - tz) > LANDING_ZONE;
 			}
 		}
 		return false;

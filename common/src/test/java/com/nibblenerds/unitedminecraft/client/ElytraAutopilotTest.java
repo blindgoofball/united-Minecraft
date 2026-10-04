@@ -68,6 +68,9 @@ class ElytraAutopilotTest {
 				Arguments.of(30, 15, 45f, 1.2),
 				Arguments.of(30, 30, 180f, 2.5),
 				Arguments.of(60, 20, 0f, 1.2),
+				// Once handed back after 1.5 seconds: the circle's look-ahead took levelling out
+				// onto open, flat ground for a collision.
+				Arguments.of(60, 30, 180f, 1.2),
 				Arguments.of(60, 60, 90f, 0.4),
 				Arguments.of(60, 100, 180f, 2.5),
 				Arguments.of(90, 20, 315f, 2.5),
