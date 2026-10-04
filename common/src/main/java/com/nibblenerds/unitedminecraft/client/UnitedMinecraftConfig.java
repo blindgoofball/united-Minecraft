@@ -2,7 +2,6 @@ package com.nibblenerds.unitedminecraft.client;
 
 import java.io.IOException;
 import java.io.Reader;
-import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -161,6 +160,7 @@ public final class UnitedMinecraftConfig {
 			}
 		} catch (IOException | JsonParseException e) {
 			LOGGER.warn("Failed to load settings from {}", file, e);
+			SafeFiles.preserveUnreadable(file, LOGGER);
 		}
 	}
 
@@ -168,10 +168,7 @@ public final class UnitedMinecraftConfig {
 		instance.sanitize();
 		Path file = file();
 		try {
-			Files.createDirectories(file.getParent());
-			try (Writer writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
-				GSON.toJson(instance, writer);
-			}
+			SafeFiles.writeAtomically(file, writer -> GSON.toJson(instance, writer));
 		} catch (IOException e) {
 			// Best-effort - losing the ability to persist shouldn't crash the game, and there's
 			// nowhere better than the log to report a disk-write failure to.

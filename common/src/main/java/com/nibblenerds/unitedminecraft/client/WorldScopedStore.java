@@ -2,7 +2,6 @@ package com.nibblenerds.unitedminecraft.client;
 
 import java.io.IOException;
 import java.io.Reader;
-import java.io.Writer;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -93,10 +92,7 @@ final class WorldScopedStore<T> {
 		}
 		Path file = fileFor(loadedWorldId);
 		try {
-			Files.createDirectories(file.getParent());
-			try (Writer writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
-				GSON.toJson(entries, listType, writer);
-			}
+			SafeFiles.writeAtomically(file, writer -> GSON.toJson(entries, listType, writer));
 		} catch (IOException e) {
 			// Best-effort - losing the ability to persist shouldn't crash the game, and there's
 			// nowhere better than the log to report a disk-write failure to.
@@ -199,6 +195,9 @@ final class WorldScopedStore<T> {
 			return loaded != null ? new ArrayList<>(loaded) : new ArrayList<>();
 		} catch (IOException | JsonParseException e) {
 			logger.warn("Failed to load {} from {}", subdirectory, file, e);
+			// Starting this world empty is unavoidable, but the next marker placed would otherwise
+			// save straight over the only copy of everything that was in the file.
+			SafeFiles.preserveUnreadable(file, logger);
 			return new ArrayList<>();
 		}
 	}

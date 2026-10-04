@@ -2,7 +2,6 @@ package com.nibblenerds.unitedminecraft.client;
 
 import java.io.IOException;
 import java.io.Reader;
-import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -238,6 +237,7 @@ public final class KeybindConfig {
 				}
 			} catch (IOException | JsonParseException e) {
 				LOGGER.warn("Failed to load keybindings from {}", file, e);
+				SafeFiles.preserveUnreadable(file, LOGGER);
 			}
 		}
 		ClientKeyBindings.rebuildIndex();
@@ -254,10 +254,7 @@ public final class KeybindConfig {
 		root.add(BINDINGS_FIELD, GSON.toJsonTree(stored, STORED_TYPE));
 		Path file = file();
 		try {
-			Files.createDirectories(file.getParent());
-			try (Writer writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
-				GSON.toJson(root, writer);
-			}
+			SafeFiles.writeAtomically(file, writer -> GSON.toJson(root, writer));
 		} catch (IOException e) {
 			// Best-effort - losing the ability to persist shouldn't crash the game, and there's
 			// nowhere better than the log to report a disk-write failure to.
