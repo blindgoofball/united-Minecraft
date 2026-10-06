@@ -168,12 +168,13 @@ navigation without needing to see or aim at them.
   x-ray" rule as Ores and Terrain's liquids.
 - Biomes and Structures covers places worth exploring toward, nearest first, in
   one list. Biomes are nearby distinct biomes - one entry per biome type, at the
-  nearest surface point of it - out to a fixed 64 blocks regardless of your
-  configured Scanner range, since it's meant for exploration-scale distances.
+  nearest surface point of it - out to the Biomes and Structures range (up to
+  128 blocks, 128 by default) regardless of your general Scanner range, since
+  it's meant for exploration-scale distances.
   Sampled at ground level, so a biome that only exists underground (dripstone
   caves, the deep dark) won't show up here. Structures are villages, ocean
-  monuments, ruined portals and every other generated structure within your
-  Scanner range, at its nearest point - the same list Structure Voices
+  monuments, ruined portals and every other generated structure within that
+  same range, at its nearest point - the same list Structure Voices
   announces from (see below), so structures only appear in single player or on
   a server that also has United Minecraft; biomes work everywhere.
   Alt+Page Up/Down jumps between structures of the same kind, e.g. from one
@@ -430,15 +431,18 @@ exact figure. The sounds can be switched off in Settings > Modes & Movement.
 ### Structure Voices
 
 When a village, ocean monument, ruined portal, shipwreck or any other
-structure you could come across above ground comes within your Scanner range,
-its name is spoken once, from its direction: fly past a village on your left and
+structure you could come across above ground comes within range (96 blocks by
+default, adjustable up to 128), its name is spoken once, from its direction: fly past a village on your left and
 you hear "Village" in your left ear. Anything buried below the terrain -
 strongholds, mineshafts, ancient cities, trial chambers, buried treasure - is
 deliberately never announced, the same "no x-ray" rule the Scanner applies to
 ore, so finding those stays a matter of exploring (an Eye of Ender, for
 strongholds). Dimensions with no surface, like the Nether and End, aren't
 filtered. Each structure is announced once per visit, and again only after
-you've gone well away and come back. It's passive - there's no key to
+you've gone well away and come back. Both this range and the Scanner's
+Biomes and Structures range are capped at 128 blocks, and at your render
+distance if that is lower - roughly how far a sighted player could make out
+the same things. It's passive - there's no key to
 press; the Scanner's Biomes and Structures category lists what's nearby on demand.
 
 Direction is kept simple and fixed for the whole word, rather than 3D audio
@@ -612,8 +616,8 @@ added:
   Warning (including how many seconds ahead it looks), Mining Radar,
   Navigation Radar, and the Scanner, plus the Scanner's own toggles for
   skipping empty categories and auto-locking onto a mob after walking
-  to it, and Structure Voices (on/off, volume, and also narrating distance
-  and direction - announced within the Scanner range).
+  to it, the Biomes and Structures range, and Structure Voices (on/off, range,
+  volume, and also narrating distance and direction).
 - **Wall Tones** - range, volume, Tones/Noise style, the separate
   pulsing obstacle sound, and the ceiling sound.
 - **Modes & Movement** - re-narrating Build Mode's cursor after a

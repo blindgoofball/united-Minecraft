@@ -74,7 +74,11 @@ public final class UnitedMinecraftConfig {
 	public boolean wallToneObstaclesEnabled = true;
 	public boolean wallToneCeilingEnabled = false;
 	public WallToneStyle wallToneStyle = WallToneStyle.TONES;
+	/** How far the Scanner's Biomes and Structures category looks - see {@link ExplorationRange}. */
+	public double exploreScannerRange = ExplorationRange.DEFAULT_SCANNER;
 	public boolean structureVoicesEnabled = true;
+	/** How far out structure voices announce - see {@link ExplorationRange}. */
+	public double structureVoiceRange = ExplorationRange.DEFAULT_VOICES;
 	public int structureVoiceVolume = 80;
 	/** Also narrate "Village, 20 blocks, northeast" through the screen reader when a voice plays. */
 	public boolean structureVoiceNarrate = false;
@@ -113,6 +117,8 @@ public final class UnitedMinecraftConfig {
 		miningRadarRange = (int) clamp("miningRadarRange", miningRadarRange, 4, 16);
 		navRadarRange = (int) clamp("navRadarRange", navRadarRange, 4, 16);
 		scannerRange = clamp("scannerRange", scannerRange, 8.0, 64.0);
+		exploreScannerRange = clamp("exploreScannerRange", exploreScannerRange, ExplorationRange.MIN, ExplorationRange.MAX);
+		structureVoiceRange = clamp("structureVoiceRange", structureVoiceRange, ExplorationRange.MIN, ExplorationRange.MAX);
 		wallToneRange = (int) clamp("wallToneRange", wallToneRange, 2, 16);
 		wallToneVolume = (int) clamp("wallToneVolume", wallToneVolume, 5, 100);
 		structureVoiceVolume = (int) clamp("structureVoiceVolume", structureVoiceVolume, 5, 100);

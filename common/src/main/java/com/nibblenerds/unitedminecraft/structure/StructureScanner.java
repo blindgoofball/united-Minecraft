@@ -46,7 +46,7 @@ import net.minecraft.world.phys.Vec3;
  */
 public final class StructureScanner {
 	/** The furthest the client's announce radius can be set to - see {@code UnitedMinecraftConfig}. */
-	public static final int MAX_RANGE = 64;
+	public static final int MAX_RANGE = 128;
 	private static final int SCAN_INTERVAL_TICKS = 5;
 	/** How often an empty list is still sent, so the client knows this server reports structures at all. */
 	private static final int EMPTY_HEARTBEAT_TICKS = 40;

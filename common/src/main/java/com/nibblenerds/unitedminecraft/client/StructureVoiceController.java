@@ -23,7 +23,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Structure voices: when a village, ocean monument, ruined portal or any other generated
- * structure comes within the Scanner's range ({@link UnitedMinecraftConfig#scannerRange}), its name is
+ * structure comes within its own range ({@link ExplorationRange#voices}), its name is
  * spoken once from its direction - walk past a village on your left and you hear "Village" on
  * your left. The distance is measured to the structure's nearest piece in 3D, so a buried
  * ancient city is only announced once you're actually near it.
@@ -119,9 +119,7 @@ public final class StructureVoiceController {
 		}
 
 		Vec3 eye = player.getEyePosition();
-		// The Scanner's range rather than a setting of its own - its 64-block maximum is also as
-		// far as StructureScanner reports.
-		double radius = config.scannerRange;
+		double radius = ExplorationRange.voices();
 		for (StructuresNearbyPayload.Entry entry : latest) {
 			if (config.structureVoiceMuted.contains(entry.structure().toString())) {
 				continue;
@@ -170,7 +168,7 @@ public final class StructureVoiceController {
 		if (audio.isPresent()) {
 			Direction direction = direction(player.getYRot(), player.getXRot(), eye, point);
 			double distance = eye.distanceTo(point);
-			float nearness = 1.0f - (float) Math.min(1.0, distance / config.scannerRange);
+			float nearness = 1.0f - (float) Math.min(1.0, distance / ExplorationRange.voices());
 			float volume = config.structureVoiceVolume / 100.0f * (FAR_GAIN + (1.0f - FAR_GAIN) * nearness)
 					* (1.0f - (1.0f - BEHIND_GAIN) * direction.behind());
 			float pitch = (float) Math.pow(2.0, direction.height() * PITCH_SEMITONES / 12.0);
@@ -196,7 +194,8 @@ public final class StructureVoiceController {
 	}
 
 	/**
-	 * Every structure the server last reported within the Scanner's range, nearest first, leaving
+	 * Every structure the server last reported within the Scanner category's range ({@link
+	 * ExplorationRange#scanner}), nearest first, leaving
 	 * out muted ones - whether or not structure voices are switched on, so the Scanner can still
 	 * browse them with the voices off. Empty in a dimension the list hasn't caught up with yet.
 	 */
@@ -206,10 +205,11 @@ public final class StructureVoiceController {
 		}
 		UnitedMinecraftConfig config = UnitedMinecraftConfig.get();
 		Vec3 eye = player.getEyePosition();
+		double range = ExplorationRange.scanner();
 		List<NearbyStructure> result = new ArrayList<>();
 		for (StructuresNearbyPayload.Entry entry : latest) {
 			if (!config.structureVoiceMuted.contains(entry.structure().toString())
-					&& eye.distanceTo(point(entry)) <= config.scannerRange) {
+					&& eye.distanceTo(point(entry)) <= range) {
 				result.add(new NearbyStructure(entry.structure(), spokenName(entry.structure()), point(entry)));
 			}
 		}

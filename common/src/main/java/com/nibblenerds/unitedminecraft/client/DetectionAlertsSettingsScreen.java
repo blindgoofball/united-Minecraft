@@ -42,9 +42,12 @@ final class DetectionAlertsSettingsScreen extends SettingsListScreen {
 				config.scannerSkipEmptyCategories, value -> config.scannerSkipEmptyCategories = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.scanner_auto_lock_after_walk",
 				config.scannerAutoLockAfterWalk, value -> config.scannerAutoLockAfterWalk = value);
-		// No range of their own - structures are announced within the Scanner Range above.
+		y = addSlider(x, y, ExplorationRange.MIN, ExplorationRange.MAX, 8.0, config.exploreScannerRange,
+				"united_minecraft.settings_screen.explore_scanner_range", value -> config.exploreScannerRange = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.structure_voices_enabled",
 				config.structureVoicesEnabled, value -> config.structureVoicesEnabled = value);
+		y = addSlider(x, y, ExplorationRange.MIN, ExplorationRange.MAX, 8.0, config.structureVoiceRange,
+				"united_minecraft.settings_screen.structure_voice_range", value -> config.structureVoiceRange = value);
 		y = addSlider(x, y, 5.0, 100.0, 5.0, config.structureVoiceVolume,
 				"united_minecraft.settings_screen.structure_voice_volume",
 				value -> config.structureVoiceVolume = (int) Math.round(value));

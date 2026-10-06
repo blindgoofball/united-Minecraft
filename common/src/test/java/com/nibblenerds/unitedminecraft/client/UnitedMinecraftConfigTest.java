@@ -28,12 +28,14 @@ class UnitedMinecraftConfigTest {
 	@Test
 	void outOfRangeValuesAreClampedOnLoad() throws IOException {
 		Files.writeString(file, """
-				{"scannerRange": 10000, "cueVolume": 0, "hostileRadarRange": -3,
+				{"scannerRange": 10000, "exploreScannerRange": 5000, "structureVoiceRange": 1, "cueVolume": 0, "hostileRadarRange": -3,
 				 "durabilityWarningThreshold": 20, "durabilityCriticalThreshold": 40}""");
 		UnitedMinecraftConfig.load();
 		UnitedMinecraftConfig config = UnitedMinecraftConfig.get();
 
 		assertEquals(64.0, config.scannerRange);
+		assertEquals(128.0, config.exploreScannerRange, "no setting can be pushed past what a sighted player could see");
+		assertEquals(16.0, config.structureVoiceRange);
 		assertEquals(5, config.cueVolume);
 		assertEquals(4.0, config.hostileRadarRange);
 		assertEquals(20, config.durabilityCriticalThreshold, "critical can never sit above the warning threshold");

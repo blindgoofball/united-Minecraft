@@ -185,9 +185,8 @@ public final class ScannerController {
 	private static final int LEAF_SEARCH_MARGIN = 2;
 
 	// Biomes are a much coarser, exploration-scale thing than everything else the Scanner
-	// finds - a fixed, longer range independent of the user's configurable scannerRange, and
-	// sampled instead of scanned block-by-block (see scanBiomes).
-	private static final double BIOME_SCAN_RANGE = 64.0;
+	// finds - a longer range of its own (ExplorationRange.scanner), independent of the user's
+	// configurable scannerRange, and sampled instead of scanned block-by-block (see scanBiomes).
 	// Matches vanilla's own biome storage granularity (one biome value per 4x4x4 cell) - finer
 	// sampling would just repeat the same answer.
 	private static final int BIOME_SAMPLE_STEP = 4;
@@ -2499,7 +2498,7 @@ public final class ScannerController {
 	 * nearest - meant for deciding which direction to explore, not for finding an exact border.
 	 * Sampled on a {@link #BIOME_SAMPLE_STEP}-block grid (matching vanilla's own biome storage
 	 * granularity) at each column's world surface height rather than scanned block-by-block like
-	 * every other category - a full 3D scan out to {@link #BIOME_SCAN_RANGE} would be millions of
+	 * every other category - a full 3D scan out to {@link ExplorationRange#scanner} would be millions of
 	 * positions for something that barely varies vertically above ground. That surface-height
 	 * sampling does mean a biome that only exists underground (dripstone caves, the deep dark)
 	 * won't show up here - this category is about surface exploration, not cave prospecting.
@@ -2511,7 +2510,8 @@ public final class ScannerController {
 		Vec3 eye = player.getEyePosition();
 		BlockPos center = player.blockPosition();
 		Holder<Biome> currentBiome = level.getBiome(center);
-		int r = (int) BIOME_SCAN_RANGE;
+		double range = ExplorationRange.scanner();
+		int r = (int) range;
 
 		Map<Holder<Biome>, BlockPos> nearestPos = new HashMap<>();
 		Map<Holder<Biome>, Double> nearestDist = new HashMap<>();
@@ -2522,6 +2522,10 @@ public final class ScannerController {
 				}
 				int x = center.getX() + dx;
 				int z = center.getZ() + dz;
+				// A chunk that isn't loaded has no real biome to read, only a placeholder one.
+				if (!level.hasChunk(x >> 4, z >> 4)) {
+					continue;
+				}
 				int y = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z);
 				BlockPos pos = new BlockPos(x, y, z);
 				Holder<Biome> biome = level.getBiome(pos);
@@ -2529,7 +2533,7 @@ public final class ScannerController {
 					continue;
 				}
 				double distance = eye.distanceTo(Vec3.atCenterOf(pos));
-				if (distance > BIOME_SCAN_RANGE) {
+				if (distance > range) {
 					continue;
 				}
 				Double best = nearestDist.get(biome);
