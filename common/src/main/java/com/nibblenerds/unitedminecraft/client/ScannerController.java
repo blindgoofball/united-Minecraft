@@ -209,6 +209,19 @@ public final class ScannerController {
 	private static String searchMatchesTerm;
 	private static Set<Block> searchMatches = Set.of();
 
+	/** The flat area size Terrain is looking for, {width, depth}, or null while none has been asked for - see {@link #openFlatAreaPrompt}. */
+	private static int[] flatAreaSize;
+
+	// Flat areas are sought over a fixed 64 blocks whatever the Scanner range is set to - like
+	// biomes, "somewhere to build" is a bigger-picture question than "what's within reach" - and
+	// within this many blocks above and below the player, which keeps the column walk bounded.
+	private static final int FLAT_AREA_RANGE = 64;
+	private static final int FLAT_AREA_VERTICAL_RANGE = 24;
+	// Terrain lists these nearest first alongside lakes and ladders; a wide plain would otherwise
+	// bury them. Past this many, the rest are further away than anything shown.
+	private static final int FLAT_AREA_MAX_RESULTS = 12;
+	private static final int MAX_SURFACES_NARRATED = 4;
+
 	private ScannerController() {
 	}
 
@@ -226,6 +239,7 @@ public final class ScannerController {
 		itemIndex = 0;
 		lockedEntity = null;
 		searchTerm = "";
+		flatAreaSize = null;
 	}
 
 	public static void tick(Minecraft client, LocalPlayer player) {
@@ -360,11 +374,17 @@ public final class ScannerController {
 	 * off of, so this narrates a no-op message while one is focused instead of doing nothing
 	 * silently. The Search category has no "focused item" to name yet the first time it's
 	 * opened - Shift+U there means "enter a search term" instead, via {@link
-	 * #openSearchPrompt}.
+	 * #openSearchPrompt}. Terrain gives it up the same way, to "enter a flat area size" via
+	 * {@link #openFlatAreaPrompt}: naming a lake or a ladder was never reliable (the same body
+	 * is found from a different block each scan), so nothing was lost.
 	 */
 	public static void nameFocusedItem(Minecraft client, LocalPlayer player) {
 		if (categoryIndex != -1 && CATEGORIES[categoryIndex] == ScannerCategory.SEARCH) {
 			openSearchPrompt(client, player);
+			return;
+		}
+		if (categoryIndex != -1 && CATEGORIES[categoryIndex] == ScannerCategory.TERRAIN) {
+			openFlatAreaPrompt(client, player);
 			return;
 		}
 		if (categoryIndex == -1) {
@@ -422,6 +442,45 @@ public final class ScannerController {
 									.append(Component.literal(". "))
 									.append(describeItem(ScannerCategory.SEARCH, items.get(0), player));
 					client.getNarrator().saySystemNow(ScannerCategory.SEARCH.label().append(Component.literal(", ")).append(summary));
+				}));
+	}
+
+	/**
+	 * Opens a prompt for the flat area size Terrain should look for - "8" for 8 by 8, "8x12" for
+	 * a rectangle - then re-scans Terrain with it. Pre-filled with the size already set, and a
+	 * blank answer switches flat areas off again.
+	 */
+	private static void openFlatAreaPrompt(Minecraft client, LocalPlayer player) {
+		String current = flatAreaSize == null ? "" : flatAreaSize[0] + "x" + flatAreaSize[1];
+		client.gui.setScreen(new MarkerNameScreen(
+				Component.translatable("united_minecraft.flat_area_screen.title"),
+				Component.translatable("united_minecraft.narrate.flat_area_prompt"),
+				Component.translatable("united_minecraft.narrate.flat_area_cancelled"),
+				Component.translatable("united_minecraft.flat_area_screen.size"),
+				current,
+				text -> {
+					Component heading;
+					if (text == null || text.isBlank()) {
+						flatAreaSize = null;
+						heading = Component.translatable("united_minecraft.narrate.flat_area_off");
+					} else {
+						int[] size = FlatAreaFinder.parseSize(text);
+						if (size == null) {
+							client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.flat_area_invalid"));
+							return;
+						}
+						flatAreaSize = size;
+						heading = Component.translatable("united_minecraft.narrate.flat_area_set", size[0], size[1]);
+					}
+					items = scan(ScannerCategory.TERRAIN, player);
+					itemIndex = 0;
+					Component summary = items.isEmpty()
+							? Component.translatable("united_minecraft.narrate.scanner_empty")
+							: Component.translatable("united_minecraft.narrate.scanner_count", items.size())
+									.append(Component.literal(". "))
+									.append(describeItem(ScannerCategory.TERRAIN, items.get(0), player));
+					client.getNarrator().saySystemNow(heading.copy().append(Component.literal(". "))
+							.append(ScannerCategory.TERRAIN.label()).append(Component.literal(", ")).append(summary));
 				}));
 	}
 
@@ -652,6 +711,10 @@ public final class ScannerController {
 			// one type. Biome entries carry no label and are already one per biome type.
 			return a.label() != null && a.label().equals(b.label());
 		}
+		if (category == ScannerCategory.TERRAIN && (a.label() != null || b.label() != null)) {
+			// Flat areas are the only labelled Terrain items; they match each other, not a lake.
+			return a.label() != null && b.label() != null;
+		}
 		if (a.entity() != null && b.entity() != null) {
 			return a.entity().getType() == b.entity().getType();
 		}
@@ -678,6 +741,8 @@ public final class ScannerController {
 			} else {
 				targetEntity(client, player, item.entity(), walkThere);
 			}
+		} else if (item.area() != null) {
+			targetFlatArea(client, player, item, itemName(category, item, player), walkThere);
 		} else if (category == ScannerCategory.MARKERS && !isLiveBlockMarker(player.level(), item.blockPos())) {
 			targetMarkerSpot(client, player, item.blockPos(), itemName(category, item, player), walkThere);
 		} else {
@@ -698,6 +763,24 @@ public final class ScannerController {
 			return;
 		}
 		aimOnceAtBlock(client, player, pos, name);
+	}
+
+	/**
+	 * Walking to a flat area goes to the exact cell standing on its centre block, the way Build
+	 * Mode's walk-to-cursor goes into its cursor cell (see {@link AutoWalkController#startExact}) -
+	 * "stand adjacent" could otherwise stop short of the middle. The cell above the centre block
+	 * is clear by construction (see {@link #scanFlatAreas}). Arriving only re-focuses the entry:
+	 * there is nothing to turn and face when you are standing on it. Without walking it just aims
+	 * at the centre block.
+	 */
+	private static void targetFlatArea(Minecraft client, LocalPlayer player, ScannerItem item, Component name, boolean walkThere) {
+		BlockPos center = item.blockPos();
+		if (walkThere) {
+			AutoWalkController.startExact(client, player, center.above(), name, () -> rescanAndRefocus(player,
+					rescanned -> rescanned.area() != null && rescanned.area().contains(center)));
+			return;
+		}
+		aimOnceAtBlock(client, player, center, name);
 	}
 
 	private static void targetEntity(Minecraft client, LocalPlayer player, Entity entity, boolean walkThere) {
@@ -1086,6 +1169,9 @@ public final class ScannerController {
 				name = name.copy().append(Component.literal(", ")).append(frameStatus);
 			}
 		}
+		if (item.area() != null) {
+			name = name.copy().append(Component.literal(", ")).append(describeSurfaces(item.area()));
+		}
 		if ((category == ScannerCategory.TERRAIN || markedBlock) && player.level().getBlockState(item.blockPos()).is(BlockTags.CLIMBABLE)) {
 			ClimbableRun run = climbableRun(player.level(), item.blockPos());
 			if (run != null) {
@@ -1096,6 +1182,24 @@ public final class ScannerController {
 			}
 		}
 		return Component.translatable("united_minecraft.narrate.scanner_item", name, distance, direction);
+	}
+
+	/**
+	 * "on Grass Block" for a single surface, "on Grass Block, Dirt, Gravel" for a mix, most
+	 * common first. Past {@link #MAX_SURFACES_NARRATED} the rest are summed up as a count - a
+	 * patchwork area would otherwise read out half the palette.
+	 */
+	private static Component describeSurfaces(FlatArea area) {
+		List<Block> surfaces = area.surfaces();
+		Component list = Component.empty();
+		for (int i = 0; i < Math.min(surfaces.size(), MAX_SURFACES_NARRATED); i++) {
+			list = list.copy().append(Component.literal(i == 0 ? "" : ", ")).append(surfaces.get(i).getName());
+		}
+		if (surfaces.size() > MAX_SURFACES_NARRATED) {
+			list = list.copy().append(Component.literal(", ")).append(Component.translatable(
+					"united_minecraft.narrate.flat_area_more_surfaces", surfaces.size() - MAX_SURFACES_NARRATED));
+		}
+		return Component.translatable("united_minecraft.narrate.flat_area_surface", list);
 	}
 
 	/** {@link #describeItem} plus "item N of M" - used when cycling ({@link #stepItem}/{@link #stepItemSameType}), not on category select. */
@@ -1853,7 +1957,8 @@ public final class ScannerController {
 			// changes how many entries get reported, never whether any given block qualifies.
 			case TERRAIN -> scanBlocksAny(player, (pos, state) ->
 					(state.is(Blocks.WATER) || state.is(Blocks.LAVA)) && OreDetection.isExposed(level, fastAccess::getBlockState, pos, eye))
-					|| scanBlocksAny(player, (pos, state) -> state.is(BlockTags.CLIMBABLE));
+					|| scanBlocksAny(player, (pos, state) -> state.is(BlockTags.CLIMBABLE))
+					|| !scanFlatAreas(player).isEmpty();
 			case CROPS -> scanBlocksAny(player, (pos, state) -> cropMatches(state.getBlock()));
 			case SEARCH -> !searchTerm.isBlank() && scanBlocksAny(player, (pos, state) -> !state.isAir()
 					&& searchMatches().contains(state.getBlock())
@@ -1992,8 +2097,97 @@ public final class ScannerController {
 	private static List<ScannerItem> scanTerrain(LocalPlayer player) {
 		List<ScannerItem> results = new ArrayList<>(scanLiquids(player));
 		results.addAll(scanClimbable(player));
+		results.addAll(scanFlatAreas(player));
 		results.sort(Comparator.comparingDouble(ScannerItem::distance));
 		return results;
+	}
+
+	/**
+	 * Level, open ground at least {@link #flatAreaSize} across, within {@link #FLAT_AREA_RANGE}
+	 * blocks - empty until the player has asked for a size. Walks each column once, bottom to
+	 * top, marking every height where there is solid ground with two clear blocks above it, then
+	 * hands the per-height maps to {@link FlatAreaFinder}. Plants and snow count as clear (you
+	 * can build over them); trees, water, lava, leaves, campfires and magma do not. Only loaded
+	 * chunks are looked at, so with a render distance under 64 blocks the search simply reaches
+	 * as far as the world does.
+	 *
+	 * <p>Each result is reported at the centre block of its area, with its size in the label
+	 * ("12 by 9 flat area") and what its surface is made of in {@link FlatArea#surfaces}.
+	 */
+	private static List<ScannerItem> scanFlatAreas(LocalPlayer player) {
+		int[] size = flatAreaSize;
+		if (size == null) {
+			return List.of();
+		}
+		Level level = player.level();
+		BlockPos origin = player.blockPosition();
+		int span = FLAT_AREA_RANGE * 2 + 1;
+		int minX = origin.getX() - FLAT_AREA_RANGE;
+		int minZ = origin.getZ() - FLAT_AREA_RANGE;
+		int minY = Math.max(level.getMinY(), origin.getY() - FLAT_AREA_VERTICAL_RANGE);
+		int maxY = Math.min(level.getMaxY(), origin.getY() + FLAT_AREA_VERTICAL_RANGE);
+
+		FastBlockAccess fastAccess = new FastBlockAccess(level);
+		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+		Map<Integer, boolean[]> floors = new HashMap<>();
+		for (int x = minX; x < minX + span; x++) {
+			for (int z = minZ; z < minZ + span; z++) {
+				if (fastAccess.chunkAt(x >> 4, z >> 4) == null) {
+					continue;
+				}
+				// standY is the block a player would stand in, once a ground block has been seen
+				// directly under it; clearRun counts the clear blocks since, two being a body's worth.
+				int standY = Integer.MIN_VALUE;
+				int clearRun = 0;
+				for (int y = minY; y <= maxY; y++) {
+					BlockState state = fastAccess.getBlockState(pos.set(x, y, z));
+					boolean fluid = !state.getFluidState().isEmpty();
+					if (state.isAir() || (!fluid && state.getCollisionShape(level, pos).isEmpty())) {
+						if (standY != Integer.MIN_VALUE && ++clearRun == 2) {
+							floors.computeIfAbsent(standY, k -> new boolean[span * span])[(z - minZ) * span + (x - minX)] = true;
+							standY = Integer.MIN_VALUE;
+						}
+					} else if (!fluid && state.isFaceSturdy(level, pos, Direction.UP)
+							&& !state.is(BlockTags.LEAVES) && !state.is(BlockTags.CAMPFIRES) && !state.is(Blocks.MAGMA_BLOCK)) {
+						standY = y + 1;
+						clearRun = 0;
+					} else {
+						standY = Integer.MIN_VALUE;
+						clearRun = 0;
+					}
+				}
+			}
+		}
+
+		Vec3 eye = player.getEyePosition();
+		List<ScannerItem> results = new ArrayList<>();
+		for (FlatAreaFinder.Area area : FlatAreaFinder.find(floors, span, span, size[0], size[1], 64)) {
+			int areaMinX = minX + area.x();
+			int areaMinZ = minZ + area.z();
+			int groundY = area.y() - 1;
+			// An even side has no single middle block; this is the lower of the two.
+			BlockPos center = new BlockPos(areaMinX + (area.width() - 1) / 2, groundY, areaMinZ + (area.depth() - 1) / 2);
+
+			Map<Block, Integer> surfaceCounts = new HashMap<>();
+			for (int x = areaMinX; x < areaMinX + area.width(); x++) {
+				for (int z = areaMinZ; z < areaMinZ + area.depth(); z++) {
+					surfaceCounts.merge(fastAccess.getBlockState(pos.set(x, groundY, z)).getBlock(), 1, Integer::sum);
+				}
+			}
+			// Ties broken by id so the same area narrates its surfaces in the same order every scan.
+			List<Block> surfaces = surfaceCounts.entrySet().stream()
+					.sorted(Comparator.<Map.Entry<Block, Integer>>comparingInt(entry -> -entry.getValue())
+							.thenComparing(entry -> BuiltInRegistries.BLOCK.getKey(entry.getKey()).toString()))
+					.map(Map.Entry::getKey)
+					.toList();
+
+			String label = Component.translatable("united_minecraft.narrate.flat_area",
+					Math.max(area.width(), area.depth()), Math.min(area.width(), area.depth())).getString();
+			results.add(new ScannerItem(center, null, eye.distanceTo(Vec3.atCenterOf(center)), label,
+					new FlatArea(areaMinX, areaMinZ, area.width(), area.depth(), groundY, surfaces)));
+		}
+		results.sort(Comparator.comparingDouble(ScannerItem::distance));
+		return results.size() > FLAT_AREA_MAX_RESULTS ? new ArrayList<>(results.subList(0, FLAT_AREA_MAX_RESULTS)) : results;
 	}
 
 	/**
@@ -2502,6 +2696,22 @@ public final class ScannerController {
 	 * derive it from. Every other category derives its narrated name from the live
 	 * block/entity, with any player-assigned name applied on top in {@link #itemName}.
 	 */
-	private record ScannerItem(BlockPos blockPos, Entity entity, double distance, String label) {
+	private record ScannerItem(BlockPos blockPos, Entity entity, double distance, String label, FlatArea area) {
+		ScannerItem(BlockPos blockPos, Entity entity, double distance, String label) {
+			this(blockPos, entity, distance, label, null);
+		}
+	}
+
+	/**
+	 * What a flat-area Terrain entry knows beyond its centre block (its {@link
+	 * ScannerItem#blockPos()}): the rectangle's extent, for recognising it again after a re-scan,
+	 * and the blocks that make up its surface, most common first.
+	 */
+	private record FlatArea(int minX, int minZ, int width, int depth, int groundY, List<Block> surfaces) {
+		boolean contains(BlockPos pos) {
+			return pos.getY() == groundY
+					&& pos.getX() >= minX && pos.getX() < minX + width
+					&& pos.getZ() >= minZ && pos.getZ() < minZ + depth;
+		}
 	}
 }

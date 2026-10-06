@@ -152,6 +152,15 @@ navigation without needing to see or aim at them.
   leading back up before you commit to climbing it. Selecting one with Enter (or
   Shift+Enter to walk there first) faces you squarely at it, ready to climb, the
   same targeting every other block category already gets.
+- Terrain can also find flat places to build. Shift+U while Terrain is the selected
+  category (instead of naming, which it does for every other category) asks for a size - "8" for
+  8 by 8, or "8x12" - and adds every level, open area at least that big within 64 blocks to the
+  list, nearest first, each narrated with its actual size and what its surface is made of, most
+  common first ("12 by 9 flat area, on Grass Block, Dirt"). Flat means one height all the way
+  across: plants and snow don't break it, but trees, water, lava and steps do. Each is reported
+  at its centre block (the lower middle one when a side is even), and Shift+Enter walks you
+  onto exactly that block. Enter a blank size to switch it off again. Only terrain your game has
+  loaded is searched.
 - Search finds every visible block whose name matches a term you type - Shift+U
   while it's the selected category (instead of naming, which it does for every
   other category) opens a prompt for the term, then finds anything nearby whose
