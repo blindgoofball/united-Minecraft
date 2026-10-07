@@ -205,7 +205,7 @@ public final class CreativeInventoryController {
 				clickHotbarSlot(screen, ContainerInput.QUICK_MOVE, 0);
 			} else if (ClientKeyBindings.CONTAINER_DESCRIBE_SLOT.current().matches(event)) {
 				describeHotbarFocus(screen);
-			} else {
+			} else if (!jumpToLetterInHotbar(screen, event)) {
 				return true;
 			}
 			return false;
@@ -232,10 +232,60 @@ public final class CreativeInventoryController {
 			pickUpOrPlace(screen, true);
 		} else if (ClientKeyBindings.CONTAINER_DESCRIBE_SLOT.current().matches(event)) {
 			describeCurrent(screen);
-		} else {
+		} else if (!jumpToLetterInGrid(screen, event)) {
 			return true;
 		}
 		return false;
+	}
+
+	/**
+	 * First-letter navigation across the tab's whole item list (not just the 45 visible slots),
+	 * wrapping around so repeating a letter cycles through every match - the same behavior
+	 * {@link MenuAccessibilityController} offers in ordinary containers. Returns whether the key
+	 * was a letter and so has been consumed.
+	 */
+	private static boolean jumpToLetterInGrid(CreativeModeInventoryScreen screen, KeyEvent event) {
+		Character typed = MenuAccessibilityController.firstLetterOf(event);
+		if (typed == null) {
+			return false;
+		}
+		syncItems(screen);
+		int size = trackedItems.size();
+		for (int offset = 1; offset <= size; offset++) {
+			int candidate = Math.floorMod(index + offset, size);
+			if (MenuAccessibilityController.startsWithLetter(trackedItems.get(candidate), typed)) {
+				index = candidate;
+				narrateCurrent(screen, false);
+				return true;
+			}
+		}
+		narrateNoLetterMatch(typed);
+		return true;
+	}
+
+	/** Same as {@link #jumpToLetterInGrid}, over the nine hotbar slots. */
+	private static boolean jumpToLetterInHotbar(CreativeModeInventoryScreen screen, KeyEvent event) {
+		Character typed = MenuAccessibilityController.firstLetterOf(event);
+		if (typed == null) {
+			return false;
+		}
+		List<Slot> slots = hotbarSlots(screen);
+		for (int offset = 1; offset <= slots.size(); offset++) {
+			int candidate = Math.floorMod(hotbarIndex + offset, slots.size());
+			ItemStack stack = slots.get(candidate).getItem();
+			if (!stack.isEmpty() && MenuAccessibilityController.startsWithLetter(stack, typed)) {
+				hotbarIndex = candidate;
+				narrateHotbarFocus(screen);
+				return true;
+			}
+		}
+		narrateNoLetterMatch(typed);
+		return true;
+	}
+
+	private static void narrateNoLetterMatch(char letter) {
+		Minecraft.getInstance().getNarrator().saySystemNow(Component.translatable(
+				"united_minecraft.narrate.menu_no_item_with_letter", String.valueOf(letter).toUpperCase(java.util.Locale.ROOT)));
 	}
 
 	/** Space, in the item grid: narrates {@link BlockDescriptions#describe} for the focused item. */

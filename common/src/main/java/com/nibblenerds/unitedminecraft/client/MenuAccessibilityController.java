@@ -568,11 +568,7 @@ public final class MenuAccessibilityController {
 	 * ClientKeyBindings#CONTAINER_DROP}. Ctrl/Alt/Meta combinations are ignored.
 	 */
 	private static boolean handleFirstLetterJump(AbstractContainerScreen<?> screen, LocalPlayer player, KeyEvent event) {
-		// Normalized so Caps Lock / Num Lock (which GLFW reports as modifier bits) don't disable this.
-		if ((Keybind.normalizeModifiers(event.modifiers()) & ~InputConstants.MOD_SHIFT) != 0) {
-			return false;
-		}
-		Character typed = letterFor(event);
+		Character typed = firstLetterOf(event);
 		if (typed == null) {
 			return false;
 		}
@@ -597,6 +593,18 @@ public final class MenuAccessibilityController {
 	}
 
 	/**
+	 * The letter for a plain (optionally Shifted) letter key press, or null for anything else.
+	 * Modifiers are normalized so Caps Lock / Num Lock (which GLFW reports as modifier bits)
+	 * don't disable first-letter navigation. Shared with {@link CreativeInventoryController}.
+	 */
+	static Character firstLetterOf(KeyEvent event) {
+		if ((Keybind.normalizeModifiers(event.modifiers()) & ~InputConstants.MOD_SHIFT) != 0) {
+			return null;
+		}
+		return letterFor(event);
+	}
+
+	/**
 	 * The letter a key press types on the player's actual keyboard layout (GLFW's key codes are
 	 * US-QWERTY positions, so on AZERTY the key coded as A types Q); the key's display name is
 	 * the character the layout gives it. Falls back to the key code when that isn't a single letter.
@@ -613,7 +621,7 @@ public final class MenuAccessibilityController {
 		return null;
 	}
 
-	private static boolean startsWithLetter(ItemStack stack, char letter) {
+	static boolean startsWithLetter(ItemStack stack, char letter) {
 		String name = stack.getHoverName().getString().strip();
 		return !name.isEmpty() && Character.toLowerCase(name.charAt(0)) == letter;
 	}
