@@ -267,9 +267,12 @@ public final class ClientKeyBindings {
 	/** Discards whatever's picked up on the cursor in Creative (see {@link MenuAccessibilityController#discardCarriedItem}); everywhere else it drops the whole carried stack. */
 	public static final KeybindAction CONTAINER_DISCARD = new KeybindAction(
 			"container_discard", KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_DELETE, 0), KeybindContext.CONTAINER_SCREEN);
-	/** Drops the focused slot's item (Ctrl: the whole stack). Not vanilla's drop key, which is a plain letter and so is taken by first-letter navigation. */
+	/** Drops one item from the focused slot. Not vanilla's drop key, which is a plain letter and so is taken by first-letter navigation. */
 	public static final KeybindAction CONTAINER_DROP = new KeybindAction(
 			"container_drop", KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_BACKSPACE, 0), KeybindContext.CONTAINER_SCREEN);
+	/** Drops the focused slot's whole stack - what Ctrl+Q does in vanilla. */
+	public static final KeybindAction CONTAINER_DROP_STACK = new KeybindAction(
+			"container_drop_stack", KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_BACKSPACE, InputConstants.MOD_CONTROL), KeybindContext.CONTAINER_SCREEN);
 	/**
 	 * Page Down / Page Up inside container screens: steps to the next / previous thing of whatever kind
 	 * the current spot has - a recipe category in the Recipe Book section, a stack within a focused bundle

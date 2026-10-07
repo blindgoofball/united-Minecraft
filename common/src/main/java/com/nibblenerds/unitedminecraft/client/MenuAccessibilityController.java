@@ -437,8 +437,6 @@ public final class MenuAccessibilityController {
 			return true;
 		}
 
-		boolean ctrlHeld = (event.modifiers() & InputConstants.MOD_CONTROL) != 0;
-
 		// Escape while dragging backs out of the drag instead of closing the screen - the modifier
 		// is still held at that point, so letting go afterwards drops nothing.
 		if (dragging && event.isEscape()) {
@@ -550,7 +548,7 @@ public final class MenuAccessibilityController {
 			return false;
 		}
 
-		if (handleHotbarSwapOrDrop(screen, player, event, ctrlHeld)) {
+		if (handleHotbarSwapOrDrop(screen, player, event)) {
 			return false;
 		}
 
@@ -570,12 +568,15 @@ public final class MenuAccessibilityController {
 	 * ClientKeyBindings#CONTAINER_DROP}. Ctrl/Alt/Meta combinations are ignored.
 	 */
 	private static boolean handleFirstLetterJump(AbstractContainerScreen<?> screen, LocalPlayer player, KeyEvent event) {
-		if ((event.modifiers() & ~InputConstants.MOD_SHIFT) != 0
-				|| event.key() < InputConstants.KEY_A || event.key() > InputConstants.KEY_Z) {
+		// Normalized so Caps Lock / Num Lock (which GLFW reports as modifier bits) don't disable this.
+		if ((Keybind.normalizeModifiers(event.modifiers()) & ~InputConstants.MOD_SHIFT) != 0) {
 			return false;
 		}
-
-		char letter = (char) ('a' + event.key() - InputConstants.KEY_A);
+		Character typed = letterFor(event);
+		if (typed == null) {
+			return false;
+		}
+		char letter = typed;
 
 		List<Slot> sectionSlots = sectionSlots(screen.getMenu(), player, currentSection);
 		if (sectionSlots.isEmpty()) {
@@ -593,6 +594,23 @@ public final class MenuAccessibilityController {
 		Minecraft.getInstance().getNarrator().saySystemNow(
 				Component.translatable("united_minecraft.narrate.menu_no_item_with_letter", String.valueOf(letter).toUpperCase(Locale.ROOT)));
 		return true;
+	}
+
+	/**
+	 * The letter a key press types on the player's actual keyboard layout (GLFW's key codes are
+	 * US-QWERTY positions, so on AZERTY the key coded as A types Q); the key's display name is
+	 * the character the layout gives it. Falls back to the key code when that isn't a single letter.
+	 */
+	private static Character letterFor(KeyEvent event) {
+		String name = InputConstants.getKey(event).getDisplayName().getString();
+		if (name.codePointCount(0, name.length()) == 1) {
+			int cp = name.codePointAt(0);
+			return Character.isLetter(cp) && cp <= Character.MAX_VALUE ? Character.toLowerCase((char) cp) : null;
+		}
+		if (event.key() >= InputConstants.KEY_A && event.key() <= InputConstants.KEY_Z) {
+			return (char) ('a' + event.key() - InputConstants.KEY_A);
+		}
+		return null;
 	}
 
 	private static boolean startsWithLetter(ItemStack stack, char letter) {
@@ -661,16 +679,20 @@ public final class MenuAccessibilityController {
 	 * fires with an empty cursor (swapping while carrying something is undefined there), drop
 	 * only fires on a non-empty slot.
 	 */
-	private static boolean handleHotbarSwapOrDrop(AbstractContainerScreen<?> screen, LocalPlayer player, KeyEvent event, boolean ctrlHeld) {
+	private static boolean handleHotbarSwapOrDrop(AbstractContainerScreen<?> screen, LocalPlayer player, KeyEvent event) {
 		AbstractContainerMenu menu = screen.getMenu();
 		Slot slot = currentSlot(menu);
 		if (slot == null) {
 			return false;
 		}
 
+		// Button 0 = drop one item, button 1 = drop the whole stack (vanilla's Q / Ctrl+Q).
 		if (slot.hasItem() && ClientKeyBindings.CONTAINER_DROP.current().matches(event)) {
-			// Button 0 = drop one item, button 1 (Ctrl held) = drop the whole stack.
-			click(screen, player, ContainerInput.THROW, ctrlHeld ? 1 : 0);
+			click(screen, player, ContainerInput.THROW, 0);
+			return true;
+		}
+		if (slot.hasItem() && ClientKeyBindings.CONTAINER_DROP_STACK.current().matches(event)) {
+			click(screen, player, ContainerInput.THROW, 1);
 			return true;
 		}
 
