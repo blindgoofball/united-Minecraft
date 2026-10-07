@@ -1388,6 +1388,11 @@ public final class BuildModeController {
 				message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_top_slab"));
 			}
 		}
+		// Generic on purpose: stairs, slabs, fences, trapdoors, chests, signs, and every other
+		// waterloggable block share this one property.
+		if (state.hasProperty(BlockStateProperties.WATERLOGGED) && state.getValue(BlockStateProperties.WATERLOGGED)) {
+			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_waterlogged"));
+		}
 		// Shared by DoorBlock, TrapDoorBlock, and FenceGateBlock alike - see their own OPEN
 		// fields, all of which just alias this one BlockStateProperties constant.
 		if (state.hasProperty(BlockStateProperties.OPEN) && state.getValue(BlockStateProperties.OPEN)) {
