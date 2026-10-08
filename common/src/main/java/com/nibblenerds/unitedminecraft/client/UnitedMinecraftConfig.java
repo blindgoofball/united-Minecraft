@@ -58,6 +58,8 @@ public final class UnitedMinecraftConfig {
 	public boolean preciseCoordinatesEnabled = false;
 	public boolean mountJumpCueEnabled = true;
 	public boolean modeToggleSoundsEnabled = true;
+	/** Play a short cue when another player's chat message arrives - see {@link ChatMessageSound}. */
+	public boolean chatSoundEnabled = true;
 	/** Percent; scales every short audio cue - see {@link CueVolume}. */
 	public int cueVolume = 100;
 	/** Narrate on-screen title and subtitle text - see {@link TitleNarrationController}. */

@@ -31,6 +31,7 @@
 		"FriendToastMixin",
 		"NowPlayingToastMixin",
 		"ChatOverlayNarrationMixin",
+		"ChatMessageSoundMixin",
 		"SoundBufferLibraryMixin",
 		"StructureVoiceChannelMixin"
 	],
