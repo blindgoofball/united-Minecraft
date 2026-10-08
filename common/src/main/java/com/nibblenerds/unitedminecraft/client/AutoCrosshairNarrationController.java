@@ -17,7 +17,8 @@ import net.minecraft.world.phys.Vec3;
  * reads blocks the same way turning to face a new direction already narrates the compass octant.
  * Edge-triggered on the block's type only, not its exact position or state, so sweeping across a
  * stretch of the same block (a stone wall, say) doesn't repeat its name for every step - only an
- * actual change to a different block narrates. Air is never narrated (just treated as "nothing
+ * actual change to a different block narrates (unless {@link
+ * UnitedMinecraftConfig#autoCrosshairRepeatSameBlock} is on, which narrates every new block cell). Air is never narrated (just treated as "nothing
  * targeted", same as being out of range entirely), since that's the common case while simply
  * looking around and would itself become the spam this feature exists to avoid - and, since
  * {@link #lastNarratedBlock} is only ever updated on an actual narration (not on every hit,
@@ -31,6 +32,7 @@ public final class AutoCrosshairNarrationController {
 	private static final double RANGE_BLOCKS = 6.0;
 
 	private static Block lastNarratedBlock;
+	private static BlockPos lastNarratedPos;
 
 	private AutoCrosshairNarrationController() {
 	}
@@ -45,6 +47,7 @@ public final class AutoCrosshairNarrationController {
 		config.autoCrosshairNarrationEnabled = !config.autoCrosshairNarrationEnabled;
 		UnitedMinecraftConfig.save();
 		lastNarratedBlock = null;
+		lastNarratedPos = null;
 		client.getNarrator().saySystemNow(Component.translatable(config.autoCrosshairNarrationEnabled
 				? "united_minecraft.narrate.auto_crosshair_narration_on"
 				: "united_minecraft.narrate.auto_crosshair_narration_off"));
@@ -53,22 +56,40 @@ public final class AutoCrosshairNarrationController {
 	/** Clears per-session narration state only - {@link #isEnabled()} is a persistent preference, not session state. */
 	public static void reset() {
 		lastNarratedBlock = null;
+		lastNarratedPos = null;
 	}
 
 	public static void tick(Minecraft client, LocalPlayer player) {
 		if (!isEnabled()) {
 			return;
 		}
-		Block current = lookedAtBlock(player);
-		if (current == null || current == lastNarratedBlock) {
+		BlockPos pos = lookedAtPos(player);
+		if (pos == null) {
+			return;
+		}
+		Block current = player.level().getBlockState(pos).getBlock();
+		if (!shouldNarrate(current == lastNarratedBlock, pos, lastNarratedPos, UnitedMinecraftConfig.get().autoCrosshairRepeatSameBlock)) {
 			return;
 		}
 		client.getNarrator().saySystemNow(current.getName());
 		lastNarratedBlock = current;
+		lastNarratedPos = pos;
+	}
+
+	/**
+	 * By default only a change of block type narrates. With {@code repeatSameBlock}, moving the
+	 * crosshair onto a different block of the same type narrates too, so every block swept across
+	 * is announced.
+	 */
+	static boolean shouldNarrate(boolean sameTypeAsLast, BlockPos pos, BlockPos lastPos, boolean repeatSameBlock) {
+		if (!sameTypeAsLast) {
+			return true;
+		}
+		return repeatSameBlock && !pos.equals(lastPos);
 	}
 
 	/** Null for air, a fluid-only hit, or nothing within range - all narrated the same way: not at all. */
-	private static Block lookedAtBlock(LocalPlayer player) {
+	private static BlockPos lookedAtPos(LocalPlayer player) {
 		Level level = player.level();
 		Vec3 from = player.getEyePosition();
 		Vec3 to = from.add(player.getLookAngle().scale(RANGE_BLOCKS));
@@ -80,6 +101,6 @@ public final class AutoCrosshairNarrationController {
 		}
 		BlockPos pos = hit.getBlockPos();
 		BlockState state = level.getBlockState(pos);
-		return state.isAir() ? null : state.getBlock();
+		return state.isAir() ? null : pos.immutable();
 	}
 }

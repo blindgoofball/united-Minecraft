@@ -595,6 +595,7 @@
 	"united_minecraft.settings_screen.mode_toggle_sounds_enabled": "Build/Combat Mode On/Off Sounds",
 	"united_minecraft.settings_screen.cue_volume": "Audio Cue Volume (percent)",
 	"united_minecraft.settings_screen.chat_sound_enabled": "Chat Message Sound",
+	"united_minecraft.settings_screen.auto_crosshair_repeat_same_block": "Auto Crosshair: Repeat For Same Block Type",
 	"united_minecraft.settings_screen.title_narration_enabled": "Narrate On-Screen Titles",
 	"united_minecraft.settings_screen.elytra_awareness_enabled": "Elytra Flight Alerts",
 	"united_minecraft.narrate.eye_heading": "Eye of Ender heading %s",

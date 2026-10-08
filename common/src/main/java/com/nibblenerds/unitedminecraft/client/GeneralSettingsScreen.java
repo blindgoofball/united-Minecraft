@@ -22,6 +22,8 @@ final class GeneralSettingsScreen extends SettingsListScreen {
 				config.titleNarrationEnabled, value -> config.titleNarrationEnabled = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.chat_sound_enabled",
 				config.chatSoundEnabled, value -> config.chatSoundEnabled = value);
+		y = addToggle(x, y, "united_minecraft.settings_screen.auto_crosshair_repeat_same_block",
+				config.autoCrosshairRepeatSameBlock, value -> config.autoCrosshairRepeatSameBlock = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.durability_awareness_enabled",
 				config.durabilityAwarenessEnabled, value -> config.durabilityAwarenessEnabled = value);
 		y = addSlider(x, y, 1.0, 50.0, 1.0, config.durabilityWarningThreshold,

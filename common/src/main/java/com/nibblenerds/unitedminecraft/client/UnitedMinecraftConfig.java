@@ -55,6 +55,8 @@ public final class UnitedMinecraftConfig {
 	public boolean navRadarEnabled = false;
 	public boolean miningRadarEnabled = false;
 	public boolean autoCrosshairNarrationEnabled = false;
+	/** Auto crosshair narration also speaks when the crosshair moves to another block of the same type. */
+	public boolean autoCrosshairRepeatSameBlock = false;
 	public boolean preciseCoordinatesEnabled = false;
 	public boolean mountJumpCueEnabled = true;
 	public boolean modeToggleSoundsEnabled = true;
