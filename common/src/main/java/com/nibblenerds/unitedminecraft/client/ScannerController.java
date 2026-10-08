@@ -605,9 +605,9 @@ public final class ScannerController {
 			for (int step = 1; step < CATEGORIES.length; step++) {
 				int candidateIndex = Math.floorMod(categoryIndex + direction * step, CATEGORIES.length);
 				ScannerCategory candidate = CATEGORIES[candidateIndex];
-				// isSkippablyEmpty never treats Search as skippable regardless of its contents
-				// (see that method's doc) - mirror that here rather than probing it at all.
-				if (candidate == ScannerCategory.SEARCH || categoryHasAny(candidate, player)) {
+				// isSkippablyEmpty never treats Search or Terrain as skippable regardless of their
+				// contents (see that method's doc) - mirror that here rather than probing them.
+				if (isNeverSkipped(candidate) || categoryHasAny(candidate, player)) {
 					categoryIndex = candidateIndex;
 					category = candidate;
 					items = scan(candidate, player);
@@ -651,12 +651,21 @@ public final class ScannerController {
 
 	/**
 	 * Whether {@link #switchCategory} should treat {@code category} as skippable under {@code
-	 * scannerSkipEmptyCategories} - true empty results everywhere except Search, whose "no term
-	 * entered yet" state is its own valid narration (see {@link #openSearchPrompt}), not the
-	 * "None found" this setting exists to skip past.
+	 * scannerSkipEmptyCategories} - true empty results everywhere except {@link #isNeverSkipped}
+	 * categories.
 	 */
 	private static boolean isSkippablyEmpty(ScannerCategory category, List<ScannerItem> items) {
-		return category != ScannerCategory.SEARCH && items.isEmpty();
+		return !isNeverSkipped(category) && items.isEmpty();
+	}
+
+	/**
+	 * Categories that are useful even with nothing listed, so cycling always lands on them: Search,
+	 * whose "no term entered yet" state is its own valid narration (see {@link #openSearchPrompt}),
+	 * and Terrain, which hosts the flat-area finder that has to stay reachable wherever the
+	 * player is standing.
+	 */
+	private static boolean isNeverSkipped(ScannerCategory category) {
+		return category == ScannerCategory.SEARCH || category == ScannerCategory.TERRAIN;
 	}
 
 	private static void stepItem(Minecraft client, LocalPlayer player, int direction) {
