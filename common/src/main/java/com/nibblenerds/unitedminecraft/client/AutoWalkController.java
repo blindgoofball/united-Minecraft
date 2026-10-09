@@ -135,7 +135,7 @@ public final class AutoWalkController {
 			cancel(client, player);
 		}
 
-		Path path = ClientPathfinding.computePath(player, target, MAX_PATH_LENGTH, reachRange);
+		Path path = ClientPathfinding.computePath(player, target, MAX_PATH_LENGTH, reachRange, UnitedMinecraftConfig.get().autoWalkSwim);
 		if (path == null || path.getNodeCount() == 0) {
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.autowalk_unreachable"));
 			return;
@@ -250,7 +250,10 @@ public final class AutoWalkController {
 		player.setOldRot();
 
 		// Jumping also climbs, which is how the player gets off the top of a ladder onto a ledge.
-		boolean needsJump = (player.onGround() || player.onClimbable()) && nextPos.getY() > Mth.floor(player.getY() + 0.1);
+		// Jump is also vanilla's swim-up input: held the whole way across, it keeps the player
+		// afloat at the surface (and gets them up onto the bank at the far side).
+		boolean swimming = player.isInWater() && UnitedMinecraftConfig.get().autoWalkSwim;
+		boolean needsJump = swimming || (player.onGround() || player.onClimbable()) && nextPos.getY() > Mth.floor(player.getY() + 0.1);
 		boolean sprint = client.options.keySprint.isDown() || UnitedMinecraftConfig.get().autoWalkAutoSprint;
 		((RouteInput) player.input).setWalking(needsJump, sprint);
 	}
@@ -295,7 +298,7 @@ public final class AutoWalkController {
 	/** Recomputes the path to the original target from the player's current position - true (and swaps {@link #currentPath}) only if one was actually found. */
 	private static boolean tryRepath(LocalPlayer player) {
 		BlockPos target = currentPath.getTarget();
-		Path fresh = ClientPathfinding.computePath(player, target, MAX_PATH_LENGTH, reachRange);
+		Path fresh = ClientPathfinding.computePath(player, target, MAX_PATH_LENGTH, reachRange, UnitedMinecraftConfig.get().autoWalkSwim);
 		if (fresh == null || fresh.getNodeCount() == 0) {
 			return false;
 		}

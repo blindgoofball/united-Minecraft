@@ -52,6 +52,8 @@ public final class UnitedMinecraftConfig {
 	public boolean scannerSkipEmptyCategories = false;
 	public boolean scannerAutoLockAfterWalk = false;
 	public boolean autoWalkAutoSprint = false;
+	/** Auto-Walk may swim across water, but only along a route that reaches the target - see {@link ClientPathfinding}. */
+	public boolean autoWalkSwim = true;
 	public boolean navRadarEnabled = false;
 	public boolean miningRadarEnabled = false;
 	public boolean autoCrosshairNarrationEnabled = false;

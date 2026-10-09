@@ -32,6 +32,8 @@ final class ModesMovementSettingsScreen extends SettingsListScreen {
 				config.eyeOfEnderCuesEnabled, value -> config.eyeOfEnderCuesEnabled = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.auto_walk_auto_sprint",
 				config.autoWalkAutoSprint, value -> config.autoWalkAutoSprint = value);
+		y = addToggle(x, y, "united_minecraft.settings_screen.auto_walk_swim",
+				config.autoWalkSwim, value -> config.autoWalkSwim = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.mount_jump_cue_enabled",
 				config.mountJumpCueEnabled, value -> config.mountJumpCueEnabled = value);
 

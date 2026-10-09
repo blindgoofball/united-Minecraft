@@ -42,6 +42,17 @@ import net.minecraft.world.level.pathfinder.WalkNodeEvaluator;
  * non-open cell below. {@link AutoWalkController} is what actually drives the climb.
  */
 final class AutoWalkNodeEvaluator extends WalkNodeEvaluator {
+	/**
+	 * With {@code swim}, water is crossed at the surface (vanilla's "can float" mode, the one boats'
+	 * passengers and swimming mobs use) instead of by walking along the bottom, which is what
+	 * vanilla's land pathfinding does by default and which is no use to a player who can't
+	 * actually walk the bed of deep water. {@link ClientPathfinding} only uses such a route when it
+	 * reaches the target, so the player never swims somewhere they can't get out of.
+	 */
+	AutoWalkNodeEvaluator(boolean swim) {
+		setCanFloat(swim);
+	}
+
 	/** Whether a block state is something Auto-Walk can climb. Scaffolding is left out: it's solid from the side and is climbed differently. */
 	static boolean isClimbable(BlockState state) {
 		return state.is(BlockTags.CLIMBABLE)

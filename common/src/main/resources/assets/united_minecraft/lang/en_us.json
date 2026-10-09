@@ -591,6 +591,7 @@
 	"united_minecraft.settings_screen.scanner_skip_empty_categories": "Scanner: Skip Empty Categories",
 	"united_minecraft.settings_screen.scanner_auto_lock_after_walk": "Scanner: Auto-Lock After Walking to a Mob",
 	"united_minecraft.settings_screen.auto_walk_auto_sprint": "Auto-Walk: Always Sprint",
+	"united_minecraft.settings_screen.auto_walk_swim": "Auto-Walk: Swim Across Water When It Can Get Out",
 	"united_minecraft.settings_screen.precise_coordinates_enabled": "Precise Coordinates (One Decimal Place)",
 	"united_minecraft.settings_screen.mode_toggle_sounds_enabled": "Build/Combat Mode On/Off Sounds",
 	"united_minecraft.settings_screen.cue_volume": "Audio Cue Volume (percent)",
