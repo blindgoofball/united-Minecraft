@@ -25,4 +25,14 @@ final class RouteInput extends ClientInput {
 		this.keyPresses = new Input(true, false, false, false, jump, false, sprint);
 		this.moveVector = new Vec2(0.0f, 1.0f);
 	}
+
+	/**
+	 * Inside a ladder or vine: jump climbs, and so does pushing forward into a wall, so descending
+	 * means holding nothing at all (the player slides down on their own) and {@code forward} is
+	 * only for nudging toward the cell's centre.
+	 */
+	void setClimbing(boolean up, boolean forward) {
+		this.keyPresses = new Input(forward, false, false, false, up, false, false);
+		this.moveVector = new Vec2(0.0f, forward ? 1.0f : 0.0f);
+	}
 }

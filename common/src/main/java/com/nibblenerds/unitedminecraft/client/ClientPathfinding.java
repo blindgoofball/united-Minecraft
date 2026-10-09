@@ -18,7 +18,7 @@ import net.minecraft.world.level.pathfinder.PathFinder;
  * {@link AutoWalkController} (the scanner's "walk to it") and {@link MovementAssistController}
  * (checking whether an obstacle can be routed around). See {@link AutoWalkController}'s class
  * doc for why this needs a throwaway, never-spawned {@link Mob}, and {@link
- * TrapdoorAwareNodeEvaluator}'s own doc for why the node evaluator isn't vanilla's plain {@code
+ * AutoWalkNodeEvaluator}'s own doc for why the node evaluator isn't vanilla's plain {@code
  * WalkNodeEvaluator}.
  */
 final class ClientPathfinding {
@@ -49,7 +49,7 @@ final class ClientPathfinding {
 				Math.max(playerPos.getZ(), target.getZ()) + SEARCH_MARGIN);
 		PathNavigationRegion region = new PathNavigationRegion(level, regionStart, regionEnd);
 
-		PathFinder finder = new PathFinder(new TrapdoorAwareNodeEvaluator(), 4096);
+		PathFinder finder = new PathFinder(new AutoWalkNodeEvaluator(), 4096);
 		Path path = finder.findPath(region, ghost, Set.of(target), maxPathLength, reachRange, 1.0f);
 		ghost.discard();
 		return path;

@@ -65,6 +65,11 @@ public final class AutoWalkController {
 	// #startExact}.
 	private static final int EXACT_REACH_RANGE = 0;
 	private static final double NODE_ARRIVAL_DISTANCE_SQR = 0.5 * 0.5;
+	// How close to a ladder cell's level counts as having reached it, going up / down. Climbing
+	// up overshoots a little each tick, sliding down is slower than that.
+	private static final double CLIMB_ARRIVAL_UP = 0.1;
+	private static final double CLIMB_ARRIVAL_DOWN = 0.3;
+	private static final double CLIMB_CENTRE_DISTANCE_SQR = 0.2 * 0.2;
 
 	private static Path currentPath;
 	private static ClientInput previousInput;
@@ -164,8 +169,16 @@ public final class AutoWalkController {
 		BlockPos nextPos = currentPath.getNextNodePos();
 		double dx = nextPos.getX() + 0.5 - player.getX();
 		double dz = nextPos.getZ() + 0.5 - player.getZ();
+		// Moving between two climbable cells (see AutoWalkNodeEvaluator): the leg is vertical, so
+		// "arrived" has to mean the right height too, not just the right column.
+		Level level = player.level();
+		boolean climbLeg = AutoWalkNodeEvaluator.isClimbable(level.getBlockState(nextPos))
+				&& AutoWalkNodeEvaluator.isClimbable(level.getBlockState(player.blockPosition()));
+		boolean climbingUp = climbLeg && nextPos.getY() > player.getY();
+		double dy = climbLeg ? nextPos.getY() - player.getY() : 0.0;
+		boolean atHeight = !climbLeg || (climbingUp ? dy <= CLIMB_ARRIVAL_UP : dy >= -CLIMB_ARRIVAL_DOWN);
 
-		if (dx * dx + dz * dz < NODE_ARRIVAL_DISTANCE_SQR) {
+		if (dx * dx + dz * dz < NODE_ARRIVAL_DISTANCE_SQR && atHeight) {
 			currentPath.advance();
 			STUCK.reset();
 			rePathAttempted = false;
@@ -203,13 +216,28 @@ public final class AutoWalkController {
 		// something's blocking the straight line the path assumed was clear (a mob shoved the
 		// player off course, a block got placed mid-walk, terrain changed). Try recomputing the
 		// path once from here before giving up outright.
-		if (STUCK.isStuck(Math.sqrt(dx * dx + dz * dz))) {
+		if (STUCK.isStuck(Math.sqrt(dx * dx + dz * dz) + Math.abs(dy))) {
 			if (!rePathAttempted && tryRepath(player)) {
 				rePathAttempted = true;
 				STUCK.reset();
 			} else {
 				finishStuck(client, player);
 			}
+			return;
+		}
+
+		if (climbLeg) {
+			// Close to the middle of the cell, stop steering: with no horizontal offset left the
+			// yaw is meaningless, and pushing forward into the wall would climb when we want to
+			// descend.
+			boolean offCentre = dx * dx + dz * dz > CLIMB_CENTRE_DISTANCE_SQR;
+			if (offCentre) {
+				float climbYaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
+				player.setYRot(climbYaw);
+				player.setYHeadRot(climbYaw);
+				player.setOldRot();
+			}
+			((RouteInput) player.input).setClimbing(climbingUp, offCentre);
 			return;
 		}
 
@@ -221,7 +249,8 @@ public final class AutoWalkController {
 		player.setYHeadRot(yaw);
 		player.setOldRot();
 
-		boolean needsJump = player.onGround() && nextPos.getY() > Mth.floor(player.getY() + 0.1);
+		// Jumping also climbs, which is how the player gets off the top of a ladder onto a ledge.
+		boolean needsJump = (player.onGround() || player.onClimbable()) && nextPos.getY() > Mth.floor(player.getY() + 0.1);
 		boolean sprint = client.options.keySprint.isDown() || UnitedMinecraftConfig.get().autoWalkAutoSprint;
 		((RouteInput) player.input).setWalking(needsJump, sprint);
 	}
