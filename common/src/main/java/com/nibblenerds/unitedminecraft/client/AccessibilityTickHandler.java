@@ -447,6 +447,9 @@ public final class AccessibilityTickHandler {
 			TrailController.narrate(client, player);
 		}
 
+		if (ClientKeyBindings.pressed(ClientKeyBindings.COPY_WORLD_SNAPSHOT)) {
+			WorldSnapshotBuilder.copyToClipboard(client, player);
+		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.ANGLE_ASSIST_CYCLE)) {
 			AngleAssistController.cycle(client);
 		}

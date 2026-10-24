@@ -129,6 +129,12 @@ public final class ClientKeyBindings {
 	/** Cycles Angle Assist: off, bridge, tunnel, staircase - see {@link AngleAssistController}. */
 	public static final KeybindAction ANGLE_ASSIST_CYCLE = new KeybindAction("angle_assist_cycle",
 			KeybindCategory.MOVEMENT_AND_MODES, new Keybind(InputConstants.KEY_G, InputConstants.MOD_ALT));
+	/**
+	 * Unassigned by default - experimental. Copies a text description of the surrounding world to
+	 * the clipboard, for pasting into a language model - see {@link WorldSnapshotBuilder}.
+	 */
+	public static final KeybindAction COPY_WORLD_SNAPSHOT =
+			new KeybindAction("copy_world_snapshot", KeybindCategory.GENERAL, Keybind.UNBOUND);
 	public static final KeybindAction TRAIL_MARK_START = new KeybindAction(
 			"trail_mark_start", KeybindCategory.MOVEMENT_AND_MODES, new Keybind(InputConstants.KEY_X, InputConstants.MOD_ALT));
 

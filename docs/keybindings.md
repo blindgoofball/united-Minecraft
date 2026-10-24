@@ -21,6 +21,7 @@ key or modifier combination in United Minecraft's own Keybindings screen
 | Shift+] / Shift+[ (F3 overlay open) | Next / previous debug overlay section |
 | F6 | Open United Minecraft Settings |
 | F7 | Swap Attack/Destroy and Place/Use between the mouse buttons and your other keys |
+| Unassigned | Experimental: copy a text snapshot of the surrounding world (terrain out to the loaded distance, water and lava falls, walls and ceiling, creatures) to the clipboard, to paste into a language model; bind it in the Keybindings screen |
 
 ## Scanner
 
