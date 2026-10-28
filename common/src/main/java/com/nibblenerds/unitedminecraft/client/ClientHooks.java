@@ -6,6 +6,7 @@ import com.nibblenerds.unitedminecraft.structure.StructuresNearbyPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.NarratorStatus;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.advancements.AdvancementsScreen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.input.KeyEvent;
@@ -72,6 +73,9 @@ public final class ClientHooks {
 		if (screen instanceof CreativeModeInventoryScreen creative) {
 			CreativeInventoryController.onScreenInit(creative);
 		}
+		if (screen instanceof AdvancementsScreen advancements) {
+			AdvancementsController.onScreenInit(advancements);
+		}
 	}
 
 	private static boolean narratorCheckDone;
@@ -109,6 +113,9 @@ public final class ClientHooks {
 		if (screen instanceof AbstractContainerScreen<?> container) {
 			MenuAccessibilityController.onScreenRemoved(container);
 		}
+		if (screen instanceof AdvancementsScreen) {
+			AdvancementsController.onScreenRemoved();
+		}
 	}
 
 	/**
@@ -131,6 +138,10 @@ public final class ClientHooks {
 		}
 		if (screen instanceof CreativeModeInventoryScreen creative
 				&& !CreativeInventoryController.handleKey(creative, event)) {
+			return false;
+		}
+		if (screen instanceof AdvancementsScreen advancements
+				&& !AdvancementsController.handleKey(advancements, event)) {
 			return false;
 		}
 		return true;
