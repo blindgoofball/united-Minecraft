@@ -27,7 +27,8 @@ narrates it, and locks the cursor's movement to that orientation.
   narrate it. Blocks receiving redstone power say so, and are silent otherwise.
   Stairs narrate a corner as a compass direction ("Northwest corner") and "Upside
   down" when on the underside of a block, both silent for a plain stair.
-  Waterlogged blocks are reported.
+  Waterlogged blocks are reported. Monster spawners and trial spawners say which mob
+  they spawn ("Spawns Zombie").
 - **Repeat after acting:** the cursor is re-narrated after a successful place,
   break or interact. This is on by default and adjustable in Settings.
 - **Placement facing:** J cycles North, East, South, West, Up, Down or automatic

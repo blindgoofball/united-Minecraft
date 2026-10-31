@@ -36,6 +36,9 @@ import net.minecraft.world.level.block.RedstoneWireBlock;
 import net.minecraft.world.level.block.RepeaterBlock;
 import net.minecraft.world.level.block.SlabBlock;
 import net.minecraft.world.level.block.StairBlock;
+import net.minecraft.world.level.block.entity.SpawnerBlockEntity;
+import net.minecraft.world.level.block.entity.TrialSpawnerBlockEntity;
+import net.minecraft.world.level.block.entity.trialspawner.TrialSpawner;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -1425,6 +1428,19 @@ public final class BuildModeController {
 		// which a player can't pick back up and shouldn't be told is the same thing as the source.
 		if (state.getBlock() instanceof LiquidBlock && state.getValue(LiquidBlock.LEVEL) == 0) {
 			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_liquid_source"));
+		}
+		// The mob type isn't in the block state; the client gets it from the block entity, which is
+		// how vanilla draws the spinning mob in the cage.
+		Entity spawnerMob = null;
+		if (level.getBlockEntity(cursor) instanceof SpawnerBlockEntity spawner) {
+			spawnerMob = spawner.getSpawner().getOrCreateDisplayEntity(level, cursor);
+		} else if (level.getBlockEntity(cursor) instanceof TrialSpawnerBlockEntity trialBlock) {
+			TrialSpawner trial = trialBlock.getTrialSpawner();
+			spawnerMob = trial.getStateData().getOrCreateDisplayEntity(trial, level, trial.getState());
+		}
+		if (spawnerMob != null) {
+			message = message.append(Component.literal(" ")).append(Component.translatable(
+					"united_minecraft.narrate.build_spawner_mob", spawnerMob.getType().getDescription()));
 		}
 		if (state.getBlock() instanceof RedstoneWireBlock) {
 			message = message.append(Component.literal(" ")).append(redstoneConnectionsDescription(state));
