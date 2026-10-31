@@ -47,7 +47,14 @@ public final class PrismController {
 
 	private static final int PRISM_OK = 0;
 
-	private static final Optional<PrismController> INSTANCE = tryLoad();
+	/**
+	 * Prism, once it has loaded - computed on first use rather than in a static
+	 * initializer, because when this runs is when the dylib (and, on macOS, AppKit
+	 * with it) starts. Null until then; guarded by {@link PrismController} and
+	 * volatile so the one in-flight load is visible to every thread without every
+	 * call taking the lock.
+	 */
+	private static volatile Optional<PrismController> instance;
 
 	private static final long BACKEND_SUPPORTS_SPEAK_TO_MEMORY = 1L << 3;
 	private static final long BACKEND_SUPPORTS_BRAILLE = 1L << 4;
@@ -108,21 +115,53 @@ public final class PrismController {
 		updateSupportedFeatures();
 	}
 
+	/**
+	 * Loads Prism if it hasn't loaded yet, and returns it - or an empty, so the caller
+	 * falls back to the default narrator. Callers must treat the result as possibly
+	 * absent and possibly already shut down.
+	 */
 	public static Optional<PrismController> getInstance() {
-		return INSTANCE;
+		Optional<PrismController> current = instance;
+		if (current == null) {
+			synchronized (PrismController.class) {
+				current = instance;
+				if (current == null) {
+					current = tryLoad();
+					instance = current;
+				}
+			}
+		}
+		return current;
 	}
 
 	/**
-	 * No-op call that forces the static initializer above to run, so Prism loads (or is
-	 * found absent and fallen back on) at mod init rather than lazily at whatever the
-	 * player first happens to narrate. Call once, from mod init.
+	 * Loads Prism at mod init on platforms where that's safe, so the outcome - loaded,
+	 * or absent and fallen back on - is known early instead of at whatever the player
+	 * first happens to narrate. Call once, from mod init.
+	 *
+	 * <p>macOS is the exception, and deliberately so: the dylib links AppKit and starts
+	 * the Cocoa application context as soon as it loads, and if that happens before the
+	 * game window exists, the window menu Mojang builds for it is never made - Minecraft
+	 * 26.3 crashes in MacosUtil.disableCloseWindowMenuItem with a null windowsMenu.
+	 * There the library loads on first use instead, and the first use (the narrator being
+	 * created) is always after the window.
 	 */
 	public static void init() {
+		if (!isMacOs()) {
+			getInstance();
+		}
 	}
 
-	/** Shuts Prism down if it loaded at all. Call once, when the client is stopping. */
+	/**
+	 * Shuts Prism down if it loaded at all. Reads the field rather than going through
+	 * {@link #getInstance()} so it never triggers a load at shutdown. Call once, when
+	 * the client is stopping.
+	 */
 	public static void shutdownIfLoaded() {
-		INSTANCE.ifPresent(PrismController::shutdown);
+		Optional<PrismController> current = instance;
+		if (current != null) {
+			current.ifPresent(PrismController::shutdown);
+		}
 	}
 
 	private static Optional<PrismController> tryLoad() {
@@ -627,6 +666,11 @@ public final class PrismController {
 	}
 
 	/** The native Prism library for one platform: where to find it on the classpath, and what to name it on disk. */
+	private static boolean isMacOs() {
+		String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+		return os.contains("mac") || os.contains("darwin");
+	}
+
 	private record NativeLibrary(String resourcePath, String fileName) {
 		static Optional<NativeLibrary> detect() {
 			String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
@@ -645,7 +689,7 @@ public final class PrismController {
 				if (isArm64) {
 					return Optional.of(new NativeLibrary("/prism/windows-aarch64/prism.dll", "prism.dll"));
 				}
-			} else if (os.contains("mac") || os.contains("darwin")) {
+			} else if (isMacOs()) {
 				// One universal (x86_64 + arm64) dylib covers both Intel and Apple Silicon.
 				if (isX86_64 || isArm64) {
 					return Optional.of(new NativeLibrary("/prism/macos-universal/libprism.dylib", "libprism.dylib"));
