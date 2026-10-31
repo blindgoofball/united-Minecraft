@@ -49,6 +49,8 @@ import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.level.block.state.properties.RedstoneSide;
 import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.block.state.properties.StairsShape;
+import net.minecraft.world.level.material.FlowingFluid;
+import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
@@ -1428,6 +1430,12 @@ public final class BuildModeController {
 		// which a player can't pick back up and shouldn't be told is the same thing as the source.
 		if (state.getBlock() instanceof LiquidBlock && state.getValue(LiquidBlock.LEVEL) == 0) {
 			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_liquid_source"));
+		} else if (state.getBlock() instanceof LiquidBlock) {
+			Direction flow = liquidFlowDirection(level, state);
+			if (flow != null) {
+				message = message.append(Component.literal(" "))
+						.append(Component.translatable("united_minecraft.narrate.build_liquid_flowing", directionName(flow)));
+			}
 		}
 		// The mob type isn't in the block state; the client gets it from the block entity, which is
 		// how vanilla draws the spinning mob in the cage.
@@ -1478,6 +1486,21 @@ public final class BuildModeController {
 			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_placeable"));
 		}
 		return message;
+	}
+
+	/**
+	 * Which way flowing water or lava at the cursor is heading, from the same {@link
+	 * net.minecraft.world.level.material.FluidState#getFlow} vector the renderer uses to angle the
+	 * water texture and slope the surface - null when it isn't moving. A column falling straight
+	 * down has no horizontal flow, so it reports {@link Direction#DOWN} instead.
+	 */
+	private static Direction liquidFlowDirection(Level level, BlockState state) {
+		FluidState fluid = state.getFluidState();
+		Vec3 flow = fluid.getFlow(level, cursor);
+		if (flow.x * flow.x + flow.z * flow.z > 1.0E-4) {
+			return Direction.getApproximateNearest(flow.x, 0.0, flow.z);
+		}
+		return fluid.hasProperty(FlowingFluid.FALLING) && fluid.getValue(FlowingFluid.FALLING) ? Direction.DOWN : null;
 	}
 
 	// The four diagonal compass directions a stair's corner can land on, ordered by bearing

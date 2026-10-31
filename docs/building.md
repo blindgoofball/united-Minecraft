@@ -29,6 +29,8 @@ narrates it, and locks the cursor's movement to that orientation.
   down" when on the underside of a block, both silent for a plain stair.
   Waterlogged blocks are reported. Monster spawners and trial spawners say which mob
   they spawn ("Spawns Zombie").
+  Flowing water and lava say which way they are heading ("Flowing North", or
+  "Flowing Down" for a waterfall); source blocks say "Source".
 - **Repeat after acting:** the cursor is re-narrated after a successful place,
   break or interact. This is on by default and adjustable in Settings.
 - **Placement facing:** J cycles North, East, South, West, Up, Down or automatic

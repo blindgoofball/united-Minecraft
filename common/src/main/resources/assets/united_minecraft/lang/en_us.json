@@ -231,6 +231,7 @@
 	"united_minecraft.narrate.build_comparator_subtract": "Subtract mode",
 	"united_minecraft.narrate.build_daylight_inverted": "Inverted",
 	"united_minecraft.narrate.build_liquid_source": "Source",
+	"united_minecraft.narrate.build_liquid_flowing": "Flowing %s",
 	"united_minecraft.narrate.build_connects": "Connects %s",
 	"united_minecraft.narrate.build_climbing": "%s (climbing)",
 	"united_minecraft.narrate.build_redstone_none": "Not connected",
