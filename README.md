@@ -32,8 +32,10 @@ the same jar on the server.
 
 ## Getting started
 
-1. Follow the [installation guide](docs/installation.md). Fabric is the simpler
-   default; NeoForge builds can lag a new Minecraft version by days or weeks.
+1. On Windows, run the [installer](docs/installation.md#installing-on-windows-with-the-installer);
+   it sets up Fabric, Fabric API and the mod for you, and updates them later. Otherwise follow the
+   [installation guide](docs/installation.md). Fabric is the simpler default; NeoForge builds can lag
+   a new Minecraft version by days or weeks.
 2. The first time the mod runs it turns Minecraft's narrator on for you.
 3. Press **F6** for Settings, and see the [default key bindings](docs/keybindings.md).
    Every binding can be changed in the mod's own Keybindings screen.
