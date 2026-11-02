@@ -101,3 +101,16 @@ GitHub release.
      NeoForge jar. Say which loaders this release includes, especially when it
      is Fabric-only.
    - Attach both jars from step 5.
+
+## The installer
+
+Publishing the GitHub release also attaches the Windows installer. The `installer` workflow
+(`.github/workflows/installer.yml`) runs when a release is published, builds `installer/` from that
+release's tag, and uploads `united-installer.exe` and `united-installer.exe.sha256` to it. Nothing to
+do by hand; if the release was created as a draft, the upload happens when it is published.
+
+The installer does not carry a version of its own to keep in step with the mod: it looks up the newest
+mod release when it runs. Every release gets a fresh build of whatever the installer source was at
+that tag, so a fix to the installer reaches players with the next release. Docs can link to
+`https://github.com/blindgoofball/united-Minecraft/releases/latest/download/united-installer.exe`,
+which always resolves to the newest release's copy.

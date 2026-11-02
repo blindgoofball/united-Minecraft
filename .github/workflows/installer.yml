@@ -1,0 +1,53 @@
+# Builds the Windows installer in installer/. On pull requests and pushes that touch it, this only
+# proves it still compiles. When a GitHub release is published, the installer built from that
+# release's tag is attached to the release, with a checksum file beside it.
+
+name: installer
+on:
+  pull_request:
+    paths: ['installer/**', '.github/workflows/installer.yml']
+  push:
+    paths: ['installer/**', '.github/workflows/installer.yml']
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  installer:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+        working-directory: installer
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v6
+      - name: setup mingw
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: false
+          install: mingw-w64-x86_64-gcc
+      - name: build
+        run: |
+          gcc -O2 -c third_party/miniz.c -I third_party -o miniz.o
+          g++ -std=c++20 -Os -municode -Wall -I third_party -I . main.cpp http.cpp hash.cpp miniz.o \
+            -o united-installer.exe -static -lwinhttp -lbcrypt
+          strip united-installer.exe
+          sha256sum united-installer.exe > united-installer.exe.sha256
+          cat united-installer.exe.sha256
+      - name: upload to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" united-installer.exe united-installer.exe.sha256 --clobber
+      - name: keep the build for inspection
+        if: github.event_name != 'release'
+        uses: actions/upload-artifact@v7
+        with:
+          name: united-installer
+          path: |
+            installer/united-installer.exe
+            installer/united-installer.exe.sha256
