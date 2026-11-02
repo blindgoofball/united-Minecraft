@@ -619,14 +619,29 @@ Options parseArgs(int argc, wchar_t** argv) {
     return opt;
 }
 
+// True when Windows opened a console window just for this program (a double-click), which would
+// close the moment we exit and take the last message with it.
+bool ownsConsoleWindow() {
+    DWORD pids[2];
+    return GetConsoleProcessList(pids, 2) == 1;
+}
+
 } // namespace
 
 int wmain(int argc, wchar_t** argv) {
     SetConsoleOutputCP(CP_UTF8);
+    int code = 0;
     try {
-        return run(parseArgs(argc, argv));
+        code = run(parseArgs(argc, argv));
     } catch (const std::exception& e) {
         std::cerr << "Problem: " << e.what() << "\n";
-        return 1;
+        code = 1;
     }
+    if (ownsConsoleWindow()) {
+        say("");
+        say("Press Enter to close this window.");
+        std::string ignored;
+        std::getline(std::cin, ignored);
+    }
+    return code;
 }
