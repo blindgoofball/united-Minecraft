@@ -26,18 +26,13 @@ jobs:
     runs-on: windows-latest
     defaults:
       run:
-        shell: msys2 {0}
+        shell: bash
         working-directory: installer
     steps:
       - name: checkout repository
         uses: actions/checkout@v6
-      - name: setup mingw
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW64
-          path-type: inherit   # keeps the runner's gh on PATH for the upload step
-          update: false
-          install: mingw-w64-x86_64-gcc
+      - name: show compiler
+        run: g++ --version
       - name: build
         run: |
           gcc -O2 -c third_party/miniz.c -I third_party -o miniz.o
