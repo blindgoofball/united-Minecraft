@@ -1,6 +1,8 @@
 # Builds the Windows installer in installer/. On pull requests and pushes that touch it, this only
 # proves it still compiles. When a GitHub release is published, the installer built from that
-# release's tag is attached to the release, with a checksum file beside it.
+# release's tag is attached to the release, with a checksum file beside it. It can also be run by
+# hand with a release tag, which builds the installer from the branch it is run on and attaches it
+# to that existing release (for a release made before the installer existed).
 
 name: installer
 on:
@@ -10,6 +12,11 @@ on:
     paths: ['installer/**', '.github/workflows/installer.yml']
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag to attach the installer to, e.g. v1.8.0+mc26.3'
+        required: true
 
 permissions:
   contents: write
@@ -28,6 +35,7 @@ jobs:
         uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
+          path-type: inherit   # keeps the runner's gh on PATH for the upload step
           update: false
           install: mingw-w64-x86_64-gcc
       - name: build
@@ -39,12 +47,13 @@ jobs:
           sha256sum united-installer.exe > united-installer.exe.sha256
           cat united-installer.exe.sha256
       - name: upload to the release
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.event.release.tag_name }}" united-installer.exe united-installer.exe.sha256 --clobber
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: gh release upload "$TAG" united-installer.exe united-installer.exe.sha256 --clobber
       - name: keep the build for inspection
-        if: github.event_name != 'release'
+        if: github.event_name != 'release' && github.event_name != 'workflow_dispatch'
         uses: actions/upload-artifact@v7
         with:
           name: united-installer
