@@ -21,7 +21,9 @@ Each of these has its own key (see [Key bindings](keybindings.md)).
   instead (combined, plus the block/sky split) - of the block under Build Mode's
   cursor if it is active, your own block otherwise.
 - **Health and hunger,** on the same 10-heart / 10-shank scale as the sighted
-  heart bar, half points included. Shift reads your experience level. Alt reads
+  heart bar, half points included. While you ride a mount (a horse, camel,
+  nautilus, strider, pig and so on), its health follows. Shift reads your
+  experience level. Alt reads
   your armor value and every active status effect with its level and remaining
   duration.
 - **Facing direction** in compass degrees, with pitch. Shift+B resets your

@@ -25,7 +25,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.Util;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.entity.animal.equine.AbstractHorse;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.animal.parrot.Parrot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -936,11 +936,12 @@ public final class AccessibilityTickHandler {
 
 	/**
 	 * Reports on the same 10-heart/10-shank scale the sighted HUD shows, half-point precision
-	 * included. While riding a horse (or donkey/mule/llama/camel - anything under {@link
-	 * AbstractHorse}, the same family {@link TameNotificationController} already treats as one
-	 * group), also reports the mount's own health - the sighted HUD replaces the hunger bar with
-	 * a horse health bar in that situation, and this is the equivalent for narration, appended
-	 * rather than replacing anything so the hunger read isn't lost.
+	 * included. While riding any living mount (a horse, donkey, mule, llama, camel, nautilus,
+	 * strider, pig, happy ghast - whatever the HUD would show a mount health bar for, which
+	 * vanilla decides with {@code Entity#showVehicleHealth}), also reports the mount's own
+	 * health - the sighted HUD replaces the hunger bar with a mount health bar in that situation,
+	 * and this is the equivalent for narration, appended rather than replacing anything so the
+	 * hunger read isn't lost.
 	 */
 	private static void narrateHealth(Minecraft client, LocalPlayer player) {
 		double hearts = player.getHealth() / 2.0;
@@ -948,9 +949,9 @@ public final class AccessibilityTickHandler {
 		double hunger = player.getFoodData().getFoodLevel() / 2.0;
 		Component message = Component.translatable(
 				"united_minecraft.narrate.health", formatHalf(hearts), formatHalf(maxHearts), formatHalf(hunger));
-		if (player.getVehicle() instanceof AbstractHorse horse) {
-			double mountHearts = horse.getHealth() / 2.0;
-			double mountMaxHearts = horse.getMaxHealth() / 2.0;
+		if (player.getVehicle() instanceof LivingEntity mount && mount.showVehicleHealth()) {
+			double mountHearts = mount.getHealth() / 2.0;
+			double mountMaxHearts = mount.getMaxHealth() / 2.0;
 			message = message.copy().append(Component.literal(". ")).append(Component.translatable(
 					"united_minecraft.narrate.mount_health", formatHalf(mountHearts), formatHalf(mountMaxHearts)));
 		}
