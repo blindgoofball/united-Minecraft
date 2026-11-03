@@ -2,7 +2,7 @@
 
 [Documentation index](README.md)
 
-On this page: [Auto-Walk](#auto-walk) | [Water Exit](#water-exit) | [Elytra](#elytra) | [Cave Trail](#cave-trail) | [Eye of Ender](#eye-of-ender) | [Structure Voices](#structure-voices)
+On this page: [Auto-Walk](#auto-walk) | [Water Exit](#water-exit) | [Elytra](#elytra) | [Boats](#boats) | [Cave Trail](#cave-trail) | [Eye of Ender](#eye-of-ender) | [Structure Voices](#structure-voices)
 
 ## Auto-Walk
 
@@ -39,10 +39,37 @@ unavoidable.
 rest of your flight every tick, assuming you keep looking where you are, and check
 it against the real blocks. A wall, a landing too fast to survive unhurt, harmful
 ground (cactus, magma, a campfire) or lava is spoken a few seconds before it
-happens ("Wall ahead", "Pull up"), then beeped at increasing urgency. A gentle
+happens ("Wall ahead", "Wall close", "Wall now"), then beeped at increasing urgency. A gentle
 landing gets a chime, "Safe landing", and the height above ground at 50, 30, 20,
 10 and 5 blocks. Only hits that would actually hurt count, and armor is ignored,
 so it errs on the cautious side.
+
+## Boats
+
+While you drive a boat, the camera stays on the way the boat is facing, and the
+keys that turn the camera turn the boat instead. The arrow keys turn it smoothly,
+and Alt+arrows snap to the next compass direction, so turning to go west is one
+press rather than a guess at how long to hold A. Your own A and D still work and
+take over from a turn in progress. A boat only holds a heading to within about 5
+degrees, because the smallest nudge it takes turns it ten.
+
+A Scanner lock-on or Combat Mode takes the camera back, so you can still fight
+from the boat; A and D steer as usual until you release it. Build Mode and the
+auto-navigate modes do the same. Turn this off with Boat Steering Assist in
+Settings > Modes & Movement.
+
+**Boat alerts** (on by default, Settings > Modes & Movement) predict the next few
+seconds of your course from the boat's speed and heading, and check it against the
+real blocks. Two different cues tell you what is coming:
+
+- **Land**: you will sail out of the water onto the bank. Low, thudding beeps and
+  "Land ahead" with the distance.
+- **Obstacle**: you will hit a block while still in the water - a cliff, a pier,
+  a pillar, a wall of ice - and stop there. Higher, sharper beeps and "Obstacle
+  ahead" with the distance.
+
+Both are spoken a few seconds out and beep faster as they near, ending with "Land
+now" or "Obstacle now". They only describe what is coming; what to do is up to you. Lily pads do not count.
 
 ## Cave Trail
 

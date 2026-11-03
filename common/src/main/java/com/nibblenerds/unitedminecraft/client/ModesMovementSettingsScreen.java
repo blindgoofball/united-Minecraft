@@ -6,7 +6,7 @@ import java.util.Locale;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
-/** Arrow-key turn speed, Build Mode action narration, Combat cue mode, mode on/off sounds, elytra flight alerts, Eye of Ender cues, Auto-Walk auto-sprint, and Mount jump cue - see {@link SettingsScreen}. */
+/** Arrow-key turn speed, Build Mode action narration, Combat cue mode, mode on/off sounds, elytra flight alerts, boat steering and alerts, Eye of Ender cues, Auto-Walk auto-sprint, and Mount jump cue - see {@link SettingsScreen}. */
 final class ModesMovementSettingsScreen extends SettingsListScreen {
 	ModesMovementSettingsScreen() {
 		super(Component.translatable("united_minecraft.modes_movement_screen.title"));
@@ -36,6 +36,10 @@ final class ModesMovementSettingsScreen extends SettingsListScreen {
 				config.modeToggleSoundsEnabled, value -> config.modeToggleSoundsEnabled = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.elytra_awareness_enabled",
 				config.elytraAwarenessEnabled, value -> config.elytraAwarenessEnabled = value);
+		y = addToggle(x, y, "united_minecraft.settings_screen.boat_assist_enabled",
+				config.boatAssistEnabled, value -> config.boatAssistEnabled = value);
+		y = addToggle(x, y, "united_minecraft.settings_screen.boat_awareness_enabled",
+				config.boatAwarenessEnabled, value -> config.boatAwarenessEnabled = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.eye_of_ender_cues_enabled",
 				config.eyeOfEnderCuesEnabled, value -> config.eyeOfEnderCuesEnabled = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.auto_walk_auto_sprint",

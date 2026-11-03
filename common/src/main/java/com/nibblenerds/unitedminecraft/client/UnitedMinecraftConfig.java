@@ -75,6 +75,10 @@ public final class UnitedMinecraftConfig {
 	public boolean titleNarrationEnabled = true;
 	/** Spoken and audio alerts while gliding on an elytra - see {@link ElytraAwarenessController}. */
 	public boolean elytraAwarenessEnabled = true;
+	/** Keep the camera on a boat's heading and let the turn keys steer it - see {@link BoatController}. */
+	public boolean boatAssistEnabled = true;
+	/** Spoken and audio alerts for shore and obstacles ahead of a boat - see {@link BoatAwarenessController}. */
+	public boolean boatAwarenessEnabled = true;
 	public boolean eyeOfEnderCuesEnabled = true;
 	/** Set once the first-launch narrator auto-enable has run - see {@link ClientHooks#enableNarratorOnFirstLaunch}. */
 	public boolean narratorAutoEnableDone = false;

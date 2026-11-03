@@ -137,6 +137,8 @@ public final class AccessibilityTickHandler {
 			WaterExitController.reset();
 			ElytraLandingController.reset();
 			ElytraAwarenessController.reset();
+			BoatController.reset();
+			BoatAwarenessController.reset();
 			TrailController.reset();
 			MovementAssistController.reset();
 			NavRadarController.reset();
@@ -210,6 +212,12 @@ public final class AccessibilityTickHandler {
 			TrailController.cancel(client, player);
 		}
 
+		if (client.gui.screen() != null) {
+			// The boat's steering is only worked out below, under the screen == null branch - a held
+			// left or right would otherwise go on turning the boat behind an open menu.
+			BoatController.pause();
+		}
+
 		// Durability changes and break events must still be observed while a GUI is open.
 		DurabilityAwarenessController.tick(client, player);
 
@@ -279,6 +287,11 @@ public final class AccessibilityTickHandler {
 			// Same reasoning - the ground comes up whether or not another mode is flying the camera,
 			// and the landing autopilot is the very case where an unavoidable wall is worth hearing about.
 			ElytraAwarenessController.tick(client, player);
+			// After the chain above, so the turn keys have set a heading before the boat is steered to
+			// it and the camera put back on the boat. It hands steering back whenever a mode owns the camera.
+			BoatController.tick(client, player, rotationOwnedByAMode());
+			// Same reasoning as the elytra - the bank comes up whether or not another mode is steering.
+			BoatAwarenessController.tick(client, player);
 			// Same reasoning - it's purely observational audio/narration and never touches
 			// rotation, so gating it behind Build Mode/Combat Mode/Auto-Walk/Scanner-lock
 			// exclusivity would silence it exactly when it's most useful (e.g. auto-walking
@@ -316,9 +329,7 @@ public final class AccessibilityTickHandler {
 			BowBeaconController.reset();
 		}
 
-		boolean rotationOwned = BuildModeController.isActive() || ScannerController.ownsRotation() || AutoWalkController.isActive()
-				|| CombatModeController.ownsRotation() || WaterExitController.isActive() || ElytraLandingController.isActive()
-				|| TrailController.isActive();
+		boolean rotationOwned = rotationOwnedByAMode();
 		if (!rotationOwned) {
 			if (rotationOwnedLastTick) {
 				// One of those modes just handed rotation back this very tick - it may have
@@ -355,6 +366,13 @@ public final class AccessibilityTickHandler {
 		WallToneController.tick(client, player, client.gui.screen() == null);
 		// Holds its queue while a screen is open rather than talking over it.
 		StructureVoiceController.tick(client, player, client.gui.screen() == null);
+	}
+
+	/** Whether Build Mode, a Scanner lock, Combat Mode or one of the auto-navigate modes is holding the camera right now. */
+	private static boolean rotationOwnedByAMode() {
+		return BuildModeController.isActive() || ScannerController.ownsRotation() || AutoWalkController.isActive()
+				|| CombatModeController.ownsRotation() || WaterExitController.isActive() || ElytraLandingController.isActive()
+				|| TrailController.isActive();
 	}
 
 	/** Which of the four snap-turn keys ({@link ClientKeyBindings#SNAP_TURN_LEFT} etc.) were just pressed this tick - see {@link #handleKeybindActions}. */
@@ -547,6 +565,11 @@ public final class AccessibilityTickHandler {
 		if (ClientKeyBindings.LOOK_UP.isDown()) {
 			dPitch -= speed;
 		}
+		if (dYaw != 0.0f && BoatController.isActive()) {
+			// Driving a boat: the camera stays on the boat, so the turn goes to the boat's heading instead.
+			BoatController.turnBy(player, dYaw);
+			dYaw = 0.0f;
+		}
 		if (dYaw != 0.0f || dPitch != 0.0f) {
 			player.turn(dYaw * TURN_INPUT_SCALE, dPitch * TURN_INPUT_SCALE);
 		}
@@ -567,13 +590,23 @@ public final class AccessibilityTickHandler {
 			boolean leftPressed, boolean rightPressed, boolean upPressed, boolean downPressed) {
 		boolean yawChanged = false;
 		boolean pitchChanged = false;
-		if (leftPressed) {
-			player.setYRot(snapDown45(player.getYRot()));
-			yawChanged = true;
-		}
-		if (rightPressed) {
-			player.setYRot(snapUp45(player.getYRot()));
-			yawChanged = true;
+		if (BoatController.isActive()) {
+			// Driving a boat: the camera stays on the boat, so a snap turn sets the heading the boat swings round to.
+			if (leftPressed) {
+				BoatController.turnTo(player, snapDown45((float) BoatController.heading(player)));
+			}
+			if (rightPressed) {
+				BoatController.turnTo(player, snapUp45((float) BoatController.heading(player)));
+			}
+		} else {
+			if (leftPressed) {
+				player.setYRot(snapDown45(player.getYRot()));
+				yawChanged = true;
+			}
+			if (rightPressed) {
+				player.setYRot(snapUp45(player.getYRot()));
+				yawChanged = true;
+			}
 		}
 		if (upPressed) {
 			player.setXRot(snapDown45(player.getXRot()));

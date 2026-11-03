@@ -42,7 +42,7 @@ key or modifier combination in United Minecraft's own Keybindings screen
 
 | Key | Action |
 | --- | --- |
-| Arrow keys (Alt = snap-turn 45 degrees) | Turn the camera |
+| Arrow keys (Alt = snap-turn 45 degrees) | Turn the camera, or the boat while you drive one |
 | Y (Shift = go there) | Nearest way out of water, or nearest safe elytra landing, and with Shift swim or fly there |
 | X (Shift = walk there, Alt = mark start) | Way back along the recorded cave trail |
 | N | Toggle Navigation Radar |
