@@ -662,7 +662,8 @@ public final class BuildModeController {
 			// interact with anything whose bucket behavior lives in its own useItemOn rather than
 			// vanilla's generic LiquidBlockContainer/BucketPickup placement rules - a cauldron
 			// being the main one, since it's neither.
-			if (!player.level().getBlockState(cursor).canBeReplaced() && interactWithCursor(client, player)) {
+			if (!player.level().getBlockState(cursor).canBeReplaced() && isInSight(player.level(), player, cursor)
+					&& interactWithCursor(client, player)) {
 				narrateAfterAction(client, player);
 				return;
 			}
@@ -705,7 +706,12 @@ public final class BuildModeController {
 			// so it still narrates "Can't place there" instead of silently interacting/placing on
 			// top via the item's own single-guess logic, short-circuiting attemptPlacementSequence's
 			// dedicated face search below.
-			if ((isInteractable(cursorState.getBlock()) || placingBlock(player) == null) && interactWithCursor(client, player)) {
+			boolean wantsInteract = isInteractable(cursorState.getBlock()) || placingBlock(player) == null;
+			if (wantsInteract && !isInSight(level, player, cursor)) {
+				// Interacting reaches the block by a click on it, not by a ray from the player, so it would
+				// otherwise work straight through a wall - which a real right-click never could.
+				client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_not_visible"));
+			} else if (wantsInteract && interactWithCursor(client, player)) {
 				narrateAfterAction(client, player);
 			} else if (cursorState.getBlock() instanceof EndPortalFrameBlock && cursorState.getValue(EndPortalFrameBlock.HAS_EYE)) {
 				// An Eye of Ender can only go into an empty frame, so a filled one refuses it - say
@@ -740,6 +746,30 @@ public final class BuildModeController {
 		// replaceable cursor cell (usually plain air) just has no block of its own to target,
 		// so the candidate has to be a neighbor instead.
 		attemptPlacementSequence(client, player);
+	}
+
+	/**
+	 * Whether the player could see the block at {@code pos} from where they stand - the sighted
+	 * player's requirement for right-clicking it, which a click sent straight to the block does
+	 * not otherwise have. True if a ray from the eye reaches any of the block's centre or six face
+	 * centres without another block in the way, so a block that is only partly in view (round a
+	 * corner, through a gap) still counts; glass and the like block it, as they do a real
+	 * right-click. Only the interact path asks this - placing a block deliberately does not.
+	 */
+	private static boolean isInSight(Level level, LocalPlayer player, BlockPos pos) {
+		BlockState state = level.getBlockState(pos);
+		if (state.getShape(level, pos, CollisionContext.of(player)).isEmpty()) {
+			return hasClearLineOfSight(level, player, pos, Vec3.atCenterOf(pos));
+		}
+		if (hasClearLineOfSight(level, player, pos, pointOnShape(level, player, pos, state))) {
+			return true;
+		}
+		for (Direction face : Direction.values()) {
+			if (hasClearLineOfSight(level, player, pos, pointOnFace(level, player, pos, state, face))) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**

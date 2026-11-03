@@ -18,7 +18,10 @@ narrates it, and locks the cursor's movement to that orientation.
 - **Reach:** if the cursor wanders out of reach, G walks you to it. When it is
   already in reach, G walks you up to it anyway.
 - **Placing and breaking** (Right Control and hold Right Shift) work no matter
-  which way you are actually facing. Build Mode also works with hoes, axes and
+  which way you are actually facing. Interacting with a block (opening a chest or
+  door, pressing a button) needs a clear line of sight to it, as a real click
+  does: through a wall, it says "Can't see it". Placing a block has no such
+  limit. Build Mode also works with hoes, axes and
   shovels on blocks, and with water and lava buckets, including pouring into a
   spot with no clickable face, such as a narrow hole. Boats and rafts are placed
   on the water at the cursor, or on the ground when the cursor is on dry land; the
