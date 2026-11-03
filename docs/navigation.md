@@ -15,6 +15,11 @@ Shift with the target key). It works on any server with no special permissions.
   reach the target (Auto-Walk Swim in Settings, on by default). It will not leave
   you stranded in water.
 - It will not walk you onto an open trapdoor and drop you through it.
+- It goes through closed doors the way a villager does (Auto-Walk Opens Doors in
+  Settings > Modes & Movement, on by default): it stops a couple of blocks short,
+  opens the door, waits for it to swing open, and closes it again once you are
+  through. A door that was already open is left open. Iron doors stay shut, since
+  they need redstone, and a door that will not open stops the walk.
 - It routes around powder snow, and only crosses the top of it if you are wearing
   leather boots.
 - Cancel at any time with Backspace.

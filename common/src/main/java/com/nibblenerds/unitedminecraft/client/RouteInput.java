@@ -26,6 +26,12 @@ final class RouteInput extends ClientInput {
 		this.moveVector = new Vec2(0.0f, 1.0f);
 	}
 
+	/** Hold nothing at all - standing still while a door swings open. */
+	void setIdle() {
+		this.keyPresses = Input.EMPTY;
+		this.moveVector = Vec2.ZERO;
+	}
+
 	/**
 	 * Inside a ladder or vine: jump climbs, and so does pushing forward into a wall, so descending
 	 * means holding nothing at all (the player slides down on their own) and {@code forward} is

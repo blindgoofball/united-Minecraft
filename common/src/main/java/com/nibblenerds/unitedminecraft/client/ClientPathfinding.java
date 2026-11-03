@@ -29,7 +29,7 @@ final class ClientPathfinding {
 	}
 
 	static Path computePath(LocalPlayer player, BlockPos target, float maxPathLength, int reachRange) {
-		return search(player, target, maxPathLength, reachRange, false);
+		return search(player, target, maxPathLength, reachRange, false, false);
 	}
 
 	/**
@@ -41,17 +41,19 @@ final class ClientPathfinding {
 	 * the ordinary one. Water is expensive to the pathfinder, so land is still preferred whenever
 	 * there is a way round.
 	 */
-	static Path computePath(LocalPlayer player, BlockPos target, float maxPathLength, int reachRange, boolean allowSwimming) {
+	static Path computePath(LocalPlayer player, BlockPos target, float maxPathLength, int reachRange, boolean allowSwimming,
+			boolean openDoors) {
 		if (allowSwimming) {
-			Path swimming = search(player, target, maxPathLength, reachRange, true);
+			Path swimming = search(player, target, maxPathLength, reachRange, true, openDoors);
 			if (swimming != null && swimming.canReach()) {
 				return swimming;
 			}
 		}
-		return search(player, target, maxPathLength, reachRange, false);
+		return search(player, target, maxPathLength, reachRange, false, openDoors);
 	}
 
-	private static Path search(LocalPlayer player, BlockPos target, float maxPathLength, int reachRange, boolean swim) {
+	private static Path search(LocalPlayer player, BlockPos target, float maxPathLength, int reachRange, boolean swim,
+			boolean openDoors) {
 		Level level = player.level();
 		// ignoreChecks=true - this ghost is never actually spawned into the world, just used as
 		// a parameter bag (bounding box, step height, fall tolerance) for the pathfinder below,
@@ -73,7 +75,7 @@ final class ClientPathfinding {
 				Math.max(playerPos.getZ(), target.getZ()) + SEARCH_MARGIN);
 		PathNavigationRegion region = new PathNavigationRegion(level, regionStart, regionEnd);
 
-		PathFinder finder = new PathFinder(new AutoWalkNodeEvaluator(swim, PowderSnowBlock.canEntityWalkOnPowderSnow(player)), 4096);
+		PathFinder finder = new PathFinder(new AutoWalkNodeEvaluator(swim, PowderSnowBlock.canEntityWalkOnPowderSnow(player), openDoors), 4096);
 		Path path = finder.findPath(region, ghost, Set.of(target), maxPathLength, reachRange, 1.0f);
 		ghost.discard();
 		return path;

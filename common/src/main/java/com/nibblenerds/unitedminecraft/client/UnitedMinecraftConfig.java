@@ -58,6 +58,8 @@ public final class UnitedMinecraftConfig {
 	public boolean scannerAutoLockAfterWalk = false;
 	public boolean autoWalkAutoSprint = false;
 	/** Auto-Walk may swim across water, but only along a route that reaches the target - see {@link ClientPathfinding}. */
+	/** Auto-Walk routes through closed doors, opening them and closing them behind the player - see {@link AutoWalkDoors}. */
+	public boolean autoWalkOpenDoors = true;
 	public boolean autoWalkSwim = true;
 	public boolean navRadarEnabled = false;
 	public boolean miningRadarEnabled = false;

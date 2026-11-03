@@ -96,6 +96,7 @@ public final class AutoWalkController {
 		reachRange = REACH_RANGE;
 		STUCK.reset();
 		rePathAttempted = false;
+		AutoWalkDoors.reset();
 	}
 
 	public static void start(Minecraft client, LocalPlayer player, BlockPos target, Component name) {
@@ -155,7 +156,8 @@ public final class AutoWalkController {
 			cancel(client, player);
 		}
 
-		Path path = ClientPathfinding.computePath(player, target, MAX_PATH_LENGTH, reachRange, UnitedMinecraftConfig.get().autoWalkSwim);
+		Path path = ClientPathfinding.computePath(player, target, MAX_PATH_LENGTH, reachRange,
+				UnitedMinecraftConfig.get().autoWalkSwim, UnitedMinecraftConfig.get().autoWalkOpenDoors);
 		if (path == null || path.getNodeCount() == 0) {
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.autowalk_unreachable"));
 			return;
@@ -233,6 +235,21 @@ public final class AutoWalkController {
 			return;
 		}
 
+		if (UnitedMinecraftConfig.get().autoWalkOpenDoors) {
+			AutoWalkDoors.closeBehind(client, player, AutoWalkDoors.CLOSE_BEHIND_DISTANCE);
+			AutoWalkDoors.Gate gate = AutoWalkDoors.approach(client, player, currentPath);
+			if (gate == AutoWalkDoors.Gate.FAILED) {
+				finishStuck(client, player);
+				return;
+			}
+			if (gate == AutoWalkDoors.Gate.WAIT) {
+				// Standing at a door while it swings open is not the lack of progress the check below is for.
+				STUCK.reset();
+				((RouteInput) player.input).setIdle();
+				return;
+			}
+		}
+
 		// No real progress toward the current waypoint for a while, despite actively walking -
 		// something's blocking the straight line the path assumed was clear (a mob shoved the
 		// player off course, a block got placed mid-walk, terrain changed). Try recomputing the
@@ -281,6 +298,7 @@ public final class AutoWalkController {
 
 	/** {@code messageKey} may be null to restore input and reset state without narrating anything. */
 	private static void finish(Minecraft client, LocalPlayer player, String messageKey) {
+		AutoWalkDoors.finish(client, player);
 		Component name = targetName;
 		player.input = previousInput;
 		reset();
@@ -307,6 +325,7 @@ public final class AutoWalkController {
 	 * this reading as a successful arrival.
 	 */
 	private static void finishIncomplete(Minecraft client, LocalPlayer player, int remainingBlocks) {
+		AutoWalkDoors.finish(client, player);
 		Component name = targetName;
 		player.input = previousInput;
 		reset();
@@ -319,7 +338,8 @@ public final class AutoWalkController {
 	/** Recomputes the path to the original target from the player's current position - true (and swaps {@link #currentPath}) only if one was actually found. */
 	private static boolean tryRepath(LocalPlayer player) {
 		BlockPos target = currentPath.getTarget();
-		Path fresh = ClientPathfinding.computePath(player, target, MAX_PATH_LENGTH, reachRange, UnitedMinecraftConfig.get().autoWalkSwim);
+		Path fresh = ClientPathfinding.computePath(player, target, MAX_PATH_LENGTH, reachRange,
+				UnitedMinecraftConfig.get().autoWalkSwim, UnitedMinecraftConfig.get().autoWalkOpenDoors);
 		if (fresh == null || fresh.getNodeCount() == 0) {
 			return false;
 		}
@@ -329,6 +349,7 @@ public final class AutoWalkController {
 
 	/** Ends the walk after a re-path attempt also failed to make progress - same shape as {@link #finishIncomplete}. */
 	private static void finishStuck(Minecraft client, LocalPlayer player) {
+		AutoWalkDoors.finish(client, player);
 		int remaining = Math.round(currentPath.getDistToTarget());
 		Component name = targetName;
 		player.input = previousInput;

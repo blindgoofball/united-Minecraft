@@ -45,6 +45,10 @@ import net.minecraft.world.level.pathfinder.WalkNodeEvaluator;
  * at no cost, which suits a mob that can stand on it but not a player: with no collision, a player
  * without leather boots walks straight through and sinks. So unless the player can walk on powder
  * snow, those cells are treated as powder snow itself, which vanilla already refuses to route through.
+ *
+ * <p><b>Doors.</b> With {@code openDoors}, a closed door that opens by hand is routed through, as a
+ * villager's is; the walker ({@link AutoWalkDoors}) is what opens and closes it. Without it, a closed
+ * door is a wall, exactly as vanilla's land pathfinding treats one for a mob that cannot open doors.
  */
 final class AutoWalkNodeEvaluator extends WalkNodeEvaluator {
 	/**
@@ -56,8 +60,9 @@ final class AutoWalkNodeEvaluator extends WalkNodeEvaluator {
 	 */
 	private final boolean walkOnPowderSnow;
 
-	AutoWalkNodeEvaluator(boolean swim, boolean walkOnPowderSnow) {
+	AutoWalkNodeEvaluator(boolean swim, boolean walkOnPowderSnow, boolean openDoors) {
 		setCanFloat(swim);
+		setCanOpenDoors(openDoors);
 		this.walkOnPowderSnow = walkOnPowderSnow;
 	}
 
