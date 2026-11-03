@@ -24,7 +24,47 @@ does. They work in single player as-is; for multiplayer, put the same jar in
 the server's `mods` folder too (Fabric servers also need Fabric API). Players
 without the mod can still join that server, and it changes nothing else.
 
-## Installing on Fabric
+## Installing on Windows with the installer
+
+On Windows with the official Minecraft Launcher, the installer does all of the Fabric steps below for
+you: it installs Fabric Loader, downloads Fabric API and United Minecraft, puts them in your `mods` folder
+and adds a launcher profile. It works with both the standard launcher and the Microsoft Store one. It
+installs Fabric only; for NeoForge, or on macOS and Linux, use the manual steps further down.
+
+1. **Open the Minecraft Launcher once** if you have never run Minecraft on this computer, then close it.
+   The installer needs the launcher's folder to exist, and the launcher should be closed while it runs.
+
+2. **Download the installer.**
+   Get [`united-installer.exe`](https://github.com/blindgoofball/united-Minecraft/releases/latest/download/united-installer.exe)
+   from the latest release. It isn't code-signed, so Windows may warn you before running it. The release
+   also has a `united-installer.exe.sha256` file if you want to check the download.
+
+3. **Run it.**
+   Double-click `united-installer.exe`. A text window opens and lists what it will do, for example which
+   Fabric Loader, Fabric API and mod versions it will install and which old files it will replace. Press
+   Enter to continue, or type N and press Enter to cancel.
+
+   - If you already have a Fabric profile for the same Minecraft version, it asks whether to use that
+     profile or create a separate "United Minecraft" profile and leave yours alone. It remembers your
+     answer for next time.
+   - If you have both launchers installed, it asks which one you play with.
+
+4. **Launch the game.**
+   Open the Minecraft Launcher, choose the profile the installer named (normally "United Minecraft") and
+   click Play. The first launch downloads some of Fabric's files, so it can take a moment.
+
+To update, run the installer again. It installs the newest United Minecraft for the Minecraft version it
+supports, a Fabric Loader and Fabric API to match, and replaces its own old files; your other mods are
+left alone. If Minecraft is open it tells you to close it. Close it and run the installer again.
+
+You can also run it from a terminal: `--dry-run` shows what it would do without changing anything,
+`--yes` skips the confirmation, `--mc <version>` picks a Minecraft version, `--launcher win32` or
+`--launcher microsoft_store` picks the launcher, and `--game-dir <folder>` points it at a different
+Minecraft folder.
+
+## Installing on Fabric by hand
+
+Use these steps on macOS and Linux, or if you would rather not use the installer.
 
 1. **Download United Minecraft.**
    From this repository's

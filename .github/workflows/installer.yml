@@ -1,0 +1,57 @@
+# Builds the Windows installer in installer/. On pull requests and pushes that touch it, this only
+# proves it still compiles. When a GitHub release is published, the installer built from that
+# release's tag is attached to the release, with a checksum file beside it. It can also be run by
+# hand with a release tag, which builds the installer from the branch it is run on and attaches it
+# to that existing release (for a release made before the installer existed).
+
+name: installer
+on:
+  pull_request:
+    paths: ['installer/**', '.github/workflows/installer.yml']
+  push:
+    paths: ['installer/**', '.github/workflows/installer.yml']
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag to attach the installer to, e.g. v1.8.0+mc26.3'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  installer:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: installer
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v6
+      - name: show compiler
+        run: g++ --version
+      - name: build
+        run: |
+          gcc -O2 -c third_party/miniz.c -I third_party -o miniz.o
+          g++ -std=c++20 -Os -municode -Wall -I third_party -I . main.cpp http.cpp hash.cpp miniz.o \
+            -o united-installer.exe -static -lwinhttp -lbcrypt
+          strip united-installer.exe
+          sha256sum united-installer.exe > united-installer.exe.sha256
+          cat united-installer.exe.sha256
+      - name: upload to the release
+        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: gh release upload "$TAG" united-installer.exe united-installer.exe.sha256 --clobber
+      - name: keep the build for inspection
+        if: github.event_name != 'release' && github.event_name != 'workflow_dispatch'
+        uses: actions/upload-artifact@v7
+        with:
+          name: united-installer
+          path: |
+            installer/united-installer.exe
+            installer/united-installer.exe.sha256

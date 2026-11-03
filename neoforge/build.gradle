@@ -62,14 +62,13 @@ java {
 	targetCompatibility = JavaVersion.VERSION_25
 }
 
-// Workaround, removable once a ModDevGradle release lists Minecraft 26.3.
+// Workaround, removable once a ModDevGradle release picks Java 25 for Minecraft 26.3.
 //
-// MDG 2.0.147 was published four days before 26.3 released, and its baked-in version table
-// knows 26.3-snapshot-N but not plain 26.3. Unable to look the version up, it cannot work
-// out which Java the game needs and falls back to NeoForge's usual 21 - which nothing here
-// can satisfy, since 25 is the only JDK this project targets and the only one Minecraft
-// 26.3 runs on. Compiling is unaffected (that uses the toolchain above); it is the tooling
-// JVM and the dev-run JVM that have to be pointed at 25 by hand.
+// Even in 2.0.148, which lists plain 26.3, the NeoForm Runtime tasks still ask for NeoForge's
+// usual Java 21 (checked by removing this block: downloadAssets fails looking for a 21
+// toolchain). Nothing here can satisfy that, since 25 is the only JDK this project targets
+// and the only one Minecraft 26.3 runs on. Compiling is unaffected (that uses the toolchain
+// above); it is the tooling JVM and the dev-run JVM that have to be pointed at 25 by hand.
 def java25 = javaToolchains.launcherFor {
 	languageVersion = JavaLanguageVersion.of(25)
 }
