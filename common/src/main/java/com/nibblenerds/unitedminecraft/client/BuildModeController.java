@@ -12,11 +12,13 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.BoatItem;
 import net.minecraft.world.item.BucketItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -668,6 +670,18 @@ public final class BuildModeController {
 			return;
 		}
 
+		InteractionHand boatHand = boatHand(player);
+		if (boatHand != null) {
+			// Like a bucket, a boat has no block-targeted useOn - only the aim-based use() - so it
+			// takes the same fake-the-rotation route, aimed at the water or ground in the cursor cell.
+			if (!player.level().getBlockState(cursor).canBeReplaced() && player.level().getFluidState(cursor).isEmpty()) {
+				client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_occupied"));
+				return;
+			}
+			startBucketUse(client, player, boatHand);
+			return;
+		}
+
 		Level level = player.level();
 		BlockState cursorState = level.getBlockState(cursor);
 		if (player.getBoundingBox().intersects(cursor)) {
@@ -954,6 +968,9 @@ public final class BuildModeController {
 	 */
 	private static Vec3 bucketAimTarget(LocalPlayer player, InteractionHand hand) {
 		Level level = player.level();
+		if (player.getItemInHand(hand).getItem() instanceof BoatItem) {
+			return boatAimTarget(player);
+		}
 		if (!(player.getItemInHand(hand).getItem() instanceof BucketItem bucketItem) || bucketItem.getContent() == Fluids.EMPTY) {
 			Vec3 point = pointOnShape(level, player, cursor, level.getBlockState(cursor));
 			return hasClearLineOfSight(level, player, cursor, point) ? point : null;
@@ -1069,6 +1086,53 @@ public final class BuildModeController {
 		} else {
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_cannot_place"));
 		}
+	}
+
+	/**
+	 * Where to aim for a boat: the surface of the water in the cursor cell, or in the cell just
+	 * under it, or the top of the block under it when there is no water. A boat is put exactly where the real raycast lands,
+	 * facing the way the player looks, so the aim has to be confirmed to land in the cursor cell
+	 * (water is hit through {@link ClipContext.Fluid#ANY}, the same as vanilla's boat does) -
+	 * otherwise it would be launched into the next cell of water along the line, or into a wall.
+	 * Null if the cursor has neither water nor ground under it, or the line to it is blocked.
+	 */
+	private static Vec3 boatAimTarget(LocalPlayer player) {
+		Level level = player.level();
+		FluidState fluid = level.getFluidState(cursor);
+		if (fluid.is(FluidTags.WATER)) {
+			Vec3 point = new Vec3(cursor.getX() + 0.5, cursor.getY() + fluid.getHeight(level, cursor) - FACE_EPSILON, cursor.getZ() + 0.5);
+			return boatRayLandsOn(level, player, point, cursor, null) ? point : null;
+		}
+		BlockPos below = cursor.below();
+		FluidState belowFluid = level.getFluidState(below);
+		if (belowFluid.is(FluidTags.WATER)) {
+			// A dry cell just above the water: the boat rests on the surface, a hair below the cell.
+			Vec3 point = new Vec3(below.getX() + 0.5, below.getY() + belowFluid.getHeight(level, below) - FACE_EPSILON, below.getZ() + 0.5);
+			return boatRayLandsOn(level, player, point, below, null) ? point : null;
+		}
+		BlockState belowState = level.getBlockState(below);
+		if (belowState.getCollisionShape(level, below).isEmpty()) {
+			return null;
+		}
+		Vec3 point = pointOnFace(level, player, below, belowState, Direction.UP);
+		return boatRayLandsOn(level, player, point, below, Direction.UP) ? point : null;
+	}
+
+	/** Whether the ray vanilla's boat casts, aimed at {@code point}, first hits {@code block} (on {@code face}, if given). */
+	private static boolean boatRayLandsOn(Level level, LocalPlayer player, Vec3 point, BlockPos block, Direction face) {
+		BlockHitResult hit = level.clip(new ClipContext(
+				player.getEyePosition(), point, ClipContext.Block.OUTLINE, ClipContext.Fluid.ANY, player));
+		return hit.getType() == HitResult.Type.BLOCK && hit.getBlockPos().equals(block) && (face == null || hit.getDirection() == face);
+	}
+
+	/** Whichever hand holds a boat or raft of any kind, main hand first - null if neither does. */
+	private static InteractionHand boatHand(LocalPlayer player) {
+		for (InteractionHand hand : InteractionHand.values()) {
+			if (player.getItemInHand(hand).getItem() instanceof BoatItem) {
+				return hand;
+			}
+		}
+		return null;
 	}
 
 	/** Whichever hand holds a bucket (filling or emptying alike), main hand first - null if neither does. */

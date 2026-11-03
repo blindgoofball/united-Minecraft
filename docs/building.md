@@ -20,7 +20,9 @@ narrates it, and locks the cursor's movement to that orientation.
 - **Placing and breaking** (Right Control and hold Right Shift) work no matter
   which way you are actually facing. Build Mode also works with hoes, axes and
   shovels on blocks, and with water and lava buckets, including pouring into a
-  spot with no clickable face, such as a narrow hole.
+  spot with no clickable face, such as a narrow hole. Boats and rafts are placed
+  on the water at the cursor, or on the ground when the cursor is on dry land; the
+  boat faces away from you. Minecarts are placed with the cursor on a rail.
 - **Narration at the cursor:** the block you are standing on, and any entity
   sharing the cell (a mob, dropped item, minecart), named as the Scanner would.
   Blocks with a meaningful facing (repeaters, comparators, dispensers, pistons)
