@@ -10,6 +10,7 @@ import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.PathNavigationRegion;
+import net.minecraft.world.level.block.PowderSnowBlock;
 import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.level.pathfinder.PathFinder;
 
@@ -72,7 +73,7 @@ final class ClientPathfinding {
 				Math.max(playerPos.getZ(), target.getZ()) + SEARCH_MARGIN);
 		PathNavigationRegion region = new PathNavigationRegion(level, regionStart, regionEnd);
 
-		PathFinder finder = new PathFinder(new AutoWalkNodeEvaluator(swim), 4096);
+		PathFinder finder = new PathFinder(new AutoWalkNodeEvaluator(swim, PowderSnowBlock.canEntityWalkOnPowderSnow(player)), 4096);
 		Path path = finder.findPath(region, ghost, Set.of(target), maxPathLength, reachRange, 1.0f);
 		ghost.discard();
 		return path;

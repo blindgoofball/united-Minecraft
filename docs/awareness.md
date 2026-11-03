@@ -12,6 +12,16 @@ never hear about a harmless step. An anvil-landing sound with narration means it
 will hurt; a lighter chime with narration means it is safe (a cave lake below,
 say). Settings controls the threshold and how many seconds ahead it looks.
 
+## Powder Snow Warning
+
+On by default (Settings > Detection & Alerts). Powder snow has no collision, so
+you walk straight into it, sink and start to freeze. When it comes into your path
+a few blocks ahead, a low tone and "Powder snow ahead, 3 blocks" warn you once,
+and it stays quiet until you have stopped or got clear. Wearing leather boots lets
+you walk across the top of powder snow, so powder snow underfoot is not a warning
+for you, but a block of it at body height still is. Auto-Walk also routes around
+powder snow, and only crosses the top of it if you are wearing leather boots.
+
 ## Durability and Tool Harvest Awareness
 
 Always on, and toggleable independently in Settings.

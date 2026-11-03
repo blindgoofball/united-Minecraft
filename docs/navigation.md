@@ -15,6 +15,8 @@ Shift with the target key). It works on any server with no special permissions.
   reach the target (Auto-Walk Swim in Settings, on by default). It will not leave
   you stranded in water.
 - It will not walk you onto an open trapdoor and drop you through it.
+- It routes around powder snow, and only crosses the top of it if you are wearing
+  leather boots.
 - Cancel at any time with Backspace.
 
 ## Water Exit

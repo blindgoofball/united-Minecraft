@@ -40,6 +40,11 @@ import net.minecraft.world.level.pathfinder.WalkNodeEvaluator;
  * from an adjacent floor like any other cell, stepped off onto a ledge with the ordinary
  * one-block step-up, and entered from the top by the ordinary short fall onto the first
  * non-open cell below. {@link AutoWalkController} is what actually drives the climb.
+ *
+ * <p><b>Powder snow.</b> The cell above powder snow is classified {@link PathType#ON_TOP_OF_POWDER_SNOW}
+ * at no cost, which suits a mob that can stand on it but not a player: with no collision, a player
+ * without leather boots walks straight through and sinks. So unless the player can walk on powder
+ * snow, those cells are treated as powder snow itself, which vanilla already refuses to route through.
  */
 final class AutoWalkNodeEvaluator extends WalkNodeEvaluator {
 	/**
@@ -49,8 +54,11 @@ final class AutoWalkNodeEvaluator extends WalkNodeEvaluator {
 	 * actually walk the bed of deep water. {@link ClientPathfinding} only uses such a route when it
 	 * reaches the target, so the player never swims somewhere they can't get out of.
 	 */
-	AutoWalkNodeEvaluator(boolean swim) {
+	private final boolean walkOnPowderSnow;
+
+	AutoWalkNodeEvaluator(boolean swim, boolean walkOnPowderSnow) {
 		setCanFloat(swim);
+		this.walkOnPowderSnow = walkOnPowderSnow;
 	}
 
 	/** Whether a block state is something Auto-Walk can climb. Scaffolding is left out: it's solid from the side and is climbed differently. */
@@ -116,7 +124,11 @@ final class AutoWalkNodeEvaluator extends WalkNodeEvaluator {
 				&& isOpenTrapdoor(context.getBlockState(new BlockPos(x, y - 1, z)))) {
 			return PathType.OPEN;
 		}
-		return super.getPathType(context, x, y, z);
+		PathType type = super.getPathType(context, x, y, z);
+		if (type == PathType.ON_TOP_OF_POWDER_SNOW && !walkOnPowderSnow) {
+			return PathType.POWDER_SNOW;
+		}
+		return type;
 	}
 
 	private static boolean isOpenTrapdoor(BlockState state) {

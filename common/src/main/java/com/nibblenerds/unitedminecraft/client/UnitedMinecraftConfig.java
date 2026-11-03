@@ -38,6 +38,8 @@ public final class UnitedMinecraftConfig {
 	public boolean meleeRangeAlertEnabled = true;
 	public boolean movementAssistEnabled = true;
 	public boolean fallWarningEnabled = true;
+	/** Warn before walking into powder snow - see {@link PowderSnowWarningController}. */
+	public boolean powderSnowWarningEnabled = true;
 	public double fallWarningThreshold = 3.0;
 	public double fallWarningLookaheadSeconds = 1.0;
 	public int miningRadarRange = 8;

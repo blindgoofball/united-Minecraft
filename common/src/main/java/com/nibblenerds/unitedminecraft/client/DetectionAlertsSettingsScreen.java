@@ -3,7 +3,7 @@ package com.nibblenerds.unitedminecraft.client;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
-/** Hostile Radar, Melee Range Alert, Fall Warning, Mining/Nav Radar range, Scanner, and Structure Voices - see {@link SettingsScreen}. */
+/** Hostile Radar, Melee Range Alert, Fall Warning, Powder Snow Warning, Mining/Nav Radar range, Scanner, and Structure Voices - see {@link SettingsScreen}. */
 final class DetectionAlertsSettingsScreen extends SettingsListScreen {
 	DetectionAlertsSettingsScreen() {
 		super(Component.translatable("united_minecraft.detection_alerts_screen.title"));
@@ -25,6 +25,8 @@ final class DetectionAlertsSettingsScreen extends SettingsListScreen {
 				config.movementAssistEnabled, value -> config.movementAssistEnabled = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.fall_warning_enabled",
 				config.fallWarningEnabled, value -> config.fallWarningEnabled = value);
+		y = addToggle(x, y, "united_minecraft.settings_screen.powder_snow_warning_enabled",
+				config.powderSnowWarningEnabled, value -> config.powderSnowWarningEnabled = value);
 		y = addSlider(x, y, 1.0, 10.0, 1.0, config.fallWarningThreshold,
 				"united_minecraft.settings_screen.fall_warning_threshold", value -> config.fallWarningThreshold = value);
 		y = addSlider(x, y, 0.5, 3.0, 0.5, config.fallWarningLookaheadSeconds,

@@ -152,6 +152,7 @@ public final class AccessibilityTickHandler {
 			AngleAssistController.reset();
 			FishingCatchController.reset();
 			FallWarningController.reset();
+			PowderSnowWarningController.reset();
 			TreeChoppingAssist.reset();
 			OreMiningAssist.reset();
 			AutoCrosshairNarrationController.reset();
@@ -253,6 +254,7 @@ public final class AccessibilityTickHandler {
 				ScannerController.tick(client, player);
 				MiningRadarController.tick(client, player);
 				FallWarningController.tick(client, player);
+				PowderSnowWarningController.tick(client, player);
 			} else {
 				// Always safe to run both: ClientKeyBindings.updateAll() already resolved which
 				// of LOOK_LEFT/RIGHT/UP/DOWN (GLOBAL, no modifiers) vs. SNAP_TURN_LEFT/RIGHT/UP/
@@ -273,6 +275,7 @@ public final class AccessibilityTickHandler {
 				NavRadarController.tick(client, player);
 				MiningRadarController.tick(client, player);
 				FallWarningController.tick(client, player);
+				PowderSnowWarningController.tick(client, player);
 				AutoCrosshairNarrationController.tick(client, player);
 			}
 			// Runs no matter which mode owns rotation - the trail should keep recording real
