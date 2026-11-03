@@ -35,6 +35,7 @@ import net.minecraft.world.level.block.ObserverBlock;
 import net.minecraft.world.level.block.RedstoneWireBlock;
 import net.minecraft.world.level.block.RepeaterBlock;
 import net.minecraft.world.level.block.SlabBlock;
+import net.minecraft.world.level.block.SnowLayerBlock;
 import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.entity.SpawnerBlockEntity;
 import net.minecraft.world.level.block.entity.TrialSpawnerBlockEntity;
@@ -1393,6 +1394,11 @@ public final class BuildModeController {
 			} else if (state.getValue(SlabBlock.TYPE) == SlabType.TOP) {
 				message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_top_slab"));
 			}
+		}
+		if (state.getBlock() instanceof SnowLayerBlock) {
+			// Each layer is an eighth of a block, and nothing else shows how tall the snow is.
+			int layers = state.getValue(SnowLayerBlock.LAYERS);
+			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_snow_height", layers));
 		}
 		// Generic on purpose: stairs, slabs, fences, trapdoors, chests, signs, and every other
 		// waterloggable block share this one property.
