@@ -45,7 +45,10 @@ Each of these has its own key (see [Key bindings](keybindings.md)).
 ## Automatic narration
 
 - Facing direction, hotbar slot, offhand and main-hand swaps, and entering a new
-  biome are narrated as they change.
+  biome are narrated as they change. Switching hotbar slots reads the item's name,
+  count, durability and its tooltip (enchantments, potion effects and so on); turn
+  off Read Tooltips When Switching Hotbar Items in Settings > General to hear only
+  the name, count and durability.
 - The time of day reaching sunrise, noon, sunset, night (when mobs can start
   spawning in the dark) or midnight is narrated. This is silent in the Nether
   and the End, which have no day or night.

@@ -77,6 +77,8 @@ public final class UnitedMinecraftConfig {
 	public int turnSpeedPercent = 100;
 	/** Narrate on-screen title and subtitle text - see {@link TitleNarrationController}. */
 	public boolean titleNarrationEnabled = true;
+	/** Read an item's tooltip (enchantments, effects and so on, not just name and durability) when switching to it in the hotbar. */
+	public boolean hotbarTooltipsEnabled = true;
 	/** Spoken and audio alerts while gliding on an elytra - see {@link ElytraAwarenessController}. */
 	public boolean elytraAwarenessEnabled = true;
 	/** After an elytra flight to a Scanner target lands short of it, walk the rest of the way - see {@link ElytraLandingController}. */

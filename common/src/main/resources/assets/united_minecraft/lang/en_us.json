@@ -763,6 +763,7 @@
 	"united_minecraft.settings_screen.chat_sound_enabled": "Chat Message Sound",
 	"united_minecraft.settings_screen.auto_crosshair_repeat_same_block": "Auto Crosshair: Repeat For Same Block Type",
 	"united_minecraft.settings_screen.title_narration_enabled": "Narrate On-Screen Titles",
+	"united_minecraft.settings_screen.hotbar_tooltips_enabled": "Read Tooltips When Switching Hotbar Items",
 	"united_minecraft.settings_screen.elytra_awareness_enabled": "Elytra Flight Alerts",
 	"united_minecraft.settings_screen.elytra_auto_walk_after_landing": "Walk to Target After Elytra Landing",
 	"united_minecraft.settings_screen.boat_assist_enabled": "Boat Steering Assist",

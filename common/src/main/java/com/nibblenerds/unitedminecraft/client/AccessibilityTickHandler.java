@@ -677,7 +677,7 @@ public final class AccessibilityTickHandler {
 		ItemStack stack = player.getInventory().getItem(slot);
 		Component name = stack.isEmpty()
 				? Component.translatable("united_minecraft.narrate.hotbar_empty")
-				: ItemDescriptions.describe(stack, player);
+				: ItemDescriptions.describe(stack, player, true, UnitedMinecraftConfig.get().hotbarTooltipsEnabled);
 		client.getNarrator().saySystemNow(name);
 	}
 

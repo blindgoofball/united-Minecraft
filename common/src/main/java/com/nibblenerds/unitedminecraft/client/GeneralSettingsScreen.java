@@ -3,7 +3,7 @@ package com.nibblenerds.unitedminecraft.client;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
-/** Audio Cue Volume, Title Narration, Durability/Tool Harvest awareness, Precise Coordinates, and Map Beacon - everything else, see {@link SettingsScreen}. */
+/** Audio Cue Volume, Title Narration, Hotbar Tooltips, Durability/Tool Harvest awareness, Precise Coordinates, and Map Beacon - everything else, see {@link SettingsScreen}. */
 final class GeneralSettingsScreen extends SettingsListScreen {
 	GeneralSettingsScreen() {
 		super(Component.translatable("united_minecraft.general_settings_screen.title"));
@@ -20,6 +20,8 @@ final class GeneralSettingsScreen extends SettingsListScreen {
 				value -> config.cueVolume = (int) Math.round(value));
 		y = addToggle(x, y, "united_minecraft.settings_screen.title_narration_enabled",
 				config.titleNarrationEnabled, value -> config.titleNarrationEnabled = value);
+		y = addToggle(x, y, "united_minecraft.settings_screen.hotbar_tooltips_enabled",
+				config.hotbarTooltipsEnabled, value -> config.hotbarTooltipsEnabled = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.chat_sound_enabled",
 				config.chatSoundEnabled, value -> config.chatSoundEnabled = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.auto_crosshair_repeat_same_block",
