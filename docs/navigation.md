@@ -35,6 +35,19 @@ touch down gently, circling down first if you are too high, and hands control ba
 when you land. Backspace cancels, and control is handed back if terrain is
 unavoidable.
 
+**Flying to a Scanner target:** while gliding, Shift+Enter on something in the
+Scanner flies you toward it instead of walking (Build Mode's walk-to-cursor key
+does the same). The target itself is rarely somewhere to land, so the mod lands on
+the nearest flat, safe patch within 8 blocks of it, never using fireworks, and says
+how close to the target it will land as you set off ("Flying toward Village,
+landing 6 blocks southwest of it") and how far from it you came down ("Landed 6
+blocks northeast of Village").
+Landing within 3 blocks counts as arriving. If it cannot, it says why: there is no
+safe place to land near the target, terrain is in the way, or you are too low ("Too
+low to reach Village, you need about 40 more blocks of height"). Turn on Walk to
+Target After Elytra Landing in Settings > Modes & Movement to have it walk the rest
+of the way once you are down. Backspace cancels the flight.
+
 **Elytra flight alerts** (on by default, Settings > Modes & Movement) predict the
 rest of your flight every tick, assuming you keep looking where you are, and check
 it against the real blocks. A wall, a landing too fast to survive unhurt, harmful

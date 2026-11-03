@@ -36,6 +36,8 @@ final class ModesMovementSettingsScreen extends SettingsListScreen {
 				config.modeToggleSoundsEnabled, value -> config.modeToggleSoundsEnabled = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.elytra_awareness_enabled",
 				config.elytraAwarenessEnabled, value -> config.elytraAwarenessEnabled = value);
+		y = addToggle(x, y, "united_minecraft.settings_screen.elytra_auto_walk_after_landing",
+				config.elytraAutoWalkAfterLanding, value -> config.elytraAutoWalkAfterLanding = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.boat_assist_enabled",
 				config.boatAssistEnabled, value -> config.boatAssistEnabled = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.boat_awareness_enabled",

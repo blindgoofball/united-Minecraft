@@ -130,7 +130,27 @@ public final class AutoWalkController {
 		start(client, player, target, name, onArrival, EXACT_REACH_RANGE);
 	}
 
+	/**
+	 * Same as {@link #start} or {@link #startExact}, but says {@code message} when the walk begins in
+	 * place of the usual "Walking to ..." - for a caller that has something of its own to say first, which
+	 * the usual message would cut off.
+	 */
+	static void startAnnounced(Minecraft client, LocalPlayer player, BlockPos target, Component name, Runnable onArrival,
+			boolean exact, Component message) {
+		start(client, player, target, name, onArrival, exact ? EXACT_REACH_RANGE : REACH_RANGE, message);
+	}
+
 	private static void start(Minecraft client, LocalPlayer player, BlockPos target, Component name, Runnable onArrival, int reachRange) {
+		start(client, player, target, name, onArrival, reachRange, null);
+	}
+
+	private static void start(Minecraft client, LocalPlayer player, BlockPos target, Component name, Runnable onArrival,
+			int reachRange, Component message) {
+		if (player.isFallFlying()) {
+			// There is no walking through the air: while gliding, "go there" means fly there.
+			ElytraLandingController.startToward(client, player, target, name, onArrival, reachRange == EXACT_REACH_RANGE);
+			return;
+		}
 		if (isActive()) {
 			cancel(client, player);
 		}
@@ -147,7 +167,7 @@ public final class AutoWalkController {
 		AutoWalkController.reachRange = reachRange;
 		previousInput = player.input;
 		player.input = new RouteInput();
-		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.autowalk_started", name));
+		client.getNarrator().saySystemNow(message != null ? message : Component.translatable("united_minecraft.narrate.autowalk_started", name));
 		AngleAssistController.disable(client);
 	}
 

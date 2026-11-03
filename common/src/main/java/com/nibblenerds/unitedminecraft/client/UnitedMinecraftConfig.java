@@ -75,6 +75,8 @@ public final class UnitedMinecraftConfig {
 	public boolean titleNarrationEnabled = true;
 	/** Spoken and audio alerts while gliding on an elytra - see {@link ElytraAwarenessController}. */
 	public boolean elytraAwarenessEnabled = true;
+	/** After an elytra flight to a Scanner target lands short of it, walk the rest of the way - see {@link ElytraLandingController}. */
+	public boolean elytraAutoWalkAfterLanding = false;
 	/** Keep the camera on a boat's heading and let the turn keys steer it - see {@link BoatController}. */
 	public boolean boatAssistEnabled = true;
 	/** Spoken and audio alerts for shore and obstacles ahead of a boat - see {@link BoatAwarenessController}. */
