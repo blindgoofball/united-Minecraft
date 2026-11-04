@@ -67,15 +67,25 @@ public final class ShareRelay {
 			return;
 		}
 		MinecraftServer server = sender.level().getServer();
-		List<ServerPlayer> recipients;
-		if (send.toAll()) {
-			recipients = new ArrayList<>(server.getPlayerList().getPlayers());
-		} else {
-			ServerPlayer target = server.getPlayerList().getPlayer(send.target());
-			recipients = target == null ? List.of() : List.of(target);
+		List<ServerPlayer> recipients = recipientsFor(send.toAll(), server.getPlayerList().getPlayers(),
+				send.toAll() ? null : server.getPlayerList().getPlayer(send.target()), sender);
+		deliver(server, sender.getUUID(), displayName(sender), item, recipients, network);
+	}
+
+	/**
+	 * Who a share goes to: everyone but the sender, or just {@code target} (unless that is nobody, or
+	 * the sender). Always a fresh, modifiable list - an earlier version handed back {@code List.of(target)}
+	 * and then removed the sender from it, which threw for every share to a single player.
+	 */
+	static <P> List<P> recipientsFor(boolean toAll, List<P> everyone, P target, P sender) {
+		List<P> recipients = new ArrayList<>();
+		if (toAll) {
+			recipients.addAll(everyone);
+		} else if (target != null) {
+			recipients.add(target);
 		}
 		recipients.remove(sender);
-		deliver(server, sender.getUUID(), displayName(sender), item, recipients, network);
+		return recipients;
 	}
 
 	/**

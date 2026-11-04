@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
@@ -50,6 +51,36 @@ class ShareRelayTest {
 		assertFalse(ShareRelay.sanitize(plain).marker());
 		Item block = new Item(Kind.NAMED_BLOCK, "Door", "minecraft:overworld", 0, 0, 0, true);
 		assertTrue(ShareRelay.sanitize(block).marker());
+	}
+
+	@Test
+	void aShareToOnePlayerGoesToThatPlayer() {
+		assertEquals(List.of("bea"), ShareRelay.recipientsFor(false, List.of("ann", "bea", "cal"), "bea", "ann"));
+	}
+
+	@Test
+	void aShareToEveryoneLeavesOutTheSender() {
+		assertEquals(List.of("bea", "cal"), ShareRelay.recipientsFor(true, List.of("ann", "bea", "cal"), null, "ann"));
+	}
+
+	@Test
+	void aShareToAPlayerWhoIsNoLongerOnlineGoesToNobody() {
+		assertEquals(List.of(), ShareRelay.recipientsFor(false, List.of("ann", "bea"), null, "ann"));
+	}
+
+	@Test
+	void aShareToYourselfGoesToNobody() {
+		assertEquals(List.of(), ShareRelay.recipientsFor(false, List.of("ann", "bea"), "ann", "ann"));
+	}
+
+	@Test
+	void theListHandedBackCanBeChangedAndTheOneGivenIsLeftAlone() {
+		List<String> everyone = List.of("ann", "bea");
+		List<String> single = ShareRelay.recipientsFor(false, everyone, "bea", "ann");
+		single.add("extra");
+		List<String> all = ShareRelay.recipientsFor(true, everyone, null, "ann");
+		all.add("extra");
+		assertEquals(List.of("ann", "bea"), everyone);
 	}
 
 	@Test
