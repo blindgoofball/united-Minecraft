@@ -67,21 +67,39 @@ public final class ShareRelay {
 			return;
 		}
 		MinecraftServer server = sender.level().getServer();
-		int now = server.getTickCount();
-		SharePayloads.Offer offer = new SharePayloads.Offer(displayName(sender), item);
-
+		List<ServerPlayer> recipients;
 		if (send.toAll()) {
-			for (ServerPlayer player : new ArrayList<>(server.getPlayerList().getPlayers())) {
-				if (player != sender && network.canReceive(player) && allow(sender.getUUID(), now)) {
-					network.sendOffer(player, offer);
-				}
+			recipients = new ArrayList<>(server.getPlayerList().getPlayers());
+		} else {
+			ServerPlayer target = server.getPlayerList().getPlayer(send.target());
+			recipients = target == null ? List.of() : List.of(target);
+		}
+		recipients.remove(sender);
+		deliver(server, sender.getUUID(), displayName(sender), item, recipients, network);
+	}
+
+	/**
+	 * Sends {@code item} as an offer from {@code senderName} to each of {@code recipients} who has
+	 * the mod, counting each against {@code senderId}'s allowance and stopping once it runs out.
+	 * Shared by the Sharing screen and {@link ShareCommand}, so both draw on the same allowance.
+	 * Returns how many offers went out.
+	 */
+	public static int deliver(MinecraftServer server, UUID senderId, String senderName, SharePayloads.Item item,
+			List<ServerPlayer> recipients, Network network) {
+		int now = server.getTickCount();
+		SharePayloads.Offer offer = new SharePayloads.Offer(senderName, item);
+		int sent = 0;
+		for (ServerPlayer player : recipients) {
+			if (!network.canReceive(player)) {
+				continue;
 			}
-			return;
+			if (!allow(senderId, now)) {
+				break;
+			}
+			network.sendOffer(player, offer);
+			sent++;
 		}
-		ServerPlayer target = server.getPlayerList().getPlayer(send.target());
-		if (target != null && target != sender && network.canReceive(target) && allow(sender.getUUID(), now)) {
-			network.sendOffer(target, offer);
-		}
+		return sent;
 	}
 
 	/** Forgets rate-limit history - on server stop, so a different world never inherits it. */
@@ -129,5 +147,10 @@ public final class ShareRelay {
 
 	private static String displayName(ServerPlayer player) {
 		return player.getName().getString();
+	}
+
+	/** A sender's name as it goes in an offer, cut to what the payload allows. */
+	static String offerName(String name) {
+		return name.length() > SharePayloads.MAX_NAME ? name.substring(0, SharePayloads.MAX_NAME) : name;
 	}
 }

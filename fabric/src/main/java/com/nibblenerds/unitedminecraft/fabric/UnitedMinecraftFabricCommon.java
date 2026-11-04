@@ -1,11 +1,13 @@
 package com.nibblenerds.unitedminecraft.fabric;
 
+import com.nibblenerds.unitedminecraft.share.ShareCommand;
 import com.nibblenerds.unitedminecraft.share.ShareRelay;
 import com.nibblenerds.unitedminecraft.share.SharePayloads;
 import com.nibblenerds.unitedminecraft.structure.StructureScanner;
 import com.nibblenerds.unitedminecraft.structure.StructuresNearbyPayload;
 
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
@@ -66,5 +68,7 @@ public class UnitedMinecraftFabricCommon implements ModInitializer {
 				(payload, context) -> ShareRelay.onTargetsRequest(context.player(), SHARE_NETWORK));
 		ServerPlayNetworking.registerGlobalReceiver(SharePayloads.Send.TYPE,
 				(payload, context) -> ShareRelay.onSend(context.player(), payload, SHARE_NETWORK));
+		CommandRegistrationCallback.EVENT.register(
+				(dispatcher, registryAccess, environment) -> ShareCommand.register(dispatcher, SHARE_NETWORK));
 	}
 }

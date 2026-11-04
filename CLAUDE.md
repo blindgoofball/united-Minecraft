@@ -11,7 +11,10 @@ build/combat modes, and full keyboard navigation of menus. Almost everything is
 client-side and works against any vanilla server. The two exceptions need a server half:
 Structure Voices (the `structure` package: `StructureScanner`, sending
 `StructuresNearbyPayload`) and marker sharing (the `share` package: `ShareRelay` and
-`SharePayloads`, which only relays offers between players and stores nothing). Both run on
+`SharePayloads`, which only relays offers between players and stores nothing, and
+`ShareCommand`, the `/umshare` command that lets a player without the mod send one; its
+replies are plain text rather than translation keys, since such a client has no copy of the
+language file). Both run on
 the integrated server in single player, and on a dedicated server only when the mod is
 installed there too. Each loader module has a common entrypoint (`UnitedMinecraftFabricCommon`,
 `UnitedMinecraftNeoForgeCommon`) for them, and the payloads are optional in both directions. See [README.md](README.md) and the feature pages in [docs/](docs/) for the full feature list

@@ -162,3 +162,13 @@ and Up/Down to move within a list. Escape or Close leaves.
   Offers wait in memory until you leave the world.
 - "Ignore Marker Shares From Other Players" in the General settings drops incoming
   offers without a sound or message. The sender is not told.
+
+#### Sharing from a player without the mod
+
+When the server has the mod, anyone on it can send a marker with a command, with nothing
+installed themselves: `/umshare <player|all> <x y z> <name>`. `all` sends to every other
+player who has the mod, and a player's name sends to that one player; a player who does not
+have the mod is told so. The position accepts `~ ~ ~`, so `/umshare all ~ ~ ~ Camp` shares
+where you are standing. The marker is placed in the dimension you are in, and the name is
+everything after the position, spaces included. It arrives as an offer like any other, and
+the sender is told how many players it went to.

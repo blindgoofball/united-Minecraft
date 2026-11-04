@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.neoforge;
 
+import com.nibblenerds.unitedminecraft.share.ShareCommand;
 import com.nibblenerds.unitedminecraft.share.ShareRelay;
 import com.nibblenerds.unitedminecraft.share.SharePayloads;
 import com.nibblenerds.unitedminecraft.structure.StructureScanner;
@@ -9,6 +10,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -63,6 +65,8 @@ public class UnitedMinecraftNeoForgeCommon {
 						(payload, context) -> ShareRelay.onSend((ServerPlayer) context.player(), payload, SHARE_NETWORK))
 				.playToClient(SharePayloads.Offer.TYPE, SharePayloads.Offer.STREAM_CODEC));
 		NeoForge.EVENT_BUS.addListener(ServerTickEvent.Post.class, event -> StructureScanner.tick(event.getServer(), NETWORK));
+		NeoForge.EVENT_BUS.addListener(RegisterCommandsEvent.class,
+				event -> ShareCommand.register(event.getDispatcher(), SHARE_NETWORK));
 		NeoForge.EVENT_BUS.addListener(ServerStoppedEvent.class, event -> {
 			StructureScanner.clear();
 			ShareRelay.clear();
