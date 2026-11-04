@@ -250,6 +250,8 @@
 	"united_minecraft.narrate.build_spawner_mob": "Spawns %s",
 	"united_minecraft.narrate.build_top_slab": "Top slab",
 	"united_minecraft.narrate.build_snow_height": "height %s",
+	"united_minecraft.narrate.build_farmland_hydrated": "hydrated",
+	"united_minecraft.narrate.build_farmland_dry": "dry",
 	"united_minecraft.narrate.build_waterlogged": "Waterlogged",
 	"united_minecraft.narrate.build_open": "Open",
 	"united_minecraft.narrate.build_placement_facing": "Will place facing %s",

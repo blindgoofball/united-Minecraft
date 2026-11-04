@@ -31,6 +31,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.ComparatorBlock;
 import net.minecraft.world.level.block.DaylightDetectorBlock;
 import net.minecraft.world.level.block.EndPortalFrameBlock;
+import net.minecraft.world.level.block.FarmlandBlock;
 import net.minecraft.world.level.block.HopperBlock;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.ObserverBlock;
@@ -1488,6 +1489,13 @@ public final class BuildModeController {
 			} else if (state.getValue(SlabBlock.TYPE) == SlabType.TOP) {
 				message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_top_slab"));
 			}
+		}
+		if (state.getBlock() instanceof FarmlandBlock) {
+			// Water within four blocks (or rain) holds it at 7; without, it loses one every so often
+			// until it is dry, and a dry one with no crop turns back to dirt. Anything above 0 is the
+			// dark, wet farmland a sighted player sees, and what crops grow fastest on.
+			message = message.append(Component.literal(" ")).append(Component.translatable(state.getValue(FarmlandBlock.MOISTURE) > 0
+					? "united_minecraft.narrate.build_farmland_hydrated" : "united_minecraft.narrate.build_farmland_dry"));
 		}
 		if (state.getBlock() instanceof SnowLayerBlock) {
 			// Each layer is an eighth of a block, and nothing else shows how tall the snow is.

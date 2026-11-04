@@ -32,8 +32,9 @@ narrates it, and locks the cursor's movement to that orientation.
   narrate it. Blocks receiving redstone power say so, and are silent otherwise.
   Stairs narrate a corner as a compass direction ("Northwest corner") and "Upside
   down" when on the underside of a block, both silent for a plain stair.
-  Snow layers say how tall they are, from 1 to 8 ("Snow height 3"). Waterlogged blocks are
-  reported. Monster spawners and trial spawners say which mob
+  Snow layers say how tall they are, from 1 to 8 ("Snow height 3"). Farmland says
+  whether it is hydrated or dry. Waterlogged blocks are reported.
+  Monster spawners and trial spawners say which mob
   they spawn ("Spawns Zombie").
   Flowing water and lava say which way they are heading ("Flowing North", or
   "Flowing Down" for a waterfall); source blocks say "Source".
