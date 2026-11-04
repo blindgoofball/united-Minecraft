@@ -22,12 +22,12 @@ final class ScannerFilterScreen extends Screen {
 	private static final int BUTTON_HEIGHT = 20;
 	private static final int MAX_WIDTH = 420;
 
-	private final ScannerCategory category;
+	private final CategoryRef category;
 	// Survives a resize, which rebuilds every widget.
 	private int pickedIndex;
 	private PickList<ScannerFilterController.Filter> list;
 
-	ScannerFilterScreen(ScannerCategory category) {
+	ScannerFilterScreen(CategoryRef category) {
 		super(Component.translatable("united_minecraft.filter_screen.title", category.label()));
 		this.category = category;
 	}
@@ -62,7 +62,7 @@ final class ScannerFilterScreen extends Screen {
 	}
 
 	private void refreshList() {
-		List<ScannerFilterController.Filter> filters = ScannerFilterController.filtersFor(category);
+		List<ScannerFilterController.Filter> filters = ScannerFilterController.filtersFor(category.filterKey());
 		List<Component> labels = new ArrayList<>();
 		for (ScannerFilterController.Filter filter : filters) {
 			labels.add(Component.translatable(filter.persistent()
@@ -104,7 +104,7 @@ final class ScannerFilterScreen extends Screen {
 	}
 
 	private void add(Minecraft client, String text, boolean persistent) {
-		ScannerFilterController.AddResult result = ScannerFilterController.add(category, text, persistent);
+		ScannerFilterController.AddResult result = ScannerFilterController.add(category.filterKey(), text, persistent);
 		String shown = text.strip();
 		client.getNarrator().saySystemNow(switch (result) {
 			case ADDED -> Component.translatable("united_minecraft.narrate.filter_added", shown, category.label());

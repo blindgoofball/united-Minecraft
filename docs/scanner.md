@@ -98,6 +98,17 @@ your render distance.
 Shift+U while Search is selected opens a prompt for a term, then finds every
 visible block nearby whose name contains it. "glowstone" locates glowstone blocks.
 
+The prompt has a "Save as a category" checkbox. Ticked, the search is also saved under its
+own term as its name, as a category of its own in each world: it turns up after Search when
+you cycle with Home and End, and in the Z jump list by name. A saved search works just like
+Search with that term already entered. Unlike plain Search it is skipped by Skip Empty
+Categories when it finds nothing. Saving a term you already saved replaces that one's term,
+and a world holds up to 20.
+
+- Shift+U on a saved search opens its name and term to edit.
+- Delete on a saved search removes it, along with the filters kept for it.
+- Each saved search has filters of its own (Shift+Z), separate from Search's.
+
 ### Filters
 
 Shift+Z opens the filters for the category you are on, to leave things out of its list.

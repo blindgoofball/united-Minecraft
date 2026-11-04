@@ -190,6 +190,7 @@ public final class ClientHooks {
 		MapMarkerController.onWorldDeleted(levelId);
 		NamedBlockController.onWorldDeleted(levelId);
 		ScannerFilterController.onWorldDeleted(levelId);
+		SavedSearchController.onWorldDeleted(levelId);
 	}
 
 	/** The client is shutting down. */

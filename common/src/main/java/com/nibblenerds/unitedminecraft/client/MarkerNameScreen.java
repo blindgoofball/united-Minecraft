@@ -39,6 +39,10 @@ final class MarkerNameScreen extends Screen {
 	private final boolean toggleInitial;
 	private final BiConsumer<String, Boolean> onConfirmWithToggle;
 	private Checkbox toggleBox;
+	// The checkbox variant's buttons; the Name Block wording unless a caller says otherwise.
+	private Component confirmLabel = Component.translatable("united_minecraft.named_block_screen.confirm");
+	private Component clearLabel = Component.translatable("united_minecraft.named_block_screen.clear");
+	private Component cancelLabel = Component.translatable("united_minecraft.named_block_screen.cancel");
 
 	MarkerNameScreen(Consumer<String> onConfirm) {
 		this(Component.translatable("united_minecraft.marker_screen.title"),
@@ -78,6 +82,14 @@ final class MarkerNameScreen extends Screen {
 		this(title, prompt, cancelled, fieldLabel, initialValue, toggleLabel, toggleInitial, null, onConfirm);
 	}
 
+	/** Words for the checkbox variant's Confirm, Clear and Cancel buttons, for a prompt that isn't about naming a block. */
+	MarkerNameScreen withButtonLabels(Component confirm, Component clear, Component cancel) {
+		this.confirmLabel = confirm;
+		this.clearLabel = clear;
+		this.cancelLabel = cancel;
+		return this;
+	}
+
 	/** The checkbox variant, returning to {@code returnTo} afterwards instead of closing to the game - see the {@code returnTo} constructor above. */
 	MarkerNameScreen(Component title, Component prompt, Component cancelled, Component fieldLabel, String initialValue,
 			Component toggleLabel, boolean toggleInitial, Screen returnTo, BiConsumer<String, Boolean> onConfirm) {
@@ -112,15 +124,15 @@ final class MarkerNameScreen extends Screen {
 			if (!initialValue.isEmpty()) {
 				// A blank name is what removes one (and its Markers flag), so this is just confirming
 				// blank without having to empty the field first.
-				addRenderableWidget(Button.builder(Component.translatable("united_minecraft.named_block_screen.clear"), button -> clear())
+				addRenderableWidget(Button.builder(clearLabel, button -> clear())
 						.bounds(this.width / 2 - 100, buttonY, 200, 20)
 						.build());
 				buttonY += 24;
 			}
-			addRenderableWidget(Button.builder(Component.translatable("united_minecraft.named_block_screen.confirm"), button -> confirm())
+			addRenderableWidget(Button.builder(confirmLabel, button -> confirm())
 					.bounds(this.width / 2 - 100, buttonY, 200, 20)
 					.build());
-			addRenderableWidget(Button.builder(Component.translatable("united_minecraft.named_block_screen.cancel"), button -> onClose())
+			addRenderableWidget(Button.builder(cancelLabel, button -> onClose())
 					.bounds(this.width / 2 - 100, buttonY + 24, 200, 20)
 					.build());
 		}

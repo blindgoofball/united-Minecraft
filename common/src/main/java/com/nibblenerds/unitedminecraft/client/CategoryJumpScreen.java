@@ -59,7 +59,7 @@ final class CategoryJumpScreen extends Screen {
 			this.minecraft.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.category_jump_prompt"));
 			return;
 		}
-		List<ScannerCategory> matches = matching(text);
+		List<CategoryRef> matches = matching(text);
 		if (matches.isEmpty()) {
 			this.minecraft.getNarrator().saySystemNow(Component.translatable(
 					"united_minecraft.narrate.category_jump_none", text.toUpperCase(Locale.ROOT)));
@@ -79,7 +79,7 @@ final class CategoryJumpScreen extends Screen {
 	public boolean keyPressed(KeyEvent event) {
 		if (event.key() == InputConstants.KEY_RETURN || event.key() == InputConstants.KEY_NUMPADENTER) {
 			String text = input.getValue().strip().toLowerCase(Locale.ROOT);
-			List<ScannerCategory> matches = matching(text);
+			List<CategoryRef> matches = matching(text);
 			if (!text.isEmpty() && !matches.isEmpty()) {
 				jumpTo(matches.get(0));
 			}
@@ -94,7 +94,7 @@ final class CategoryJumpScreen extends Screen {
 		this.minecraft.gui.setScreen(null);
 	}
 
-	private void jumpTo(ScannerCategory category) {
+	private void jumpTo(CategoryRef category) {
 		LocalPlayer player = this.minecraft.player;
 		this.minecraft.gui.setScreen(null);
 		if (player != null) {
@@ -102,7 +102,7 @@ final class CategoryJumpScreen extends Screen {
 		}
 	}
 
-	private void narrateCandidates(String text, List<ScannerCategory> matches) {
+	private void narrateCandidates(String text, List<CategoryRef> matches) {
 		Component list = Component.empty();
 		for (int i = 0; i < matches.size(); i++) {
 			if (i > 0) {
@@ -113,9 +113,9 @@ final class CategoryJumpScreen extends Screen {
 		this.minecraft.getNarrator().saySystemNow(Component.literal(text.toUpperCase(Locale.ROOT) + ": ").append(list));
 	}
 
-	private static List<ScannerCategory> matching(String prefix) {
-		List<ScannerCategory> matches = new ArrayList<>();
-		for (ScannerCategory category : ScannerCategory.values()) {
+	private static List<CategoryRef> matching(String prefix) {
+		List<CategoryRef> matches = new ArrayList<>();
+		for (CategoryRef category : ScannerController.categories()) {
 			if (category.label().getString().toLowerCase(Locale.ROOT).startsWith(prefix)) {
 				matches.add(category);
 			}

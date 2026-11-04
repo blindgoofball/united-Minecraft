@@ -133,6 +133,7 @@ public final class AccessibilityTickHandler {
 			NamedBlockController.reset();
 			MarkerShareController.reset();
 			ScannerFilterController.reset();
+			SavedSearchController.reset();
 			ServerWorldSeed.reset();
 			ScannerController.reset();
 			AutoWalkController.reset();
@@ -193,6 +194,7 @@ public final class AccessibilityTickHandler {
 		MapMarkerController.tick(client);
 		NamedBlockController.tick(client);
 		ScannerFilterController.tick(client);
+		SavedSearchController.tick(client);
 
 		if (client.gui.screen() != null && AutoWalkController.isActive()) {
 			// AutoWalkController.tick (and the cancel-key check inside it) only runs below,

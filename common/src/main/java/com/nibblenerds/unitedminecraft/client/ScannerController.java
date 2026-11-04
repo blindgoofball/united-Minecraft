@@ -197,7 +197,12 @@ public final class ScannerController {
 	// sampling would just repeat the same answer.
 	private static final int BIOME_SAMPLE_STEP = 4;
 
-	private static final ScannerCategory[] CATEGORIES = ScannerCategory.values();
+	private static final List<CategoryRef> BUILT_IN_CATEGORIES = Arrays.stream(ScannerCategory.values()).map(CategoryRef::of).toList();
+
+	// The order Home/End cycle through: the built-in categories, then the player's saved
+	// searches. Rebuilt only when the saved searches change.
+	private static List<CategoryRef> categories = BUILT_IN_CATEGORIES;
+	private static int categoriesVersion = -1;
 
 	private static int categoryIndex = -1;
 	private static List<ScannerItem> items = List.of();
@@ -208,11 +213,11 @@ public final class ScannerController {
 	/** The Search category's current term - blank until the player enters one via {@link #openSearchPrompt}. */
 	private static String searchTerm = "";
 
-	// Every Block whose name or id matches searchTerm, resolved once per term instead of once
-	// per scanned position - see #searchMatches. Keyed by the term it was built for so a fresh
-	// term (or reset()'s blanking) rebuilds it rather than answering from a stale set.
-	private static String searchMatchesTerm;
-	private static Set<Block> searchMatches = Set.of();
+	// Every Block whose name or id matches a search term, resolved once per term instead of once
+	// per scanned position - see #searchMatches. Several terms are kept (the free Search term and
+	// the saved searches), since a Home/End press probes a number of them in a row.
+	private static final Map<String, Set<Block>> SEARCH_MATCHES = new HashMap<>();
+	private static final int MAX_CACHED_TERMS = 40;
 
 	/** The flat area size Terrain is looking for, {width, depth}, or null while none has been asked for - see {@link #openFlatAreaPrompt}. */
 	private static int[] flatAreaSize;
@@ -232,6 +237,29 @@ public final class ScannerController {
 
 	private static double scanRange() {
 		return UnitedMinecraftConfig.get().scannerRange;
+	}
+
+	/** Every category in cycling order: the built-in ones, then the saved searches. */
+	static List<CategoryRef> categories() {
+		if (SavedSearchController.version() != categoriesVersion) {
+			categoriesVersion = SavedSearchController.version();
+			List<CategoryRef> all = new ArrayList<>(BUILT_IN_CATEGORIES);
+			for (SavedSearchController.SavedSearch saved : SavedSearchController.all()) {
+				all.add(new CategoryRef(ScannerCategory.SEARCH, saved));
+			}
+			categories = List.copyOf(all);
+		}
+		return categories;
+	}
+
+	/** The category the Scanner is on. Only call with a category selected ({@code categoryIndex != -1}). */
+	private static CategoryRef currentRef() {
+		List<CategoryRef> all = categories();
+		return all.get(Math.clamp(categoryIndex, 0, all.size() - 1));
+	}
+
+	private static ScannerCategory currentKind() {
+		return currentRef().kind();
 	}
 
 	public static boolean isLocked() {
@@ -350,9 +378,12 @@ public final class ScannerController {
 		if (targetPressed || targetWalkTherePressed) {
 			target(client, player);
 		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_REMOVE_MARKER)
-				&& categoryIndex >= 0 && CATEGORIES[categoryIndex] == ScannerCategory.MARKERS) {
-			removeCurrentMarker(client, player);
+		if (ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_REMOVE_MARKER) && categoryIndex >= 0) {
+			if (currentKind() == ScannerCategory.MARKERS) {
+				removeCurrentMarker(client, player);
+			} else if (currentRef().isSavedSearch()) {
+				deleteSavedSearch(client, player, currentRef());
+			}
 		}
 		if (coordinatesPressed) {
 			ScannerItem item = currentItem();
@@ -377,7 +408,7 @@ public final class ScannerController {
 		} else {
 			return;
 		}
-		items = scanVisible(ScannerCategory.MARKERS, player);
+		items = scanVisible(CategoryRef.of(ScannerCategory.MARKERS), player);
 		itemIndex = items.isEmpty() ? 0 : Math.min(itemIndex, items.size() - 1);
 	}
 
@@ -397,18 +428,22 @@ public final class ScannerController {
 	 * is found from a different block each scan), so nothing was lost.
 	 */
 	public static void nameFocusedItem(Minecraft client, LocalPlayer player) {
-		if (categoryIndex != -1 && CATEGORIES[categoryIndex] == ScannerCategory.SEARCH) {
+		if (categoryIndex != -1 && currentRef().isSavedSearch()) {
+			client.gui.setScreen(new SavedSearchEditScreen(currentRef().saved()));
+			return;
+		}
+		if (categoryIndex != -1 && currentKind() == ScannerCategory.SEARCH) {
 			openSearchPrompt(client, player);
 			return;
 		}
-		if (categoryIndex != -1 && CATEGORIES[categoryIndex] == ScannerCategory.TERRAIN) {
+		if (categoryIndex != -1 && currentKind() == ScannerCategory.TERRAIN) {
 			openFlatAreaPrompt(client, player);
 			return;
 		}
 		if (categoryIndex == -1) {
 			return;
 		}
-		if (CATEGORIES[categoryIndex] == ScannerCategory.MARKERS) {
+		if (currentKind() == ScannerCategory.MARKERS) {
 			// A plain marker is renamed by placing a new one, but a marked block is just a
 			// named block, so its name and Markers flag are edited the same way as anywhere else.
 			ScannerItem focused = currentItem();
@@ -416,7 +451,7 @@ public final class ScannerController {
 				return;
 			}
 		}
-		if (CATEGORIES[categoryIndex] == ScannerCategory.BIOMES_AND_STRUCTURES) {
+		if (currentKind() == ScannerCategory.BIOMES_AND_STRUCTURES) {
 			// A biome entry's position is an arbitrary surface sample point on a 4-block grid,
 			// and a structure's is just its nearest point to wherever the player scanned from,
 			// not a block the player pointed at - a name keyed to it would never be read back
@@ -450,17 +485,64 @@ public final class ScannerController {
 				Component.translatable("united_minecraft.narrate.search_cancelled"),
 				Component.translatable("united_minecraft.search_screen.term"),
 				searchTerm,
-				term -> {
+				Component.translatable("united_minecraft.search_screen.save_as_category"),
+				false,
+				(term, save) -> {
 					searchTerm = term == null ? "" : term.trim();
-					items = scanVisible(ScannerCategory.SEARCH, player);
+					items = scanVisible(CategoryRef.of(ScannerCategory.SEARCH), player);
 					itemIndex = 0;
 					Component summary = items.isEmpty()
 							? Component.translatable("united_minecraft.narrate.scanner_empty")
 							: Component.translatable("united_minecraft.narrate.scanner_count", items.size())
 									.append(Component.literal(". "))
 									.append(describeItem(ScannerCategory.SEARCH, items.get(0), player));
-					client.getNarrator().saySystemNow(ScannerCategory.SEARCH.label().append(Component.literal(", ")).append(summary));
-				}));
+					Component spoken = ScannerCategory.SEARCH.label().append(Component.literal(", ")).append(summary);
+					Component saved = save && !searchTerm.isBlank() ? saveCurrentSearch() : null;
+					client.getNarrator().saySystemNow(saved == null ? spoken : saved.copy().append(Component.literal(". ")).append(spoken));
+				}).withButtonLabels(
+						Component.translatable("united_minecraft.search_screen.confirm"),
+						Component.translatable("united_minecraft.search_screen.clear"),
+						Component.translatable("united_minecraft.search_screen.cancel")));
+	}
+
+	/** Saves the term just entered as a category named after it, and says what happened. */
+	private static Component saveCurrentSearch() {
+		SavedSearchController.SaveResult result = SavedSearchController.save(searchTerm, searchTerm);
+		return switch (result) {
+			case ADDED -> Component.translatable("united_minecraft.narrate.search_saved", searchTerm);
+			case UPDATED -> Component.translatable("united_minecraft.narrate.search_save_updated", searchTerm);
+			case FULL -> Component.translatable("united_minecraft.narrate.search_save_full", SavedSearchController.MAX_SAVED);
+			default -> null;
+		};
+	}
+
+	/**
+	 * A saved search was edited: moves to it (its place in the order doesn't change, but the index
+	 * is looked up by id to be safe), re-scans with the new term and says the category and its
+	 * count, which also confirms the new name.
+	 */
+	static void onSavedSearchEdited(Minecraft client, LocalPlayer player, String id) {
+		List<CategoryRef> all = categories();
+		for (int i = 0; i < all.size(); i++) {
+			if (all.get(i).isSavedSearch() && all.get(i).saved().id().equals(id)) {
+				categoryIndex = i;
+				break;
+			}
+		}
+		items = scanVisible(currentRef(), player);
+		itemIndex = 0;
+		narrateCategory(client, player, currentRef());
+	}
+
+	/** Delete on a saved search's category: removes it and the filters kept for it, and moves to plain Search. */
+	private static void deleteSavedSearch(Minecraft client, LocalPlayer player, CategoryRef ref) {
+		SavedSearchController.remove(ref.saved().id());
+		ScannerFilterController.removeAllFor(ref.filterKey());
+		CategoryRef search = CategoryRef.of(ScannerCategory.SEARCH);
+		categoryIndex = categories().indexOf(search);
+		items = scanVisible(search, player);
+		itemIndex = 0;
+		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.saved_search_removed", ref.saved().name()));
 	}
 
 	/**
@@ -490,7 +572,7 @@ public final class ScannerController {
 						flatAreaSize = size;
 						heading = Component.translatable("united_minecraft.narrate.flat_area_set", size[0], size[1]);
 					}
-					items = scanVisible(ScannerCategory.TERRAIN, player);
+					items = scanVisible(CategoryRef.of(ScannerCategory.TERRAIN), player);
 					itemIndex = 0;
 					Component summary = items.isEmpty()
 							? Component.translatable("united_minecraft.narrate.scanner_empty")
@@ -524,7 +606,7 @@ public final class ScannerController {
 		// client-side (the server syncs health to 0 at or before removal on death).
 		boolean killed = lockedEntity instanceof LivingEntity living && living.isDeadOrDying();
 		lockedEntity = null;
-		if (killed && categoryIndex >= 0 && CATEGORIES[categoryIndex] == ScannerCategory.HOSTILE_MOBS
+		if (killed && categoryIndex >= 0 && currentKind() == ScannerCategory.HOSTILE_MOBS
 				&& relockNearestHostile(client, player)) {
 			return;
 		}
@@ -533,7 +615,7 @@ public final class ScannerController {
 
 	/** Re-scans for hostile mobs and locks onto the nearest one, if any are left. */
 	private static boolean relockNearestHostile(Minecraft client, LocalPlayer player) {
-		items = scanVisible(ScannerCategory.HOSTILE_MOBS, player);
+		items = scanVisible(CategoryRef.of(ScannerCategory.HOSTILE_MOBS), player);
 		itemIndex = 0;
 		if (items.isEmpty() || items.get(0).entity() == null) {
 			return false;
@@ -600,13 +682,14 @@ public final class ScannerController {
 	}
 
 	private static void switchCategory(Minecraft client, LocalPlayer player, int direction) {
+		List<CategoryRef> all = categories();
 		if (categoryIndex == -1) {
-			categoryIndex = direction > 0 ? 0 : CATEGORIES.length - 1;
+			categoryIndex = direction > 0 ? 0 : all.size() - 1;
 		} else {
-			categoryIndex = Math.floorMod(categoryIndex + direction, CATEGORIES.length);
+			categoryIndex = Math.floorMod(categoryIndex + direction, all.size());
 		}
 
-		ScannerCategory category = CATEGORIES[categoryIndex];
+		CategoryRef category = all.get(categoryIndex);
 		items = scanVisible(category, player);
 
 		if (UnitedMinecraftConfig.get().scannerSkipEmptyCategories && isSkippablyEmpty(category, items)) {
@@ -618,12 +701,12 @@ public final class ScannerController {
 			//
 			// categoryHasAny is a cheap existence probe, not a full scan() - a full scan of
 			// every block-cube category (Storage, Workstations, Mechanisms, Ores, Terrain, Crops,
-			// Search, Trees) in the same pass this loop can make up to CATEGORIES.length - 1
-			// times would mean hundreds of thousands of block reads on a single Home/End press.
-			// Only the category actually settled on below gets the real, full scan().
-			for (int step = 1; step < CATEGORIES.length; step++) {
-				int candidateIndex = Math.floorMod(categoryIndex + direction * step, CATEGORIES.length);
-				ScannerCategory candidate = CATEGORIES[candidateIndex];
+			// Search, Trees) in the same pass this loop can make up to one fewer than the number of
+			// categories times would mean hundreds of thousands of block reads on a single Home/End
+			// press. Only the category actually settled on below gets the real, full scan().
+			for (int step = 1; step < all.size(); step++) {
+				int candidateIndex = Math.floorMod(categoryIndex + direction * step, all.size());
+				CategoryRef candidate = all.get(candidateIndex);
 				// isSkippablyEmpty never treats Search or Terrain as skippable regardless of their
 				// contents (see that method's doc) - mirror that here rather than probing them.
 				if (isNeverSkipped(candidate) || categoryHasAny(candidate, player)) {
@@ -643,15 +726,15 @@ public final class ScannerController {
 	 * way Home/End does. Unlike cycling, an explicit jump to an empty category is honoured and
 	 * reported as empty rather than skipped - the player asked for it by name.
 	 */
-	static void jumpToCategory(Minecraft client, LocalPlayer player, ScannerCategory target) {
-		categoryIndex = Arrays.asList(CATEGORIES).indexOf(target);
+	static void jumpToCategory(Minecraft client, LocalPlayer player, CategoryRef target) {
+		categoryIndex = categories().indexOf(target);
 		items = scanVisible(target, player);
 		itemIndex = 0;
 		narrateCategory(client, player, target);
 	}
 
-	private static void narrateCategory(Minecraft client, LocalPlayer player, ScannerCategory category) {
-		if (category == ScannerCategory.SEARCH && searchTerm.isBlank()) {
+	private static void narrateCategory(Minecraft client, LocalPlayer player, CategoryRef category) {
+		if (category.isFreeSearch() && searchTerm.isBlank()) {
 			client.getNarrator().saySystemNow(category.label().append(Component.literal(", "))
 					.append(Component.translatable("united_minecraft.narrate.search_no_term")));
 			return;
@@ -665,7 +748,7 @@ public final class ScannerController {
 		client.getNarrator().saySystemNow(category.label().append(Component.literal(", "))
 				.append(Component.translatable("united_minecraft.narrate.scanner_count", items.size()))
 				.append(Component.literal(". "))
-				.append(describeItem(category, items.get(0), player)));
+				.append(describeItem(category.kind(), items.get(0), player)));
 	}
 
 	/**
@@ -673,7 +756,7 @@ public final class ScannerController {
 	 * scannerSkipEmptyCategories} - true empty results everywhere except {@link #isNeverSkipped}
 	 * categories.
 	 */
-	private static boolean isSkippablyEmpty(ScannerCategory category, List<ScannerItem> items) {
+	private static boolean isSkippablyEmpty(CategoryRef category, List<ScannerItem> items) {
 		return !isNeverSkipped(category) && items.isEmpty();
 	}
 
@@ -681,10 +764,11 @@ public final class ScannerController {
 	 * Categories that are useful even with nothing listed, so cycling always lands on them: Search,
 	 * whose "no term entered yet" state is its own valid narration (see {@link #openSearchPrompt}),
 	 * and Terrain, which hosts the flat-area finder that has to stay reachable wherever the
-	 * player is standing.
+	 * player is standing. A saved search is not one of them: it always has a term, so it is skipped
+	 * when it finds nothing, like any other category.
 	 */
-	private static boolean isNeverSkipped(ScannerCategory category) {
-		return category == ScannerCategory.SEARCH || category == ScannerCategory.TERRAIN;
+	private static boolean isNeverSkipped(CategoryRef category) {
+		return category.isFreeSearch() || category.kind() == ScannerCategory.TERRAIN;
 	}
 
 	private static void stepItem(Minecraft client, LocalPlayer player, int direction) {
@@ -693,7 +777,7 @@ public final class ScannerController {
 		}
 		itemIndex = Math.floorMod(itemIndex + direction, items.size());
 		client.getNarrator().saySystemNow(
-				describeItemWithPosition(CATEGORIES[categoryIndex], items.get(itemIndex), player, itemIndex, items.size()));
+				describeItemWithPosition(currentKind(), items.get(itemIndex), player, itemIndex, items.size()));
 	}
 
 	/**
@@ -707,7 +791,7 @@ public final class ScannerController {
 		if (categoryIndex == -1 || items.isEmpty()) {
 			return;
 		}
-		ScannerCategory category = CATEGORIES[categoryIndex];
+		ScannerCategory category = currentKind();
 		ScannerItem current = items.get(itemIndex);
 		Level level = player.level();
 		int size = items.size();
@@ -759,7 +843,7 @@ public final class ScannerController {
 		}
 
 		boolean walkThere = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_TARGET_WALK_THERE);
-		ScannerCategory category = CATEGORIES[categoryIndex];
+		ScannerCategory category = currentKind();
 		if (item.entity() != null) {
 			if (category == ScannerCategory.ITEMS) {
 				// Dropped items don't move on their own and aren't a threat to track - just
@@ -1220,7 +1304,7 @@ public final class ScannerController {
 		if (categoryIndex == -1) {
 			return;
 		}
-		items = scanVisible(CATEGORIES[categoryIndex], player);
+		items = scanVisible(currentRef(), player);
 		for (int i = 0; i < items.size(); i++) {
 			if (originalItem.test(items.get(i))) {
 				itemIndex = i;
@@ -1491,14 +1575,14 @@ public final class ScannerController {
 	 * ScannerFilterController}. A filter is matched against the item's spoken name, so this costs
 	 * a name lookup per result only for a category that has filters.
 	 */
-	private static List<ScannerItem> scanVisible(ScannerCategory category, LocalPlayer player) {
+	private static List<ScannerItem> scanVisible(CategoryRef category, LocalPlayer player) {
 		List<ScannerItem> all = scan(category, player);
-		if (!ScannerFilterController.hasFilters(category)) {
+		if (!ScannerFilterController.hasFilters(category.filterKey())) {
 			return all;
 		}
 		List<ScannerItem> kept = new ArrayList<>(all.size());
 		for (ScannerItem item : all) {
-			if (!ScannerFilterController.isFiltered(category, itemName(category, item, player).getString())) {
+			if (!ScannerFilterController.isFiltered(category.filterKey(), itemName(category.kind(), item, player).getString())) {
 				kept.add(item);
 			}
 		}
@@ -1511,7 +1595,7 @@ public final class ScannerController {
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.filters_no_category"));
 			return;
 		}
-		client.gui.setScreen(new ScannerFilterScreen(CATEGORIES[categoryIndex]));
+		client.gui.setScreen(new ScannerFilterScreen(currentRef()));
 	}
 
 	/**
@@ -1522,11 +1606,12 @@ public final class ScannerController {
 		if (categoryIndex == -1) {
 			return;
 		}
-		items = scanVisible(CATEGORIES[categoryIndex], player);
+		items = scanVisible(currentRef(), player);
 		itemIndex = items.isEmpty() ? 0 : Math.min(itemIndex, items.size() - 1);
 	}
 
-	private static List<ScannerItem> scan(ScannerCategory category, LocalPlayer player) {
+	private static List<ScannerItem> scan(CategoryRef ref, LocalPlayer player) {
+		ScannerCategory category = ref.kind();
 		return switch (category) {
 			// Double chests are two blocks sharing one real-world object - only match the
 			// non-right half, so each shows up once.
@@ -1554,7 +1639,7 @@ public final class ScannerController {
 			}
 			case TERRAIN -> scanTerrain(player);
 			case CROPS -> scanCrops(player);
-			case SEARCH -> scanSearch(player);
+			case SEARCH -> scanSearch(player, ref.searchTerm(searchTerm));
 			case BIOMES_AND_STRUCTURES -> scanBiomesAndStructures(player);
 			// instanceof Animal alone missed anything that isn't a beast - villagers, wandering
 			// traders, iron/snow/copper golems, bats, squids, allays - since none of those extend
@@ -2083,11 +2168,12 @@ public final class ScannerController {
 	 * category (entity-based, Markers, Players, Biomes) is already cheap enough that this just
 	 * runs the real scan and checks emptiness directly.
 	 */
-	private static boolean categoryHasAny(ScannerCategory category, LocalPlayer player) {
-		if (ScannerFilterController.hasFilters(category)) {
+	private static boolean categoryHasAny(CategoryRef ref, LocalPlayer player) {
+		if (ScannerFilterController.hasFilters(ref.filterKey())) {
 			// The cheap probes below can't tell that everything they find is filtered out.
-			return !scanVisible(category, player).isEmpty();
+			return !scanVisible(ref, player).isEmpty();
 		}
+		ScannerCategory category = ref.kind();
 		Level level = player.level();
 		Vec3 eye = player.getEyePosition();
 		FastBlockAccess fastAccess = new FastBlockAccess(level);
@@ -2107,11 +2193,11 @@ public final class ScannerController {
 					|| scanBlocksAny(player, (pos, state) -> state.is(BlockTags.CLIMBABLE))
 					|| !scanFlatAreas(player).isEmpty();
 			case CROPS -> scanBlocksAny(player, (pos, state) -> cropMatches(state.getBlock()));
-			case SEARCH -> !searchTerm.isBlank() && scanBlocksAny(player, (pos, state) -> !state.isAir()
-					&& searchMatches().contains(state.getBlock())
+			case SEARCH -> !ref.searchTerm(searchTerm).isBlank() && scanBlocksAny(player, (pos, state) -> !state.isAir()
+					&& searchMatches(ref.searchTerm(searchTerm)).contains(state.getBlock())
 					&& OreDetection.isExposed(level, fastAccess::getBlockState, pos, eye));
 			case TREES -> scanBlocksAny(player, (pos, state) -> state.is(BlockTags.LOGS) && hasNearbyLeavesAt(level, pos));
-			default -> !scanVisible(category, player).isEmpty();
+			default -> !scanVisible(ref, player).isEmpty();
 		};
 	}
 
@@ -2133,11 +2219,11 @@ public final class ScannerController {
 	 * OreDetection#isExposed} only counts a match already bordering air or a fluid and actually
 	 * visible through that gap, not sealed behind unmined blocks.
 	 */
-	private static List<ScannerItem> scanSearch(LocalPlayer player) {
-		if (searchTerm.isBlank()) {
+	private static List<ScannerItem> scanSearch(LocalPlayer player, String term) {
+		if (term.isBlank()) {
 			return List.of();
 		}
-		Set<Block> matches = searchMatches();
+		Set<Block> matches = searchMatches(term);
 		FastBlockAccess fastAccess = new FastBlockAccess(player.level());
 		Vec3 eye = player.getEyePosition();
 		return scanBlocks(player, (pos, state) -> !state.isAir()
@@ -2158,11 +2244,12 @@ public final class ScannerController {
 	 * through {@link #categoryHasAny}'s probe), which is seconds of frozen client rather than the
 	 * hash lookup per position it costs now.
 	 */
-	private static Set<Block> searchMatches() {
-		if (searchTerm.equals(searchMatchesTerm)) {
-			return searchMatches;
-		}
+	private static Set<Block> searchMatches(String searchTerm) {
 		String term = searchTerm.toLowerCase(Locale.ROOT);
+		Set<Block> cached = SEARCH_MATCHES.get(term);
+		if (cached != null) {
+			return cached;
+		}
 		Set<Block> matches = new HashSet<>();
 		if (!term.isBlank()) {
 			for (Block block : BuiltInRegistries.BLOCK) {
@@ -2171,8 +2258,10 @@ public final class ScannerController {
 				}
 			}
 		}
-		searchMatchesTerm = searchTerm;
-		searchMatches = matches;
+		if (SEARCH_MATCHES.size() >= MAX_CACHED_TERMS) {
+			SEARCH_MATCHES.clear();
+		}
+		SEARCH_MATCHES.put(term, matches);
 		return matches;
 	}
 

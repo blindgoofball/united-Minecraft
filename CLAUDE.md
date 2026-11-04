@@ -173,7 +173,10 @@ anything that reacts to player state each tick. Key points:
 `ScannerController` + `ScannerCategory` implement cycling through nearby
 blocks/entities by category (the `ScannerCategory` enum is the authoritative list and cycling
 order; Terrain, Biomes and Structures, Players and Search are the ones that need special
-handling), targeting/locking on, and coordinate lookup. `FlatAreaFinder` backs Terrain's
+handling), targeting/locking on, and coordinate lookup. The player's saved searches follow
+Search in that order (`SavedSearchController`), so the Scanner works in `CategoryRef`s - a
+built-in category or a saved search - whose `kind` drives all behaviour: a saved search is
+Search with a term already entered, plus a name and filters of its own. `FlatAreaFinder` backs Terrain's
 flat-area search, and `SignNarrationHelper` is how the Scanner and the look-ahead read signs. Ore detection
 (`OreDetection`) is shared with `MiningRadarController` and deliberately only flags ore
 that's actually visible, not sealed behind unmined blocks. Map Markers
