@@ -98,6 +98,8 @@ public final class UnitedMinecraftConfig {
 	public String otherAttackKey = null;
 	public String otherUseKey = null;
 	public boolean mapBeaconEnabled = true;
+	/** A chime toward where a held compass points - see {@link MapBeaconController}. */
+	public boolean compassBeaconEnabled = true;
 	public boolean wallTonesEnabled = false;
 	public int wallToneRange = 8;
 	public int wallToneVolume = 60;

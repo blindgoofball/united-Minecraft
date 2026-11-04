@@ -3,7 +3,7 @@ package com.nibblenerds.unitedminecraft.client;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
-/** Audio Cue Volume, Title Narration, Hotbar Tooltips, Durability/Tool Harvest awareness, Precise Coordinates, and Map Beacon - everything else, see {@link SettingsScreen}. */
+/** Audio Cue Volume, Title Narration, Hotbar Tooltips, Durability/Tool Harvest awareness, Precise Coordinates, Map Beacon, and Compass Beacon - everything else, see {@link SettingsScreen}. */
 final class GeneralSettingsScreen extends SettingsListScreen {
 	GeneralSettingsScreen() {
 		super(Component.translatable("united_minecraft.general_settings_screen.title"));
@@ -42,6 +42,8 @@ final class GeneralSettingsScreen extends SettingsListScreen {
 				config.preciseCoordinatesEnabled, value -> config.preciseCoordinatesEnabled = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.map_beacon_enabled",
 				config.mapBeaconEnabled, value -> config.mapBeaconEnabled = value);
+		y = addToggle(x, y, "united_minecraft.settings_screen.compass_beacon_enabled",
+				config.compassBeaconEnabled, value -> config.compassBeaconEnabled = value);
 
 		addButton(x, y + ROW_SPACING, "united_minecraft.settings_screen.back",
 				() -> Minecraft.getInstance().gui.setScreen(new SettingsScreen()));

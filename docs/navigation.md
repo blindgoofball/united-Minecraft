@@ -116,6 +116,24 @@ how the eye moved, since the game never tells the client where the stronghold is
 so treat it as a good estimate. The sounds can be switched off in Settings >
 Modes & Movement.
 
+## Maps and compasses
+
+Holding a treasure or explorer map, or a compass, gives you a bell toward where it points. Its
+pitch rises and it repeats faster as you close in, and every few seconds the mod says the
+bearing and distance. Nothing is needed to turn it on beyond holding the item, and putting it
+away stops it. If you hold both, the main hand's is the one that sounds.
+
+- A normal compass points to world spawn, a lodestone compass to its lodestone, and a recovery
+  compass to where you last died. The bearing says which. For a lodestone and your death spot it
+  also says how many blocks above or below you the target is.
+- A compass's target is exact, so it is reached within a few blocks, and not from far above or
+  below it. A map's is only approximate, so the bell calls it reached from 16 blocks.
+- A compass spins in the game when it has nothing to point at, and the mod stays quiet then,
+  saying so once: a lodestone compass whose lodestone is gone, a recovery compass before you
+  have died, or any compass whose target is in another dimension. That includes a normal
+  compass in the Nether or the End.
+- Map Beacon and Compass Beacon can each be switched off in the General settings.
+
 ## Structure Voices
 
 When a village, ocean monument, ruined portal, shipwreck or any other structure
