@@ -200,6 +200,12 @@ public final class AutoWalkController {
 		boolean climbingUp = climbLeg && nextPos.getY() > player.getY();
 		double dy = climbLeg ? nextPos.getY() - player.getY() : 0.0;
 		boolean atHeight = !climbLeg || (climbingUp ? dy <= CLIMB_ARRIVAL_UP : dy >= -CLIMB_ARRIVAL_DOWN);
+		// A drop is a waypoint in the same column as the ledge the player stands on: they are
+		// horizontally "there" before they have fallen, and counting that would end the walk (or skip
+		// on to the next waypoint) while they are still up on the ledge.
+		if (!climbLeg && ArrivalHeights.stillAboveWaypoint(player.getY(), nextPos.getY())) {
+			atHeight = false;
+		}
 
 		if (dx * dx + dz * dz < NODE_ARRIVAL_DISTANCE_SQR && atHeight) {
 			currentPath.advance();
@@ -215,7 +221,9 @@ public final class AutoWalkController {
 				// sits between them - standing flush against a wall with a chest 1-2 blocks away
 				// on its far side counts as "reached" by that measure even though there's no way
 				// through. The line-of-sight check below catches that case.
-				if (currentPath.canReach() && hasClearLineToTarget(player.level(), player, currentPath.getTarget())) {
+				if (currentPath.canReach()
+						&& ArrivalHeights.levelWithTarget(player.getY(), currentPath.getTarget().getY())
+						&& hasClearLineToTarget(player.level(), player, currentPath.getTarget())) {
 					Runnable callback = onArrival;
 					client.getSoundManager().play(new SimpleSoundInstance(SoundEvents.NOTE_BLOCK_CHIME.value(),
 							SoundSource.MASTER, CueVolume.scale(0.7f), 1.4f, player.getRandom(), player.getX(), player.getY(), player.getZ()));
