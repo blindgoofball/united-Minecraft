@@ -1318,7 +1318,8 @@ public final class MenuAccessibilityController {
 		recipeGroupIndex = groups.isEmpty() ? -1 : 0;
 		recipeVariantIndex = 0;
 		Minecraft.getInstance().getNarrator().saySystemNow(recipeCategoryLabel(currentRecipeCategory));
-		narrateRecipeFocus(player, false);
+		// Queued, so reading the category's first recipe waits for its name instead of cutting it off.
+		narrateRecipeFocus(player, false, true);
 	}
 
 	/** Every {@link RecipeBookCategory} actually used by a recipe in {@link #recipeGroups} (unfiltered), registry order. */
@@ -1468,7 +1469,8 @@ public final class MenuAccessibilityController {
 				? "united_minecraft.menu.recipe_book.filter_on"
 				: "united_minecraft.menu.recipe_book.filter_off");
 		Minecraft.getInstance().getNarrator().saySystemNow(toggleMessage);
-		narrateRecipeFocus(player, false);
+		// Queued, so reading the new first recipe waits for the message instead of cutting it off.
+		narrateRecipeFocus(player, false, true);
 	}
 
 	private static void placeFocusedRecipe(AbstractContainerMenu menu, LocalPlayer player, boolean useMaxItems) {
@@ -1610,6 +1612,16 @@ public final class MenuAccessibilityController {
 	}
 
 	private static void narrateRecipeFocus(LocalPlayer player, boolean announceSection) {
+		narrateRecipeFocus(player, announceSection, false);
+	}
+
+	/**
+	 * {@code queued} waits for whatever is already being said instead of cutting it off - for a
+	 * caller that has just announced something of its own (the craftable filter saying whether it is
+	 * on) which the first recipe of the new list would otherwise talk over. Moving between recipes
+	 * keeps cutting the previous one off, so cycling stays quick.
+	 */
+	private static void narrateRecipeFocus(LocalPlayer player, boolean announceSection, boolean queued) {
 		// visibleRecipeGroups() re-filters every recipe group against the search term (and thus
 		// re-runs matchesRecipeSearch over every candidate) - compute it once here rather than
 		// via currentRecipeVariants() and then again below for the group itself.
@@ -1652,7 +1664,11 @@ public final class MenuAccessibilityController {
 		if (announceSection) {
 			message = sectionLabel(Section.RECIPE_BOOK).copy().append(Component.literal(". ")).append(message);
 		}
-		Minecraft.getInstance().getNarrator().saySystemNow(message);
+		if (queued) {
+			Minecraft.getInstance().getNarrator().saySystemQueued(message);
+		} else {
+			Minecraft.getInstance().getNarrator().saySystemNow(message);
+		}
 	}
 
 	/** Up/Down/Enter reuse the same general container actions as ordinary slot navigation - no dedicated Enchant Options actions needed. */
