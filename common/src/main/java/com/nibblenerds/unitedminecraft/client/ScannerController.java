@@ -6,6 +6,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Deque;
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -86,6 +88,7 @@ import net.minecraft.world.level.block.ShulkerBoxBlock;
 import net.minecraft.world.level.block.AttachedStemBlock;
 import net.minecraft.world.level.block.BambooSaplingBlock;
 import net.minecraft.world.level.block.BambooStalkBlock;
+import net.minecraft.world.level.block.CactusBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ButtonBlock;
@@ -182,7 +185,7 @@ import net.minecraft.world.phys.Vec3;
  * and melon stems (and the pumpkin/melon fruit itself, once one has actually grown), nether
  * wart, cocoa, sweet berry bushes, saplings (including bamboo's own sapling stage and mangrove
  * propagules), and cave vine segments actually bearing glow berries (see {@link #isCrop}, chorus plants clustered by {@link #addChorusClusters} and
- * {@link #isRipe}). Grown bamboo, sugar cane, and kelp are covered too, each narrating its
+ * {@link #isRipe}). Grown bamboo, sugar cane, cactus, and kelp are covered too, each narrating its
  * height instead of "Ripe" - one Scanner entry per stalk rather than per block, or per
  * horizontally-connected clump - see {@link #scanCrops}, {@link #addStalkClusters}, and {@link
  * #stalkHeight}.
@@ -1341,6 +1344,13 @@ public final class ScannerController {
 				name = name.copy().append(Component.literal(", ")).append(height);
 			}
 		}
+		if (category == ScannerCategory.SEARCH) {
+			// A stalk found by Search is grouped like one in Crops, and says its height the same way.
+			Component height = stalkHeight(player.level(), item.blockPos());
+			if (height != null) {
+				name = name.copy().append(Component.literal(", ")).append(height);
+			}
+		}
 		// A marked block narrates like the block it is, whichever category it would otherwise be in.
 		boolean markedBlock = category == ScannerCategory.MARKERS && isLiveBlockMarker(player.level(), item.blockPos());
 		if (category == ScannerCategory.WORKSTATIONS || markedBlock) {
@@ -1380,7 +1390,8 @@ public final class ScannerController {
 		if (item.area() != null) {
 			name = name.copy().append(Component.literal(", ")).append(describeSurfaces(item.area()));
 		}
-		if ((category == ScannerCategory.TERRAIN || markedBlock) && player.level().getBlockState(item.blockPos()).is(BlockTags.CLIMBABLE)) {
+		if ((category == ScannerCategory.TERRAIN || category == ScannerCategory.SEARCH || markedBlock)
+				&& player.level().getBlockState(item.blockPos()).is(BlockTags.CLIMBABLE)) {
 			ClimbableRun run = climbableRun(player.level(), item.blockPos());
 			if (run != null) {
 				name = name.copy().append(Component.literal(", "))
@@ -1809,23 +1820,11 @@ public final class ScannerController {
 		BlockPos center = player.blockPosition();
 		int r = (int) scanRange();
 
-		Set<BlockPos> netherPortalPositions = new HashSet<>();
-		Set<BlockPos> endPortalPositions = new HashSet<>();
-		Set<BlockPos> endPortalFramePositions = new HashSet<>();
+		Map<LargeObject, Set<BlockPos>> groups = bucketsFor(PORTALS);
 		List<ScannerItem> results = new ArrayList<>();
 
 		forEachBlockInRange(level, center, r, (pos, state) -> {
-			Block block = state.getBlock();
-			if (block instanceof NetherPortalBlock) {
-				netherPortalPositions.add(pos.immutable());
-				return true;
-			}
-			if (block instanceof EndPortalBlock) {
-				endPortalPositions.add(pos.immutable());
-				return true;
-			}
-			if (block instanceof EndPortalFrameBlock) {
-				endPortalFramePositions.add(pos.immutable());
+			if (collect(groups, state.getBlock(), pos)) {
 				return true;
 			}
 			if (!mechanismMatches(state)) {
@@ -1838,11 +1837,49 @@ public final class ScannerController {
 			return true;
 		});
 
-		addPortalClusters(eye, netherPortalPositions, results);
-		addPortalClusters(eye, endPortalPositions, results);
-		addPortalClusters(eye, endPortalFramePositions, results);
+		addGroups(level, eye, groups, results);
 		results.sort(Comparator.comparingDouble(ScannerItem::distance));
 		return results;
+	}
+
+	// Which large objects each category lists once rather than once per block - see LargeObject.
+	private static final Set<LargeObject> PORTALS =
+			EnumSet.of(LargeObject.NETHER_PORTAL, LargeObject.END_PORTAL, LargeObject.END_PORTAL_FRAME);
+	private static final Set<LargeObject> CROP_OBJECTS = EnumSet.of(
+			LargeObject.CHORUS, LargeObject.BAMBOO, LargeObject.SUGAR_CANE, LargeObject.CACTUS, LargeObject.KELP);
+	private static final Set<LargeObject> CLIMBABLE_OBJECTS = EnumSet.of(
+			LargeObject.LADDER, LargeObject.VINE, LargeObject.SCAFFOLDING,
+			LargeObject.WEEPING_VINES, LargeObject.TWISTING_VINES, LargeObject.CAVE_VINES);
+
+	/** An empty set of positions for each of {@code kinds}, to {@link #collect} into. */
+	private static Map<LargeObject, Set<BlockPos>> bucketsFor(Set<LargeObject> kinds) {
+		Map<LargeObject, Set<BlockPos>> buckets = new EnumMap<>(LargeObject.class);
+		for (LargeObject kind : kinds) {
+			buckets.put(kind, new HashSet<>());
+		}
+		return buckets;
+	}
+
+	/** Files {@code pos} under its kind if {@code block} is part of a large object this scan groups; returns whether it was. */
+	private static boolean collect(Map<LargeObject, Set<BlockPos>> buckets, Block block, BlockPos pos) {
+		LargeObject kind = LargeObject.of(block);
+		Set<BlockPos> bucket = kind == null ? null : buckets.get(kind);
+		if (bucket == null) {
+			return false;
+		}
+		bucket.add(pos.immutable());
+		return true;
+	}
+
+	/** Turns each bucket of {@link #collect}ed positions into one entry per object, added to {@code results}. */
+	private static void addGroups(Level level, Vec3 eye, Map<LargeObject, Set<BlockPos>> buckets, List<ScannerItem> results) {
+		for (Map.Entry<LargeObject, Set<BlockPos>> bucket : buckets.entrySet()) {
+			switch (bucket.getKey().shape()) {
+				case STRUCTURE -> addPortalClusters(eye, bucket.getValue(), results);
+				case PLANT -> addChorusClusters(level, eye, bucket.getValue(), results);
+				case STACK -> addStalkClusters(eye, bucket.getValue(), results);
+			}
+		}
 	}
 
 	/**
@@ -1914,6 +1951,7 @@ public final class ScannerController {
 				|| block instanceof ChorusPlantBlock
 				|| block instanceof ChorusFlowerBlock
 				|| block instanceof SugarCaneBlock
+				|| block instanceof CactusBlock
 				|| block instanceof KelpBlock
 				|| block instanceof KelpPlantBlock
 				|| isCrop(block);
@@ -1963,6 +2001,8 @@ public final class ScannerController {
 			partOfStalk = candidate -> candidate instanceof BambooStalkBlock;
 		} else if (block instanceof SugarCaneBlock) {
 			partOfStalk = candidate -> candidate instanceof SugarCaneBlock;
+		} else if (block instanceof CactusBlock) {
+			partOfStalk = candidate -> candidate instanceof CactusBlock;
 		} else if (block instanceof KelpBlock || block instanceof KelpPlantBlock) {
 			partOfStalk = candidate -> candidate instanceof KelpBlock || candidate instanceof KelpPlantBlock;
 		} else {
@@ -2226,9 +2266,53 @@ public final class ScannerController {
 		Set<Block> matches = searchMatches(term);
 		FastBlockAccess fastAccess = new FastBlockAccess(player.level());
 		Vec3 eye = player.getEyePosition();
-		return scanBlocks(player, (pos, state) -> !state.isAir()
+		Level level = player.level();
+		List<ScannerItem> found = scanBlocks(player, (pos, state) -> !state.isAir()
 				&& matches.contains(state.getBlock())
-				&& OreDetection.isExposed(player.level(), fastAccess::getBlockState, pos, eye));
+				&& OreDetection.isExposed(level, fastAccess::getBlockState, pos, eye));
+		List<ScannerItem> oncePerObject = SecondHalves.dropFrom(found, ScannerItem::blockPos,
+				item -> otherHalfOfSecond(level.getBlockState(item.blockPos()), item.blockPos()));
+		return groupLargeObjects(level, eye, oncePerObject);
+	}
+
+	/**
+	 * Collapses the things made of many blocks into one entry each, the way Mechanisms, Crops and
+	 * Terrain list them, so a search for one doesn't narrate every block: portals and portal frames,
+	 * stalks and climbables (one entry per unbroken run, at its base) and chorus plants - every kind
+	 * in {@link LargeObject}. Everything else passes through untouched. Works on what the search
+	 * already found, so it still lists only what is visible.
+	 */
+	private static List<ScannerItem> groupLargeObjects(Level level, Vec3 eye, List<ScannerItem> found) {
+		Map<LargeObject, Set<BlockPos>> groups = bucketsFor(EnumSet.allOf(LargeObject.class));
+		List<ScannerItem> results = new ArrayList<>();
+		for (ScannerItem item : found) {
+			if (!collect(groups, level.getBlockState(item.blockPos()).getBlock(), item.blockPos())) {
+				results.add(item);
+			}
+		}
+		addGroups(level, eye, groups, results);
+		results.sort(Comparator.comparingDouble(ScannerItem::distance));
+		return results;
+	}
+
+	/**
+	 * Where the other half of a two-block object is, if {@code state} is the half that shouldn't be
+	 * listed on its own - the right half of a double chest, a bed's foot, the upper half of a door
+	 * or tall plant (the same halves Storage, Workstations and Mechanisms leave out) - or null for
+	 * anything else.
+	 */
+	private static BlockPos otherHalfOfSecond(BlockState state, BlockPos pos) {
+		if (state.hasProperty(ChestBlock.TYPE) && state.getValue(ChestBlock.TYPE) == ChestType.RIGHT) {
+			return pos.relative(ChestBlock.getConnectedDirection(state));
+		}
+		if (state.hasProperty(AbstractBedBlock.PART) && state.getValue(AbstractBedBlock.PART) == BedPart.FOOT) {
+			return pos.relative(AbstractBedBlock.getConnectedDirection(state));
+		}
+		if (state.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF)
+				&& state.getValue(BlockStateProperties.DOUBLE_BLOCK_HALF) == DoubleBlockHalf.UPPER) {
+			return pos.below();
+		}
+		return null;
 	}
 
 	/**
@@ -2556,27 +2640,11 @@ public final class ScannerController {
 		BlockPos center = player.blockPosition();
 		int r = (int) scanRange();
 
-		Set<BlockPos> bambooPositions = new HashSet<>();
-		Set<BlockPos> canePositions = new HashSet<>();
-		Set<BlockPos> kelpPositions = new HashSet<>();
-		Set<BlockPos> chorusPositions = new HashSet<>();
+		Map<LargeObject, Set<BlockPos>> groups = bucketsFor(CROP_OBJECTS);
 		List<ScannerItem> results = new ArrayList<>();
 		forEachBlockInRange(level, center, r, (pos, state) -> {
 			Block block = state.getBlock();
-			if (block instanceof ChorusPlantBlock || block instanceof ChorusFlowerBlock) {
-				chorusPositions.add(pos.immutable());
-				return true;
-			}
-			if (block instanceof BambooStalkBlock) {
-				bambooPositions.add(pos.immutable());
-				return true;
-			}
-			if (block instanceof SugarCaneBlock) {
-				canePositions.add(pos.immutable());
-				return true;
-			}
-			if (block instanceof KelpBlock || block instanceof KelpPlantBlock) {
-				kelpPositions.add(pos.immutable());
+			if (collect(groups, block, pos)) {
 				return true;
 			}
 			if (!isCrop(block)) {
@@ -2589,10 +2657,7 @@ public final class ScannerController {
 			return true;
 		});
 
-		addStalkClusters(eye, bambooPositions, results);
-		addStalkClusters(eye, canePositions, results);
-		addStalkClusters(eye, kelpPositions, results);
-		addChorusClusters(level, eye, chorusPositions, results);
+		addGroups(level, eye, groups, results);
 		results.sort(Comparator.comparingDouble(ScannerItem::distance));
 		return results;
 	}
@@ -2683,37 +2748,14 @@ public final class ScannerController {
 		BlockPos center = player.blockPosition();
 		int r = (int) scanRange();
 
-		Set<BlockPos> ladderPositions = new HashSet<>();
-		Set<BlockPos> vinePositions = new HashSet<>();
-		Set<BlockPos> scaffoldingPositions = new HashSet<>();
-		Set<BlockPos> weepingVinePositions = new HashSet<>();
-		Set<BlockPos> twistingVinePositions = new HashSet<>();
-		Set<BlockPos> caveVinePositions = new HashSet<>();
+		Map<LargeObject, Set<BlockPos>> groups = bucketsFor(CLIMBABLE_OBJECTS);
 		forEachBlockInRange(level, center, r, (pos, state) -> {
-			Block block = state.getBlock();
-			if (block instanceof LadderBlock) {
-				ladderPositions.add(pos.immutable());
-			} else if (block instanceof VineBlock) {
-				vinePositions.add(pos.immutable());
-			} else if (block instanceof ScaffoldingBlock) {
-				scaffoldingPositions.add(pos.immutable());
-			} else if (block instanceof WeepingVinesBlock || block instanceof WeepingVinesPlantBlock) {
-				weepingVinePositions.add(pos.immutable());
-			} else if (block instanceof TwistingVinesBlock || block instanceof TwistingVinesPlantBlock) {
-				twistingVinePositions.add(pos.immutable());
-			} else if (block instanceof CaveVinesBlock || block instanceof CaveVinesPlantBlock) {
-				caveVinePositions.add(pos.immutable());
-			}
+			collect(groups, state.getBlock(), pos);
 			return true;
 		});
 
 		List<ScannerItem> results = new ArrayList<>();
-		addStalkClusters(eye, ladderPositions, results);
-		addStalkClusters(eye, vinePositions, results);
-		addStalkClusters(eye, scaffoldingPositions, results);
-		addStalkClusters(eye, weepingVinePositions, results);
-		addStalkClusters(eye, twistingVinePositions, results);
-		addStalkClusters(eye, caveVinePositions, results);
+		addGroups(level, eye, groups, results);
 		results.sort(Comparator.comparingDouble(ScannerItem::distance));
 		return results;
 	}

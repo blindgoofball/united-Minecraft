@@ -43,7 +43,7 @@ Markers and Search.
 | Items | Dropped items |
 | Ores | Ore you could actually see (see below) |
 | Trees | Trees, clustered into whole trees |
-| Crops | Farmland crops, stems, nether wart, cocoa, sweet berry bushes, saplings (including mangrove propagules and bamboo), cave vines bearing glow berries, grown bamboo and chorus plants (clustered). "Ripe" is said when ready to harvest and nothing otherwise |
+| Crops | Farmland crops, stems, nether wart, cocoa, sweet berry bushes, saplings (including mangrove propagules and bamboo), cave vines bearing glow berries, grown bamboo, sugar cane, cactus, kelp and chorus plants (each stalk or plant one entry, with its height). "Ripe" is said when ready to harvest and nothing otherwise |
 | Terrain | Liquids, climbables and flat areas (below) |
 | Biomes and Structures | Places worth exploring toward (below) |
 | Players | Every other player in your current dimension, at any distance |
@@ -96,7 +96,11 @@ your render distance.
 ### Search
 
 Shift+U while Search is selected opens a prompt for a term, then finds every
-visible block nearby whose name contains it. "glowstone" locates glowstone blocks.
+visible block nearby whose name contains it. "glowstone" locates glowstone blocks. A door,
+tall plant, bed or double chest, each two blocks, is listed once. Larger things are grouped
+the way they are elsewhere: a portal or portal frame is one entry per structure; a stalk of
+bamboo, sugar cane, cactus or kelp, a ladder, vine or scaffolding run, is one entry (which
+says its height); and a chorus plant is one entry.
 
 The prompt has a "Save as a category" checkbox. Ticked, the search is also saved under its
 own term as its name, as a category of its own in each world: it turns up after Search when
