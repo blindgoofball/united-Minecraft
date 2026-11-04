@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.google.gson.reflect.TypeToken;
+import com.nibblenerds.unitedminecraft.share.SharePayloads;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -84,6 +85,29 @@ public final class MapMarkerController {
 
 	public static MapMarker findAt(ResourceKey<Level> dimension, BlockPos pos) {
 		return markersByPos.get(new DimPos(dimension.identifier().toString(), pos));
+	}
+
+	/** The marker at {@code pos} in the dimension with this id, or null - for shared markers, whose dimension may not be the one the player is in. */
+	static MapMarker findAt(String dimension, BlockPos pos) {
+		return markersByPos.get(new DimPos(dimension, pos));
+	}
+
+	/** Every marker in this world, in every dimension, as shareable items - see {@link MarkerShareController}. */
+	static List<SharePayloads.Item> shareItems() {
+		List<SharePayloads.Item> result = new ArrayList<>();
+		for (MapMarker marker : STORE.entries()) {
+			result.add(new SharePayloads.Item(SharePayloads.Kind.MARKER, marker.name(), marker.dimension(),
+					marker.x(), marker.y(), marker.z(), false));
+		}
+		return result;
+	}
+
+	/** Saves a marker another player shared, replacing whatever marker was already at that spot. Says nothing - the caller narrates. */
+	static void importMarker(String name, String dimension, BlockPos pos) {
+		STORE.entries().removeIf(marker -> marker.dimension().equals(dimension) && marker.pos().equals(pos));
+		STORE.entries().add(new MapMarker(name, dimension, pos.getX(), pos.getY(), pos.getZ()));
+		STORE.save();
+		rebuildIndex();
 	}
 
 	private static void rebuildIndex() {

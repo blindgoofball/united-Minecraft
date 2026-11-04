@@ -1,6 +1,7 @@
 package com.nibblenerds.unitedminecraft.client;
 
 import com.nibblenerds.unitedminecraft.client.speech.PrismController;
+import com.nibblenerds.unitedminecraft.share.SharePayloads;
 import com.nibblenerds.unitedminecraft.structure.StructuresNearbyPayload;
 
 import net.minecraft.client.Minecraft;
@@ -161,6 +162,16 @@ public final class ClientHooks {
 	 */
 	public static void onStructuresNearby(StructuresNearbyPayload payload) {
 		StructureVoiceController.onStructuresNearby(payload);
+	}
+
+	/** The server listed the other players who can be shared with - see {@link MarkerShareController}. */
+	public static void onShareTargets(SharePayloads.Targets payload) {
+		MarkerShareController.onTargets(payload);
+	}
+
+	/** Another player shared a marker with this one - see {@link MarkerShareController}. */
+	public static void onShareOffer(SharePayloads.Offer payload) {
+		MarkerShareController.onOffer(payload);
 	}
 
 	/**

@@ -4,6 +4,8 @@ import java.nio.file.Path;
 
 import com.nibblenerds.unitedminecraft.platform.Platform;
 
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+
 /** A {@link Platform} whose directories are a test's own temporary directory. */
 final class TestPlatform implements Platform {
 	private final Path root;
@@ -25,5 +27,14 @@ final class TestPlatform implements Platform {
 	@Override
 	public Path gameDir() {
 		return root;
+	}
+
+	@Override
+	public boolean serverAccepts(CustomPacketPayload.Type<?> type) {
+		return false;
+	}
+
+	@Override
+	public void sendToServer(CustomPacketPayload payload) {
 	}
 }

@@ -36,6 +36,7 @@ key or modifier combination in United Minecraft's own Keybindings screen
 | U | Place a named map marker at your location |
 | Shift+U | Name the focused item, or enter a Search term or flat-area size when Search or Terrain is selected |
 | Delete | Remove the focused marker in the Markers category |
+| Alt+U | Open Marker Sharing: review offers from other players, send your markers |
 | Backspace | Stop Scanner lock-on, or cancel Auto-Walk, a swim, a landing or a trail retrace |
 
 ## Movement and navigation

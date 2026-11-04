@@ -24,6 +24,8 @@ final class GeneralSettingsScreen extends SettingsListScreen {
 				config.hotbarTooltipsEnabled, value -> config.hotbarTooltipsEnabled = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.chat_sound_enabled",
 				config.chatSoundEnabled, value -> config.chatSoundEnabled = value);
+		y = addToggle(x, y, "united_minecraft.settings_screen.ignore_marker_shares",
+				config.ignoreMarkerShares, value -> config.ignoreMarkerShares = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.auto_crosshair_repeat_same_block",
 				config.autoCrosshairRepeatSameBlock, value -> config.autoCrosshairRepeatSameBlock = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.durability_awareness_enabled",

@@ -131,6 +131,7 @@ public final class AccessibilityTickHandler {
 			BowBeaconController.reset();
 			MapMarkerController.reset();
 			NamedBlockController.reset();
+			MarkerShareController.reset();
 			ServerWorldSeed.reset();
 			ScannerController.reset();
 			AutoWalkController.reset();
@@ -488,6 +489,9 @@ public final class AccessibilityTickHandler {
 			ScannerController.nameFocusedItem(client, player);
 		} else if (ClientKeyBindings.pressed(ClientKeyBindings.PLACE_MARKER)) {
 			MapMarkerController.openNameScreen(client, player);
+		}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.OPEN_SHARING)) {
+			MarkerShareController.open(client);
 		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.OPEN_SETTINGS)) {
 			client.gui.setScreen(new SettingsScreen());

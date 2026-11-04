@@ -75,6 +75,10 @@ public final class ClientKeyBindings {
 	public static final KeybindAction SCANNER_NAME_FOCUSED_ITEM = new KeybindAction(
 			"scanner_name_focused_item", KeybindCategory.SCANNER, new Keybind(InputConstants.KEY_U, InputConstants.MOD_SHIFT));
 
+	/** Opens {@link MarkerShareScreen}: offers other players have sent, and sharing your own markers - see {@link MarkerShareController}. */
+	public static final KeybindAction OPEN_SHARING = new KeybindAction(
+			"open_sharing", KeybindCategory.SCANNER, new Keybind(InputConstants.KEY_U, InputConstants.MOD_ALT));
+
 	public static final KeybindAction TOGGLE_BUILD_MODE =
 			new KeybindAction("toggle_build_mode", KeybindCategory.BUILD_MODE, new Keybind(InputConstants.KEY_I, 0));
 	/** Was Alt+I while already active - see {@link #BUILD_MODE_RECENTER_CURSOR}. */

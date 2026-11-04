@@ -138,3 +138,27 @@ list also deletes its markers and block names.
   Targeting it works like targeting the block: you walk up beside it and face it,
   with the same narration (open or closed, shelf contents, sign text).
 - Delete removes a block from Markers but keeps its name.
+
+### Sharing markers
+
+Alt+U opens the Sharing screen, from anywhere. It works when both you and the other
+player have United Minecraft and the server has it too (a single-player world opened to
+LAN counts); on a server without the mod it tells you so. Use Tab to move between its parts
+and Up/Down to move within a list. Escape or Close leaves.
+
+- **Pending offers** lists what other players have sent you, with the sender, the name
+  and how far away it is (or which dimension it is in). Accept saves it to your own
+  markers; Decline discards it. Nothing is saved until you accept.
+- If you already have a different name at that spot, the first Accept tells you so and
+  keeps the offer; Accept again to replace it. A marker you already have exactly is not
+  added twice.
+- **Send to** lists the other players online who have the mod, and **Marker to send**
+  lists your markers in every dimension, including named blocks that appear under Markers.
+  Send to Selected Player sends that marker to that player. Send to All Players sends it
+  to everyone on the list.
+- A named block you share arrives as a named block, with its Markers setting, so it keeps
+  its name wherever the receiver walks up to it.
+- When an offer arrives you hear a bell and a short message with the sender and name.
+  Offers wait in memory until you leave the world.
+- "Ignore Marker Shares From Other Players" in the General settings drops incoming
+  offers without a sound or message. The sender is not told.

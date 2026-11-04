@@ -8,12 +8,13 @@ United Minecraft is a Minecraft Java Edition mod, built for both the Fabric and 
 loaders, that adds accessibility features for blind and low-vision players — narration, a
 "Scanner" for locating and targeting things without seeing them, auto-walk, audio radars,
 build/combat modes, and full keyboard navigation of menus. Almost everything is
-client-side and works against any vanilla server. The one exception is Structure Voices,
-which needs the server half in the `structure` package (`StructureScanner`, sending
-`StructuresNearbyPayload`): it runs on the integrated server in single player, and on a
-dedicated server only when the mod is installed there too. Each loader module has a common
-entrypoint (`UnitedMinecraftFabricCommon`, `UnitedMinecraftNeoForgeCommon`) for it, and the
-payload is optional in both directions. See [README.md](README.md) and the feature pages in [docs/](docs/) for the full feature list
+client-side and works against any vanilla server. The two exceptions need a server half:
+Structure Voices (the `structure` package: `StructureScanner`, sending
+`StructuresNearbyPayload`) and marker sharing (the `share` package: `ShareRelay` and
+`SharePayloads`, which only relays offers between players and stores nothing). Both run on
+the integrated server in single player, and on a dedicated server only when the mod is
+installed there too. Each loader module has a common entrypoint (`UnitedMinecraftFabricCommon`,
+`UnitedMinecraftNeoForgeCommon`) for them, and the payloads are optional in both directions. See [README.md](README.md) and the feature pages in [docs/](docs/) for the full feature list
 and default keybindings (both are useful context when touching related code).
 When a change alters what a player can do or hear, update the matching page in `docs/` in the
 same commit, describing current behavior only - the release notes carry what changed.
@@ -115,7 +116,8 @@ build's `checkSharedSources` task does, and each module's `check` depends on it.
 
 `Platform` (in `com.nibblenerds.unitedminecraft.platform`) is how shared code asks for
 the things it needs from a loader rather than from vanilla, which turned out to be
-exactly two directories. The loader module installs an implementation before anything
+two directories and, for marker sharing, checking whether the server has a payload and
+sending one to it. The loader module installs an implementation before anything
 else runs.
 
 `ClientHooks` (in the `client` package, so it can reach package-private controller

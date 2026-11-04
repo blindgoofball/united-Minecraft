@@ -71,6 +71,8 @@ public final class UnitedMinecraftConfig {
 	public boolean modeToggleSoundsEnabled = true;
 	/** Play a short cue when another player's chat message arrives - see {@link ChatMessageSound}. */
 	public boolean chatSoundEnabled = true;
+	/** Drop markers other players share with this one, silently - see {@link MarkerShareController}. */
+	public boolean ignoreMarkerShares = false;
 	/** Percent; scales every short audio cue - see {@link CueVolume}. */
 	public int cueVolume = 100;
 	/** How fast the arrow keys turn the camera, as a percentage of the original speed - see {@code AccessibilityTickHandler#handleCameraLook}. */

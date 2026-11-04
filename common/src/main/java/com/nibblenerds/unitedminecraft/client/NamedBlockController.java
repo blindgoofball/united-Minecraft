@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.google.gson.reflect.TypeToken;
+import com.nibblenerds.unitedminecraft.share.SharePayloads;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
@@ -80,6 +81,38 @@ public final class NamedBlockController {
 	public static boolean isMarker(ResourceKey<Level> dimension, BlockPos pos) {
 		NamedBlock named = namedBlocksByPos.get(new DimPos(dimension.identifier().toString(), pos));
 		return named != null && named.marker();
+	}
+
+	/** The name of the block at {@code pos} in the dimension with this id, or null - for shared blocks, whose dimension may not be the one the player is in. */
+	static String nameAt(String dimension, BlockPos pos) {
+		NamedBlock named = namedBlocksByPos.get(new DimPos(dimension, pos));
+		return named == null ? null : named.name();
+	}
+
+	/** Whether the named block at {@code pos} in the dimension with this id is flagged to appear under Markers. */
+	static boolean isMarkerAt(String dimension, BlockPos pos) {
+		NamedBlock named = namedBlocksByPos.get(new DimPos(dimension, pos));
+		return named != null && named.marker();
+	}
+
+	/** Every named block in this world, in every dimension, that appears under Markers, as shareable items - see {@link MarkerShareController}. */
+	static List<SharePayloads.Item> shareItems() {
+		List<SharePayloads.Item> result = new ArrayList<>();
+		for (NamedBlock named : STORE.entries()) {
+			if (named.marker()) {
+				result.add(new SharePayloads.Item(SharePayloads.Kind.NAMED_BLOCK, named.name(), named.dimension(),
+						named.x(), named.y(), named.z(), true));
+			}
+		}
+		return result;
+	}
+
+	/** Names the block at {@code pos} as another player shared it, replacing any name already there. Says nothing - the caller narrates. */
+	static void importNamedBlock(String name, String dimension, BlockPos pos, boolean marker) {
+		STORE.entries().removeIf(named -> named.dimension().equals(dimension) && named.pos().equals(pos));
+		STORE.entries().add(new NamedBlock(name, dimension, pos.getX(), pos.getY(), pos.getZ(), marker));
+		STORE.save();
+		rebuildIndex();
 	}
 
 	/** Every block in {@code dimension} flagged to appear under Markers, in no particular order. */

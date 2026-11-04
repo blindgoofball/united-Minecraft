@@ -5,6 +5,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import net.minecraft.client.gui.components.AbstractSelectionList;
 import net.minecraft.client.gui.components.events.ContainerEventHandler;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratedElementType;
@@ -32,6 +33,13 @@ import net.minecraft.network.chat.Component;
  * twice: an earlier version of this fix drove a second, separate narration pass alongside
  * vanilla's own, which worked but spoke everything twice wherever vanilla's original
  * composition happened to still succeed.
+ *
+ * <p>Reading only the innermost focused widget would leave a list's rows with no context, so
+ * if the focus path passes through a selection list that has a name - its widget message,
+ * which vanilla leaves empty on every list it makes - that name is added ahead of the row.
+ * It goes in at the same depth every time, so the narrator's own repeat suppression says it
+ * once on entering the list and stays quiet while moving between rows - provided nothing
+ * else writes to that depth, which is why it sits below the screen title rather than beside it.
  */
 @Mixin(Screen.class)
 public abstract class ScreenNarratedWidgetMixin {
@@ -39,12 +47,25 @@ public abstract class ScreenNarratedWidgetMixin {
 	private void unitedMinecraft$describeFocusedWidgetDirectly(NarrationElementOutput output, CallbackInfo ci) {
 		GuiEventListener current = (GuiEventListener) (Object) this;
 		GuiEventListener next;
+		Component listName = null;
 		while (current instanceof ContainerEventHandler handler && (next = handler.getFocused()) != null) {
 			current = next;
+			if (current instanceof AbstractSelectionList<?> list && !list.getMessage().getString().isEmpty()) {
+				listName = list.getMessage();
+			}
 		}
 
 		if (current instanceof NarrationSupplier narratable) {
-			narratable.updateNarration(output.nest());
+			NarrationElementOutput widgetOutput = output.nest();
+			if (listName != null) {
+				// One level below the screen title, which vanilla keeps in the top-depth TITLE slot:
+				// writing there would swap the title out while a list is focused and back in when
+				// focus leaves, which reads as a change both times. The row goes one level further
+				// down, so the name is spoken ahead of it.
+				widgetOutput.add(NarratedElementType.TITLE, listName);
+				widgetOutput = widgetOutput.nest();
+			}
+			narratable.updateNarration(widgetOutput);
 		} else {
 			// Matches vanilla's own fallback for "nothing focused yet" (e.g. right after a
 			// screen opens via mouse, before Tab has been pressed at all).
