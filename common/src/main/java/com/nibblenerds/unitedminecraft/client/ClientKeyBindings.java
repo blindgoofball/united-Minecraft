@@ -375,8 +375,13 @@ public final class ClientKeyBindings {
 			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_END, 0), KeybindContext.CONTAINER_SCREEN, ContainerScope.RECIPE_BOOK);
 	public static final KeybindAction RECIPE_BOOK_SEARCH = new KeybindAction("recipe_book_search",
 			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_SPACE, 0), KeybindContext.CONTAINER_SCREEN, ContainerScope.RECIPE_BOOK);
+	/**
+	 * Was a plain F; plain letters are first-letter navigation in the Recipe Book now, so this takes
+	 * Ctrl+F instead. That chord is also {@link #CONTAINER_SWAP_OFFHAND}, which can share it because
+	 * the two only ever apply in different sections.
+	 */
 	public static final KeybindAction RECIPE_BOOK_TOGGLE_CRAFTABLE_FILTER = new KeybindAction("recipe_book_toggle_craftable_filter",
-			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_F, 0), KeybindContext.CONTAINER_SCREEN, ContainerScope.RECIPE_BOOK);
+			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_F, InputConstants.MOD_CONTROL), KeybindContext.CONTAINER_SCREEN, ContainerScope.RECIPE_BOOK);
 
 	// Every KeybindAction declared above, discovered reflectively rather than hand-listed so a
 	// future action automatically gets the same tracking below without anyone needing to

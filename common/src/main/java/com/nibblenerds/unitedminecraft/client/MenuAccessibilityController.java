@@ -1247,10 +1247,45 @@ public final class MenuAccessibilityController {
 			placeFocusedRecipe(screen.getMenu(), player, false);
 		} else if (ClientKeyBindings.CONTAINER_QUICK_MOVE.current().matches(event)) {
 			placeFocusedRecipe(screen.getMenu(), player, true);
-		} else {
+		} else if (!jumpToRecipeStartingWith(player, event)) {
 			return true;
 		}
 		return false;
+	}
+
+	/**
+	 * First-letter navigation in the Recipe Book, like {@link #handleFirstLetterJump} for slots: a
+	 * plain letter jumps to the next recipe, across groups and their variants, whose result's name
+	 * starts with it, wrapping around, so repeating it cycles through every match. Runs after every
+	 * recipe book key, so a letter bound to one of them (the craftable filter used to be F) would
+	 * never get here; it also keeps E from closing the screen, as for slots. Returns false for any key
+	 * that is not a plain letter, true when it was one - whether or not anything matched.
+	 */
+	private static boolean jumpToRecipeStartingWith(LocalPlayer player, KeyEvent event) {
+		Character typed = firstLetterOf(event);
+		if (typed == null) {
+			return false;
+		}
+		ContextMap context = SlotDisplayContext.fromLevel(player.level());
+		List<List<String>> names = new ArrayList<>();
+		for (RecipeCollection group : visibleRecipeGroups()) {
+			List<String> inGroup = new ArrayList<>();
+			for (RecipeDisplayEntry entry : matchingVariantsIn(group, player)) {
+				List<ItemStack> results = entry.resultItems(context);
+				inGroup.add(results.isEmpty() ? "" : results.get(0).getHoverName().getString());
+			}
+			names.add(inGroup);
+		}
+		int[] found = RecipeLetterJump.next(names, recipeGroupIndex, recipeVariantIndex, typed);
+		if (found == null) {
+			Minecraft.getInstance().getNarrator().saySystemNow(Component.translatable(
+					"united_minecraft.narrate.menu_no_item_with_letter", String.valueOf(typed).toUpperCase(Locale.ROOT)));
+			return true;
+		}
+		recipeGroupIndex = found[0];
+		recipeVariantIndex = found[1];
+		narrateRecipeFocus(player, false);
+		return true;
 	}
 
 	/** Home/End: jump straight to the first/last visible recipe group, respecting the active category/craftable/search filters. */
