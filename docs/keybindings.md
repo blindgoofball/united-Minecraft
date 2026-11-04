@@ -29,6 +29,7 @@ key or modifier combination in United Minecraft's own Keybindings screen
 | --- | --- |
 | Home / End | Previous / next category |
 | Z | Jump to a category by typing the first letters of its name |
+| Shift+Z | Open the filters for the current category, to leave items out of its list |
 | Page Up / Down (Alt = next / previous item of the same kind) | Cycle the items in a category |
 | Enter (Shift = walk there) | Target the focused item, or interact with it directly while locked on |
 | Alt+; | Lock onto the nearest Ender Dragon or Wither |

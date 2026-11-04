@@ -377,7 +377,7 @@ public final class ScannerController {
 		} else {
 			return;
 		}
-		items = scan(ScannerCategory.MARKERS, player);
+		items = scanVisible(ScannerCategory.MARKERS, player);
 		itemIndex = items.isEmpty() ? 0 : Math.min(itemIndex, items.size() - 1);
 	}
 
@@ -452,7 +452,7 @@ public final class ScannerController {
 				searchTerm,
 				term -> {
 					searchTerm = term == null ? "" : term.trim();
-					items = scan(ScannerCategory.SEARCH, player);
+					items = scanVisible(ScannerCategory.SEARCH, player);
 					itemIndex = 0;
 					Component summary = items.isEmpty()
 							? Component.translatable("united_minecraft.narrate.scanner_empty")
@@ -490,7 +490,7 @@ public final class ScannerController {
 						flatAreaSize = size;
 						heading = Component.translatable("united_minecraft.narrate.flat_area_set", size[0], size[1]);
 					}
-					items = scan(ScannerCategory.TERRAIN, player);
+					items = scanVisible(ScannerCategory.TERRAIN, player);
 					itemIndex = 0;
 					Component summary = items.isEmpty()
 							? Component.translatable("united_minecraft.narrate.scanner_empty")
@@ -533,7 +533,7 @@ public final class ScannerController {
 
 	/** Re-scans for hostile mobs and locks onto the nearest one, if any are left. */
 	private static boolean relockNearestHostile(Minecraft client, LocalPlayer player) {
-		items = scan(ScannerCategory.HOSTILE_MOBS, player);
+		items = scanVisible(ScannerCategory.HOSTILE_MOBS, player);
 		itemIndex = 0;
 		if (items.isEmpty() || items.get(0).entity() == null) {
 			return false;
@@ -607,7 +607,7 @@ public final class ScannerController {
 		}
 
 		ScannerCategory category = CATEGORIES[categoryIndex];
-		items = scan(category, player);
+		items = scanVisible(category, player);
 
 		if (UnitedMinecraftConfig.get().scannerSkipEmptyCategories && isSkippablyEmpty(category, items)) {
 			// Keep advancing in the same direction until one candidate is non-empty or every
@@ -629,7 +629,7 @@ public final class ScannerController {
 				if (isNeverSkipped(candidate) || categoryHasAny(candidate, player)) {
 					categoryIndex = candidateIndex;
 					category = candidate;
-					items = scan(candidate, player);
+					items = scanVisible(candidate, player);
 					break;
 				}
 			}
@@ -645,7 +645,7 @@ public final class ScannerController {
 	 */
 	static void jumpToCategory(Minecraft client, LocalPlayer player, ScannerCategory target) {
 		categoryIndex = Arrays.asList(CATEGORIES).indexOf(target);
-		items = scan(target, player);
+		items = scanVisible(target, player);
 		itemIndex = 0;
 		narrateCategory(client, player, target);
 	}
@@ -1220,7 +1220,7 @@ public final class ScannerController {
 		if (categoryIndex == -1) {
 			return;
 		}
-		items = scan(CATEGORIES[categoryIndex], player);
+		items = scanVisible(CATEGORIES[categoryIndex], player);
 		for (int i = 0; i < items.size(); i++) {
 			if (originalItem.test(items.get(i))) {
 				itemIndex = i;
@@ -1484,6 +1484,46 @@ public final class ScannerController {
 			name.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
 		}
 		return name.toString();
+	}
+
+	/**
+	 * {@link #scan} without anything the player has filtered out of {@code category} - see {@link
+	 * ScannerFilterController}. A filter is matched against the item's spoken name, so this costs
+	 * a name lookup per result only for a category that has filters.
+	 */
+	private static List<ScannerItem> scanVisible(ScannerCategory category, LocalPlayer player) {
+		List<ScannerItem> all = scan(category, player);
+		if (!ScannerFilterController.hasFilters(category)) {
+			return all;
+		}
+		List<ScannerItem> kept = new ArrayList<>(all.size());
+		for (ScannerItem item : all) {
+			if (!ScannerFilterController.isFiltered(category, itemName(category, item, player).getString())) {
+				kept.add(item);
+			}
+		}
+		return kept;
+	}
+
+	/** Opens the filter list for the category the Scanner is on, or says there isn't one. */
+	static void openFilters(Minecraft client) {
+		if (categoryIndex == -1) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.filters_no_category"));
+			return;
+		}
+		client.gui.setScreen(new ScannerFilterScreen(CATEGORIES[categoryIndex]));
+	}
+
+	/**
+	 * A filter was added or removed: re-lists the current category without it (or with it back) and
+	 * keeps the focus where it was, as close as the new list allows. Says nothing - the screen does.
+	 */
+	static void onFiltersChanged(LocalPlayer player) {
+		if (categoryIndex == -1) {
+			return;
+		}
+		items = scanVisible(CATEGORIES[categoryIndex], player);
+		itemIndex = items.isEmpty() ? 0 : Math.min(itemIndex, items.size() - 1);
 	}
 
 	private static List<ScannerItem> scan(ScannerCategory category, LocalPlayer player) {
@@ -2044,6 +2084,10 @@ public final class ScannerController {
 	 * runs the real scan and checks emptiness directly.
 	 */
 	private static boolean categoryHasAny(ScannerCategory category, LocalPlayer player) {
+		if (ScannerFilterController.hasFilters(category)) {
+			// The cheap probes below can't tell that everything they find is filtered out.
+			return !scanVisible(category, player).isEmpty();
+		}
 		Level level = player.level();
 		Vec3 eye = player.getEyePosition();
 		FastBlockAccess fastAccess = new FastBlockAccess(level);
@@ -2067,7 +2111,7 @@ public final class ScannerController {
 					&& searchMatches().contains(state.getBlock())
 					&& OreDetection.isExposed(level, fastAccess::getBlockState, pos, eye));
 			case TREES -> scanBlocksAny(player, (pos, state) -> state.is(BlockTags.LOGS) && hasNearbyLeavesAt(level, pos));
-			default -> !scan(category, player).isEmpty();
+			default -> !scanVisible(category, player).isEmpty();
 		};
 	}
 

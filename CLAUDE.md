@@ -236,7 +236,7 @@ existing conversions there rather than re-deriving the math.
 ### Persistence
 
 Settings (`UnitedMinecraftConfig`), keybindings (`KeybindConfig`) and per-world data
-(`WorldScopedStore`, behind Map Markers and named blocks) all write through `SafeFiles`:
+(`WorldScopedStore`, behind Map Markers, named blocks and saved Scanner filters) all write through `SafeFiles`:
 atomic writes, and a file that fails to parse is moved aside rather than overwritten by the
 next save. Use it for anything new that persists. `KeybindConfig` stores only bindings that
 differ from their default, so changing a default in `ClientKeyBindings` reaches every player

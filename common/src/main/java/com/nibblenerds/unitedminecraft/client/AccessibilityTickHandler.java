@@ -132,6 +132,7 @@ public final class AccessibilityTickHandler {
 			MapMarkerController.reset();
 			NamedBlockController.reset();
 			MarkerShareController.reset();
+			ScannerFilterController.reset();
 			ServerWorldSeed.reset();
 			ScannerController.reset();
 			AutoWalkController.reset();
@@ -191,6 +192,7 @@ public final class AccessibilityTickHandler {
 
 		MapMarkerController.tick(client);
 		NamedBlockController.tick(client);
+		ScannerFilterController.tick(client);
 
 		if (client.gui.screen() != null && AutoWalkController.isActive()) {
 			// AutoWalkController.tick (and the cancel-key check inside it) only runs below,
@@ -489,6 +491,9 @@ public final class AccessibilityTickHandler {
 			ScannerController.nameFocusedItem(client, player);
 		} else if (ClientKeyBindings.pressed(ClientKeyBindings.PLACE_MARKER)) {
 			MapMarkerController.openNameScreen(client, player);
+		}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_FILTERS)) {
+			ScannerController.openFilters(client);
 		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.OPEN_SHARING)) {
 			MarkerShareController.open(client);

@@ -98,6 +98,25 @@ your render distance.
 Shift+U while Search is selected opens a prompt for a term, then finds every
 visible block nearby whose name contains it. "glowstone" locates glowstone blocks.
 
+### Filters
+
+Shift+Z opens the filters for the category you are on, to leave things out of its list.
+Each category has its own. A filter is a name, and it hides every item in that category
+whose spoken name is exactly that, ignoring capital letters and extra spaces: a "hopper"
+filter on Storage hides Hopper, but not a Hopper Minecart. A name you gave a block counts
+as its name, so a filter can hide it too. Shift+Z with no category selected says so.
+
+- The screen lists the category's filters, each marked as saved or this session only.
+  Remove Filter removes the picked one, Add Filter opens a prompt for the name, and Close
+  or Escape leaves.
+- The prompt has a checkbox, off by default, to keep the filter across sessions. A filter
+  that is not kept is dropped when you leave the world. A kept one is saved for that world
+  and is there again next time you join it.
+- Adding a filter that is already there does nothing, and adding it as kept turns the
+  existing session-only one into a kept one.
+- Filters change what the lists show, so a category whose items are all filtered counts
+  as empty. They do not change an active lock-on.
+
 ## Targeting and lock-on
 
 - Targeting a **block** aims at it.

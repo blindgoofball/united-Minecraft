@@ -6,14 +6,10 @@ import java.util.List;
 import com.nibblenerds.unitedminecraft.share.SharePayloads;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.ObjectSelectionList;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
-import net.minecraft.util.Mth;
 
 /**
  * The Sharing screen ({@link ClientKeyBindings#OPEN_SHARING}): the offers other players have
@@ -21,7 +17,7 @@ import net.minecraft.util.Mth;
  * markers to pick from, with Send for that pair and Send to All Players for the marker alone.
  * Escape or Close leaves.
  *
- * <p>Each list is an {@link ObjectSelectionList}, the same kind {@link KeybindScreen} uses, so
+ * <p>Each list is a {@link PickList}, the same kind of list {@link KeybindScreen} uses, so
  * they behave and narrate the way that screen's list does. A list is named through its widget
  * message, which the narration fix reads on entering it; one with nothing to pick shows a single
  * "none" row so it can still be tabbed to.
@@ -195,124 +191,5 @@ final class MarkerShareScreen extends Screen {
 
 	private void say(String key) {
 		this.minecraft.getNarrator().saySystemNow(Component.translatable(key));
-	}
-
-	/**
-	 * One row of a {@link PickList}: either something to pick ({@code value}), or - when {@code
-	 * value} is null - the "none" row shown in place of an empty list, which can't be acted on.
-	 */
-	private static final class Row<T> extends ObjectSelectionList.Entry<Row<T>> {
-		private final Font font;
-		private final Component label;
-		private final T value;
-
-		Row(Font font, Component label, T value) {
-			this.font = font;
-			this.label = label;
-			this.value = value;
-		}
-
-		@Override
-		public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean hovering, float partialTick) {
-			int textX = getContentX() + 2;
-			int textY = getContentY() + (getContentHeight() - font.lineHeight) / 2;
-			guiGraphics.text(font, font.plainSubstrByWidth(label.getString(), getContentWidth() - 4), textX, textY, -1);
-		}
-
-		@Override
-		public Component getNarration() {
-			return label;
-		}
-	}
-
-	/** A list of things to pick between; its name is spoken on entering it - see {@code ScreenNarratedWidgetMixin}. */
-	private static final class PickList<T> extends ObjectSelectionList<Row<T>> {
-		private final Font font;
-		private final Component emptyText;
-		private final java.util.function.IntConsumer onIndexChanged;
-		private final Runnable onSelectionChanged;
-		private boolean rebuilding;
-
-		PickList(Minecraft minecraft, Font font, int x, int y, int width, int height, Component name, Component emptyText,
-				java.util.function.IntConsumer onIndexChanged, Runnable onSelectionChanged) {
-			super(minecraft, width, height, y, ROW_HEIGHT);
-			setX(x);
-			// The list's name, spoken on entering it - see ScreenNarratedWidgetMixin.
-			setMessage(name);
-			this.font = font;
-			this.emptyText = emptyText;
-			this.onIndexChanged = onIndexChanged;
-			this.onSelectionChanged = onSelectionChanged;
-		}
-
-		@Override
-		public int getRowWidth() {
-			return this.width - 12;
-		}
-
-		boolean hasItems() {
-			return itemCount() > 0;
-		}
-
-		private int itemCount() {
-			int count = 0;
-			for (Row<T> row : children()) {
-				if (row.value != null) {
-					count++;
-				}
-			}
-			return count;
-		}
-
-		/** The picked item, or null if nothing is picked or the "none" row is. */
-		T selectedValue() {
-			Row<T> selected = getSelected();
-			return selected == null ? null : selected.value;
-		}
-
-		/** Position of the picked item in the list; -1 if none (or only the "none" row) is picked. */
-		private int selectedItemIndex() {
-			Row<T> selected = getSelected();
-			return selected == null || selected.value == null ? -1 : children().indexOf(selected);
-		}
-
-		/**
-		 * Replaces the items, keeping the pick as close to {@code preferred} as the new list
-		 * allows. With any items there is always something picked, so Send works without
-		 * having to select first.
-		 */
-		void setItems(List<Component> labels, List<T> values, int preferred) {
-			int previous = selectedItemIndex();
-			int target = previous >= 0 ? previous : preferred;
-			rebuilding = true;
-			List<Row<T>> rows = new ArrayList<>();
-			if (values.isEmpty()) {
-				// A list with no rows can't take focus, so Tab would skip it without a word.
-				rows.add(new Row<>(font, emptyText, null));
-			}
-			for (int i = 0; i < values.size(); i++) {
-				rows.add(new Row<>(font, labels.get(i), values.get(i)));
-			}
-			replaceEntries(rows);
-			if (!values.isEmpty()) {
-				int index = Mth.clamp(target, 0, values.size() - 1);
-				setSelected(rows.get(index));
-				onIndexChanged.accept(index);
-			}
-			rebuilding = false;
-		}
-
-		@Override
-		public void setSelected(Row<T> entry) {
-			Row<T> before = getSelected();
-			super.setSelected(entry);
-			if (!rebuilding && entry != before) {
-				int index = selectedItemIndex();
-				if (index >= 0) {
-					onIndexChanged.accept(index);
-				}
-				onSelectionChanged.run();
-			}
-		}
 	}
 }

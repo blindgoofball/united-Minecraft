@@ -75,12 +75,18 @@ final class MarkerNameScreen extends Screen {
 	/** Same prompt with a checkbox under the text field; {@code onConfirm} receives the name and the checkbox's state. */
 	MarkerNameScreen(Component title, Component prompt, Component cancelled, Component fieldLabel, String initialValue,
 			Component toggleLabel, boolean toggleInitial, BiConsumer<String, Boolean> onConfirm) {
+		this(title, prompt, cancelled, fieldLabel, initialValue, toggleLabel, toggleInitial, null, onConfirm);
+	}
+
+	/** The checkbox variant, returning to {@code returnTo} afterwards instead of closing to the game - see the {@code returnTo} constructor above. */
+	MarkerNameScreen(Component title, Component prompt, Component cancelled, Component fieldLabel, String initialValue,
+			Component toggleLabel, boolean toggleInitial, Screen returnTo, BiConsumer<String, Boolean> onConfirm) {
 		super(title);
 		this.prompt = prompt;
 		this.cancelled = cancelled;
 		this.fieldLabel = fieldLabel;
 		this.initialValue = initialValue;
-		this.returnTo = null;
+		this.returnTo = returnTo;
 		this.onConfirm = null;
 		this.toggleLabel = toggleLabel;
 		this.toggleInitial = toggleInitial;
@@ -118,6 +124,16 @@ final class MarkerNameScreen extends Screen {
 					.bounds(this.width / 2 - 100, buttonY + 24, 200, 20)
 					.build());
 		}
+		setInitialFocus(nameBox);
+	}
+
+	/**
+	 * Vanilla calls this right after {@link #init}, and by default it Tabs forward from whatever is
+	 * already focused - so a field focused in {@code init()} would be stepped past onto the next
+	 * widget (the checkbox, when there is one). Always landing on the name field instead.
+	 */
+	@Override
+	protected void setInitialFocus() {
 		setInitialFocus(nameBox);
 	}
 

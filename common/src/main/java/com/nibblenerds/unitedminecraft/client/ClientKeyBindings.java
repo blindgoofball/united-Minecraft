@@ -206,6 +206,10 @@ public final class ClientKeyBindings {
 	public static final KeybindAction SCANNER_JUMP_TO_CATEGORY =
 			new KeybindAction("scanner_jump_to_category", KeybindCategory.SCANNER, new Keybind(InputConstants.KEY_Z, 0));
 
+	/** Opens {@link ScannerFilterScreen}: what the current category leaves out of its list. */
+	public static final KeybindAction SCANNER_FILTERS = new KeybindAction(
+			"scanner_filters", KeybindCategory.SCANNER, new Keybind(InputConstants.KEY_Z, InputConstants.MOD_SHIFT));
+
 	public static final KeybindAction SCANNER_TARGET =
 			new KeybindAction("scanner_target", KeybindCategory.SCANNER, new Keybind(InputConstants.KEY_RETURN, 0));
 	/** Was Shift+Enter - see {@link #SCANNER_TARGET_WALK_THERE}. */

@@ -189,6 +189,7 @@ public final class ClientHooks {
 	public static void onSingleplayerWorldDeleted(String levelId) {
 		MapMarkerController.onWorldDeleted(levelId);
 		NamedBlockController.onWorldDeleted(levelId);
+		ScannerFilterController.onWorldDeleted(levelId);
 	}
 
 	/** The client is shutting down. */
