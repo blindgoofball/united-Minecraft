@@ -52,6 +52,7 @@ import net.minecraft.world.entity.animal.fish.TropicalFish;
 import net.minecraft.world.entity.animal.panda.Panda;
 import net.minecraft.world.entity.animal.parrot.Parrot;
 import net.minecraft.world.entity.animal.sheep.Sheep;
+import net.minecraft.world.entity.animal.wolf.Wolf;
 import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
 import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
 import net.minecraft.world.entity.boss.wither.WitherBoss;
@@ -1136,6 +1137,13 @@ public final class ScannerController {
 			fragments.add(owner != null
 					? Component.translatable("united_minecraft.narrate.mob_tamed_by", owner.getDisplayName())
 					: Component.translatable("united_minecraft.narrate.mob_tamed"));
+			if (entity instanceof Wolf wolf) {
+				// Stands in for the tail angle a sighted player reads: a tamed wolf's tail droops
+				// as its health falls. Hearts, formatted like the player's own health readout.
+				fragments.add(Component.translatable("united_minecraft.narrate.wolf_health",
+						AccessibilityTickHandler.formatHalf(wolf.getHealth() / 2.0),
+						AccessibilityTickHandler.formatHalf(wolf.getMaxHealth() / 2.0)));
+			}
 		}
 		return fragments;
 	}

@@ -369,6 +369,7 @@
 	"united_minecraft.narrate.mob_riding": "riding %s",
 	"united_minecraft.narrate.mob_tamed": "Tamed",
 	"united_minecraft.narrate.mob_tamed_by": "Tamed by %s",
+	"united_minecraft.narrate.wolf_health": "Health %s of %s",
 	"united_minecraft.narrate.mob_tamed_notification": "Tamed %s",
 	"united_minecraft.narrate.painting_title": "Painting: %s",
 	"united_minecraft.narrate.cushion_colored": "%s %s",

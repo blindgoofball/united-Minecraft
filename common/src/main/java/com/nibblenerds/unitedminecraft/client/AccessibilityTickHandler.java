@@ -969,7 +969,7 @@ public final class AccessibilityTickHandler {
 		client.getNarrator().saySystemNow(message);
 	}
 
-	private static String formatHalf(double value) {
+	static String formatHalf(double value) {
 		return value == Math.rint(value) ? String.valueOf((long) value) : String.format(Locale.ROOT, "%.1f", value);
 	}
 
