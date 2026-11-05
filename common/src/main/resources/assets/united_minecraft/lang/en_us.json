@@ -597,6 +597,7 @@
 	"united_minecraft.share_screen.send": "Send to Selected Player",
 	"united_minecraft.share_screen.send_all": "Send to All Players",
 	"united_minecraft.share_screen.close": "Close",
+	"united_minecraft.share_screen.offer_entry": "%s: %s, %s",
 	"united_minecraft.share_screen.item_entry": "%s, %s",
 	"united_minecraft.share_screen.blocks_away": "%s blocks away",
 	"united_minecraft.share_screen.other_dimension": "in %s",

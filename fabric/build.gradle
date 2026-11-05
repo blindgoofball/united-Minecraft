@@ -45,6 +45,9 @@ tasks.withType(Test).configureEach {
 	// Minecraft's logging writes a logs/ folder into the working directory - keep it in build/.
 	def testRunDir = layout.buildDirectory.dir('test-run').get().asFile
 	workingDir = testRunDir
+	// Where the shared sources and language file are, for the test that checks every translation key
+	// the code uses exists - the tests themselves run from a folder under build/.
+	systemProperty 'united.commonDir', rootProject.file('common').absolutePath
 	doFirst {
 		testRunDir.mkdirs()
 	}
