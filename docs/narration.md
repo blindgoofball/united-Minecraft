@@ -63,6 +63,8 @@ Each of these has its own key (see [Key bindings](keybindings.md)).
   wall you could jump, a drop-off, water, lava) and, if there is a clear way
   around, which side to take. This can be turned off in Settings.
 - **Fishing catches** are narrated.
+- **Vault rewards** are narrated as each item comes out of a trial chamber vault, count
+  first ("3 Emerald"). They are dropped items, so pick them up as usual.
 - **Titles and subtitles** that servers put in the middle of the screen
   (countdowns, area names, minigame announcements) are narrated. A title a server
   re-sends to hold it on screen is read once. This can be turned off in Settings.

@@ -154,6 +154,7 @@ public final class AccessibilityTickHandler {
 			EyeOfEnderController.reset();
 			AngleAssistController.reset();
 			FishingCatchController.reset();
+			VaultRewardController.reset();
 			FallWarningController.reset();
 			PowderSnowWarningController.reset();
 			TreeChoppingAssist.reset();
@@ -314,6 +315,8 @@ public final class AccessibilityTickHandler {
 			// Same reasoning - a cast line keeps waiting for a bite regardless of what else
 			// the player is doing meanwhile.
 			FishingCatchController.tick(client, player);
+			// Same reasoning - a vault ejects its rewards on its own schedule.
+			VaultRewardController.tick(client, player);
 			// Same reasoning - the attack-strength meter keeps recharging regardless of what
 			// else is going on, and CombatCueMode.ALWAYS needs it tracked outside Combat Mode too.
 			CombatModeController.tickAttackCue(client, player);
