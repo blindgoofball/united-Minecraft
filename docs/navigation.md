@@ -38,9 +38,10 @@ flat, solid ground (never water, lava, leaves or anything harmful) with a clear
 line down, within the distance your height allows. If there is none, it says so.
 
 Shift+Y flies you onto it. The mod takes the camera, steering and pitching to
-touch down gently, circling down first if you are too high, and hands control back
-when you land. Backspace cancels, and control is handed back if terrain is
-unavoidable.
+touch down gently, diving steeply from a height and levelling off to shed speed
+just above the ground (a wide circle only if it cannot reach the spot from where
+you are), and hands control back when you land. Backspace cancels, and control
+is handed back if terrain is unavoidable.
 
 **Flying to a Scanner target:** while gliding, Shift+Enter on something in the
 Scanner flies you toward it instead of walking (Build Mode's walk-to-cursor key

@@ -11,8 +11,10 @@ import java.util.List;
  * <p>Elytra flight is fully determined by the player's velocity and look direction ({@code
  * LivingEntity#updateFallFlyingMovement}, mirrored in {@link ElytraPhysics}), so rather than chasing
  * a glide slope, this <em>predicts</em>: every tick it simulates the rest of the flight - turning
- * toward the target and easing to each of a range of candidate pitches - and picks the pitch whose
- * predicted touchdown lands closest to the target, among those that touch down gently. Gentle
+ * toward the target and easing to each of a range of candidate pitches, some of which dive and then
+ * level off a set height above the ground - and picks the quickest candidate predicted to land on the
+ * target, among those that touch down gently (quickest, because the one that lands nearest is a
+ * slow drift over the spot that takes a minute to get down from a great height). Gentle
  * matters because touching down while sinking slower than {@link #MAX_TOUCHDOWN_SINK} blocks/tick
  * does no fall damage at all (vanilla caps the accumulated fall distance at 1 in that case), and
  * level flight is the best glide there is (about 10 blocks forward per block lost), so no dramatic
@@ -49,7 +51,11 @@ final class ElytraAutopilot {
 	record Command(float yaw, float pitch, Phase phase, double predictedMiss, List<double[]> path, boolean hazard) {
 	}
 
-	private record Prediction(double miss, double touchdownSink, double pitch, boolean landed, List<double[]> path) {
+	/**
+	 * One simulated flight. {@code pitch} is what to look at right now to fly it (the dive pitch, or
+	 * level once inside the level-off height), and {@code ticks} how long it takes to touch down.
+	 */
+	private record Prediction(double miss, double touchdownSink, double pitch, boolean landed, List<double[]> path, int ticks) {
 	}
 
 	static final double ORBIT_RADIUS = 50.0;
@@ -61,6 +67,12 @@ final class ElytraAutopilot {
 	static final double ABANDON_MISS = 20.0;
 	private static final double MAX_PITCH = 60.0;
 	private static final double PITCH_STEP = 2.5;
+	// Dive-then-level-off candidates: dive at one of these pitches until within one of these heights
+	// of the ground, then fly level to shed the speed. A candidate that holds one pitch all the way
+	// down can only reach the target by drifting over it slowly (about three blocks a second of
+	// descent however high you are), so these are what lets a high start come down quickly.
+	private static final double[] DIVE_PITCHES = {30.0, 40.0, 50.0, 55.0, 60.0, 65.0, 70.0, 75.0, 80.0, 85.0, 90.0};
+	private static final double[] LEVEL_OFF_HEIGHTS = {10.0, 15.0, 20.0, 25.0, 30.0, 35.0, 40.0, 45.0, 50.0, 60.0, 75.0, 90.0, 110.0};
 	private static final float MAX_YAW_STEP = 5.0f;
 	private static final float MAX_PITCH_STEP = 5.0f;
 	private static final double ORBIT_SINK_PITCH = 30.0;
@@ -175,23 +187,45 @@ final class ElytraAutopilot {
 		return false;
 	}
 
-	/** The candidate pitch whose predicted touchdown best serves the target: nearest to it, with a heavy penalty for a hard landing. */
+	/**
+	 * The candidate flight to fly. Of those predicted to land on the target gently, the quickest -
+	 * not the one that happens to land nearest, which is a slow drift over the spot. If none will,
+	 * the one that comes nearest, with a heavy penalty for a hard landing.
+	 */
 	private Prediction bestApproach(State s) {
-		Prediction best = null;
-		double bestCost = Double.MAX_VALUE;
+		Prediction nearest = null;
+		double nearestCost = Double.MAX_VALUE;
+		Prediction quickest = null;
 		for (double pitch = 0.0; pitch <= MAX_PITCH + 1e-9; pitch += PITCH_STEP) {
-			Prediction p = predict(s, pitch);
+			Prediction p = predict(s, pitch, 0.0);
+			if (p.landed() && p.touchdownSink() <= MAX_TOUCHDOWN_SINK && p.miss() <= COMMIT_MISS
+					&& (quickest == null || p.ticks() < quickest.ticks())) {
+				quickest = p;
+			}
 			double cost = p.landed() ? p.miss() + Math.max(0.0, p.touchdownSink() - MAX_TOUCHDOWN_SINK) * 400.0 : 1e6;
-			if (cost < bestCost) {
-				bestCost = cost;
-				best = p;
+			if (cost < nearestCost) {
+				nearestCost = cost;
+				nearest = p;
 			}
 		}
-		return best;
+		for (double pitch : DIVE_PITCHES) {
+			for (double levelOff : LEVEL_OFF_HEIGHTS) {
+				Prediction p = predict(s, pitch, levelOff);
+				if (p.landed() && p.touchdownSink() <= MAX_TOUCHDOWN_SINK && p.miss() <= COMMIT_MISS
+						&& (quickest == null || p.ticks() < quickest.ticks())) {
+					quickest = p;
+				}
+			}
+		}
+		return quickest != null ? quickest : nearest;
 	}
 
-	/** Simulates the flight from {@code s}, steering toward the target and easing to {@code pitchTarget}, until the ground is reached. */
-	private Prediction predict(State s, double pitchTarget) {
+	/**
+	 * Simulates the flight from {@code s}, steering toward the target and easing to {@code pitchTarget}
+	 * (or to level once within {@code levelOffHeight} of the ground, if that is above zero), until the
+	 * ground is reached.
+	 */
+	private Prediction predict(State s, double pitchTarget, double levelOffHeight) {
 		double x = s.x();
 		double y = s.y();
 		double z = s.z();
@@ -201,9 +235,14 @@ final class ElytraAutopilot {
 		float yaw = s.yaw();
 		float pitch = s.pitch();
 		List<double[]> path = new ArrayList<>();
+		double pitchNow = pitchTarget;
 		for (int t = 0; t < MAX_PREDICT_TICKS; t++) {
 			yaw = steerYaw(yaw, bearingTo(x, z, tx, tz));
-			pitch += clamp((float) (pitchTarget - pitch), MAX_PITCH_STEP);
+			double wanted = levelOffHeight > 0.0 && y - ground.height(x, z) <= levelOffHeight ? 0.0 : pitchTarget;
+			if (t == 0) {
+				pitchNow = wanted;
+			}
+			pitch += clamp((float) (wanted - pitch), MAX_PITCH_STEP);
 			double[] v = ElytraPhysics.step(vx, vy, vz, yaw, pitch);
 			vx = v[0];
 			vy = v[1];
@@ -223,10 +262,10 @@ final class ElytraAutopilot {
 				double touchX = prevX + (x - prevX) * fraction;
 				double touchZ = prevZ + (z - prevZ) * fraction;
 				path.add(new double[] {touchX, surface, touchZ});
-				return new Prediction(Math.hypot(touchX - tx, touchZ - tz), -vy, pitchTarget, true, path);
+				return new Prediction(Math.hypot(touchX - tx, touchZ - tz), -vy, pitchNow, true, path, t + 1);
 			}
 		}
-		return new Prediction(Double.MAX_VALUE, 0.0, pitchTarget, false, path);
+		return new Prediction(Double.MAX_VALUE, 0.0, pitchNow, false, path, MAX_PREDICT_TICKS);
 	}
 
 	private static float steerYaw(float yaw, float wanted) {
