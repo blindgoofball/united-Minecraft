@@ -22,6 +22,11 @@ Shift with the target key). It works on any server with no special permissions.
   they need redstone, and a door that will not open stops the walk.
 - It routes around powder snow, and only crosses the top of it if you are wearing
   leather boots.
+- Riding a saddled horse, donkey, mule or similar, it rides you there instead,
+  routing for the mount's own size and one-block steps. It does not make the
+  mount jump yet, so a route that needs a jump is not offered. A mount is wider
+  than you and cannot squeeze up to a doorway, so it counts as arrived within
+  about three blocks of the target, still inside your reach.
 - Cancel at any time with Backspace.
 
 ## Water Exit

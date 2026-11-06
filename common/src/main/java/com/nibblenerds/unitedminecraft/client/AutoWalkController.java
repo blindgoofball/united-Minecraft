@@ -9,7 +9,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.animal.equine.AbstractHorse;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.pathfinder.Path;
@@ -64,6 +66,12 @@ public final class AutoWalkController {
 	// between, or, for a ladder specifically, simply the wrong side of it to climb). See {@link
 	// #startExact}.
 	private static final int EXACT_REACH_RANGE = 0;
+	// A mount is wider than the player, and the pathfinder tests its whole hitbox at every node, so it
+	// cannot stand in a doorway or right beside a wall the way a player can: the nearest spot it fits is
+	// often a couple of blocks out. Searching for an adjacent node would never succeed and would run
+	// the search to its node limit, so a ridden mount counts as arrived from this far (still well inside
+	// the player's reach, and the line-of-sight check on arrival still applies).
+	private static final int MOUNTED_REACH_RANGE = 3;
 	private static final double NODE_ARRIVAL_DISTANCE_SQR = 0.5 * 0.5;
 	// How close to a ladder cell's level counts as having reached it, going up / down. Climbing
 	// up overshoots a little each tick, sliding down is slower than that.
@@ -86,6 +94,15 @@ public final class AutoWalkController {
 
 	public static boolean isActive() {
 		return currentPath != null;
+	}
+
+	/**
+	 * The entity that actually moves along the route: the mount while the player steers one that Auto-Walk
+	 * can drive, otherwise the player. A ridden mount carries the player at saddle height, so positions,
+	 * ground contact and hitbox all have to come from it rather than from the player.
+	 */
+	static Entity bodyOf(LocalPlayer player) {
+		return player.getVehicle() instanceof AbstractHorse horse && horse.getControllingPassenger() == player ? horse : player;
 	}
 
 	public static void reset() {
@@ -155,6 +172,9 @@ public final class AutoWalkController {
 		if (isActive()) {
 			cancel(client, player);
 		}
+		if (bodyOf(player) != player) {
+			reachRange = Math.max(reachRange, MOUNTED_REACH_RANGE);
+		}
 
 		Path path = ClientPathfinding.computePath(player, target, MAX_PATH_LENGTH, reachRange,
 				UnitedMinecraftConfig.get().autoWalkSwim, UnitedMinecraftConfig.get().autoWalkOpenDoors);
@@ -189,21 +209,22 @@ public final class AutoWalkController {
 			return;
 		}
 
+		Entity body = bodyOf(player);
 		BlockPos nextPos = currentPath.getNextNodePos();
-		double dx = nextPos.getX() + 0.5 - player.getX();
-		double dz = nextPos.getZ() + 0.5 - player.getZ();
+		double dx = nextPos.getX() + 0.5 - body.getX();
+		double dz = nextPos.getZ() + 0.5 - body.getZ();
 		// Moving between two climbable cells (see AutoWalkNodeEvaluator): the leg is vertical, so
 		// "arrived" has to mean the right height too, not just the right column.
 		Level level = player.level();
 		boolean climbLeg = AutoWalkNodeEvaluator.isClimbable(level.getBlockState(nextPos))
-				&& AutoWalkNodeEvaluator.isClimbable(level.getBlockState(player.blockPosition()));
-		boolean climbingUp = climbLeg && nextPos.getY() > player.getY();
-		double dy = climbLeg ? nextPos.getY() - player.getY() : 0.0;
+				&& AutoWalkNodeEvaluator.isClimbable(level.getBlockState(body.blockPosition()));
+		boolean climbingUp = climbLeg && nextPos.getY() > body.getY();
+		double dy = climbLeg ? nextPos.getY() - body.getY() : 0.0;
 		boolean atHeight = !climbLeg || (climbingUp ? dy <= CLIMB_ARRIVAL_UP : dy >= -CLIMB_ARRIVAL_DOWN);
 		// A drop is a waypoint in the same column as the ledge the player stands on: they are
 		// horizontally "there" before they have fallen, and counting that would end the walk (or skip
 		// on to the next waypoint) while they are still up on the ledge.
-		if (!climbLeg && ArrivalHeights.stillAboveWaypoint(player.getY(), nextPos.getY())) {
+		if (!climbLeg && ArrivalHeights.stillAboveWaypoint(body.getY(), nextPos.getY())) {
 			atHeight = false;
 		}
 
@@ -222,7 +243,7 @@ public final class AutoWalkController {
 				// on its far side counts as "reached" by that measure even though there's no way
 				// through. The line-of-sight check below catches that case.
 				if (currentPath.canReach()
-						&& ArrivalHeights.levelWithTarget(player.getY(), currentPath.getTarget().getY())
+						&& ArrivalHeights.levelWithTarget(body.getY(), currentPath.getTarget().getY())
 						&& hasClearLineToTarget(player.level(), player, currentPath.getTarget())) {
 					Runnable callback = onArrival;
 					client.getSoundManager().play(new SimpleSoundInstance(SoundEvents.NOTE_BLOCK_CHIME.value(),
@@ -298,9 +319,14 @@ public final class AutoWalkController {
 		// Jumping also climbs, which is how the player gets off the top of a ladder onto a ledge.
 		// Jump is also vanilla's swim-up input: held the whole way across, it keeps the player
 		// afloat at the surface (and gets them up onto the bank at the far side).
-		boolean swimming = player.isInWater() && UnitedMinecraftConfig.get().autoWalkSwim;
-		boolean needsJump = swimming || (player.onGround() || player.onClimbable()) && nextPos.getY() > Mth.floor(player.getY() + 0.1);
-		boolean sprint = client.options.keySprint.isDown() || UnitedMinecraftConfig.get().autoWalkAutoSprint;
+		boolean mounted = body != player;
+		boolean swimming = body.isInWater() && UnitedMinecraftConfig.get().autoWalkSwim;
+		// A ridden horse climbs a one-block step by itself (its step height is a full block), and the jump
+		// key would instead charge a rearing jump, so a mount never gets the jump input here.
+		boolean needsJump = !mounted
+				&& (swimming || (player.onGround() || player.onClimbable()) && nextPos.getY() > Mth.floor(player.getY() + 0.1));
+		// Sprint is the player's own; a ridden horse ignores it and a held key would only matter on foot.
+		boolean sprint = !mounted && (client.options.keySprint.isDown() || UnitedMinecraftConfig.get().autoWalkAutoSprint);
 		((RouteInput) player.input).setWalking(needsJump, sprint);
 	}
 

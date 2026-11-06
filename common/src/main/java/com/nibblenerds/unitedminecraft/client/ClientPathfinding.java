@@ -4,6 +4,7 @@ import java.util.Set;
 
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntitySpawnRequest;
 import net.minecraft.world.entity.EntityTypes;
@@ -58,13 +59,21 @@ final class ClientPathfinding {
 		// ignoreChecks=true - this ghost is never actually spawned into the world, just used as
 		// a parameter bag (bounding box, step height, fall tolerance) for the pathfinder below,
 		// so it shouldn't be subject to spawn-eligibility rules like "not allowed on Peaceful".
-		Mob ghost = EntityTypes.ZOMBIE.create(level, new EntitySpawnRequest(EntitySpawnReason.COMMAND, true));
-		if (ghost == null) {
+		// Ridden, the thing that has to fit through gaps and climb steps is the mount, not the player
+		// sitting on it: stand in a never-spawned copy of the mount's own type, at the mount's feet.
+		Entity body = AutoWalkController.bodyOf(player);
+		Entity ghostEntity = body == player
+				? EntityTypes.ZOMBIE.create(level, new EntitySpawnRequest(EntitySpawnReason.COMMAND, true))
+				: body.getType().create(level, new EntitySpawnRequest(EntitySpawnReason.COMMAND, true));
+		if (!(ghostEntity instanceof Mob ghost)) {
+			if (ghostEntity != null) {
+				ghostEntity.discard();
+			}
 			return null;
 		}
-		ghost.snapTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), 0.0f);
+		ghost.snapTo(body.getX(), body.getY(), body.getZ(), player.getYRot(), 0.0f);
 
-		BlockPos playerPos = player.blockPosition();
+		BlockPos playerPos = body.blockPosition();
 		BlockPos regionStart = new BlockPos(
 				Math.min(playerPos.getX(), target.getX()) - SEARCH_MARGIN,
 				Math.min(playerPos.getY(), target.getY()) - SEARCH_MARGIN,
