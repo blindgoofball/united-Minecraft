@@ -48,6 +48,17 @@ class MountStatsTest {
 	}
 
 	@Test
+	void theBestHorseLandsOnAFiveBlockRiseAndTheWorstOnlyStepsOne() {
+		assertEquals(5, MountStats.maxRise(1.0, GRAVITY));
+		assertEquals(1, MountStats.maxRise(0.4, GRAVITY));
+	}
+
+	@Test
+	void aMountNeverPlansForLessThanAOneBlockStep() {
+		assertEquals(1, MountStats.maxRise(0.1, GRAVITY));
+	}
+
+	@Test
 	void lowerGravityJumpsHigher() {
 		assertTrue(MountStats.jumpHeight(0.7, 0.04) > MountStats.jumpHeight(0.7, GRAVITY));
 	}

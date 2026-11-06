@@ -113,6 +113,7 @@ public final class AutoWalkController {
 		reachRange = REACH_RANGE;
 		STUCK.reset();
 		rePathAttempted = false;
+		MountJumper.reset();
 		AutoWalkDoors.reset();
 	}
 
@@ -319,14 +320,16 @@ public final class AutoWalkController {
 		// Jumping also climbs, which is how the player gets off the top of a ladder onto a ledge.
 		// Jump is also vanilla's swim-up input: held the whole way across, it keeps the player
 		// afloat at the surface (and gets them up onto the bank at the far side).
-		boolean mounted = body != player;
-		boolean swimming = body.isInWater() && UnitedMinecraftConfig.get().autoWalkSwim;
-		// A ridden horse climbs a one-block step by itself (its step height is a full block), and the jump
-		// key would instead charge a rearing jump, so a mount never gets the jump input here.
-		boolean needsJump = !mounted
-				&& (swimming || (player.onGround() || player.onClimbable()) && nextPos.getY() > Mth.floor(player.getY() + 0.1));
-		// Sprint is the player's own; a ridden horse ignores it and a held key would only matter on foot.
-		boolean sprint = !mounted && (client.options.keySprint.isDown() || UnitedMinecraftConfig.get().autoWalkAutoSprint);
+		if (body instanceof AbstractHorse horse) {
+			// A ridden horse steps up a block by itself; anything higher is a charged jump (MountJumper),
+			// and it ignores the sprint key.
+			MountJumper.drive(player, horse, MountJumper.needsJump(horse.getY(), nextPos.getY()),
+					Math.sqrt(dx * dx + dz * dz), (RouteInput) player.input);
+			return;
+		}
+		boolean swimming = player.isInWater() && UnitedMinecraftConfig.get().autoWalkSwim;
+		boolean needsJump = swimming || (player.onGround() || player.onClimbable()) && nextPos.getY() > Mth.floor(player.getY() + 0.1);
+		boolean sprint = client.options.keySprint.isDown() || UnitedMinecraftConfig.get().autoWalkAutoSprint;
 		((RouteInput) player.input).setWalking(needsJump, sprint);
 	}
 

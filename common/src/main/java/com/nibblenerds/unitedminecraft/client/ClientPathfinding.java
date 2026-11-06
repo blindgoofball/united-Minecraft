@@ -5,6 +5,9 @@ import java.util.Set;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.animal.equine.AbstractHorse;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntitySpawnRequest;
 import net.minecraft.world.entity.EntityTypes;
@@ -72,6 +75,15 @@ final class ClientPathfinding {
 			return null;
 		}
 		ghost.snapTo(body.getX(), body.getY(), body.getZ(), player.getYRot(), 0.0f);
+		if (body instanceof AbstractHorse horse) {
+			// The pathfinder climbs as high as the mover's step height says it can; for a horse that is
+			// the tallest rise its jump lands on, so it routes up ledges and over fences it can jump.
+			AttributeInstance stepHeight = ghost.getAttribute(Attributes.STEP_HEIGHT);
+			if (stepHeight != null) {
+				stepHeight.setBaseValue(MountStats.maxRise(
+						horse.getAttributeValue(Attributes.JUMP_STRENGTH), horse.getAttributeValue(Attributes.GRAVITY)));
+			}
+		}
 
 		BlockPos playerPos = body.blockPosition();
 		BlockPos regionStart = new BlockPos(

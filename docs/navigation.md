@@ -23,8 +23,9 @@ Shift with the target key). It works on any server with no special permissions.
 - It routes around powder snow, and only crosses the top of it if you are wearing
   leather boots.
 - Riding a saddled horse, donkey, mule or similar, it rides you there instead,
-  routing for the mount's own size and one-block steps. It does not make the
-  mount jump yet, so a route that needs a jump is not offered. A mount is wider
+  routing for the mount's own size. It charges and releases the mount's jump
+  to climb ledges and clear fences, up to the height that mount can actually
+  jump (your H key reports it). A mount is wider
   than you and cannot squeeze up to a doorway, so it counts as arrived within
   about three blocks of the target, still inside your reach.
 - Cancel at any time with Backspace.

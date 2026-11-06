@@ -28,6 +28,14 @@ final class MountStats {
 	 * full 1.0 and an ordinary block under it), and each tick after that it moves, then gravity pulls
 	 * on its velocity and drag scales it. The peak is where that velocity runs out.
 	 */
+	/**
+	 * The tallest whole-block rise a fully charged jump lands on top of: the peak has to clear the
+	 * block's top with a little to spare. Never below one, which a mount steps up without jumping.
+	 */
+	static int maxRise(double jumpStrength, double gravity) {
+		return Math.max(1, (int) Math.floor(jumpHeight(jumpStrength, gravity) - 0.15));
+	}
+
 	static double jumpHeight(double jumpStrength, double gravity) {
 		double height = 0.0;
 		double velocity = jumpStrength;
