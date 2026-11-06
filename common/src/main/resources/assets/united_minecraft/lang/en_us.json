@@ -262,6 +262,7 @@
 	"united_minecraft.narrate.build_placement_half_lower": "Will place lower half",
 	"united_minecraft.narrate.health": "Health %s of %s, Hunger %s of 10",
 	"united_minecraft.narrate.mount_health": "Mount Health %s of %s",
+	"united_minecraft.narrate.mount_stats": "Mount speed %s blocks per second, jump %s blocks",
 	"united_minecraft.narrate.experience_level": "Experience level %s, %s%% to next level",
 	"united_minecraft.narrate.armor_value": "Armor %s",
 	"united_minecraft.narrate.status_no_effects": "No active effects",

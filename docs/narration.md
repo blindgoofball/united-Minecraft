@@ -25,7 +25,9 @@ Each of these has its own key (see [Key bindings](keybindings.md)).
   nautilus, strider, pig and so on), its health follows. Shift reads your
   experience level. Alt reads
   your armor value and every active status effect with its level and remaining
-  duration.
+  duration; while you ride a horse, donkey, mule, llama or camel it also gives the
+  mount's speed in blocks per second and the height of its fully charged jump in
+  blocks, for judging how good it is.
 - **Facing direction** in compass degrees, with pitch. Shift+B resets your
   facing to north.
 - **Time of day:** the current period, a clock-style time, then the day count.

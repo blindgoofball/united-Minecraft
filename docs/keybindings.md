@@ -11,7 +11,7 @@ key or modifier combination in United Minecraft's own Keybindings screen
 | Key | Action |
 | --- | --- |
 | C (Shift = light level of Build Mode's cursor if active, otherwise your block) | Coordinates, standing block and biome |
-| H (Shift = experience level, Alt = armor and status effects) | Health and hunger |
+| H (Shift = experience level, Alt = armor and status effects, and your mount's speed and jump on a horse) | Health and hunger |
 | B (Shift+B = reset facing to north, Alt+B = face the last Eye of Ender's direction) | Facing direction and pitch |
 | R (Shift = toggle Auto Crosshair Narration) | Read what is in front of me |
 | V (Shift = weather and, at night, moon phase) | Time of day |

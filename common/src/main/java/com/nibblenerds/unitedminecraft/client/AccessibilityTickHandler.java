@@ -26,6 +26,8 @@ import net.minecraft.util.Util;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.animal.equine.AbstractHorse;
 import net.minecraft.world.entity.animal.parrot.Parrot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -1003,6 +1005,17 @@ public final class AccessibilityTickHandler {
 			for (MobEffectInstance effect : effects) {
 				message = message.append(Component.literal(". ")).append(describeStatusEffect(effect));
 			}
+		}
+		if (player.getVehicle() instanceof AbstractHorse horse) {
+			// The speed and jump a sighted rider judges by watching the mount run and leap - the only way
+			// to tell a good horse from a poor one. Speed is its movement speed attribute in blocks a
+			// second; jump is the height of a fully charged jump, worked out from its jump strength.
+			double speed = MountStats.speedBlocksPerSecond(horse.getAttributeValue(Attributes.MOVEMENT_SPEED));
+			double jump = MountStats.jumpHeight(
+					horse.getAttributeValue(Attributes.JUMP_STRENGTH), horse.getAttributeValue(Attributes.GRAVITY));
+			message = message.append(Component.literal(". ")).append(Component.translatable(
+					"united_minecraft.narrate.mount_stats",
+					String.format(Locale.ROOT, "%.1f", speed), String.format(Locale.ROOT, "%.1f", jump)));
 		}
 		client.getNarrator().saySystemNow(message);
 	}
