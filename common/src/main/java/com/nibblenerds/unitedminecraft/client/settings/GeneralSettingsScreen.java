@@ -1,4 +1,4 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.settings;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;

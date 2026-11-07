@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -32,7 +33,7 @@ import net.minecraft.world.phys.Vec3;
  * player leaves things as they found them. Doors still open when the walk ends are closed too, if the
  * player has got through them.
  */
-final class AutoWalkDoors {
+public final class AutoWalkDoors {
 	enum Gate {
 		/** Nothing to wait for - keep walking. */
 		CLEAR,

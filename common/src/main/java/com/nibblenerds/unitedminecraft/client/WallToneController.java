@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.Map;

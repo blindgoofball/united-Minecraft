@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.settings.SettingsScreen;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;

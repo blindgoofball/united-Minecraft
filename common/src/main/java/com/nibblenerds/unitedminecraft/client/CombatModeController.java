@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import java.util.HashMap;
 import java.util.Map;
 

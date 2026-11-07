@@ -1,6 +1,7 @@
 package com.nibblenerds.unitedminecraft.client.keybind;
 
-import com.nibblenerds.unitedminecraft.client.SettingsScreen;
+import com.nibblenerds.unitedminecraft.client.settings.SettingsScreen;
+import com.nibblenerds.unitedminecraft.client.settings.SettingsScreen;
 import com.nibblenerds.unitedminecraft.client.SoundGlossaryScreen;
 import java.util.Arrays;
 import java.util.Comparator;

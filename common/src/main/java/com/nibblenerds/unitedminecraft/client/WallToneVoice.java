@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import java.util.EnumMap;
 import java.util.Locale;
 import java.util.Map;

@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Iterator;

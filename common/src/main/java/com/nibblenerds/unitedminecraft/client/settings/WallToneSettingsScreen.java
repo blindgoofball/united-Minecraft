@@ -1,4 +1,4 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.settings;
 
 import java.util.List;
 import java.util.Locale;

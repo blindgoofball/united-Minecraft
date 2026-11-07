@@ -1,5 +1,6 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.settings;
 
+import com.nibblenerds.unitedminecraft.client.SoundGlossaryScreen;
 import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
 import com.nibblenerds.unitedminecraft.client.keybind.KeybindScreen;
 import net.minecraft.client.Minecraft;

@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Locale;

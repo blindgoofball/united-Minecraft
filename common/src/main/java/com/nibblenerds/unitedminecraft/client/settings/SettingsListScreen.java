@@ -1,5 +1,6 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.settings;
 
+import com.nibblenerds.unitedminecraft.client.MarkerNameScreen;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;

@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -27,7 +28,7 @@ import net.minecraft.world.phys.Vec3;
  * ({@link CombatLockSound}) that holds until the aim drifts off again.</li>
  * </ul>
  */
-final class CombatBeacon {
+public final class CombatBeacon {
 	private static final double PING_OFFSET_BLOCKS = 2.0;
 	private static final int PING_INTERVAL_MIN_TICKS = 2;
 	private static final int PING_INTERVAL_MAX_TICKS = 20;

@@ -26,7 +26,7 @@ import net.minecraft.network.chat.Component;
  * <p>{@link NamedBlockController} also asks for an optional checkbox under the field ("Also show
  * in Markers") - see the toggle constructor. Every other caller gets no checkbox at all.
  */
-final class MarkerNameScreen extends Screen {
+public final class MarkerNameScreen extends Screen {
 	private final Consumer<String> onConfirm;
 	private final Component prompt;
 	private final Component cancelled;

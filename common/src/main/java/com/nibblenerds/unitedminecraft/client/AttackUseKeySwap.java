@@ -1,5 +1,7 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.settings.RecommendedKeysPrompt;
+import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import com.mojang.blaze3d.platform.InputConstants;
 
 import net.minecraft.client.KeyMapping;
@@ -17,7 +19,7 @@ import net.minecraft.network.chat.Component;
  * next swap with no extra step. Pressing it while on the mouse restores the remembered set, or the
  * recommended comma and period if there is none yet.
  */
-final class AttackUseKeySwap {
+public final class AttackUseKeySwap {
 	/** What a swap should do: the keys to switch to, and whether the keys being left should be remembered first. */
 	record Plan(InputConstants.Key attack, InputConstants.Key use, boolean rememberCurrent) {
 	}

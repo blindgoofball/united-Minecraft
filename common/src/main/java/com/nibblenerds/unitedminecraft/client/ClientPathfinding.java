@@ -36,7 +36,7 @@ import net.minecraft.world.level.pathfinder.PathFinder;
  * AutoWalkNodeEvaluator}'s own doc for why the node evaluator isn't vanilla's plain {@code
  * WalkNodeEvaluator}.
  */
-final class ClientPathfinding {
+public final class ClientPathfinding {
 	private static final int SEARCH_MARGIN = 16;
 	// Flying approach spots (see flightApproaches): the rider's eye this many blocks from the target in
 	// each direction, at least APPROACH_MIN_DISTANCE out, and the box corner counts as there within a couple of blocks.

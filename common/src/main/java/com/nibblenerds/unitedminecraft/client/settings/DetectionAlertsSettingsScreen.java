@@ -1,5 +1,6 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.settings;
 
+import com.nibblenerds.unitedminecraft.client.ExplorationRange;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 

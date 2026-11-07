@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import java.util.Optional;
 
 import net.minecraft.client.Minecraft;
@@ -39,7 +40,7 @@ import net.minecraft.world.phys.Vec3;
  * held, see {@link #pausesLock} - otherwise the camera would aim for the player and there would be
  * nothing left for the beacon to do.
  */
-final class BowBeaconController {
+public final class BowBeaconController {
 	private static final double SEARCH_RANGE = 64.0;
 	private static final int MAX_FLIGHT_TICKS = 100;
 	// A hit is predicted against the target's box grown by this much: the arrow itself has some

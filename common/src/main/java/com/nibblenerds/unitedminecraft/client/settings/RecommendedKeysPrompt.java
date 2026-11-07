@@ -1,4 +1,4 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.settings;
 
 import com.mojang.blaze3d.platform.InputConstants;
 
@@ -20,9 +20,9 @@ import net.minecraft.network.chat.Component;
  * never swapped in while that screen is still mid-initialization. If the player has already moved
  * on to another screen by then, it waits for the title screen to come back.
  */
-final class RecommendedKeysPrompt {
-	static final InputConstants.Key ATTACK_KEY = InputConstants.Type.KEYBOARD.getOrCreate(InputConstants.KEY_COMMA);
-	static final InputConstants.Key USE_KEY = InputConstants.Type.KEYBOARD.getOrCreate(InputConstants.KEY_PERIOD);
+public final class RecommendedKeysPrompt {
+	public static final InputConstants.Key ATTACK_KEY = InputConstants.Type.KEYBOARD.getOrCreate(InputConstants.KEY_COMMA);
+	public static final InputConstants.Key USE_KEY = InputConstants.Type.KEYBOARD.getOrCreate(InputConstants.KEY_PERIOD);
 
 	private static boolean checkDone;
 	private static boolean pending;
@@ -31,7 +31,7 @@ final class RecommendedKeysPrompt {
 	}
 
 	/** A screen finished init - the first title screen of the session decides whether to ask. */
-	static void onScreenInit(Screen screen) {
+	public static void onScreenInit(Screen screen) {
 		if (checkDone || !(screen instanceof TitleScreen)) {
 			return;
 		}
@@ -49,7 +49,7 @@ final class RecommendedKeysPrompt {
 		pending = true;
 	}
 
-	static void tick(Minecraft client) {
+	public static void tick(Minecraft client) {
 		if (!pending || !(client.gui.screen() instanceof TitleScreen title)) {
 			return;
 		}
@@ -86,7 +86,7 @@ final class RecommendedKeysPrompt {
 		return ATTACK_KEY.equals(attack) && USE_KEY.equals(use);
 	}
 
-	static InputConstants.Key currentKey(KeyMapping mapping) {
+	public static InputConstants.Key currentKey(KeyMapping mapping) {
 		return InputConstants.getKey(mapping.saveString());
 	}
 }
