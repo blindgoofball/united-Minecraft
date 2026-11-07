@@ -10,6 +10,8 @@ import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.equine.AbstractHorse;
 import net.minecraft.world.entity.animal.happyghast.HappyGhast;
+import net.minecraft.world.entity.animal.nautilus.AbstractNautilus;
+import net.minecraft.world.level.pathfinder.SwimNodeEvaluator;
 import net.minecraft.world.level.pathfinder.FlyNodeEvaluator;
 import net.minecraft.world.level.pathfinder.NodeEvaluator;
 import net.minecraft.world.entity.EntitySpawnReason;
@@ -60,7 +62,7 @@ final class ClientPathfinding {
 	 */
 	static Path computePath(LocalPlayer player, BlockPos target, float maxPathLength, int reachRange, boolean allowSwimming,
 			boolean openDoors) {
-		if (allowSwimming && !(AutoWalkController.bodyOf(player) instanceof HappyGhast)) {
+		if (allowSwimming && !AutoWalkController.movesInThreeDimensions(AutoWalkController.bodyOf(player))) {
 			Path swimming = search(player, target, maxPathLength, reachRange, true, openDoors);
 			if (swimming != null && swimming.canReach()) {
 				return swimming;
@@ -112,10 +114,13 @@ final class ClientPathfinding {
 		// A ridden happy ghast flies: route it through open air with vanilla's flying evaluator.
 		NodeEvaluator evaluator = body instanceof HappyGhast
 				? new FlyNodeEvaluator()
-				: new AutoWalkNodeEvaluator(swim, PowderSnowBlock.canEntityWalkOnPowderSnow(player), openDoors);
+				// A nautilus stays under the water, as a fish does.
+				: body instanceof AbstractNautilus
+						? new SwimNodeEvaluator(false)
+						: new AutoWalkNodeEvaluator(swim, PowderSnowBlock.canEntityWalkOnPowderSnow(player), openDoors);
 		PathFinder finder = new PathFinder(evaluator, 4096);
 		Set<BlockPos> targets = Set.of(target);
-		if (body instanceof HappyGhast) {
+		if (AutoWalkController.movesInThreeDimensions(body)) {
 			Set<BlockPos> approaches = flightApproaches(level, player, body, target);
 			if (!approaches.isEmpty()) {
 				targets = approaches;

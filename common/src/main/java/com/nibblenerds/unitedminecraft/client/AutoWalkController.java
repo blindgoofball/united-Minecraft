@@ -13,6 +13,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.animal.equine.AbstractHorse;
 import net.minecraft.world.entity.animal.happyghast.HappyGhast;
+import net.minecraft.world.entity.animal.nautilus.AbstractNautilus;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.pathfinder.Path;
@@ -75,9 +76,10 @@ public final class AutoWalkController {
 	private static final int MOUNTED_REACH_RANGE = 3;
 	// A happy ghast is four blocks across and cannot nose up to a wall, so it counts as arrived from further out.
 	private static final int FLYING_REACH_RANGE = 5;
-	// How near the next waypoint, in three dimensions, counts as having reached it - generous, since
-	// the mount is large and slow to turn.
-	private static final double FLY_ARRIVAL_DISTANCE = 1.5;
+	// How near the next waypoint, in three dimensions, counts as having reached it: a share of the
+	// mount's width (a ghast is large and slow to turn), but never tighter than this.
+	private static final double MIN_FLY_ARRIVAL_DISTANCE = 1.0;
+	private static final double FLY_ARRIVAL_PER_WIDTH = 0.4;
 	private static final double NODE_ARRIVAL_DISTANCE_SQR = 0.5 * 0.5;
 	// How close to a ladder cell's level counts as having reached it, going up / down. Climbing
 	// up overshoots a little each tick, sliding down is slower than that.
@@ -112,11 +114,19 @@ public final class AutoWalkController {
 	 */
 	static Entity bodyOf(LocalPlayer player) {
 		Entity vehicle = player.getVehicle();
-		if ((vehicle instanceof AbstractHorse || vehicle instanceof HappyGhast)
+		if ((vehicle instanceof AbstractHorse || movesInThreeDimensions(vehicle))
 				&& ((net.minecraft.world.entity.LivingEntity) vehicle).getControllingPassenger() == player) {
 			return vehicle;
 		}
 		return player;
+	}
+
+	/**
+	 * A mount that goes where the rider's view points, up and down included: a happy ghast through the
+	 * air, a nautilus through the water. They are steered by aiming and routed in three dimensions.
+	 */
+	static boolean movesInThreeDimensions(Entity entity) {
+		return entity instanceof HappyGhast || entity instanceof AbstractNautilus;
 	}
 
 	public static void reset() {
@@ -228,8 +238,8 @@ public final class AutoWalkController {
 		}
 
 		Entity body = bodyOf(player);
-		if (body instanceof HappyGhast ghast) {
-			tickFlying(client, player, ghast);
+		if (movesInThreeDimensions(body)) {
+			tickFlying(client, player, body);
 			return;
 		}
 		BlockPos nextPos = currentPath.getNextNodePos();
@@ -373,16 +383,17 @@ public final class AutoWalkController {
 	 * yaw, so the rider's view is aimed straight at the waypoint in three dimensions and forward is
 	 * pushed only once the ghast, which turns slowly toward the rider's yaw, is roughly facing it.
 	 */
-	private static void tickFlying(Minecraft client, LocalPlayer player, HappyGhast ghast) {
-		Vec3 to = currentPath.getNextEntityPos(ghast).subtract(ghast.position());
+	private static void tickFlying(Minecraft client, LocalPlayer player, Entity mount) {
+		Vec3 to = currentPath.getNextEntityPos(mount).subtract(mount.position());
 		double horizontal = Math.sqrt(to.x * to.x + to.z * to.z);
 		double distance = to.length();
-		if (distance < FLY_ARRIVAL_DISTANCE) {
+		// Generous for a mount four blocks across, tighter for a nautilus threading narrow water.
+		if (distance < Math.max(MIN_FLY_ARRIVAL_DISTANCE, mount.getBbWidth() * FLY_ARRIVAL_PER_WIDTH)) {
 			currentPath.advance();
 			STUCK.reset();
 			rePathAttempted = false;
 			if (currentPath.isDone()) {
-				completePath(client, player, ghast, false);
+				completePath(client, player, mount, false);
 			}
 			return;
 		}
@@ -396,13 +407,13 @@ public final class AutoWalkController {
 			return;
 		}
 		// Straight above or below there is no heading to turn to; keep the current one.
-		float yaw = horizontal > FlightSteering.MIN_HEADING_DISTANCE ? FlightSteering.yaw(to.x, to.z) : ghast.getYRot();
+		float yaw = horizontal > FlightSteering.MIN_HEADING_DISTANCE ? FlightSteering.yaw(to.x, to.z) : mount.getYRot();
 		float pitch = FlightSteering.pitch(horizontal, to.y);
 		player.setYRot(yaw);
 		player.setYHeadRot(yaw);
 		player.setXRot(pitch);
 		player.setOldRot();
-		boolean forward = FlightSteering.shouldPush(Mth.wrapDegrees(yaw - ghast.getYRot()), horizontal);
+		boolean forward = FlightSteering.shouldPush(Mth.wrapDegrees(yaw - mount.getYRot()), horizontal);
 		((RouteInput) player.input).setMounted(forward, false);
 	}
 

@@ -32,6 +32,10 @@ Shift with the target key). It works on any server with no special permissions.
   steering by turning your view toward the next point on the way. The ghast
   turns slowly, so it eases round before pushing on, and it counts as arrived
   from a few blocks out since it cannot get close to walls.
+- Riding a saddled nautilus, it swims you there underwater by the same method,
+  turning your view toward the next point on the way. It only goes where there is
+  water, so a target on land gets you to the nearest water and tells you how far
+  is left.
 - Cancel at any time with Backspace.
 
 ## Water Exit
