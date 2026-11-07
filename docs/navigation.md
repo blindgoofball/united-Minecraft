@@ -28,6 +28,10 @@ Shift with the target key). It works on any server with no special permissions.
   jump (your H key reports it). A mount is wider
   than you and cannot squeeze up to a doorway, so it counts as arrived within
   about three blocks of the target, still inside your reach.
+- Riding a happy ghast wearing a harness, it flies you there through the air,
+  steering by turning your view toward the next point on the way. The ghast
+  turns slowly, so it eases round before pushing on, and it counts as arrived
+  from a few blocks out since it cannot get close to walls.
 - Cancel at any time with Backspace.
 
 ## Water Exit

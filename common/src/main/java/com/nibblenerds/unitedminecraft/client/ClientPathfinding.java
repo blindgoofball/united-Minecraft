@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import net.minecraft.client.player.LocalPlayer;
@@ -8,11 +9,18 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.equine.AbstractHorse;
+import net.minecraft.world.entity.animal.happyghast.HappyGhast;
+import net.minecraft.world.level.pathfinder.FlyNodeEvaluator;
+import net.minecraft.world.level.pathfinder.NodeEvaluator;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntitySpawnRequest;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.level.PathNavigationRegion;
 import net.minecraft.world.level.block.PowderSnowBlock;
 import net.minecraft.world.level.pathfinder.Path;
@@ -28,6 +36,11 @@ import net.minecraft.world.level.pathfinder.PathFinder;
  */
 final class ClientPathfinding {
 	private static final int SEARCH_MARGIN = 16;
+	// Flying approach spots (see flightApproaches): the rider's eye this many blocks from the target in
+	// each direction, at least APPROACH_MIN_DISTANCE out, and the box corner counts as there within a couple of blocks.
+	private static final int APPROACH_RADIUS = 4;
+	private static final int APPROACH_MIN_DISTANCE = 3;
+	private static final int FLIGHT_APPROACH_REACH_RANGE = 2;
 
 	private ClientPathfinding() {
 	}
@@ -47,7 +60,7 @@ final class ClientPathfinding {
 	 */
 	static Path computePath(LocalPlayer player, BlockPos target, float maxPathLength, int reachRange, boolean allowSwimming,
 			boolean openDoors) {
-		if (allowSwimming) {
+		if (allowSwimming && !(AutoWalkController.bodyOf(player) instanceof HappyGhast)) {
 			Path swimming = search(player, target, maxPathLength, reachRange, true, openDoors);
 			if (swimming != null && swimming.canReach()) {
 				return swimming;
@@ -96,9 +109,57 @@ final class ClientPathfinding {
 				Math.max(playerPos.getZ(), target.getZ()) + SEARCH_MARGIN);
 		PathNavigationRegion region = new PathNavigationRegion(level, regionStart, regionEnd);
 
-		PathFinder finder = new PathFinder(new AutoWalkNodeEvaluator(swim, PowderSnowBlock.canEntityWalkOnPowderSnow(player), openDoors), 4096);
-		Path path = finder.findPath(region, ghost, Set.of(target), maxPathLength, reachRange, 1.0f);
+		// A ridden happy ghast flies: route it through open air with vanilla's flying evaluator.
+		NodeEvaluator evaluator = body instanceof HappyGhast
+				? new FlyNodeEvaluator()
+				: new AutoWalkNodeEvaluator(swim, PowderSnowBlock.canEntityWalkOnPowderSnow(player), openDoors);
+		PathFinder finder = new PathFinder(evaluator, 4096);
+		Set<BlockPos> targets = Set.of(target);
+		if (body instanceof HappyGhast) {
+			Set<BlockPos> approaches = flightApproaches(level, player, body, target);
+			if (!approaches.isEmpty()) {
+				targets = approaches;
+				reachRange = FLIGHT_APPROACH_REACH_RANGE;
+			}
+		}
+		Path path = finder.findPath(region, ghost, targets, maxPathLength, reachRange, 1.0f);
 		ghost.discard();
 		return path;
+	}
+
+	/**
+	 * Where a flying mount should aim for, as path nodes (the corner of the mount's box), when the target
+	 * is a block it needs to be able to see or use. Counting "near enough" by distance alone would let a
+	 * ghast stop on the far side of a wall from a door; instead the search is given only spots a few
+	 * blocks out from which the rider's eye has a clear line to the target, so the route goes round to
+	 * the side the target can actually be reached from. Empty when there is no such spot, and the search
+	 * falls back to plain distance.
+	 */
+	private static Set<BlockPos> flightApproaches(Level level, LocalPlayer player, Entity ghast, BlockPos target) {
+		Vec3 targetCentre = Vec3.atCenterOf(target);
+		double eyeAbove = player.getEyeY() - ghast.getY();
+		// A node is the corner of the box; the mount's centre sits half a (rounded-up) width in from it.
+		int cornerOffset = (int) (ghast.getBbWidth() + 1.0F) / 2;
+		Set<BlockPos> nodes = new HashSet<>();
+		for (int dx = -APPROACH_RADIUS; dx <= APPROACH_RADIUS; dx++) {
+			for (int dy = -APPROACH_RADIUS; dy <= APPROACH_RADIUS; dy++) {
+				for (int dz = -APPROACH_RADIUS; dz <= APPROACH_RADIUS; dz++) {
+					if (Math.max(Math.abs(dx), Math.max(Math.abs(dy), Math.abs(dz))) < APPROACH_MIN_DISTANCE) {
+						continue;
+					}
+					BlockPos eye = target.offset(dx, dy, dz);
+					if (!level.getBlockState(eye).getCollisionShape(level, eye).isEmpty()) {
+						continue;
+					}
+					BlockHitResult hit = level.clip(new ClipContext(
+							Vec3.atCenterOf(eye), targetCentre, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
+					if (hit.getType() == HitResult.Type.MISS || hit.getBlockPos().equals(target)) {
+						nodes.add(new BlockPos(eye.getX() - cornerOffset, (int) Math.floor(eye.getY() + 0.5 - eyeAbove),
+								eye.getZ() - cornerOffset));
+					}
+				}
+			}
+		}
+		return nodes;
 	}
 }

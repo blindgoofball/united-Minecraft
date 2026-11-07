@@ -12,6 +12,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.animal.equine.AbstractHorse;
+import net.minecraft.world.entity.animal.happyghast.HappyGhast;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.pathfinder.Path;
@@ -72,6 +73,11 @@ public final class AutoWalkController {
 	// the search to its node limit, so a ridden mount counts as arrived from this far (still well inside
 	// the player's reach, and the line-of-sight check on arrival still applies).
 	private static final int MOUNTED_REACH_RANGE = 3;
+	// A happy ghast is four blocks across and cannot nose up to a wall, so it counts as arrived from further out.
+	private static final int FLYING_REACH_RANGE = 5;
+	// How near the next waypoint, in three dimensions, counts as having reached it - generous, since
+	// the mount is large and slow to turn.
+	private static final double FLY_ARRIVAL_DISTANCE = 1.5;
 	private static final double NODE_ARRIVAL_DISTANCE_SQR = 0.5 * 0.5;
 	// How close to a ladder cell's level counts as having reached it, going up / down. Climbing
 	// up overshoots a little each tick, sliding down is slower than that.
@@ -88,6 +94,9 @@ public final class AutoWalkController {
 	// Whether this stuck episode has already tried recomputing the path once - only one retry
 	// per episode, so a genuinely unreachable spot still gives up instead of re-pathing forever.
 	private static boolean rePathAttempted;
+	// The block the walk was asked to reach. The path's own target can differ from it: a flying route
+	// aims for a spot with a view of the target instead.
+	private static BlockPos routeTarget;
 
 	private AutoWalkController() {
 	}
@@ -102,11 +111,17 @@ public final class AutoWalkController {
 	 * ground contact and hitbox all have to come from it rather than from the player.
 	 */
 	static Entity bodyOf(LocalPlayer player) {
-		return player.getVehicle() instanceof AbstractHorse horse && horse.getControllingPassenger() == player ? horse : player;
+		Entity vehicle = player.getVehicle();
+		if ((vehicle instanceof AbstractHorse || vehicle instanceof HappyGhast)
+				&& ((net.minecraft.world.entity.LivingEntity) vehicle).getControllingPassenger() == player) {
+			return vehicle;
+		}
+		return player;
 	}
 
 	public static void reset() {
 		currentPath = null;
+		routeTarget = null;
 		previousInput = null;
 		targetName = null;
 		onArrival = null;
@@ -173,8 +188,9 @@ public final class AutoWalkController {
 		if (isActive()) {
 			cancel(client, player);
 		}
-		if (bodyOf(player) != player) {
-			reachRange = Math.max(reachRange, MOUNTED_REACH_RANGE);
+		Entity mount = bodyOf(player);
+		if (mount != player) {
+			reachRange = Math.max(reachRange, mount instanceof HappyGhast ? FLYING_REACH_RANGE : MOUNTED_REACH_RANGE);
 		}
 
 		Path path = ClientPathfinding.computePath(player, target, MAX_PATH_LENGTH, reachRange,
@@ -185,6 +201,7 @@ public final class AutoWalkController {
 		}
 
 		currentPath = path;
+		routeTarget = target;
 		targetName = name;
 		AutoWalkController.onArrival = onArrival;
 		AutoWalkController.reachRange = reachRange;
@@ -211,6 +228,10 @@ public final class AutoWalkController {
 		}
 
 		Entity body = bodyOf(player);
+		if (body instanceof HappyGhast ghast) {
+			tickFlying(client, player, ghast);
+			return;
+		}
 		BlockPos nextPos = currentPath.getNextNodePos();
 		double dx = nextPos.getX() + 0.5 - body.getX();
 		double dz = nextPos.getZ() + 0.5 - body.getZ();
@@ -234,33 +255,7 @@ public final class AutoWalkController {
 			STUCK.reset();
 			rePathAttempted = false;
 			if (currentPath.isDone()) {
-				// vanilla's pathfinder gives up and hands back its best-effort partial path
-				// (rather than null) both when the target is farther than MAX_PATH_LENGTH and
-				// when it's blocked off entirely - canReach() is what actually distinguishes "got
-				// there" from "walked as far as it could and stopped". But canReach() alone isn't
-				// enough either: it's satisfied once the best walkable node found is within
-				// reachRange of the target's raw coordinates, with no check that anything solid
-				// sits between them - standing flush against a wall with a chest 1-2 blocks away
-				// on its far side counts as "reached" by that measure even though there's no way
-				// through. The line-of-sight check below catches that case.
-				if (currentPath.canReach()
-						&& ArrivalHeights.levelWithTarget(body.getY(), currentPath.getTarget().getY())
-						&& hasClearLineToTarget(player.level(), player, currentPath.getTarget())) {
-					Runnable callback = onArrival;
-					client.getSoundManager().play(new SimpleSoundInstance(SoundEvents.NOTE_BLOCK_CHIME.value(),
-							SoundSource.MASTER, CueVolume.scale(0.7f), 1.4f, player.getRandom(), player.getX(), player.getY(), player.getZ()));
-					// A caller with its own onArrival callback narrates something more specific
-					// ("Facing X", a lock-on) - saying "Arrived" first would just be immediately
-					// talked over. Only narrate it here when there's no callback to say anything
-					// else (Build Mode's walk-to-cursor, say).
-					finish(client, player, callback != null ? null : "united_minecraft.narrate.autowalk_arrived");
-					if (callback != null) {
-						callback.run();
-					}
-				} else {
-					int remaining = Math.round(currentPath.getDistToTarget());
-					finishIncomplete(client, player, remaining);
-				}
+				completePath(client, player, body, true);
 			}
 			return;
 		}
@@ -333,6 +328,84 @@ public final class AutoWalkController {
 		((RouteInput) player.input).setWalking(needsJump, sprint);
 	}
 
+	/**
+	 * The last waypoint has been passed: arrived, or came up short. {@code checkLevel} is false when
+	 * flying, where being level with the target means nothing.
+	 */
+	private static void completePath(Minecraft client, LocalPlayer player, Entity body, boolean checkLevel) {
+		// vanilla's pathfinder gives up and hands back its best-effort partial path
+		// (rather than null) both when the target is farther than MAX_PATH_LENGTH and
+		// when it's blocked off entirely - canReach() is what actually distinguishes "got
+		// there" from "walked as far as it could and stopped". But canReach() alone isn't
+		// enough either: it's satisfied once the best walkable node found is within
+		// reachRange of the target's raw coordinates, with no check that anything solid
+		// sits between them - standing flush against a wall with a chest 1-2 blocks away
+		// on its far side counts as "reached" by that measure even though there's no way
+		// through. The line-of-sight check below catches that case.
+		// A flying route may end at a spot picked for its view of the target rather than at the target
+		// itself (see ClientPathfinding), so judge it against the target the walk was asked for, and from
+		// the rider's eye, which is what matters up on a mount.
+		boolean clear = checkLevel
+				? hasClearLineToTarget(player.level(), player, routeTarget)
+				: hasClearLineFromEye(player.level(), player, routeTarget);
+		if (currentPath.canReach()
+				&& (!checkLevel || ArrivalHeights.levelWithTarget(body.getY(), routeTarget.getY()))
+				&& clear) {
+			Runnable callback = onArrival;
+			client.getSoundManager().play(new SimpleSoundInstance(SoundEvents.NOTE_BLOCK_CHIME.value(),
+					SoundSource.MASTER, CueVolume.scale(0.7f), 1.4f, player.getRandom(), player.getX(), player.getY(), player.getZ()));
+			// A caller with its own onArrival callback narrates something more specific
+			// ("Facing X", a lock-on) - saying "Arrived" first would just be immediately
+			// talked over. Only narrate it here when there's no callback to say anything
+			// else (Build Mode's walk-to-cursor, say).
+			finish(client, player, callback != null ? null : "united_minecraft.narrate.autowalk_arrived");
+			if (callback != null) {
+				callback.run();
+			}
+		} else {
+			int remaining = Math.round(currentPath.getDistToTarget());
+			finishIncomplete(client, player, remaining);
+		}
+	}
+
+	/**
+	 * One tick of flying a ridden happy ghast along the path. It moves along the rider's pitch as well as
+	 * yaw, so the rider's view is aimed straight at the waypoint in three dimensions and forward is
+	 * pushed only once the ghast, which turns slowly toward the rider's yaw, is roughly facing it.
+	 */
+	private static void tickFlying(Minecraft client, LocalPlayer player, HappyGhast ghast) {
+		Vec3 to = currentPath.getNextEntityPos(ghast).subtract(ghast.position());
+		double horizontal = Math.sqrt(to.x * to.x + to.z * to.z);
+		double distance = to.length();
+		if (distance < FLY_ARRIVAL_DISTANCE) {
+			currentPath.advance();
+			STUCK.reset();
+			rePathAttempted = false;
+			if (currentPath.isDone()) {
+				completePath(client, player, ghast, false);
+			}
+			return;
+		}
+		if (STUCK.isStuck(distance)) {
+			if (!rePathAttempted && tryRepath(player)) {
+				rePathAttempted = true;
+				STUCK.reset();
+			} else {
+				finishStuck(client, player);
+			}
+			return;
+		}
+		// Straight above or below there is no heading to turn to; keep the current one.
+		float yaw = horizontal > FlightSteering.MIN_HEADING_DISTANCE ? FlightSteering.yaw(to.x, to.z) : ghast.getYRot();
+		float pitch = FlightSteering.pitch(horizontal, to.y);
+		player.setYRot(yaw);
+		player.setYHeadRot(yaw);
+		player.setXRot(pitch);
+		player.setOldRot();
+		boolean forward = FlightSteering.shouldPush(Mth.wrapDegrees(yaw - ghast.getYRot()), horizontal);
+		((RouteInput) player.input).setMounted(forward, false);
+	}
+
 	/** {@code messageKey} may be null to restore input and reset state without narrating anything. */
 	private static void finish(Minecraft client, LocalPlayer player, String messageKey) {
 		AutoWalkDoors.finish(client, player);
@@ -374,7 +447,7 @@ public final class AutoWalkController {
 
 	/** Recomputes the path to the original target from the player's current position - true (and swaps {@link #currentPath}) only if one was actually found. */
 	private static boolean tryRepath(LocalPlayer player) {
-		BlockPos target = currentPath.getTarget();
+		BlockPos target = routeTarget;
 		Path fresh = ClientPathfinding.computePath(player, target, MAX_PATH_LENGTH, reachRange,
 				UnitedMinecraftConfig.get().autoWalkSwim, UnitedMinecraftConfig.get().autoWalkOpenDoors);
 		if (fresh == null || fresh.getNodeCount() == 0) {
@@ -419,6 +492,12 @@ public final class AutoWalkController {
 	 * tree's canopy overhanging its trunk) before the ray ever reaches the target itself, wrongly
 	 * reporting "blocked" while standing right next to it.
 	 */
+	private static boolean hasClearLineFromEye(Level level, LocalPlayer player, BlockPos target) {
+		BlockHitResult hit = level.clip(new ClipContext(
+				player.getEyePosition(), Vec3.atCenterOf(target), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
+		return hit.getType() == HitResult.Type.MISS || hit.getBlockPos().equals(target);
+	}
+
 	private static boolean hasClearLineToTarget(Level level, LocalPlayer player, BlockPos target) {
 		Vec3 from = new Vec3(player.getX(), target.getY() + 0.5, player.getZ());
 		BlockHitResult hit = level.clip(new ClipContext(
