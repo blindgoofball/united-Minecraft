@@ -1,5 +1,6 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.keybind;
 
+import com.nibblenerds.unitedminecraft.client.MenuAccessibilityController;
 import com.mojang.blaze3d.platform.InputConstants;
 
 import net.minecraft.client.input.KeyEvent;

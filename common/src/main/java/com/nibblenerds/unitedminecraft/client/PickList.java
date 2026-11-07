@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.keybind.KeybindScreen;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.IntConsumer;

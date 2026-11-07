@@ -7,7 +7,7 @@ import com.nibblenerds.unitedminecraft.platform.Platform;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 
 /** A {@link Platform} whose directories are a test's own temporary directory. */
-final class TestPlatform implements Platform {
+public final class TestPlatform implements Platform {
 	private final Path root;
 
 	private TestPlatform(Path root) {
@@ -15,7 +15,7 @@ final class TestPlatform implements Platform {
 	}
 
 	/** Installs a platform rooted at {@code root} - call from each test's setup. */
-	static void install(Path root) {
+	public static void install(Path root) {
 		Platform.set(new TestPlatform(root));
 	}
 

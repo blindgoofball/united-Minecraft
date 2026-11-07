@@ -1,5 +1,7 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
+import com.nibblenerds.unitedminecraft.client.keybind.KeybindScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 

@@ -1,5 +1,12 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.keybind;
 
+import com.nibblenerds.unitedminecraft.client.AccessibilityTickHandler;
+import com.nibblenerds.unitedminecraft.client.AngleAssistController;
+import com.nibblenerds.unitedminecraft.client.CreativeInventoryController;
+import com.nibblenerds.unitedminecraft.client.EyeOfEnderController;
+import com.nibblenerds.unitedminecraft.client.MarkerShareController;
+import com.nibblenerds.unitedminecraft.client.MenuAccessibilityController;
+import com.nibblenerds.unitedminecraft.client.ScannerController;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -79,7 +86,7 @@ public final class ClientKeyBindings {
 	public static final KeybindAction SCANNER_NAME_FOCUSED_ITEM = new KeybindAction(
 			"scanner_name_focused_item", KeybindCategory.SCANNER, new Keybind(InputConstants.KEY_U, InputConstants.MOD_SHIFT));
 
-	/** Opens {@link MarkerShareScreen}: offers other players have sent, and sharing your own markers - see {@link MarkerShareController}. */
+	/** Opens {@code MarkerShareScreen}: offers other players have sent, and sharing your own markers - see {@link MarkerShareController}. */
 	public static final KeybindAction OPEN_SHARING = new KeybindAction(
 			"open_sharing", KeybindCategory.SCANNER, new Keybind(InputConstants.KEY_U, InputConstants.MOD_ALT));
 
@@ -206,11 +213,11 @@ public final class ClientKeyBindings {
 	public static final KeybindAction SCANNER_NEXT_CATEGORY =
 			new KeybindAction("scanner_next_category", KeybindCategory.SCANNER, new Keybind(InputConstants.KEY_END, 0));
 
-	/** Opens {@link CategoryJumpScreen}: type a category's name to jump straight to it. */
+	/** Opens {@code CategoryJumpScreen}: type a category's name to jump straight to it. */
 	public static final KeybindAction SCANNER_JUMP_TO_CATEGORY =
 			new KeybindAction("scanner_jump_to_category", KeybindCategory.SCANNER, new Keybind(InputConstants.KEY_Z, 0));
 
-	/** Opens {@link ScannerFilterScreen}: what the current category leaves out of its list. */
+	/** Opens {@code ScannerFilterScreen}: what the current category leaves out of its list. */
 	public static final KeybindAction SCANNER_FILTERS = new KeybindAction(
 			"scanner_filters", KeybindCategory.SCANNER, new Keybind(InputConstants.KEY_Z, InputConstants.MOD_SHIFT));
 
@@ -245,12 +252,12 @@ public final class ClientKeyBindings {
 	public static final KeybindAction NARRATE_SCOREBOARD_FULL = new KeybindAction(
 			"narrate_scoreboard_full", KeybindCategory.NARRATION, new Keybind(InputConstants.KEY_APOSTROPHE, InputConstants.MOD_ALT));
 
-	/** Flips Attack/Destroy and Place/Use between the mouse buttons and the player's other keys - see {@link AttackUseKeySwap}. */
+	/** Flips Attack/Destroy and Place/Use between the mouse buttons and the player's other keys - see {@code AttackUseKeySwap}. */
 	public static final KeybindAction SWAP_ATTACK_USE_KEYS =
 			new KeybindAction("swap_attack_use_keys", KeybindCategory.GENERAL, new Keybind(InputConstants.KEY_F7, 0));
 
 	/**
-	 * Debug overlay navigation - GLOBAL, but {@link DebugOverlayController} ignores them unless the
+	 * Debug overlay navigation - GLOBAL, but {@code DebugOverlayController} ignores them unless the
 	 * F3 overlay is showing. Brackets are otherwise unused, so these never compete with another
 	 * action; Shift picks the section-level variant via the usual most-specific-wins resolution.
 	 */

@@ -1,4 +1,7 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.keybind;
+
+import com.nibblenerds.unitedminecraft.client.CreativeInventoryController;
+import com.nibblenerds.unitedminecraft.client.MenuAccessibilityController;
 
 /**
  * Finer-grained than {@link KeybindContext#CONTAINER_SCREEN} for rebind-conflict detection only

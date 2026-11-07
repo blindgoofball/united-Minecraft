@@ -1,5 +1,9 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.keybind;
 
+import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
+import com.nibblenerds.unitedminecraft.client.keybind.Keybind;
+import com.nibblenerds.unitedminecraft.client.keybind.KeybindAction;
+import com.nibblenerds.unitedminecraft.client.keybind.KeybindContext;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 

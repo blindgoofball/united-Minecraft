@@ -1,4 +1,4 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.keybind;
 
 import net.minecraft.network.chat.Component;
 

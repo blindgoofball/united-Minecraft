@@ -1,5 +1,7 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
+import com.nibblenerds.unitedminecraft.client.keybind.KeybindContext;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;

@@ -1,5 +1,14 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.keybind;
 
+import com.nibblenerds.unitedminecraft.client.AccessibilityTickHandler;
+import com.nibblenerds.unitedminecraft.client.AutoWalkController;
+import com.nibblenerds.unitedminecraft.client.BuildModeController;
+import com.nibblenerds.unitedminecraft.client.CombatModeController;
+import com.nibblenerds.unitedminecraft.client.CreativeInventoryController;
+import com.nibblenerds.unitedminecraft.client.MenuAccessibilityController;
+import com.nibblenerds.unitedminecraft.client.ScannerController;
+import com.nibblenerds.unitedminecraft.client.TrailController;
+import com.nibblenerds.unitedminecraft.client.WaterExitController;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 

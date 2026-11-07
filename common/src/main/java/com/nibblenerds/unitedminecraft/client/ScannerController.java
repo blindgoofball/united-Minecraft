@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -274,7 +275,7 @@ public final class ScannerController {
 	 * Locked on and steering the camera - false while a drawn bow's beacon has the camera released
 	 * to the player (see {@link BowBeaconController#pausesLock}), though the lock itself is kept.
 	 */
-	static boolean ownsRotation() {
+	public static boolean ownsRotation() {
 		return isLocked() && !BowBeaconController.pausesLock();
 	}
 

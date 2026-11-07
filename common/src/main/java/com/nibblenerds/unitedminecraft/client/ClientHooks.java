@@ -1,5 +1,7 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
+import com.nibblenerds.unitedminecraft.client.keybind.KeybindConfig;
 import com.nibblenerds.unitedminecraft.client.speech.PrismController;
 import com.nibblenerds.unitedminecraft.share.SharePayloads;
 import com.nibblenerds.unitedminecraft.structure.StructuresNearbyPayload;

@@ -1,4 +1,4 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.keybind;
 
 /**
  * One of this mod's rebindable actions - replaces vanilla {@link net.minecraft.client.KeyMapping}

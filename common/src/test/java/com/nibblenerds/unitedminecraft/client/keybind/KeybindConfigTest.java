@@ -1,4 +1,4 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.keybind;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -16,6 +16,7 @@ import org.junit.jupiter.api.io.TempDir;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.blaze3d.platform.InputConstants;
+import com.nibblenerds.unitedminecraft.client.TestPlatform;
 
 class KeybindConfigTest {
 	@TempDir

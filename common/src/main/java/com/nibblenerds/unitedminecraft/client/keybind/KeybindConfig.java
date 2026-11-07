@@ -1,5 +1,7 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.keybind;
 
+import com.nibblenerds.unitedminecraft.client.SafeFiles;
+import com.nibblenerds.unitedminecraft.client.UnitedMinecraftConfig;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
