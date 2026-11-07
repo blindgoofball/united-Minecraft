@@ -19,7 +19,10 @@ Each of these has its own key (see [Key bindings](keybindings.md)).
 
 - **Coordinates, standing block and biome.** Shift reads the light level
   instead (combined, plus the block/sky split) - of the block under Build Mode's
-  cursor if it is active, your own block otherwise.
+  cursor if it is active, your own block otherwise. Alt reads your chunk's
+  coordinates and how many blocks you are from each of its four borders
+  (west, east, north, south); 0 means you are standing on the outermost block
+  against that border.
 - **Health and hunger,** on the same 10-heart / 10-shank scale as the sighted
   heart bar, half points included. While you ride a mount (a horse, camel,
   nautilus, strider, pig and so on), its health follows. Shift reads your

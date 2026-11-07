@@ -514,6 +514,9 @@ public final class AccessibilityTickHandler {
 		} else if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_COORDINATES)) {
 			narrateCoordinates(client, player);
 		}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_CHUNK)) {
+			narrateChunk(client, player);
+		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_COORDINATE_X)) {
 			narrateCoordinateAxis(client, player, "united_minecraft.narrate.axis_x", player.blockPosition().getX(), player.getX());
 		} else if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_COORDINATE_Y)) {
@@ -914,6 +917,14 @@ public final class AccessibilityTickHandler {
 				.append(Component.literal(". "))
 				.append(Component.translatable("united_minecraft.narrate.biome_label", biomeName(player.level().getBiome(pos))));
 		client.getNarrator().saySystemNow(message);
+	}
+
+	/** Speaks the player's chunk and the number of blocks to each of its borders. */
+	private static void narrateChunk(Minecraft client, LocalPlayer player) {
+		BlockPos pos = player.blockPosition();
+		ChunkPosition chunk = ChunkPosition.of(pos.getX(), pos.getZ());
+		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.chunk",
+				chunk.chunkX(), chunk.chunkZ(), chunk.west(), chunk.east(), chunk.north(), chunk.south()));
 	}
 
 	/** Speaks a single axis of the player's position, in the form "{value} X"/"{value} Y"/"{value} Z". */

@@ -1,6 +1,7 @@
 {
 	"united_minecraft.keybind.narrate_coordinates": "Narrate Coordinates, Standing Block, and Biome",
 	"united_minecraft.keybind.narrate_light_level": "Narrate Light Level",
+	"united_minecraft.keybind.narrate_chunk": "Narrate Chunk and Distance to Chunk Borders",
 	"united_minecraft.keybind.narrate_coordinate_x": "Narrate X Coordinate",
 	"united_minecraft.keybind.narrate_coordinate_y": "Narrate Y Coordinate",
 	"united_minecraft.keybind.narrate_coordinate_z": "Narrate Z Coordinate",
@@ -107,6 +108,7 @@
 	"united_minecraft.narrate.axis_z": "Z",
 	"united_minecraft.narrate.standing_on": "Standing on %s",
 	"united_minecraft.narrate.biome_label": "%s biome",
+	"united_minecraft.narrate.chunk": "Chunk %s, %s. %s from the west edge, %s from the east edge, %s from the north edge, %s from the south edge",
 	"united_minecraft.narrate.light_level": "Light level %s, block light %s, sky light %s",
 	"united_minecraft.narrate.biome_entered": "Entering %s",
 	"united_minecraft.narrate.camera_first_person": "First person",

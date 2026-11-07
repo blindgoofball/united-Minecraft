@@ -33,6 +33,10 @@ public final class ClientKeyBindings {
 	public static final KeybindAction NARRATE_LIGHT_LEVEL = new KeybindAction(
 			"narrate_light_level", KeybindCategory.NARRATION, new Keybind(InputConstants.KEY_C, InputConstants.MOD_SHIFT));
 
+	/** Speaks the chunk the player is in and how far they are from each of its four borders. */
+	public static final KeybindAction NARRATE_CHUNK = new KeybindAction(
+			"narrate_chunk", KeybindCategory.NARRATION, new Keybind(InputConstants.KEY_C, InputConstants.MOD_ALT));
+
 	public static final KeybindAction NARRATE_HEALTH =
 			new KeybindAction("narrate_health", KeybindCategory.NARRATION, new Keybind(InputConstants.KEY_H, 0));
 	/** Was Shift+H - see {@link #NARRATE_EXPERIENCE}; was Alt+H - see {@link #NARRATE_ARMOR_AND_EFFECTS}. */
