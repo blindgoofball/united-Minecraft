@@ -1,4 +1,4 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.travel;
 
 import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import net.minecraft.client.Minecraft;
@@ -33,7 +33,7 @@ public final class BoatController {
 	}
 
 	/** Whether the player is driving a boat with the camera on its heading - so the turn keys steer it. */
-	static boolean isActive() {
+	public static boolean isActive() {
 		return input != null;
 	}
 
@@ -44,7 +44,7 @@ public final class BoatController {
 	}
 
 	/** A screen opened: stop holding a steering key for a player who can no longer see what it does. */
-	static void pause() {
+	public static void pause() {
 		hasTarget = false;
 		if (input != null) {
 			input.setSteer(0);
@@ -52,7 +52,7 @@ public final class BoatController {
 	}
 
 	/** The heading the boat is turning to, or the one it is facing if it is not turning. */
-	static double heading(LocalPlayer player) {
+	public static double heading(LocalPlayer player) {
 		if (hasTarget) {
 			return target;
 		}
@@ -60,7 +60,7 @@ public final class BoatController {
 	}
 
 	/** The arrow keys turned the camera by {@code degrees} this tick: turn the boat's heading that far. */
-	static void turnBy(LocalPlayer player, double degrees) {
+	public static void turnBy(LocalPlayer player, double degrees) {
 		if (degrees == 0.0 || !(player.getVehicle() instanceof AbstractBoat boat)) {
 			return;
 		}
@@ -71,7 +71,7 @@ public final class BoatController {
 	}
 
 	/** A snap-turn asked for this exact heading. */
-	static void turnTo(LocalPlayer player, double yaw) {
+	public static void turnTo(LocalPlayer player, double yaw) {
 		if (player.getVehicle() instanceof AbstractBoat boat) {
 			setTarget(yaw);
 		}

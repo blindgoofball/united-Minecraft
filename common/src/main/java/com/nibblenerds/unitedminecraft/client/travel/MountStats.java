@@ -1,4 +1,4 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.travel;
 
 /**
  * What a horse's speed and jump strength attributes mean in blocks - the numbers a sighted player
@@ -18,7 +18,7 @@ public final class MountStats {
 	private MountStats() {
 	}
 
-	static double speedBlocksPerSecond(double movementSpeed) {
+	public static double speedBlocksPerSecond(double movementSpeed) {
 		return movementSpeed * BLOCKS_PER_SECOND_PER_SPEED;
 	}
 
@@ -36,7 +36,7 @@ public final class MountStats {
 		return Math.max(1, (int) Math.floor(jumpHeight(jumpStrength, gravity) - 0.15));
 	}
 
-	static double jumpHeight(double jumpStrength, double gravity) {
+	public static double jumpHeight(double jumpStrength, double gravity) {
 		double height = 0.0;
 		double velocity = jumpStrength;
 		while (velocity > 0.0) {

@@ -1,4 +1,4 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.travel;
 
 import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import net.minecraft.client.Minecraft;

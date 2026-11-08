@@ -1,4 +1,4 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.travel;
 
 /**
  * The aiming maths for flying a ridden happy ghast to a point, free of Minecraft types so it can be

@@ -1,6 +1,7 @@
 package com.nibblenerds.unitedminecraft.client.autowalk;
 
-import com.nibblenerds.unitedminecraft.client.MountStats;
+import com.nibblenerds.unitedminecraft.client.travel.MountStats;
+import com.nibblenerds.unitedminecraft.client.travel.MountStats;
 import com.nibblenerds.unitedminecraft.client.MovementAssistController;
 import java.util.HashSet;
 import java.util.Set;

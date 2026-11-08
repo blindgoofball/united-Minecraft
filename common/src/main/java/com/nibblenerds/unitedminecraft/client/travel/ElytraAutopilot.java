@@ -1,4 +1,4 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.travel;
 
 import java.util.ArrayList;
 import java.util.List;

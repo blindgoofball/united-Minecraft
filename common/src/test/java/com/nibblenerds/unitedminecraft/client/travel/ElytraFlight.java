@@ -1,5 +1,8 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.travel;
 
+import com.nibblenerds.unitedminecraft.client.travel.ElytraAutopilot;
+import com.nibblenerds.unitedminecraft.client.travel.ElytraLandingController;
+import com.nibblenerds.unitedminecraft.client.travel.ElytraPhysics;
 import java.util.ArrayList;
 import java.util.List;
 

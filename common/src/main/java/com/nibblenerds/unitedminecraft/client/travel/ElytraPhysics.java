@@ -1,4 +1,4 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.travel;
 
 /**
  * A copy of vanilla's elytra velocity update ({@code LivingEntity#updateFallFlyingMovement}, with the

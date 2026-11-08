@@ -1,4 +1,4 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.travel;
 
 import net.minecraft.client.player.ClientInput;
 import net.minecraft.world.entity.player.Input;

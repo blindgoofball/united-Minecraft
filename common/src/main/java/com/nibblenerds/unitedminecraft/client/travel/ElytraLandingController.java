@@ -1,5 +1,8 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.travel;
 
+import com.nibblenerds.unitedminecraft.client.AngleAssistController;
+import com.nibblenerds.unitedminecraft.client.CameraUtil;
+import com.nibblenerds.unitedminecraft.client.WaterExitController;
 import com.nibblenerds.unitedminecraft.client.autowalk.AutoWalkController;
 import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;

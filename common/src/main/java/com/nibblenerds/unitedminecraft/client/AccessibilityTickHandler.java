@@ -1,5 +1,11 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.travel.BoatAwarenessController;
+import com.nibblenerds.unitedminecraft.client.travel.BoatController;
+import com.nibblenerds.unitedminecraft.client.travel.ElytraAwarenessController;
+import com.nibblenerds.unitedminecraft.client.travel.ElytraLandingController;
+import com.nibblenerds.unitedminecraft.client.travel.MountJumpCueController;
+import com.nibblenerds.unitedminecraft.client.travel.MountStats;
 import com.nibblenerds.unitedminecraft.client.autowalk.AutoWalkController;
 import com.nibblenerds.unitedminecraft.client.scanner.MapMarkerController;
 import com.nibblenerds.unitedminecraft.client.scanner.MarkerShareController;

@@ -1,9 +1,11 @@
 package com.nibblenerds.unitedminecraft.client.autowalk;
 
+import com.nibblenerds.unitedminecraft.client.travel.ElytraLandingController;
+import com.nibblenerds.unitedminecraft.client.travel.FlightSteering;
 import com.nibblenerds.unitedminecraft.client.AngleAssistController;
 import com.nibblenerds.unitedminecraft.client.CameraUtil;
-import com.nibblenerds.unitedminecraft.client.ElytraLandingController;
-import com.nibblenerds.unitedminecraft.client.FlightSteering;
+import com.nibblenerds.unitedminecraft.client.travel.ElytraLandingController;
+import com.nibblenerds.unitedminecraft.client.travel.FlightSteering;
 import com.nibblenerds.unitedminecraft.client.audio.CueVolume;
 import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
