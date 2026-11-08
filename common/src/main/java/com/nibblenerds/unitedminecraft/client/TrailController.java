@@ -1,5 +1,8 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.autowalk.AutoWalkController;
+import com.nibblenerds.unitedminecraft.client.autowalk.RouteInput;
+import com.nibblenerds.unitedminecraft.client.autowalk.StuckDetector;
 import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
 import java.util.ArrayList;
 import java.util.List;

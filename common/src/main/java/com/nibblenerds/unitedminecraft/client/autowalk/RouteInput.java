@@ -1,5 +1,7 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.autowalk;
 
+import com.nibblenerds.unitedminecraft.client.TrailController;
+import com.nibblenerds.unitedminecraft.client.WaterExitController;
 import net.minecraft.client.player.ClientInput;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.phys.Vec2;
@@ -15,13 +17,13 @@ import net.minecraft.world.phys.Vec2;
  * network sync just work, with no server cooperation - see {@link AutoWalkController}'s class
  * doc for the full reasoning.
  */
-final class RouteInput extends ClientInput {
+public final class RouteInput extends ClientInput {
 	/** Walk forward, jumping when {@code jump} - "jump" doubles as vanilla's swim-up input underwater. */
-	void setWalking(boolean jump) {
+	public void setWalking(boolean jump) {
 		setWalking(jump, false);
 	}
 
-	void setWalking(boolean jump, boolean sprint) {
+	public void setWalking(boolean jump, boolean sprint) {
 		this.queuedKeys = null;
 		this.keyPresses = new Input(true, false, false, false, jump, false, sprint);
 		this.moveVector = new Vec2(0.0f, 1.0f);

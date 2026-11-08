@@ -1,5 +1,7 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.autowalk;
 
+import com.nibblenerds.unitedminecraft.client.MountStats;
+import com.nibblenerds.unitedminecraft.client.MovementAssistController;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -47,7 +49,7 @@ public final class ClientPathfinding {
 	private ClientPathfinding() {
 	}
 
-	static Path computePath(LocalPlayer player, BlockPos target, float maxPathLength, int reachRange) {
+	public static Path computePath(LocalPlayer player, BlockPos target, float maxPathLength, int reachRange) {
 		return search(player, target, maxPathLength, reachRange, false, false);
 	}
 
@@ -60,7 +62,7 @@ public final class ClientPathfinding {
 	 * the ordinary one. Water is expensive to the pathfinder, so land is still preferred whenever
 	 * there is a way round.
 	 */
-	static Path computePath(LocalPlayer player, BlockPos target, float maxPathLength, int reachRange, boolean allowSwimming,
+	public static Path computePath(LocalPlayer player, BlockPos target, float maxPathLength, int reachRange, boolean allowSwimming,
 			boolean openDoors) {
 		if (allowSwimming && !AutoWalkController.movesInThreeDimensions(AutoWalkController.bodyOf(player))) {
 			Path swimming = search(player, target, maxPathLength, reachRange, true, openDoors);

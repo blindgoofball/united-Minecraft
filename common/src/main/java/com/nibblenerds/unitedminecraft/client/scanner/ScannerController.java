@@ -1,9 +1,10 @@
 package com.nibblenerds.unitedminecraft.client.scanner;
 
+import com.nibblenerds.unitedminecraft.client.autowalk.AutoWalkController;
 import com.nibblenerds.unitedminecraft.client.AccessibilityTickHandler;
 import com.nibblenerds.unitedminecraft.client.AngleAssistController;
 import com.nibblenerds.unitedminecraft.client.AnimalFeedingController;
-import com.nibblenerds.unitedminecraft.client.AutoWalkController;
+import com.nibblenerds.unitedminecraft.client.autowalk.AutoWalkController;
 import com.nibblenerds.unitedminecraft.client.BowBeaconController;
 import com.nibblenerds.unitedminecraft.client.BuildModeController;
 import com.nibblenerds.unitedminecraft.client.CameraUtil;

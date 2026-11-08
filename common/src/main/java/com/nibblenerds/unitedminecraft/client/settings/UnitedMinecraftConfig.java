@@ -1,5 +1,7 @@
 package com.nibblenerds.unitedminecraft.client.settings;
 
+import com.nibblenerds.unitedminecraft.client.autowalk.AutoWalkDoors;
+import com.nibblenerds.unitedminecraft.client.autowalk.ClientPathfinding;
 import com.nibblenerds.unitedminecraft.client.scanner.MapMarkerController;
 import com.nibblenerds.unitedminecraft.client.scanner.MarkerShareController;
 import com.nibblenerds.unitedminecraft.client.audio.ChatMessageSound;
@@ -7,13 +9,13 @@ import com.nibblenerds.unitedminecraft.client.audio.CueVolume;
 import com.nibblenerds.unitedminecraft.client.audio.WallToneSynth;
 import com.nibblenerds.unitedminecraft.client.AccessibilityTickHandler;
 import com.nibblenerds.unitedminecraft.client.AttackUseKeySwap;
-import com.nibblenerds.unitedminecraft.client.AutoWalkDoors;
+import com.nibblenerds.unitedminecraft.client.autowalk.AutoWalkDoors;
 import com.nibblenerds.unitedminecraft.client.BoatAwarenessController;
 import com.nibblenerds.unitedminecraft.client.BoatController;
 import com.nibblenerds.unitedminecraft.client.BowBeaconController;
 import com.nibblenerds.unitedminecraft.client.audio.ChatMessageSound;
 import com.nibblenerds.unitedminecraft.client.ClientHooks;
-import com.nibblenerds.unitedminecraft.client.ClientPathfinding;
+import com.nibblenerds.unitedminecraft.client.autowalk.ClientPathfinding;
 import com.nibblenerds.unitedminecraft.client.CombatBeacon;
 import com.nibblenerds.unitedminecraft.client.CombatModeController;
 import com.nibblenerds.unitedminecraft.client.audio.CueVolume;

@@ -1,4 +1,7 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.autowalk;
+
+import com.nibblenerds.unitedminecraft.client.TrailController;
+import com.nibblenerds.unitedminecraft.client.WaterExitController;
 
 /**
  * Watches for "no real progress toward the current waypoint for a while, despite actively
@@ -12,7 +15,7 @@ package com.nibblenerds.unitedminecraft.client;
  * in rather than computed here, since each mode measures toward its own kind of waypoint:
  * horizontal-only for ground walking, full 3D while swimming.
  */
-final class StuckDetector {
+public final class StuckDetector {
 	// Long enough to ride out normal micro-stutters (bumping a slab, a mob briefly in the way)
 	// without calling a still-progressing walk stuck.
 	private static final int STUCK_TICKS_THRESHOLD = 40;
@@ -24,7 +27,7 @@ final class StuckDetector {
 	private int stuckTicks;
 
 	/** Called on arrival at a waypoint (and on starting a route) so the next leg measures from scratch. */
-	void reset() {
+	public void reset() {
 		bestDistance = Double.MAX_VALUE;
 		stuckTicks = 0;
 	}
@@ -34,7 +37,7 @@ final class StuckDetector {
 	 * been stuck long enough to give up on. Any new closest approach resets the count, so only
 	 * a sustained lack of progress trips it.
 	 */
-	boolean isStuck(double distanceToWaypoint) {
+	public boolean isStuck(double distanceToWaypoint) {
 		if (distanceToWaypoint < bestDistance - STUCK_PROGRESS_EPSILON) {
 			bestDistance = distanceToWaypoint;
 			stuckTicks = 0;

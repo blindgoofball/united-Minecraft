@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.autowalk.AutoWalkController;
 import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
 import java.util.HashMap;
@@ -177,7 +178,7 @@ public final class ElytraLandingController {
 	 * @param exact whether the target is a cell to stand in rather than a block to stand beside, as for
 	 *        {@link AutoWalkController#startExact}
 	 */
-	static void startToward(Minecraft client, LocalPlayer player, BlockPos wanted, Component name, Runnable onArrival, boolean exact) {
+	public static void startToward(Minecraft client, LocalPlayer player, BlockPos wanted, Component name, Runnable onArrival, boolean exact) {
 		if (isActive()) {
 			reset();
 		}

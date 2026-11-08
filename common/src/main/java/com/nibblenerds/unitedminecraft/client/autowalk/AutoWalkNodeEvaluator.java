@@ -1,4 +1,4 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.autowalk;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BlockTags;

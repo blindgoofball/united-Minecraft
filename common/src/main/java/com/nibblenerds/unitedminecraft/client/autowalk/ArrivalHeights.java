@@ -1,4 +1,4 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.autowalk;
 
 /**
  * The height rules for Auto-Walk's arrival checks. {@link AutoWalkController} used to look only at

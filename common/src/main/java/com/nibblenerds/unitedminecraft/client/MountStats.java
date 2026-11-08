@@ -5,7 +5,7 @@ package com.nibblenerds.unitedminecraft.client;
  * works out by watching it run and jump, and the only way to tell a good horse from a poor one.
  * Free of Minecraft types so it can be tested without the game.
  */
-final class MountStats {
+public final class MountStats {
 	/**
 	 * Blocks per second a ridden mount covers on flat ground per point of its movement speed
 	 * attribute - the same conversion that makes a walking player (0.1) cover 4.317 blocks a second.
@@ -32,7 +32,7 @@ final class MountStats {
 	 * The tallest whole-block rise a fully charged jump lands on top of: the peak has to clear the
 	 * block's top with a little to spare. Never below one, which a mount steps up without jumping.
 	 */
-	static int maxRise(double jumpStrength, double gravity) {
+	public static int maxRise(double jumpStrength, double gravity) {
 		return Math.max(1, (int) Math.floor(jumpHeight(jumpStrength, gravity) - 0.15));
 	}
 

@@ -1,4 +1,4 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.autowalk;
 
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.animal.equine.AbstractHorse;

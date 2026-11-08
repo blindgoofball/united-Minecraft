@@ -1,5 +1,9 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.autowalk;
 
+import com.nibblenerds.unitedminecraft.client.AngleAssistController;
+import com.nibblenerds.unitedminecraft.client.CameraUtil;
+import com.nibblenerds.unitedminecraft.client.ElytraLandingController;
+import com.nibblenerds.unitedminecraft.client.FlightSteering;
 import com.nibblenerds.unitedminecraft.client.audio.CueVolume;
 import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
@@ -182,7 +186,7 @@ public final class AutoWalkController {
 	 * place of the usual "Walking to ..." - for a caller that has something of its own to say first, which
 	 * the usual message would cut off.
 	 */
-	static void startAnnounced(Minecraft client, LocalPlayer player, BlockPos target, Component name, Runnable onArrival,
+	public static void startAnnounced(Minecraft client, LocalPlayer player, BlockPos target, Component name, Runnable onArrival,
 			boolean exact, Component message) {
 		start(client, player, target, name, onArrival, exact ? EXACT_REACH_RANGE : REACH_RANGE, message);
 	}
