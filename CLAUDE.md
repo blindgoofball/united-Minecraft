@@ -105,7 +105,12 @@ possible while NeoForge is still catching up.
 
 - `common/src/main/java` — essentially everything, under
   `com.nibblenerds.unitedminecraft.client`, plus the `platform` package holding the
-  loader seam. This is where nearly all feature work happens.
+  loader seam. This is where nearly all feature work happens. The `client` package holds the
+  shared hub (`AccessibilityTickHandler`, `ClientHooks`) and the smaller features; larger
+  groups live in subpackages: `keybind`, `settings`, `audio`, `scanner`, `autowalk`,
+  `travel` (elytra, boat, mount), `combat` and `menu` (container, Creative and advancements
+  navigation), alongside `speech`, `mixin`, `access` and `duck`. Anything one package calls
+  in another must be `public`; the rest stays package-private.
 - `common/src/main/resources` — the client mixin config, the bundled Prism natives under
   `prism/<platform>/`, and the assets and lang files.
 - `fabric/` and `neoforge/` — each loader's entrypoint, its `Platform` implementation and
@@ -123,8 +128,8 @@ two directories and, for marker sharing, checking whether the server has a paylo
 sending one to it. The loader module installs an implementation before anything
 else runs.
 
-`ClientHooks` (in the `client` package, so it can reach package-private controller
-methods) is where the controllers' responses to game events live, as plain static calls.
+`ClientHooks` (in the `client` package; the methods it calls on controllers in other
+packages are `public`) is where the controllers' responses to game events live, as plain static calls.
 Each loader's bridge subscribes that loader's events and calls into it; the bridge makes
 no decisions of its own. Ordering inside each hook reproduces what the old
 per-controller event registrations produced and is load-bearing — read the doc comments
@@ -248,7 +253,8 @@ who hasn't rebound that action themselves.
 ### Unit tests
 
 Tests live in `common/src/test/java`, in the same packages as the code they test (so they
-can reach package-private methods), and run in the Fabric module only - both modules compile
+can reach package-private methods; `TestPlatform` is public because tests in every
+package install it), and run in the Fabric module only - both modules compile
 the same shared sources, and Fabric is the one always built. JUnit 5.
 
 They cover logic only, never the running game. The rules:
