@@ -1,5 +1,7 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.audio.StructureVoiceAudio;
+import com.nibblenerds.unitedminecraft.client.audio.StructureVoiceSound;
 import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import java.util.ArrayDeque;
 import java.util.ArrayList;

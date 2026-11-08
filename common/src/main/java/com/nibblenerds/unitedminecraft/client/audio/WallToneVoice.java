@@ -1,5 +1,6 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.audio;
 
+import com.nibblenerds.unitedminecraft.client.WallToneController;
 import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import java.util.EnumMap;
 import java.util.Locale;

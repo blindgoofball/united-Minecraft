@@ -1,5 +1,6 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.audio;
 
+import com.nibblenerds.unitedminecraft.client.StructureVoiceController;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;

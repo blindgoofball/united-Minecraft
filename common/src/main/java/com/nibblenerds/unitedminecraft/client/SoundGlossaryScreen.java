@@ -1,5 +1,7 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.audio.CueVolume;
+import com.nibblenerds.unitedminecraft.client.audio.WallToneVoice;
 import com.nibblenerds.unitedminecraft.client.settings.SettingsScreen;
 import java.util.List;
 import java.util.function.BiConsumer;

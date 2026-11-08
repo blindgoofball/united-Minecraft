@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.audio.CueVolume;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;

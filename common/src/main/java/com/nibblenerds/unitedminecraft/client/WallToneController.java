@@ -1,5 +1,8 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.audio.WallToneSound;
+import com.nibblenerds.unitedminecraft.client.audio.WallToneSynth;
+import com.nibblenerds.unitedminecraft.client.audio.WallToneVoice;
 import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import java.util.Arrays;
 import java.util.EnumMap;

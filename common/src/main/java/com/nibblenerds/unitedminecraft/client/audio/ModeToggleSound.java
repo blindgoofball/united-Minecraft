@@ -1,4 +1,4 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.audio;
 
 import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import net.minecraft.client.Minecraft;
@@ -15,18 +15,18 @@ import net.minecraft.sounds.SoundSource;
  * so "entering" and "leaving" are too. Instruments are chosen to stay clear of the ones other cues
  * in this mod already use (chime, bass, xylophone, didgeridoo, bell, hat, pling).
  */
-final class ModeToggleSound {
+public final class ModeToggleSound {
 	private static final float PITCH_ON = 2.0f;
 	private static final float PITCH_OFF = 1.0f;
 
 	private ModeToggleSound() {
 	}
 
-	static void playBuildMode(Minecraft client, LocalPlayer player, boolean on) {
+	public static void playBuildMode(Minecraft client, LocalPlayer player, boolean on) {
 		play(client, player, SoundEvents.NOTE_BLOCK_BIT.value(), on);
 	}
 
-	static void playCombatMode(Minecraft client, LocalPlayer player, boolean on) {
+	public static void playCombatMode(Minecraft client, LocalPlayer player, boolean on) {
 		play(client, player, SoundEvents.NOTE_BLOCK_GUITAR.value(), on);
 	}
 

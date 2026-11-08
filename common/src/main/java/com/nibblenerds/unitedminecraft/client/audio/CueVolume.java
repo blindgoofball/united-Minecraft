@@ -1,4 +1,4 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.audio;
 
 import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 
@@ -13,7 +13,7 @@ public final class CueVolume {
 	}
 
 	/** {@code volume} as the cue was designed to sound, scaled by the setting. */
-	static float scale(float volume) {
+	public static float scale(float volume) {
 		return volume * UnitedMinecraftConfig.get().cueVolume / 100.0f;
 	}
 }

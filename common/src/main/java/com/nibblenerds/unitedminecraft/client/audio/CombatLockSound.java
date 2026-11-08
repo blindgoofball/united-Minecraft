@@ -1,4 +1,4 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.audio;
 
 import net.minecraft.client.resources.sounds.AbstractTickableSoundInstance;
 import net.minecraft.client.resources.sounds.Sound;
@@ -31,7 +31,7 @@ public final class CombatLockSound extends AbstractTickableSoundInstance {
 	}
 
 	/** The lock tone held for as long as the lock lasts. */
-	static CombatLockSound live(RandomSource random, float volume) {
+	public static CombatLockSound live(RandomSource random, float volume) {
 		return new CombatLockSound(random, volume, true);
 	}
 
@@ -40,7 +40,7 @@ public final class CombatLockSound extends AbstractTickableSoundInstance {
 	 * tick countdown: the glossary is usually opened from a pausing screen, and a paused game never
 	 * ticks sounds.
 	 */
-	static CombatLockSound preview(RandomSource random, float volume) {
+	public static CombatLockSound preview(RandomSource random, float volume) {
 		return new CombatLockSound(random, volume, false);
 	}
 
