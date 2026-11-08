@@ -1,5 +1,7 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.menu;
 
+import com.nibblenerds.unitedminecraft.client.BlockDescriptions;
+import com.nibblenerds.unitedminecraft.client.ItemDescriptions;
 import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -87,7 +89,7 @@ public final class CreativeInventoryController {
 	 * re-init (e.g. a window resize), which {@link #trackedScreen} is what guards against -
 	 * see its own comment.
 	 */
-	static void onScreenInit(CreativeModeInventoryScreen creative) {
+	public static void onScreenInit(CreativeModeInventoryScreen creative) {
 		if (creative != trackedScreen) {
 			trackedScreen = creative;
 			onScreenOpened(creative);
@@ -138,7 +140,7 @@ public final class CreativeInventoryController {
 	 * {@code MenuAccessibilityController}'s anvil Rename section) and this class then gets out of
 	 * its way entirely except for Tab (leave it) and Home/End (still cycle tabs).
 	 */
-	static boolean handleKey(CreativeModeInventoryScreen screen, KeyEvent event) {
+	public static boolean handleKey(CreativeModeInventoryScreen screen, KeyEvent event) {
 		if (ClientKeyBindings.CREATIVE_SWITCH_TAB_PREV.current().matches(event)) {
 			switchTab(screen, -1);
 			return false;
@@ -386,7 +388,7 @@ public final class CreativeInventoryController {
 	 * see the class doc). Polling the resulting item count once per tick is what actually
 	 * lets a result-count summary get narrated as the player types.
 	 */
-	static void recheckSearchResults(Minecraft client) {
+	public static void recheckSearchResults(Minecraft client) {
 		if (!(client.gui.screen() instanceof CreativeModeInventoryScreen screen) || !isSearchTab(screen)) {
 			lastSearchResultCount = -1;
 			return;

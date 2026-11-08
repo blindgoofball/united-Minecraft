@@ -1,5 +1,8 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.menu.AdvancementsController;
+import com.nibblenerds.unitedminecraft.client.menu.CreativeInventoryController;
+import com.nibblenerds.unitedminecraft.client.menu.MenuAccessibilityController;
 import com.nibblenerds.unitedminecraft.client.scanner.MapMarkerController;
 import com.nibblenerds.unitedminecraft.client.scanner.MarkerShareController;
 import com.nibblenerds.unitedminecraft.client.scanner.NamedBlockController;

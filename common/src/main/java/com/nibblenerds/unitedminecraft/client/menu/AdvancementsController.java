@@ -1,4 +1,4 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.menu;
 
 import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
 import com.nibblenerds.unitedminecraft.client.keybind.Keybind;
@@ -57,7 +57,7 @@ public final class AdvancementsController {
 	private record Entry(AdvancementWidget widget, int depth) {
 	}
 
-	static void onScreenInit(AdvancementsScreen screen) {
+	public static void onScreenInit(AdvancementsScreen screen) {
 		// A same-instance re-init (a window resize) must not announce the tab all over again.
 		if (screen == announcedScreen) {
 			return;
@@ -70,7 +70,7 @@ public final class AdvancementsController {
 		}
 	}
 
-	static void onScreenRemoved() {
+	public static void onScreenRemoved() {
 		selectedId = null;
 		announcedScreen = null;
 	}
@@ -79,7 +79,7 @@ public final class AdvancementsController {
 	 * @return {@code true} to let vanilla handle the key, {@code false} if consumed - the same
 	 *         polarity as {@link MenuAccessibilityController#handleKey}
 	 */
-	static boolean handleKey(AdvancementsScreen screen, KeyEvent event) {
+	public static boolean handleKey(AdvancementsScreen screen, KeyEvent event) {
 		if (ClientKeyBindings.CONTAINER_SWITCH_SECTION_NEXT.current().matches(event)) {
 			switchTab(screen, 1);
 			return false;

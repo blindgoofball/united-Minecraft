@@ -1,5 +1,7 @@
 package com.nibblenerds.unitedminecraft.client.keybind;
 
+import com.nibblenerds.unitedminecraft.client.menu.CreativeInventoryController;
+import com.nibblenerds.unitedminecraft.client.menu.MenuAccessibilityController;
 import com.nibblenerds.unitedminecraft.client.combat.CombatModeController;
 import com.nibblenerds.unitedminecraft.client.autowalk.AutoWalkController;
 import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
@@ -7,8 +9,8 @@ import com.nibblenerds.unitedminecraft.client.AccessibilityTickHandler;
 import com.nibblenerds.unitedminecraft.client.autowalk.AutoWalkController;
 import com.nibblenerds.unitedminecraft.client.BuildModeController;
 import com.nibblenerds.unitedminecraft.client.combat.CombatModeController;
-import com.nibblenerds.unitedminecraft.client.CreativeInventoryController;
-import com.nibblenerds.unitedminecraft.client.MenuAccessibilityController;
+import com.nibblenerds.unitedminecraft.client.menu.CreativeInventoryController;
+import com.nibblenerds.unitedminecraft.client.menu.MenuAccessibilityController;
 import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
 import com.nibblenerds.unitedminecraft.client.TrailController;
 import com.nibblenerds.unitedminecraft.client.WaterExitController;

@@ -1,6 +1,7 @@
 package com.nibblenerds.unitedminecraft.client.scanner;
 
-import com.nibblenerds.unitedminecraft.client.MenuAccessibilityController;
+import com.nibblenerds.unitedminecraft.client.menu.MenuAccessibilityController;
+import com.nibblenerds.unitedminecraft.client.menu.MenuAccessibilityController;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 

@@ -1,5 +1,8 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.menu;
 
+import com.nibblenerds.unitedminecraft.client.BlockDescriptions;
+import com.nibblenerds.unitedminecraft.client.ClientHooks;
+import com.nibblenerds.unitedminecraft.client.ItemDescriptions;
 import com.nibblenerds.unitedminecraft.client.scanner.MarkerNameScreen;
 import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
 import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
@@ -269,7 +272,7 @@ public final class MenuAccessibilityController {
 	 * screen instance is what keeps that redundant re-init from silently wiping the
 	 * just-confirmed search term and section back to defaults.
 	 */
-	static void onScreenInit(AbstractContainerScreen<?> containerScreen) {
+	public static void onScreenInit(AbstractContainerScreen<?> containerScreen) {
 		if (containerScreen != trackedScreen) {
 			trackedScreen = containerScreen;
 			onScreenOpened(containerScreen);
@@ -283,7 +286,7 @@ public final class MenuAccessibilityController {
 	 * clearStrayFocus still poking at a dead screen every tick. Same for the focused slot
 	 * and the cached recipe groups.
 	 */
-	static void onScreenRemoved(AbstractContainerScreen<?> closed) {
+	public static void onScreenRemoved(AbstractContainerScreen<?> closed) {
 		if (closed == trackedScreen) {
 			// openRecipeSearchPrompt swaps this same screen out for its MarkerNameScreen
 			// prompt and back again - that swap fires this same removal event (Screen
@@ -317,7 +320,7 @@ public final class MenuAccessibilityController {
 	 * typing even starts. Deferring the actual screen swap to the next tick lets that trailing
 	 * character event get delivered and ignored first.
 	 */
-	static void openPendingSearchPrompt(Minecraft client) {
+	public static void openPendingSearchPrompt(Minecraft client) {
 		if (pendingSearchPromptScreen == null) {
 			return;
 		}
@@ -340,7 +343,7 @@ public final class MenuAccessibilityController {
 	 * focused, and so screen readers don't narrate a stray, unlabeled widget on top of this
 	 * class's own narration).
 	 */
-	static void clearStrayFocus(Minecraft client) {
+	public static void clearStrayFocus(Minecraft client) {
 		if (trackedScreen == null || trackedScreen.getFocused() == null) {
 			return;
 		}
@@ -351,7 +354,7 @@ public final class MenuAccessibilityController {
 		}
 	}
 
-	static void recheckInitialSlotNarration(Minecraft client) {
+	public static void recheckInitialSlotNarration(Minecraft client) {
 		if (!pendingInitialSlotRecheck) {
 			return;
 		}
@@ -379,7 +382,7 @@ public final class MenuAccessibilityController {
 	 * each tick (see {@link ClientHooks#onClientTick}), so on the one tick both could fire, the
 	 * initial recheck's own narration already resets the comparison and this one is a no-op.
 	 */
-	static void recheckFocusedSlotForExternalChange(Minecraft client) {
+	public static void recheckFocusedSlotForExternalChange(Minecraft client) {
 		if (trackedScreen == null || client.player == null || client.gui.screen() != trackedScreen) {
 			// The gui.screen() check excludes recipeSearchPromptActive's window, where trackedScreen
 			// is still set but MarkerNameScreen is the one actually showing - narrating a
@@ -432,7 +435,7 @@ public final class MenuAccessibilityController {
 		enterSection(screen, player, true);
 	}
 
-	static boolean handleKey(AbstractContainerScreen<?> screen, KeyEvent event) {
+	public static boolean handleKey(AbstractContainerScreen<?> screen, KeyEvent event) {
 		if (isHandledByCreativeItemGrid(screen)) {
 			return true;
 		}
@@ -1011,7 +1014,7 @@ public final class MenuAccessibilityController {
 	 * AbstractContainerScreen#quickCraftToSlots} does on a mouse release, so the server sees an
 	 * ordinary drag.
 	 */
-	static void tickDrag(Minecraft client) {
+	public static void tickDrag(Minecraft client) {
 		if (!dragging || ClientKeyBindings.isHeldNow(dragModifier)) {
 			return;
 		}

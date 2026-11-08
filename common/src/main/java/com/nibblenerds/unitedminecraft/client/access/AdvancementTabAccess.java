@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client.access;
 
+import com.nibblenerds.unitedminecraft.client.menu.AdvancementsController;
 import java.util.Collection;
 
 import net.minecraft.client.gui.screens.advancements.AdvancementWidget;

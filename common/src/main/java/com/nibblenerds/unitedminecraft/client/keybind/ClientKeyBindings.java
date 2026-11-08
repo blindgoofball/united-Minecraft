@@ -1,5 +1,7 @@
 package com.nibblenerds.unitedminecraft.client.keybind;
 
+import com.nibblenerds.unitedminecraft.client.menu.CreativeInventoryController;
+import com.nibblenerds.unitedminecraft.client.menu.MenuAccessibilityController;
 import com.nibblenerds.unitedminecraft.client.scanner.CategoryJumpScreen;
 import com.nibblenerds.unitedminecraft.client.scanner.MarkerShareController;
 import com.nibblenerds.unitedminecraft.client.scanner.MarkerShareScreen;
@@ -7,10 +9,10 @@ import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
 import com.nibblenerds.unitedminecraft.client.scanner.ScannerFilterScreen;
 import com.nibblenerds.unitedminecraft.client.AccessibilityTickHandler;
 import com.nibblenerds.unitedminecraft.client.AngleAssistController;
-import com.nibblenerds.unitedminecraft.client.CreativeInventoryController;
+import com.nibblenerds.unitedminecraft.client.menu.CreativeInventoryController;
 import com.nibblenerds.unitedminecraft.client.EyeOfEnderController;
 import com.nibblenerds.unitedminecraft.client.scanner.MarkerShareController;
-import com.nibblenerds.unitedminecraft.client.MenuAccessibilityController;
+import com.nibblenerds.unitedminecraft.client.menu.MenuAccessibilityController;
 import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
 import java.lang.reflect.Field;
 import java.util.ArrayList;

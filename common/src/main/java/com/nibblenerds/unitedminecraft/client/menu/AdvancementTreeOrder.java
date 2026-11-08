@@ -1,4 +1,4 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.menu;
 
 import java.util.ArrayList;
 import java.util.Comparator;
