@@ -1,5 +1,7 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.scanner.MapMarkerController;
+import com.nibblenerds.unitedminecraft.client.scanner.NamedBlockController;
 import java.io.IOException;
 import java.io.Reader;
 import java.lang.reflect.Type;
@@ -37,7 +39,7 @@ import org.slf4j.Logger;
  *
  * <p>Not thread-safe; only ever used from the client thread.
  */
-final class WorldScopedStore<T> {
+public final class WorldScopedStore<T> {
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
 	private final String subdirectory;
@@ -62,7 +64,7 @@ final class WorldScopedStore<T> {
 	private OptionalLong lastWorldIdSeed = OptionalLong.empty();
 	private WorldKey cachedWorldKey;
 
-	WorldScopedStore(String subdirectory, Type listType, Logger logger) {
+	public WorldScopedStore(String subdirectory, Type listType, Logger logger) {
 		this.subdirectory = subdirectory;
 		this.listType = listType;
 		this.logger = logger;
@@ -73,7 +75,7 @@ final class WorldScopedStore<T> {
 	 * when a reload actually happened, so the caller can rebuild whatever index it keeps
 	 * alongside {@link #entries()}.
 	 */
-	boolean tick(Minecraft client) {
+	public boolean tick(Minecraft client) {
 		WorldKey key = worldKey(client);
 		if (Objects.equals(key.id(), loadedWorldId)) {
 			return false;
@@ -83,7 +85,7 @@ final class WorldScopedStore<T> {
 		return true;
 	}
 
-	void reset() {
+	public void reset() {
 		entries = new ArrayList<>();
 		loadedWorldId = null;
 		lastWorldIdSource = null;
@@ -95,7 +97,7 @@ final class WorldScopedStore<T> {
 	 * Deletes what was saved for the singleplayer save folder {@code levelId}, so a new world later
 	 * created under the same name starts empty instead of inheriting the old one's data.
 	 */
-	void forgetSingleplayerWorld(String levelId) {
+	public void forgetSingleplayerWorld(String levelId) {
 		String worldId = "sp_" + levelId;
 		for (Path file : List.of(fileFor(worldId), legacyFileFor(worldId))) {
 			try {
@@ -108,11 +110,11 @@ final class WorldScopedStore<T> {
 	}
 
 	/** The live, mutable entry list - callers add/remove directly, then call {@link #save()}. */
-	List<T> entries() {
+	public List<T> entries() {
 		return entries;
 	}
 
-	void save() {
+	public void save() {
 		if (loadedWorldId == null) {
 			return;
 		}

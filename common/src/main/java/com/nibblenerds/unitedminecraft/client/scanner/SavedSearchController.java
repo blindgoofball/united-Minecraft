@@ -1,5 +1,6 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.scanner;
 
+import com.nibblenerds.unitedminecraft.client.WorldScopedStore;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.UUID;
@@ -61,7 +62,7 @@ public final class SavedSearchController {
 		}
 	}
 
-	static void onWorldDeleted(String levelId) {
+	public static void onWorldDeleted(String levelId) {
 		STORE.forgetSingleplayerWorld(levelId);
 	}
 

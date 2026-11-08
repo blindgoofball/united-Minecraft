@@ -1,4 +1,4 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.scanner;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -9,8 +9,8 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import com.nibblenerds.unitedminecraft.client.ScannerFilterController.AddResult;
-import com.nibblenerds.unitedminecraft.client.ScannerFilterController.StoredFilter;
+import com.nibblenerds.unitedminecraft.client.scanner.ScannerFilterController.AddResult;
+import com.nibblenerds.unitedminecraft.client.scanner.ScannerFilterController.StoredFilter;
 
 /** {@link ScannerFilterController}'s name matching and the rules for adding a filter. */
 class ScannerFilterControllerTest {

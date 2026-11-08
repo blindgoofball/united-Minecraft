@@ -1,5 +1,7 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.scanner.OreDetection;
+import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
 import com.nibblenerds.unitedminecraft.client.audio.ModeToggleSound;
 import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;

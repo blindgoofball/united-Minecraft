@@ -1,5 +1,10 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.scanner.MapMarkerController;
+import com.nibblenerds.unitedminecraft.client.scanner.MarkerShareController;
+import com.nibblenerds.unitedminecraft.client.scanner.NamedBlockController;
+import com.nibblenerds.unitedminecraft.client.scanner.SavedSearchController;
+import com.nibblenerds.unitedminecraft.client.scanner.ScannerFilterController;
 import com.nibblenerds.unitedminecraft.client.settings.RecommendedKeysPrompt;
 import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;

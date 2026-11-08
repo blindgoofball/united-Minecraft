@@ -1,4 +1,4 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.scanner;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -12,8 +12,8 @@ import java.util.function.Supplier;
 
 import org.junit.jupiter.api.Test;
 
-import com.nibblenerds.unitedminecraft.client.SavedSearchController.SaveResult;
-import com.nibblenerds.unitedminecraft.client.SavedSearchController.SavedSearch;
+import com.nibblenerds.unitedminecraft.client.scanner.SavedSearchController.SaveResult;
+import com.nibblenerds.unitedminecraft.client.scanner.SavedSearchController.SavedSearch;
 
 /** {@link SavedSearchController}'s rules for saving and editing, and {@link CategoryRef}'s keys. */
 class SavedSearchControllerTest {

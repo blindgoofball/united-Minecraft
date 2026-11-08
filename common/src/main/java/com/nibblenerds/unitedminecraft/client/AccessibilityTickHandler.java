@@ -1,5 +1,12 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.scanner.MapMarkerController;
+import com.nibblenerds.unitedminecraft.client.scanner.MarkerShareController;
+import com.nibblenerds.unitedminecraft.client.scanner.NamedBlockController;
+import com.nibblenerds.unitedminecraft.client.scanner.SavedSearchController;
+import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
+import com.nibblenerds.unitedminecraft.client.scanner.ScannerFilterController;
+import com.nibblenerds.unitedminecraft.client.scanner.SurroundingsScanner;
 import com.nibblenerds.unitedminecraft.client.settings.SettingsScreen;
 import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
@@ -795,7 +802,7 @@ public final class AccessibilityTickHandler {
 	}
 
 	/** Package-private - {@link ScannerController} reuses this for its Biomes category. */
-	static Component biomeName(Holder<Biome> biome) {
+	public static Component biomeName(Holder<Biome> biome) {
 		Identifier id = biome.unwrapKey().map(ResourceKey::identifier).orElse(null);
 		return Component.translatable(Util.makeDescriptionId("biome", id));
 	}
@@ -989,7 +996,7 @@ public final class AccessibilityTickHandler {
 		client.getNarrator().saySystemNow(message);
 	}
 
-	static String formatHalf(double value) {
+	public static String formatHalf(double value) {
 		return value == Math.rint(value) ? String.valueOf((long) value) : String.format(Locale.ROOT, "%.1f", value);
 	}
 

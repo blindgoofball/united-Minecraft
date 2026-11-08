@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -34,7 +35,7 @@ import net.minecraft.world.level.block.WeepingVinesPlantBlock;
  * <p>Blocks of one kind are grouped separately from the others, so two kinds side by side (a vine
  * on a ladder) stay two entries.
  */
-enum LargeObject {
+public enum LargeObject {
 	NETHER_PORTAL(Shape.STRUCTURE),
 	END_PORTAL(Shape.STRUCTURE),
 	END_PORTAL_FRAME(Shape.STRUCTURE),
@@ -51,7 +52,7 @@ enum LargeObject {
 	CAVE_VINES(Shape.STACK);
 
 	/** How the blocks of one kind are grouped into entries. */
-	enum Shape {
+	public enum Shape {
 		/** Every connected block is one structure, reported at the one nearest the player - a portal or a ring of frames. */
 		STRUCTURE,
 		/** Every connected block is one plant, reported at its nearest stem - chorus. */
@@ -66,7 +67,7 @@ enum LargeObject {
 		this.shape = shape;
 	}
 
-	Shape shape() {
+	public Shape shape() {
 		return shape;
 	}
 
@@ -75,7 +76,7 @@ enum LargeObject {
 	private static final Map<Block, Optional<LargeObject>> KINDS = new IdentityHashMap<>();
 
 	/** Which kind {@code block} is part of, or null if it isn't part of any. */
-	static LargeObject of(Block block) {
+	public static LargeObject of(Block block) {
 		return KINDS.computeIfAbsent(block, b -> Optional.ofNullable(classify(b))).orElse(null);
 	}
 

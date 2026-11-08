@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -13,7 +14,7 @@ import net.minecraft.core.BlockPos;
  * blocks, so a search that matches the block finds both; see {@link ScannerController#scanSearch}.
  * Kept out of that class so it can be tested without the game's registries.
  */
-final class SecondHalves {
+public final class SecondHalves {
 	private SecondHalves() {
 	}
 
@@ -26,7 +27,7 @@ final class SecondHalves {
 	 * @param partnerIfSecondHalf where the other half is, if the result is the half not to list on
 	 *        its own; null for anything else
 	 */
-	static <T> List<T> dropFrom(List<T> found, Function<T, BlockPos> position, Function<T, BlockPos> partnerIfSecondHalf) {
+	public static <T> List<T> dropFrom(List<T> found, Function<T, BlockPos> position, Function<T, BlockPos> partnerIfSecondHalf) {
 		Set<BlockPos> listed = new HashSet<>();
 		for (T entry : found) {
 			listed.add(position.apply(entry).immutable());

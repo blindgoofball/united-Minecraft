@@ -1,4 +1,4 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.scanner;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +24,7 @@ import net.minecraft.network.chat.Component;
  * narration all work the way they already do on the Search prompt. Matching runs against the
  * translated category label, so it follows whatever language the labels are in.
  */
-final class CategoryJumpScreen extends Screen {
+public final class CategoryJumpScreen extends Screen {
 	private EditBox input;
 	// Set while this screen itself rewrites the box (rejecting a letter), so the responder
 	// doesn't treat its own edit as the player typing.

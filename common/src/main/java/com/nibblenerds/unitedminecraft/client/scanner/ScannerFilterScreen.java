@@ -1,5 +1,6 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.scanner;
 
+import com.nibblenerds.unitedminecraft.client.PickList;
 import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,7 +18,7 @@ import net.minecraft.network.chat.Component;
  *
  * <p>See {@link ScannerFilterController} for what a filter is and how it is stored.
  */
-final class ScannerFilterScreen extends Screen {
+public final class ScannerFilterScreen extends Screen {
 	private static final int MARGIN = 8;
 	private static final int GAP = 6;
 	private static final int BUTTON_HEIGHT = 20;

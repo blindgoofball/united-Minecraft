@@ -1,5 +1,6 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.scanner;
 
+import com.nibblenerds.unitedminecraft.client.PickList;
 import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
 import com.nibblenerds.unitedminecraft.client.keybind.KeybindScreen;
 import java.util.ArrayList;
@@ -24,7 +25,7 @@ import net.minecraft.network.chat.Component;
  * message, which the narration fix reads on entering it; one with nothing to pick shows a single
  * "none" row so it can still be tabbed to.
  */
-final class MarkerShareScreen extends Screen {
+public final class MarkerShareScreen extends Screen {
 	private static final int MARGIN = 8;
 	private static final int GAP = 6;
 	private static final int BUTTON_HEIGHT = 20;

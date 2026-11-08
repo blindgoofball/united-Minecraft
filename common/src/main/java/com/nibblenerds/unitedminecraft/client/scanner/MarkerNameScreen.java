@@ -1,5 +1,6 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.scanner;
 
+import com.nibblenerds.unitedminecraft.client.MenuAccessibilityController;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -44,7 +45,7 @@ public final class MarkerNameScreen extends Screen {
 	private Component clearLabel = Component.translatable("united_minecraft.named_block_screen.clear");
 	private Component cancelLabel = Component.translatable("united_minecraft.named_block_screen.cancel");
 
-	MarkerNameScreen(Consumer<String> onConfirm) {
+	public MarkerNameScreen(Consumer<String> onConfirm) {
 		this(Component.translatable("united_minecraft.marker_screen.title"),
 				Component.translatable("united_minecraft.narrate.marker_prompt"),
 				Component.translatable("united_minecraft.narrate.marker_cancelled"),
@@ -52,7 +53,7 @@ public final class MarkerNameScreen extends Screen {
 				"", onConfirm);
 	}
 
-	MarkerNameScreen(Component title, Component prompt, Component cancelled, Component fieldLabel, String initialValue, Consumer<String> onConfirm) {
+	public MarkerNameScreen(Component title, Component prompt, Component cancelled, Component fieldLabel, String initialValue, Consumer<String> onConfirm) {
 		this(title, prompt, cancelled, fieldLabel, initialValue, null, onConfirm);
 	}
 
@@ -63,7 +64,7 @@ public final class MarkerNameScreen extends Screen {
 	 * entirely the way the Scanner's world-space search or a Map Marker name does (both pass
 	 * {@code null}, preserving the original behavior of closing to nothing).
 	 */
-	MarkerNameScreen(Component title, Component prompt, Component cancelled, Component fieldLabel, String initialValue, Screen returnTo, Consumer<String> onConfirm) {
+	public MarkerNameScreen(Component title, Component prompt, Component cancelled, Component fieldLabel, String initialValue, Screen returnTo, Consumer<String> onConfirm) {
 		super(title);
 		this.prompt = prompt;
 		this.cancelled = cancelled;
@@ -77,7 +78,7 @@ public final class MarkerNameScreen extends Screen {
 	}
 
 	/** Same prompt with a checkbox under the text field; {@code onConfirm} receives the name and the checkbox's state. */
-	MarkerNameScreen(Component title, Component prompt, Component cancelled, Component fieldLabel, String initialValue,
+	public MarkerNameScreen(Component title, Component prompt, Component cancelled, Component fieldLabel, String initialValue,
 			Component toggleLabel, boolean toggleInitial, BiConsumer<String, Boolean> onConfirm) {
 		this(title, prompt, cancelled, fieldLabel, initialValue, toggleLabel, toggleInitial, null, onConfirm);
 	}
@@ -91,7 +92,7 @@ public final class MarkerNameScreen extends Screen {
 	}
 
 	/** The checkbox variant, returning to {@code returnTo} afterwards instead of closing to the game - see the {@code returnTo} constructor above. */
-	MarkerNameScreen(Component title, Component prompt, Component cancelled, Component fieldLabel, String initialValue,
+	public MarkerNameScreen(Component title, Component prompt, Component cancelled, Component fieldLabel, String initialValue,
 			Component toggleLabel, boolean toggleInitial, Screen returnTo, BiConsumer<String, Boolean> onConfirm) {
 		super(title);
 		this.prompt = prompt;

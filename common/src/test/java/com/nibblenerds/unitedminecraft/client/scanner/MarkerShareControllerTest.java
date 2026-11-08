@@ -1,4 +1,4 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.scanner;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -9,8 +9,8 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import com.nibblenerds.unitedminecraft.client.MarkerShareController.Conflict;
-import com.nibblenerds.unitedminecraft.client.MarkerShareController.PendingOffer;
+import com.nibblenerds.unitedminecraft.client.scanner.MarkerShareController.Conflict;
+import com.nibblenerds.unitedminecraft.client.scanner.MarkerShareController.PendingOffer;
 import com.nibblenerds.unitedminecraft.share.SharePayloads;
 import com.nibblenerds.unitedminecraft.share.SharePayloads.Item;
 import com.nibblenerds.unitedminecraft.share.SharePayloads.Kind;

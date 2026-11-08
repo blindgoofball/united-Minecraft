@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;

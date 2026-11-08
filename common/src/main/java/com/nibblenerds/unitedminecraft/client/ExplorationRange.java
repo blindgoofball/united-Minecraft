@@ -25,7 +25,7 @@ public final class ExplorationRange {
 	}
 
 	/** The Scanner category's reach right now: its setting, held to the render distance. */
-	static double scanner() {
+	public static double scanner() {
 		return effective(UnitedMinecraftConfig.get().exploreScannerRange, renderDistanceChunks());
 	}
 

@@ -1,5 +1,7 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.scanner.MarkerShareScreen;
+import com.nibblenerds.unitedminecraft.client.scanner.ScannerFilterScreen;
 import com.nibblenerds.unitedminecraft.client.keybind.KeybindScreen;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,8 +24,8 @@ import net.minecraft.util.Mth;
  *
  * <p>Used by {@link MarkerShareScreen} and {@link ScannerFilterScreen}.
  */
-final class PickList<T> extends ObjectSelectionList<PickList.Row<T>> {
-	static final int ROW_HEIGHT = 20;
+public final class PickList<T> extends ObjectSelectionList<PickList.Row<T>> {
+	public static final int ROW_HEIGHT = 20;
 
 	private final Font font;
 	private final Component emptyText;
@@ -36,7 +38,7 @@ final class PickList<T> extends ObjectSelectionList<PickList.Row<T>> {
 	 *        (including a rebuild), so a screen can remember it across a resize
 	 * @param onSelectionChanged run when the player moves the pick - not for a rebuild
 	 */
-	PickList(Minecraft minecraft, Font font, int x, int y, int width, int height, Component name, Component emptyText,
+	public PickList(Minecraft minecraft, Font font, int x, int y, int width, int height, Component name, Component emptyText,
 			IntConsumer onIndexChanged, Runnable onSelectionChanged) {
 		super(minecraft, width, height, y, ROW_HEIGHT);
 		setX(x);
@@ -52,7 +54,7 @@ final class PickList<T> extends ObjectSelectionList<PickList.Row<T>> {
 		return this.width - 12;
 	}
 
-	boolean hasItems() {
+	public boolean hasItems() {
 		for (Row<T> row : children()) {
 			if (row.value != null) {
 				return true;
@@ -62,7 +64,7 @@ final class PickList<T> extends ObjectSelectionList<PickList.Row<T>> {
 	}
 
 	/** The picked item, or null if nothing is picked or the "none" row is. */
-	T selectedValue() {
+	public T selectedValue() {
 		Row<T> selected = getSelected();
 		return selected == null ? null : selected.value;
 	}
@@ -78,7 +80,7 @@ final class PickList<T> extends ObjectSelectionList<PickList.Row<T>> {
 	 * With any items there is always something picked, so an action can use it without having to
 	 * select first.
 	 */
-	void setItems(List<Component> labels, List<T> values, int preferred) {
+	public void setItems(List<Component> labels, List<T> values, int preferred) {
 		int previous = selectedItemIndex();
 		int target = previous >= 0 ? previous : preferred;
 		rebuilding = true;

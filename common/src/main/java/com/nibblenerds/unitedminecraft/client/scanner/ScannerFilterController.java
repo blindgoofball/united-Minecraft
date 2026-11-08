@@ -1,5 +1,6 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.scanner;
 
+import com.nibblenerds.unitedminecraft.client.WorldScopedStore;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -72,7 +73,7 @@ public final class ScannerFilterController {
 		}
 	}
 
-	static void onWorldDeleted(String levelId) {
+	public static void onWorldDeleted(String levelId) {
 		STORE.forgetSingleplayerWorld(levelId);
 	}
 

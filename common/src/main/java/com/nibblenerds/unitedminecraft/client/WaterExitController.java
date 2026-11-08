@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
 import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
 import java.util.ArrayDeque;
 import java.util.ArrayList;

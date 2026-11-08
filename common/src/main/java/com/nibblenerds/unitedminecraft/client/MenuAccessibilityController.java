@@ -1,5 +1,7 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.scanner.MarkerNameScreen;
+import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
 import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
 import com.nibblenerds.unitedminecraft.client.keybind.Keybind;
 import com.nibblenerds.unitedminecraft.client.keybind.KeybindAction;

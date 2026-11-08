@@ -1,5 +1,19 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.scanner;
 
+import com.nibblenerds.unitedminecraft.client.AccessibilityTickHandler;
+import com.nibblenerds.unitedminecraft.client.AngleAssistController;
+import com.nibblenerds.unitedminecraft.client.AnimalFeedingController;
+import com.nibblenerds.unitedminecraft.client.AutoWalkController;
+import com.nibblenerds.unitedminecraft.client.BowBeaconController;
+import com.nibblenerds.unitedminecraft.client.BuildModeController;
+import com.nibblenerds.unitedminecraft.client.CameraUtil;
+import com.nibblenerds.unitedminecraft.client.CombatModeController;
+import com.nibblenerds.unitedminecraft.client.ExplorationRange;
+import com.nibblenerds.unitedminecraft.client.FastBlockAccess;
+import com.nibblenerds.unitedminecraft.client.ItemDescriptions;
+import com.nibblenerds.unitedminecraft.client.LargeObject;
+import com.nibblenerds.unitedminecraft.client.SecondHalves;
+import com.nibblenerds.unitedminecraft.client.StructureVoiceController;
 import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
 import java.util.ArrayDeque;
@@ -281,7 +295,7 @@ public final class ScannerController {
 	}
 
 	/** The locked entity, or null - what the bow beacon aims at first. */
-	static Entity lockedTarget() {
+	public static Entity lockedTarget() {
 		return lockedEntity;
 	}
 
@@ -631,7 +645,7 @@ public final class ScannerController {
 	}
 
 	/** Drops the lock without narrating anything - used when Combat Mode is taking over as the exclusive aim-owner. */
-	static void cancelLock() {
+	public static void cancelLock() {
 		lockedEntity = null;
 	}
 
@@ -940,7 +954,7 @@ public final class ScannerController {
 	 * the Hostile Mobs list first. Package-private - reached from the tick handler's global key
 	 * handling, which keeps it from firing under Build Mode or Combat Mode.
 	 */
-	static void lockOnBoss(Minecraft client, LocalPlayer player) {
+	public static void lockOnBoss(Minecraft client, LocalPlayer player) {
 		Entity nearest = null;
 		double nearestDistance = Double.MAX_VALUE;
 		AABB box = player.getBoundingBox().inflate(BOSS_SEARCH_RANGE);
@@ -1275,7 +1289,7 @@ public final class ScannerController {
 		return fragments;
 	}
 
-	static Component parrotVariantName(Parrot.Variant variant) {
+	public static Component parrotVariantName(Parrot.Variant variant) {
 		return Component.translatable("united_minecraft.narrate.parrot_variant." + variant.getSerializedName());
 	}
 
@@ -1470,7 +1484,7 @@ public final class ScannerController {
 	 * BuildModeController} to narrate entities sharing the build cursor's cell, which has no
 	 * category of its own at all.
 	 */
-	static Component entityDisplayName(Entity entity, Player player) {
+	public static Component entityDisplayName(Entity entity, Player player) {
 		if (entity instanceof ItemEntity itemEntity) {
 			return ItemDescriptions.describe(itemEntity.getItem(), player);
 		}
@@ -1611,7 +1625,7 @@ public final class ScannerController {
 	}
 
 	/** Opens the filter list for the category the Scanner is on, or says there isn't one. */
-	static void openFilters(Minecraft client) {
+	public static void openFilters(Minecraft client) {
 		if (categoryIndex == -1) {
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.filters_no_category"));
 			return;
@@ -1749,7 +1763,7 @@ public final class ScannerController {
 	 * it is always current, not a scan-time snapshot. Package-private - Build Mode's cursor and
 	 * the look-ahead key reuse it. Null when {@code pos} isn't an end portal frame.
 	 */
-	static Component endPortalFrameStatus(Level level, BlockPos pos) {
+	public static Component endPortalFrameStatus(Level level, BlockPos pos) {
 		BlockState state = level.getBlockState(pos);
 		if (!(state.getBlock() instanceof EndPortalFrameBlock)) {
 			return null;
@@ -1937,7 +1951,7 @@ public final class ScannerController {
 	 * category. Package-private - {@link BuildModeController} reuses this (and {@link #isRipe})
 	 * so its cursor narrates "Ripe" the same way the Scanner does.
 	 */
-	static boolean isCrop(Block block) {
+	public static boolean isCrop(Block block) {
 		return block instanceof CropBlock
 				|| block instanceof StemBlock
 				|| block instanceof AttachedStemBlock
@@ -1973,7 +1987,7 @@ public final class ScannerController {
 	 * pickable (with berries actually dropping) starting at age 2 of 3, not only at full growth.
 	 * Saplings and bamboo's own sapling stage have no such concept and never report ripe.
 	 */
-	static boolean isRipe(BlockState state) {
+	public static boolean isRipe(BlockState state) {
 		Block block = state.getBlock();
 		if (block instanceof CropBlock crop) {
 			return crop.isMaxAge(state);

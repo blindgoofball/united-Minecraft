@@ -1,5 +1,7 @@
 package com.nibblenerds.unitedminecraft.client.settings;
 
+import com.nibblenerds.unitedminecraft.client.scanner.MapMarkerController;
+import com.nibblenerds.unitedminecraft.client.scanner.MarkerShareController;
 import com.nibblenerds.unitedminecraft.client.audio.ChatMessageSound;
 import com.nibblenerds.unitedminecraft.client.audio.CueVolume;
 import com.nibblenerds.unitedminecraft.client.audio.WallToneSynth;
@@ -19,8 +21,8 @@ import com.nibblenerds.unitedminecraft.client.ElytraAwarenessController;
 import com.nibblenerds.unitedminecraft.client.ElytraLandingController;
 import com.nibblenerds.unitedminecraft.client.ExplorationRange;
 import com.nibblenerds.unitedminecraft.client.MapBeaconController;
-import com.nibblenerds.unitedminecraft.client.MapMarkerController;
-import com.nibblenerds.unitedminecraft.client.MarkerShareController;
+import com.nibblenerds.unitedminecraft.client.scanner.MapMarkerController;
+import com.nibblenerds.unitedminecraft.client.scanner.MarkerShareController;
 import com.nibblenerds.unitedminecraft.client.PowderSnowWarningController;
 import com.nibblenerds.unitedminecraft.client.SafeFiles;
 import com.nibblenerds.unitedminecraft.client.TitleNarrationController;

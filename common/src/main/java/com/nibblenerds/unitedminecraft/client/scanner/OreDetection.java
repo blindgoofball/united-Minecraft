@@ -1,5 +1,6 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.scanner;
 
+import com.nibblenerds.unitedminecraft.client.FastBlockAccess;
 import java.util.function.Function;
 
 import net.minecraft.core.BlockPos;
@@ -25,11 +26,11 @@ import net.minecraft.world.phys.shapes.CollisionContext;
  * either fully entombed or only exposed somewhere out of sight is invisible to both features,
  * same as it would be to anyone else.
  */
-final class OreDetection {
+public final class OreDetection {
 	private OreDetection() {
 	}
 
-	static boolean isValuableOre(BlockState state) {
+	public static boolean isValuableOre(BlockState state) {
 		return state.is(BlockItemTags.COAL_ORES.block())
 				|| state.is(BlockTags.IRON_ORES)
 				|| state.is(BlockTags.COPPER_ORES)
@@ -43,7 +44,7 @@ final class OreDetection {
 				|| state.is(Blocks.ANCIENT_DEBRIS);
 	}
 
-	static boolean isExposed(Level level, BlockPos pos, Vec3 eye) {
+	public static boolean isExposed(Level level, BlockPos pos, Vec3 eye) {
 		return isExposed(level, level::getBlockState, pos, eye);
 	}
 
@@ -55,7 +56,7 @@ final class OreDetection {
 	 * single one the way {@code Level#getBlockState} does. {@code level} itself is still needed
 	 * for the real raycast below, which has no such fast path.
 	 */
-	static boolean isExposed(Level level, Function<BlockPos, BlockState> neighborLookup, BlockPos pos, Vec3 eye) {
+	public static boolean isExposed(Level level, Function<BlockPos, BlockState> neighborLookup, BlockPos pos, Vec3 eye) {
 		Vec3 center = Vec3.atCenterOf(pos);
 		FluidState fluidHere = neighborLookup.apply(pos).getFluidState();
 		for (Direction direction : Direction.values()) {

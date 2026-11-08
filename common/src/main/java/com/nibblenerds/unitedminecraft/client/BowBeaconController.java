@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
 import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import java.util.Optional;
 
@@ -80,7 +81,7 @@ public final class BowBeaconController {
 	 * player can turn to the beacon. A trident only counts while it is being held back, since it is
 	 * an ordinary melee weapon the rest of the time.
 	 */
-	static boolean pausesLock() {
+	public static boolean pausesLock() {
 		LocalPlayer player = Minecraft.getInstance().player;
 		if (player == null || !UnitedMinecraftConfig.get().bowBeaconEnabled) {
 			return false;
