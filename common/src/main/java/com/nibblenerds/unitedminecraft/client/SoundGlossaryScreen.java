@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.combat.CombatBeacon;
 import com.nibblenerds.unitedminecraft.client.audio.CueVolume;
 import com.nibblenerds.unitedminecraft.client.audio.WallToneVoice;
 import com.nibblenerds.unitedminecraft.client.settings.SettingsScreen;

@@ -1,5 +1,10 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.combat.ArrowHitController;
+import com.nibblenerds.unitedminecraft.client.combat.BowBeaconController;
+import com.nibblenerds.unitedminecraft.client.combat.CombatBeacon;
+import com.nibblenerds.unitedminecraft.client.combat.CombatModeController;
+import com.nibblenerds.unitedminecraft.client.combat.HostileRadarController;
 import com.nibblenerds.unitedminecraft.client.travel.BoatAwarenessController;
 import com.nibblenerds.unitedminecraft.client.travel.BoatController;
 import com.nibblenerds.unitedminecraft.client.travel.ElytraAwarenessController;

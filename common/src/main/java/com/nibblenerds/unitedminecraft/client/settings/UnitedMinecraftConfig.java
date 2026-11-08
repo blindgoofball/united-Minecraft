@@ -1,5 +1,8 @@
 package com.nibblenerds.unitedminecraft.client.settings;
 
+import com.nibblenerds.unitedminecraft.client.combat.BowBeaconController;
+import com.nibblenerds.unitedminecraft.client.combat.CombatBeacon;
+import com.nibblenerds.unitedminecraft.client.combat.CombatModeController;
 import com.nibblenerds.unitedminecraft.client.travel.BoatAwarenessController;
 import com.nibblenerds.unitedminecraft.client.travel.BoatController;
 import com.nibblenerds.unitedminecraft.client.travel.ElytraAwarenessController;
@@ -16,12 +19,12 @@ import com.nibblenerds.unitedminecraft.client.AttackUseKeySwap;
 import com.nibblenerds.unitedminecraft.client.autowalk.AutoWalkDoors;
 import com.nibblenerds.unitedminecraft.client.travel.BoatAwarenessController;
 import com.nibblenerds.unitedminecraft.client.travel.BoatController;
-import com.nibblenerds.unitedminecraft.client.BowBeaconController;
+import com.nibblenerds.unitedminecraft.client.combat.BowBeaconController;
 import com.nibblenerds.unitedminecraft.client.audio.ChatMessageSound;
 import com.nibblenerds.unitedminecraft.client.ClientHooks;
 import com.nibblenerds.unitedminecraft.client.autowalk.ClientPathfinding;
-import com.nibblenerds.unitedminecraft.client.CombatBeacon;
-import com.nibblenerds.unitedminecraft.client.CombatModeController;
+import com.nibblenerds.unitedminecraft.client.combat.CombatBeacon;
+import com.nibblenerds.unitedminecraft.client.combat.CombatModeController;
 import com.nibblenerds.unitedminecraft.client.audio.CueVolume;
 import com.nibblenerds.unitedminecraft.client.travel.ElytraAwarenessController;
 import com.nibblenerds.unitedminecraft.client.travel.ElytraLandingController;

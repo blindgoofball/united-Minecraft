@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.combat.HostileRadarController;
 import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -141,11 +142,11 @@ public final class CameraUtil {
 	 * and whether that arc really gets there - false when the projectile is too slow to cover the
 	 * distance at any angle, in which case the angles are just the straight line.
 	 */
-	record BallisticAim(float yaw, float pitch, boolean reachable) {
+	public record BallisticAim(float yaw, float pitch, boolean reachable) {
 	}
 
 	/** The look direction that arcs a projectile onto {@code target}, without moving the camera - see {@link #aimBallisticAt}. */
-	static BallisticAim ballisticAim(Vec3 eye, Vec3 target, double projectileSpeed) {
+	public static BallisticAim ballisticAim(Vec3 eye, Vec3 target, double projectileSpeed) {
 		double dx = target.x() - eye.x();
 		double dy = target.y() - eye.y();
 		double dz = target.z() - eye.z();
@@ -200,7 +201,7 @@ public final class CameraUtil {
 	 * counts.
 	 * </ul>
 	 */
-	static double launchSpeed(LocalPlayer player) {
+	public static double launchSpeed(LocalPlayer player) {
 		float drawPower = drawingBowPower(player);
 		if (drawPower >= 0.1f) {
 			return drawPower * 3.0f;

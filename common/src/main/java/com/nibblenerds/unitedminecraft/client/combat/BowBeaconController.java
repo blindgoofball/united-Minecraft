@@ -1,5 +1,6 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.combat;
 
+import com.nibblenerds.unitedminecraft.client.CameraUtil;
 import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
 import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import java.util.Optional;
@@ -69,7 +70,7 @@ public final class BowBeaconController {
 		return guiding;
 	}
 
-	static void reset() {
+	public static void reset() {
 		guiding = false;
 		onTarget = false;
 		velocityTarget = null;
@@ -100,7 +101,7 @@ public final class BowBeaconController {
 				|| (player.isUsingItem() && player.getUseItem().getItem() instanceof BowItem);
 	}
 
-	static void tick(Minecraft client, LocalPlayer player) {
+	public static void tick(Minecraft client, LocalPlayer player) {
 		if (!UnitedMinecraftConfig.get().bowBeaconEnabled || !isAiming(player)) {
 			if (guiding) {
 				CombatBeacon.stop();

@@ -1,4 +1,4 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.combat;
 
 import com.nibblenerds.unitedminecraft.client.audio.CueVolume;
 import java.util.ArrayList;

@@ -1,5 +1,12 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.combat;
 
+import com.nibblenerds.unitedminecraft.client.AccessibilityTickHandler;
+import com.nibblenerds.unitedminecraft.client.AngleAssistController;
+import com.nibblenerds.unitedminecraft.client.BuildModeController;
+import com.nibblenerds.unitedminecraft.client.CameraUtil;
+import com.nibblenerds.unitedminecraft.client.MapBeaconController;
+import com.nibblenerds.unitedminecraft.client.TrailController;
+import com.nibblenerds.unitedminecraft.client.WaterExitController;
 import com.nibblenerds.unitedminecraft.client.autowalk.AutoWalkController;
 import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
 import com.nibblenerds.unitedminecraft.client.audio.CueVolume;

@@ -1,5 +1,6 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.combat;
 
+import com.nibblenerds.unitedminecraft.client.MapBeaconController;
 import com.nibblenerds.unitedminecraft.client.audio.CombatLockSound;
 import com.nibblenerds.unitedminecraft.client.audio.CueVolume;
 import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
@@ -52,7 +53,7 @@ public final class CombatBeacon {
 	}
 
 	/** Silences the beacon entirely - Combat Mode off, switched to Lock On, a screen opened, or the world left. */
-	static void stop() {
+	public static void stop() {
 		locked = false;
 		ticksUntilPing = 0;
 		if (lockSound != null) {
@@ -147,12 +148,12 @@ public final class CombatBeacon {
 	}
 
 	/** Plays the lock tone once for the sound glossary. */
-	static void previewLock(Minecraft client, LocalPlayer player) {
+	public static void previewLock(Minecraft client, LocalPlayer player) {
 		client.getSoundManager().play(CombatLockSound.preview(player.getRandom(), CueVolume.scale(LOCK_VOLUME)));
 	}
 
 	/** Plays a ping at the given vertical error for the sound glossary. */
-	static void previewPing(Minecraft client, LocalPlayer player) {
+	public static void previewPing(Minecraft client, LocalPlayer player) {
 		Vec3 pos = player.position();
 		client.getSoundManager().play(new SimpleSoundInstance(SoundEvents.NOTE_BLOCK_COW_BELL.value(), SoundSource.MASTER,
 				CueVolume.scale(PING_VOLUME), 1.0f, player.getRandom(), pos.x(), pos.y(), pos.z()));

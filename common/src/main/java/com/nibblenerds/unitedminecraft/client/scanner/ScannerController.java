@@ -1,14 +1,16 @@
 package com.nibblenerds.unitedminecraft.client.scanner;
 
+import com.nibblenerds.unitedminecraft.client.combat.BowBeaconController;
+import com.nibblenerds.unitedminecraft.client.combat.CombatModeController;
 import com.nibblenerds.unitedminecraft.client.autowalk.AutoWalkController;
 import com.nibblenerds.unitedminecraft.client.AccessibilityTickHandler;
 import com.nibblenerds.unitedminecraft.client.AngleAssistController;
 import com.nibblenerds.unitedminecraft.client.AnimalFeedingController;
 import com.nibblenerds.unitedminecraft.client.autowalk.AutoWalkController;
-import com.nibblenerds.unitedminecraft.client.BowBeaconController;
+import com.nibblenerds.unitedminecraft.client.combat.BowBeaconController;
 import com.nibblenerds.unitedminecraft.client.BuildModeController;
 import com.nibblenerds.unitedminecraft.client.CameraUtil;
-import com.nibblenerds.unitedminecraft.client.CombatModeController;
+import com.nibblenerds.unitedminecraft.client.combat.CombatModeController;
 import com.nibblenerds.unitedminecraft.client.ExplorationRange;
 import com.nibblenerds.unitedminecraft.client.FastBlockAccess;
 import com.nibblenerds.unitedminecraft.client.ItemDescriptions;

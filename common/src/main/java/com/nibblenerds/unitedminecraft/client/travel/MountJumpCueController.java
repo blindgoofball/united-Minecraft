@@ -1,6 +1,7 @@
 package com.nibblenerds.unitedminecraft.client.travel;
 
-import com.nibblenerds.unitedminecraft.client.CombatModeController;
+import com.nibblenerds.unitedminecraft.client.combat.CombatModeController;
+import com.nibblenerds.unitedminecraft.client.combat.CombatModeController;
 import com.nibblenerds.unitedminecraft.client.audio.CueVolume;
 import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import net.minecraft.client.Minecraft;

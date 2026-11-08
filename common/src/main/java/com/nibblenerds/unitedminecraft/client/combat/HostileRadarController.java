@@ -1,5 +1,6 @@
-package com.nibblenerds.unitedminecraft.client;
+package com.nibblenerds.unitedminecraft.client.combat;
 
+import com.nibblenerds.unitedminecraft.client.CameraUtil;
 import com.nibblenerds.unitedminecraft.client.audio.CueVolume;
 import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import java.util.ArrayDeque;
