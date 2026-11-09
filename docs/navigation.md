@@ -2,7 +2,7 @@
 
 [Documentation index](README.md)
 
-On this page: [Auto-Walk](#auto-walk) | [Water Exit](#water-exit) | [Elytra](#elytra) | [Boats](#boats) | [Cave Trail](#cave-trail) | [Eye of Ender](#eye-of-ender) | [Structure Voices](#structure-voices)
+On this page: [Auto-Walk](#auto-walk) | [Water Exit](#water-exit) | [Elytra](#elytra) | [Boats](#boats) | [Eye of Ender](#eye-of-ender) | [Structure Voices](#structure-voices)
 
 ## Auto-Walk
 
@@ -105,17 +105,6 @@ real blocks. Two different cues tell you what is coming:
 
 Both are spoken a few seconds out and beep faster as they near, ending with "Land
 now" or "Obstacle now". They only describe what is coming; what to do is up to you. Lily pads do not count.
-
-## Cave Trail
-
-Your positions are recorded as a breadcrumb trail as you walk, always on. X
-reports the distance and direction back to the start of the trail, Shift+X walks
-you back along it one recorded step at a time, and Alt+X clears the trail and
-marks your current spot as a new start. Alt+X is useful right as you enter a cave.
-
-Retracing follows the exact route you took, so it is always reachable. If it
-reaches a spot where you fell or dropped down, it stops and tells you to place a
-block there; place one and retrace again to continue. Backspace cancels.
 
 ## Eye of Ender
 

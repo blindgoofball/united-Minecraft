@@ -157,7 +157,7 @@ public final class WaterExitController {
 			return;
 		}
 
-		// Same "no real progress despite actively swimming" guard Auto-Walk and Trail already
+		// Same "no real progress despite actively swimming" guard Auto-Walk already
 		// use - a current pushing the player back, or the route being invalidated mid-swim,
 		// would otherwise hold forward and jump forever with no way out but the cancel key.
 		// Reported as "no way out": from the player's position in the water that's what a route

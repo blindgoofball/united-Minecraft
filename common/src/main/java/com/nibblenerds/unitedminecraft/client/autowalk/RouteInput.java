@@ -1,6 +1,5 @@
 package com.nibblenerds.unitedminecraft.client.autowalk;
 
-import com.nibblenerds.unitedminecraft.client.TrailController;
 import com.nibblenerds.unitedminecraft.client.WaterExitController;
 import net.minecraft.client.player.ClientInput;
 import net.minecraft.world.entity.player.Input;
@@ -10,7 +9,7 @@ import net.minecraft.world.phys.Vec2;
  * Reports "forward" (and optionally "jump"/"sprint") as held, exactly like real keyboard input
  * would - the synthetic {@link ClientInput} every route-following mode swaps into {@link
  * net.minecraft.client.player.LocalPlayer#input} while it drives movement. Shared by {@link
- * AutoWalkController}, {@link WaterExitController} and {@link TrailController}, which each used
+ * AutoWalkController} and {@link WaterExitController}, which each used
  * to declare their own byte-identical copy of it.
  *
  * <p>Going through the same {@code Input} mechanism real keys use is what makes movement and

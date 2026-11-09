@@ -21,8 +21,8 @@ the same jar on the server.
 - **Combat.** A lock-on mode, a sound-based Beacon mode, bow aiming by ear, and a
   hostile radar. [Details](docs/combat.md)
 - **Navigation.** Auto-Walk (including ladders and swimming), a way out of water,
-  elytra landing help, a cave trail back to where you started, Eye of Ender
-  tracking and Structure Voices. [Details](docs/navigation.md)
+  elytra landing help, Eye of Ender tracking and
+  Structure Voices. [Details](docs/navigation.md)
 - **Audio awareness.** Fall warnings, durability and tool warnings, Wall Tones, and
   navigation and mining radars. [Details](docs/awareness.md)
 - **Building and mining.** Build Mode's virtual cursor, Angle Assist for bridges,

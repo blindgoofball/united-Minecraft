@@ -1,6 +1,5 @@
 package com.nibblenerds.unitedminecraft.client.autowalk;
 
-import com.nibblenerds.unitedminecraft.client.TrailController;
 import com.nibblenerds.unitedminecraft.client.WaterExitController;
 
 /**
@@ -9,8 +8,7 @@ import com.nibblenerds.unitedminecraft.client.WaterExitController;
  * pushing against an obstruction instead of holding forward forever.
  *
  * <p>Shared by {@link AutoWalkController} (a mob shoving the player off the path, a block placed
- * mid-walk, terrain changing), {@link TrailController} (a straight-line leg clipping something
- * the original walk curved around - see its class doc), and {@link WaterExitController} (a
+ * mid-walk, terrain changing) and {@link WaterExitController} (a
  * current pushing the player back, or the route being invalidated mid-swim). Distance is passed
  * in rather than computed here, since each mode measures toward its own kind of waypoint:
  * horizontal-only for ground walking, full 3D while swimming.

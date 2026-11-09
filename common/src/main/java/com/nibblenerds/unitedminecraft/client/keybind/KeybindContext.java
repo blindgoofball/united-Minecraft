@@ -12,7 +12,6 @@ import com.nibblenerds.unitedminecraft.client.combat.CombatModeController;
 import com.nibblenerds.unitedminecraft.client.menu.CreativeInventoryController;
 import com.nibblenerds.unitedminecraft.client.menu.MenuAccessibilityController;
 import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
-import com.nibblenerds.unitedminecraft.client.TrailController;
 import com.nibblenerds.unitedminecraft.client.WaterExitController;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -69,7 +68,6 @@ public enum KeybindContext {
 	GLOBAL,
 	AUTO_WALK,
 	WATER_ESCAPE,
-	TRAIL,
 	SCANNER_LOCKED,
 	COMBAT_MODE,
 	BUILD_MODE,
@@ -84,12 +82,11 @@ public enum KeybindContext {
 			case GLOBAL -> noScreenOpen;
 			case AUTO_WALK -> noScreenOpen && AutoWalkController.isActive();
 			case WATER_ESCAPE -> noScreenOpen && WaterExitController.isActive();
-			case TRAIL -> noScreenOpen && TrailController.isActive();
 			case SCANNER_LOCKED -> noScreenOpen && ScannerController.isLocked();
 			case COMBAT_MODE -> noScreenOpen && CombatModeController.ownsRotation();
 			case BUILD_MODE -> noScreenOpen && BuildModeController.isActive();
 			case NORMAL_LOOK -> noScreenOpen && !AutoWalkController.isActive() && !WaterExitController.isActive()
-					&& !TrailController.isActive() && !ScannerController.ownsRotation()
+					&& !ScannerController.ownsRotation()
 					&& !CombatModeController.ownsRotation() && !BuildModeController.isActive();
 			case CONTAINER_SCREEN -> Minecraft.getInstance().gui.screen() instanceof AbstractContainerScreen;
 		};

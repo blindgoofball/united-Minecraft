@@ -153,12 +153,12 @@ bridge calls at the end of every client tick) is the hub almost all gameplay-fac
 anything that reacts to player state each tick. Key points:
 
 - Each toggleable mode or helper (Build Mode, Combat Mode, Scanner lock-on, Auto-Walk, Water
-  Exit, elytra landing, Cave Trail, Navigation Radar, Mining Radar, Angle Assist) is its own `XxxController` class with static state and a
+  Exit, elytra landing, Navigation Radar, Mining Radar, Angle Assist) is its own `XxxController` class with static state and a
   `tick(client, player)` method, plus a `reset()` called when the player unloads
   (world exit) — controllers must not carry stale state across sessions.
 - Modes are mutually exclusive over rotation/input in a deliberate priority order
   (see the big if/else chain in `onEndTick`): Auto-Walk > Water Exit > Elytra Landing >
-  Cave Trail > Scanner lock-on > Combat Mode > Build Mode > normal camera look.
+  Scanner lock-on > Combat Mode > Build Mode > normal camera look.
   Ask `ScannerController.ownsRotation()` / `CombatModeController.ownsRotation()` whether a mode
   holds the camera, not whether it is merely on: Combat Mode's Beacon style, and the Scanner
   lock while Bow Beacon is aiming, are on without steering. Read the inline comments there before adding a new

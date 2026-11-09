@@ -167,7 +167,6 @@ public final class AccessibilityTickHandler {
 			ElytraAwarenessController.reset();
 			BoatController.reset();
 			BoatAwarenessController.reset();
-			TrailController.reset();
 			MovementAssistController.reset();
 			NavRadarController.reset();
 			WallToneController.reset();
@@ -239,10 +238,6 @@ public final class AccessibilityTickHandler {
 			// screen opening mid-glide would otherwise leave it "active" but not flying anything.
 			ElytraLandingController.cancel(client, player);
 		}
-		if (client.gui.screen() != null && TrailController.isActive()) {
-			// Same reasoning again - TrailController swaps player.input the exact same way.
-			TrailController.cancel(client, player);
-		}
 
 		if (client.gui.screen() != null) {
 			// The boat's steering is only worked out below, under the screen == null branch - a held
@@ -266,10 +261,6 @@ public final class AccessibilityTickHandler {
 			} else if (ElytraLandingController.isActive()) {
 				// Owns rotation for the whole glide, the same way the swim above does for a swim.
 				ElytraLandingController.tick(client, player);
-			} else if (TrailController.isActive()) {
-				// Owns rotation and movement the same way - mutually exclusive with the two
-				// auto-navigate modes just above, only one should ever be walking at once.
-				TrailController.tick(client, player);
 			} else if (ScannerController.ownsRotation()) {
 				ScannerController.tickLock(client, player);
 				ScannerController.tick(client, player);
@@ -308,12 +299,6 @@ public final class AccessibilityTickHandler {
 				FallWarningController.tick(client, player);
 				PowderSnowWarningController.tick(client, player);
 				AutoCrosshairNarrationController.tick(client, player);
-			}
-			// Runs no matter which mode owns rotation - the trail should keep recording real
-			// movement regardless of what else is going on, except while it's driving that
-			// movement itself (retracing), which would just record its own synthetic route.
-			if (!TrailController.isActive()) {
-				TrailController.recordTick(client, player);
 			}
 			// Runs no matter which mode owns rotation - a nearby, visible hostile mob is
 			// worth a warning regardless of what else you're doing.
@@ -407,8 +392,7 @@ public final class AccessibilityTickHandler {
 	/** Whether Build Mode, a Scanner lock, Combat Mode or one of the auto-navigate modes is holding the camera right now. */
 	private static boolean rotationOwnedByAMode() {
 		return BuildModeController.isActive() || ScannerController.ownsRotation() || AutoWalkController.isActive()
-				|| CombatModeController.ownsRotation() || WaterExitController.isActive() || ElytraLandingController.isActive()
-				|| TrailController.isActive();
+				|| CombatModeController.ownsRotation() || WaterExitController.isActive() || ElytraLandingController.isActive();
 	}
 
 	/** Which of the four snap-turn keys ({@link ClientKeyBindings#SNAP_TURN_LEFT} etc.) were just pressed this tick - see {@link #handleKeybindActions}. */
@@ -487,16 +471,6 @@ public final class AccessibilityTickHandler {
 			} else {
 				WaterExitController.narrate(client, player);
 			}
-		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.TRAIL_MARK_START)) {
-			// Doesn't touch rotation or movement, so it isn't gated behind the rotation-owning
-			// modes check below - marking was never gated before this key was merged either.
-			TrailController.markStart(client, player);
-		} else if (rotationFree && ClientKeyBindings.pressed(ClientKeyBindings.TRAIL_WALK_BACK)) {
-			// Same rotation-owning modes WATER_ESCAPE is blocked against above, for the same reason.
-			TrailController.start(client, player);
-		} else if (rotationFree && ClientKeyBindings.pressed(ClientKeyBindings.TRAIL)) {
-			TrailController.narrate(client, player);
 		}
 
 		if (ClientKeyBindings.pressed(ClientKeyBindings.ANGLE_ASSIST_CYCLE)) {
