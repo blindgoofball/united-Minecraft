@@ -223,6 +223,8 @@
 	"united_minecraft.narrate.build_out_of_reach": "Out of reach",
 	"united_minecraft.narrate.build_cannot_place": "Can't place there",
 	"united_minecraft.narrate.build_player_in_way": "You're standing in the way",
+	"united_minecraft.narrate.build_boat_no_room": "No room for a boat there, it needs a space a block and a half wide",
+	"united_minecraft.narrate.build_boat_creature_in_way": "You or a creature are in the way, step back",
 	"united_minecraft.narrate.build_occupied": "Something's already there",
 	"united_minecraft.narrate.build_no_support": "No block to place against",
 	"united_minecraft.narrate.build_placement_blocked": "Something's blocking that spot",

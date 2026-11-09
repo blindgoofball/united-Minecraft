@@ -68,6 +68,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
  * "Build mode": a virtual cursor for exploring and targeting blocks without
@@ -683,7 +684,8 @@ public final class BuildModeController {
 		if (boatHand != null) {
 			// Like a bucket, a boat has no block-targeted useOn - only the aim-based use() - so it
 			// takes the same fake-the-rotation route, aimed at the water or ground in the cursor cell.
-			if (!player.level().getBlockState(cursor).canBeReplaced() && player.level().getFluidState(cursor).isEmpty()) {
+			if (!player.level().getBlockState(cursor).canBeReplaced() && player.level().getFluidState(cursor).isEmpty()
+					&& !isShortBlock(player.level(), cursor)) {
 				client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_occupied"));
 				return;
 			}
@@ -1122,8 +1124,31 @@ public final class BuildModeController {
 			}
 			narrateAfterAction(client, player);
 		} else {
-			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_cannot_place"));
+			String reason = "build_cannot_place";
+			if (player.getItemInHand(pendingBucketHand).getItem() instanceof BoatItem && pendingAimTarget != null) {
+				reason = boatRefusalKey(player.level(), pendingAimTarget);
+			}
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate." + reason));
 		}
+	}
+
+	/**
+	 * Why vanilla refused a boat at {@code at}. Its check is a plain collision test of the
+	 * boat's 1.375 by 0.5625 box against blocks <em>and</em> any pushable entity - the player
+	 * included - so a boat in the cell beside you is refused whenever you are not standing
+	 * dead centre in yours. Neither the client nor a vanilla server can be talked out of that;
+	 * all that can be done is to say which of the two it was.
+	 */
+	private static String boatRefusalKey(Level level, Vec3 at) {
+		AABB box = new AABB(at.x - 0.6875, at.y + FACE_EPSILON, at.z - 0.6875, at.x + 0.6875, at.y + FACE_EPSILON + 0.5625, at.z + 0.6875)
+				.deflate(1.0E-7);
+		if (level.getBlockCollisions(null, box).iterator().hasNext()) {
+			return "build_boat_no_room";
+		}
+		if (!level.getEntities((Entity) null, box, e -> e.isPushable() && !e.isSpectator()).isEmpty()) {
+			return "build_boat_creature_in_way";
+		}
+		return "build_cannot_place";
 	}
 
 	/**
@@ -1141,6 +1166,13 @@ public final class BuildModeController {
 			Vec3 point = new Vec3(cursor.getX() + 0.5, cursor.getY() + fluid.getHeight(level, cursor) - FACE_EPSILON, cursor.getZ() + 0.5);
 			return boatRayLandsOn(level, player, point, cursor, null) ? point : null;
 		}
+		if (isShortBlock(level, cursor)) {
+			// The cursor cell holds a block that does not fill it (a path, farmland, soul sand):
+			// the boat rests on that block's own top, still inside this cell.
+			BlockState state = level.getBlockState(cursor);
+			Vec3 point = pointOnFace(level, player, cursor, state, Direction.UP);
+			return boatRayLandsOn(level, player, point, cursor, Direction.UP) ? point : null;
+		}
 		BlockPos below = cursor.below();
 		FluidState belowFluid = level.getFluidState(below);
 		if (belowFluid.is(FluidTags.WATER)) {
@@ -1154,6 +1186,14 @@ public final class BuildModeController {
 		}
 		Vec3 point = pointOnFace(level, player, below, belowState, Direction.UP);
 		return boatRayLandsOn(level, player, point, below, Direction.UP) ? point : null;
+	}
+
+	/** Whether {@code pos} holds a solid block shorter than a full cell, with the cell above it free. */
+	private static boolean isShortBlock(Level level, BlockPos pos) {
+		BlockState state = level.getBlockState(pos);
+		VoxelShape shape = state.getCollisionShape(level, pos);
+		return !state.canBeReplaced() && level.getFluidState(pos).isEmpty() && !shape.isEmpty()
+				&& shape.max(Direction.Axis.Y) < 1.0 && level.getBlockState(pos.above()).canBeReplaced();
 	}
 
 	/** Whether the ray vanilla's boat casts, aimed at {@code point}, first hits {@code block} (on {@code face}, if given). */
