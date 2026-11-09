@@ -1,6 +1,7 @@
 package com.nibblenerds.unitedminecraft.client.settings;
 
 import com.nibblenerds.unitedminecraft.client.ExplorationRange;
+import com.nibblenerds.unitedminecraft.client.MiningRadarController;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
@@ -33,6 +34,8 @@ final class DetectionAlertsSettingsScreen extends SettingsListScreen {
 		y = addSlider(x, y, 0.5, 3.0, 0.5, config.fallWarningLookaheadSeconds,
 				"united_minecraft.settings_screen.fall_warning_lookahead_seconds",
 				value -> config.fallWarningLookaheadSeconds = value);
+		y = addToggle(x, y, "united_minecraft.settings_screen.mining_radar_enabled",
+				config.miningRadarEnabled, MiningRadarController::setEnabled);
 		y = addSlider(x, y, 4.0, 16.0, 1.0, config.miningRadarRange,
 				"united_minecraft.settings_screen.mining_radar_range",
 				value -> config.miningRadarRange = (int) Math.round(value));

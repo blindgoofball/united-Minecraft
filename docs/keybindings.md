@@ -21,7 +21,6 @@ key or modifier combination in United Minecraft's own Keybindings screen
 | ] / [ (F3 overlay open) | Next / previous line of the debug overlay section |
 | Shift+] / Shift+[ (F3 overlay open) | Next / previous debug overlay section |
 | F6 | Open United Minecraft Settings |
-| F7 | Swap Attack/Destroy and Place/Use between the mouse buttons and your other keys |
 
 ## Scanner
 
@@ -49,7 +48,6 @@ key or modifier combination in United Minecraft's own Keybindings screen
 | X (Shift = walk there, Alt = mark start) | Way back along the recorded cave trail |
 | N | Toggle Navigation Radar |
 | Shift+N | Toggle Wall Tones |
-| M | Toggle Mining Radar |
 | K | Toggle Combat Mode |
 | Alt+G | Cycle Angle Assist: off, bridge, tunnel, staircase |
 

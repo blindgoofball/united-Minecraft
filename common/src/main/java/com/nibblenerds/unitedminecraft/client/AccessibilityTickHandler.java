@@ -465,9 +465,6 @@ public final class AccessibilityTickHandler {
 		if (ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_WALL_TONES)) {
 			WallToneController.toggle(client);
 		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_MINING_RADAR)) {
-			MiningRadarController.toggle(client);
-		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_COMBAT_MODE)) {
 			CombatModeController.toggle(client, player);
 		}
@@ -587,9 +584,6 @@ public final class AccessibilityTickHandler {
 			narrateScoreboard(client, player, false);
 		}
 		DebugOverlayController.handleKeys(client);
-		if (ClientKeyBindings.pressed(ClientKeyBindings.SWAP_ATTACK_USE_KEYS)) {
-			AttackUseKeySwap.toggle(client);
-		}
 
 		return snapTurn;
 	}

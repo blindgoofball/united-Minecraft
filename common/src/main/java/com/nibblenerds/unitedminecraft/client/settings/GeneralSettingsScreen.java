@@ -1,6 +1,8 @@
 package com.nibblenerds.unitedminecraft.client.settings;
 
+import com.nibblenerds.unitedminecraft.client.AttackUseKeySwap;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
 
 /** Audio Cue Volume, Title Narration, Hotbar Tooltips, Durability/Tool Harvest awareness, Precise Coordinates, Map Beacon, and Compass Beacon - everything else, see {@link SettingsScreen}. */
@@ -45,8 +47,21 @@ final class GeneralSettingsScreen extends SettingsListScreen {
 		y = addToggle(x, y, "united_minecraft.settings_screen.compass_beacon_enabled",
 				config.compassBeaconEnabled, value -> config.compassBeaconEnabled = value);
 
+		Minecraft client = Minecraft.getInstance();
+		Button swap = Button.builder(swapLabel(client), button -> {
+			AttackUseKeySwap.toggle(client);
+			button.setMessage(swapLabel(client));
+		}).bounds(x, y, ROW_WIDTH, ROW_HEIGHT).build();
+		y += ROW_HEIGHT + ROW_SPACING;
+		registerRow(addRenderableWidget(swap), y - ROW_HEIGHT - ROW_SPACING);
+
 		addButton(x, y + ROW_SPACING, "united_minecraft.settings_screen.back",
 				() -> Minecraft.getInstance().gui.setScreen(new SettingsScreen()));
+	}
+
+	private static Component swapLabel(Minecraft client) {
+		return Component.translatable("united_minecraft.settings_screen.attack_use_keys",
+				AttackUseKeySwap.describe(client));
 	}
 
 	@Override

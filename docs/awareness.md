@@ -78,6 +78,6 @@ from open sky. Every sound can be previewed from the Sound Glossary.
 
 ## Mining Radar
 
-M toggles a passive alert for valuable ore exposed nearby: a positional chime and
+A switch in Settings > Detection & Alerts turns on a passive alert for valuable ore exposed nearby: a positional chime and
 narration (name, distance, direction) the moment ore becomes visible. It only
 flags ore you could actually see, not ore sealed behind unmined blocks.

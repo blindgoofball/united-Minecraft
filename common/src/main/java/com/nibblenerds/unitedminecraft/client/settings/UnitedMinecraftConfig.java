@@ -98,7 +98,7 @@ public final class UnitedMinecraftConfig {
 	public boolean autoWalkOpenDoors = true;
 	public boolean autoWalkSwim = true;
 	public boolean navRadarEnabled = false;
-	public boolean miningRadarEnabled = false;
+	public boolean miningRadarEnabled = true;
 	public boolean autoCrosshairNarrationEnabled = false;
 	/** Auto crosshair narration also speaks when the crosshair moves to another block of the same type. */
 	public boolean autoCrosshairRepeatSameBlock = false;

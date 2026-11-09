@@ -128,9 +128,6 @@ public final class ClientKeyBindings {
 	public static final KeybindAction TOGGLE_WALL_TONES = new KeybindAction(
 			"toggle_wall_tones", KeybindCategory.MOVEMENT_AND_MODES, new Keybind(InputConstants.KEY_N, InputConstants.MOD_SHIFT));
 
-	public static final KeybindAction TOGGLE_MINING_RADAR =
-			new KeybindAction("toggle_mining_radar", KeybindCategory.MOVEMENT_AND_MODES, new Keybind(InputConstants.KEY_M, 0));
-
 	public static final KeybindAction TOGGLE_COMBAT_MODE =
 			new KeybindAction("toggle_combat_mode", KeybindCategory.MOVEMENT_AND_MODES, new Keybind(InputConstants.KEY_K, 0));
 
@@ -258,10 +255,6 @@ public final class ClientKeyBindings {
 	/** Was Alt+' - see {@link #NARRATE_SCOREBOARD_FULL}. */
 	public static final KeybindAction NARRATE_SCOREBOARD_FULL = new KeybindAction(
 			"narrate_scoreboard_full", KeybindCategory.NARRATION, new Keybind(InputConstants.KEY_APOSTROPHE, InputConstants.MOD_ALT));
-
-	/** Flips Attack/Destroy and Place/Use between the mouse buttons and the player's other keys - see {@code AttackUseKeySwap}. */
-	public static final KeybindAction SWAP_ATTACK_USE_KEYS =
-			new KeybindAction("swap_attack_use_keys", KeybindCategory.GENERAL, new Keybind(InputConstants.KEY_F7, 0));
 
 	/**
 	 * Debug overlay navigation - GLOBAL, but {@code DebugOverlayController} ignores them unless the
