@@ -43,6 +43,9 @@ public final class KeybindScreen extends Screen {
 	private static final int BOTTOM_MARGIN = 36;
 
 	private KeybindList list;
+	private Button filterButton;
+	/** The category being shown, or null for all of them - it starts on all each time the screen opens. */
+	private KeybindCategory filter;
 
 	private KeybindAction listeningAction;
 	private Integer pendingKey;
@@ -60,6 +63,10 @@ public final class KeybindScreen extends Screen {
 	protected void init() {
 		int top = TOP_MARGIN;
 		int bottom = this.height - BOTTOM_MARGIN;
+		// Added before the list so Tab reaches it first.
+		filterButton = addRenderableWidget(Button.builder(filterLabel(), button -> cycleFilter())
+				.bounds(this.width / 2 - 100, (TOP_MARGIN - ROW_HEIGHT) / 2, 200, ROW_HEIGHT)
+				.build());
 		list = new KeybindList(this.minecraft, this.font, this.width, Math.max(bottom - top, ROW_HEIGHT), top, ROW_HEIGHT);
 		addRenderableWidget(list);
 
@@ -80,6 +87,38 @@ public final class KeybindScreen extends Screen {
 				button -> onClose())
 				.bounds(x + (buttonWidth + spacing) * 2, y, buttonWidth, ROW_HEIGHT)
 				.build());
+	}
+
+	private Component filterLabel() {
+		return Component.translatable("united_minecraft.keybind_screen.filter", filterName());
+	}
+
+	private Component filterName() {
+		return filter == null
+				? Component.translatable("united_minecraft.keybind_category_name.all")
+				: filter.plainName();
+	}
+
+	/** All, then each category in list order, then back to All. */
+	private void cycleFilter() {
+		KeybindCategory[] categories = KeybindCategory.values();
+		if (filter == null) {
+			filter = categories[0];
+		} else if (filter.ordinal() + 1 < categories.length) {
+			filter = categories[filter.ordinal() + 1];
+		} else {
+			filter = null;
+		}
+		// A half-finished rebind or conflict prompt belongs to a row that may no longer be listed.
+		listeningAction = null;
+		pendingKey = null;
+		conflictEditing = null;
+		conflictCandidate = null;
+		conflictOther = null;
+		int count = list.showCategory(filter);
+		filterButton.setMessage(filterLabel());
+		minecraft.getNarrator().saySystemNow(Component.translatable(
+				"united_minecraft.keybind_screen.filter_changed", filterName(), count));
 	}
 
 	@Override
@@ -253,6 +292,14 @@ public final class KeybindScreen extends Screen {
 		KeybindList(Minecraft minecraft, Font font, int width, int height, int y0, int itemHeight) {
 			super(minecraft, width, height, y0, itemHeight);
 			this.font = font;
+			showCategory(null);
+		}
+
+		/** Rebuilds the rows for one category, or every category when {@code only} is null; returns how many actions are listed. */
+		int showCategory(KeybindCategory only) {
+			clearEntries();
+			setScrollAmount(0);
+			int count = 0;
 			// Grouped by category rather than raw declaration order - ClientKeyBindings' fields
 			// aren't declared in contiguous category blocks (e.g. RESET_ROTATION_TO_NORTH sits
 			// between two NARRATION actions but is itself MOVEMENT_AND_MODES), so without this
@@ -262,12 +309,17 @@ public final class KeybindScreen extends Screen {
 			Arrays.sort(actions, Comparator.comparingInt(action -> action.category().ordinal()));
 			KeybindCategory lastCategory = null;
 			for (KeybindAction action : actions) {
+				if (only != null && action.category() != only) {
+					continue;
+				}
 				if (action.category() != lastCategory) {
 					lastCategory = action.category();
 					addEntry(new Entry(lastCategory));
 				}
 				addEntry(new Entry(action));
+				count++;
 			}
+			return count;
 		}
 
 		@Override

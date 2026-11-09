@@ -19,11 +19,14 @@ Settings > Keybindings is United Minecraft's own screen for rebinding every
 action to any key or modifier combination. It is separate from vanilla's Options >
 Controls. Only bindings that differ from their default are saved, so default
 changes in later versions reach you unless you rebound that action yourself.
+A Category button at the top of the list narrows it to one group of actions
+(Narration, Scanner and Markers, Movement and Modes, Build Mode, Inventory Screens
+or General). It starts on All, and each press moves to the next category.
 
 ## Recommended attack and use keys
 
 On the first title screen after installing, the mod offers once to move vanilla's
-Attack/Destroy to comma and Place/Use to period, its recommended setup. F7
+Attack/Destroy to comma and Place/Use to period, its recommended setup.
 The Attack and Use Keys button in Settings > General swaps both between the mouse
 buttons and your other keys, remembering whatever those keys were bound to when
 you left them, and shows which setup is active.

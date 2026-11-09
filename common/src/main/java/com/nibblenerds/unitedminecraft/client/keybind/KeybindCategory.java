@@ -17,6 +17,11 @@ public enum KeybindCategory {
 	INVENTORY,
 	GENERAL;
 
+	/** The name alone, for the screen's category filter - {@link #label()} carries the list header's dashes. */
+	public Component plainName() {
+		return Component.translatable("united_minecraft.keybind_category_name." + name().toLowerCase(java.util.Locale.ROOT));
+	}
+
 	public Component label() {
 		return Component.translatable("united_minecraft.keybind_category." + name().toLowerCase(java.util.Locale.ROOT));
 	}
