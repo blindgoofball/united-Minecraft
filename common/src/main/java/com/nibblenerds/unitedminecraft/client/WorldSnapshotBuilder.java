@@ -16,10 +16,6 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.FluidTags;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.monster.Enemy;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
@@ -29,13 +25,11 @@ import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.material.FlowingFluid;
 import net.minecraft.world.level.material.FluidState;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 import com.nibblenerds.unitedminecraft.client.WorldSnapshotText.Falling;
-import com.nibblenerds.unitedminecraft.client.WorldSnapshotText.Nearby;
 import com.nibblenerds.unitedminecraft.client.WorldSnapshotText.Ray;
 import com.nibblenerds.unitedminecraft.client.WorldSnapshotText.Sample;
 import com.nibblenerds.unitedminecraft.client.WorldSnapshotText.Surface;
@@ -63,12 +57,10 @@ final class WorldSnapshotBuilder {
 	private static final int RAY_RANGE_OUTDOORS = 32;
 	private static final int RAY_RANGE_ENCLOSED = 48;
 	private static final int MAX_FALLING_CELLS = 30000;
-	private static final int MIN_FALL_HEIGHT = 3;
+	private static final int MIN_FALL_HEIGHT = 6;
 	private static final int ENCLOSED_FALLING_RANGE = 48;
 	// How far below the surface a fall's top may sit and still count as one you could see from outside.
 	private static final int BURIED_FALL_MARGIN = 4;
-	private static final int ENTITY_RANGE = 48;
-	private static final int MAX_ENTITY_KINDS = 12;
 	// Tree trunks and canopies are walked through to reach the actual ground; this bounds the walk.
 	private static final int MAX_TREE_HEIGHT = 48;
 	private static final int MAX_WATER_DEPTH = 40;
@@ -113,7 +105,7 @@ final class WorldSnapshotBuilder {
 				level.getMaxLocalRawBrightness(origin),
 				enclosed,
 				new TreeMap<>(biomes));
-		return new WorldSnapshotText.Input(facts, samples, step, range, falling, nearbyCreatures(player),
+		return new WorldSnapshotText.Input(facts, samples, step, range, falling,
 				castRays(level, player, rayRange), rayRange);
 	}
 
@@ -379,28 +371,6 @@ final class WorldSnapshotBuilder {
 			}
 		}
 		return rays;
-	}
-
-	private static List<Nearby> nearbyCreatures(LocalPlayer player) {
-		AABB box = player.getBoundingBox().inflate(ENTITY_RANGE);
-		Map<String, Nearby> byName = new HashMap<>();
-		for (Entity entity : player.level().getEntities(player, box, e -> e instanceof LivingEntity && e.isAlive())) {
-			// Other players are named only as "player" - the snapshot may be pasted into a service.
-			String name = entity instanceof Player ? "player" : entity.getType().getDescription().getString();
-			int dx = (int) Math.round(entity.getX() - player.getX());
-			int dz = (int) Math.round(entity.getZ() - player.getZ());
-			Nearby existing = byName.get(name);
-			if (existing == null) {
-				byName.put(name, new Nearby(name, entity instanceof Enemy, 1, dx, dz));
-			} else {
-				boolean closer = Math.hypot(dx, dz) < Math.hypot(existing.dx(), existing.dz());
-				byName.put(name, new Nearby(name, existing.hostile(), existing.count() + 1,
-						closer ? dx : existing.dx(), closer ? dz : existing.dz()));
-			}
-		}
-		List<Nearby> result = new ArrayList<>(byName.values());
-		result.sort(java.util.Comparator.comparingDouble(n -> Math.hypot(n.dx(), n.dz())));
-		return result.size() > MAX_ENTITY_KINDS ? result.subList(0, MAX_ENTITY_KINDS) : result;
 	}
 
 	private static String timeOfDay(Level level) {

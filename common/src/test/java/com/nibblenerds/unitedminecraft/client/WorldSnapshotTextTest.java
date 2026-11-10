@@ -46,7 +46,7 @@ class WorldSnapshotTextTest {
 	}
 
 	private static Input input(boolean enclosed, List<Falling> falling, List<Ray> rays) {
-		return new Input(facts(enclosed), landscape(), STEP, RANGE, falling, List.of(), rays, 32);
+		return new Input(facts(enclosed), landscape(), STEP, RANGE, falling, rays, 32);
 	}
 
 	@Test

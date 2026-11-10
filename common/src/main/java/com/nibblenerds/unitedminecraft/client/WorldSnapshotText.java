@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -48,10 +47,6 @@ final class WorldSnapshotText {
 	record Falling(boolean lava, int dx, int dz, int minRelY, int maxRelY, int cells) {
 	}
 
-	/** One kind of creature nearby, with where the closest one is. */
-	record Nearby(String name, boolean hostile, int count, int dx, int dz) {
-	}
-
 	/** One ray cast from the eyes. {@code distance} is negative if it hit nothing within range. */
 	record Ray(int compass, int elevation, double distance, String material) {
 	}
@@ -61,7 +56,7 @@ final class WorldSnapshotText {
 	}
 
 	record Input(Facts facts, List<Sample> samples, int step, int range, List<Falling> falling,
-			List<Nearby> nearby, List<Ray> rays, int rayRange) {
+			List<Ray> rays, int rayRange) {
 	}
 
 	private static final String[] DIRECTIONS = {
@@ -107,21 +102,17 @@ final class WorldSnapshotText {
 
 	static String render(Input in) {
 		StringBuilder out = new StringBuilder();
-		out.append("You are narrating the scene below for a blind Minecraft player, who cannot see it. Paint it as a vivid, ")
-				.append("cinematic picture, the way a skilled audiobook narrator would set a scene: begin with the overall mood ")
-				.append("and character of the place (use the time of day, weather and light), then sweep outward from what is ")
-				.append("close to you toward the horizon, giving each significant feature its own moment and placing it by ")
+		out.append("You are describing the scene below for a blind Minecraft player, who cannot see it. Set the mood ")
+				.append("from the time of day, weather and light, then move from what is close to the horizon, placing features by ")
 				.append("compass direction. Speak to the player as \"you\", in the present tense.\n\n")
-				.append("The measurements below are for your understanding only. Turn them into imagery and feeling instead of ")
-				.append("repeating them: say \"a sheer ridge of snow-covered grass looms high to the east\", not \"+43 at 18 ")
-				.append("blocks\". Convey distance with phrases like \"just ahead\", \"a short walk away\" or \"far in the ")
-				.append("distance\", and size with words like \"a small pond\" or \"a vast frozen sea\". Use a number only when it ")
-				.append("really helps, such as \"a drop of about ten blocks\", and never list coordinates or heights.\n\n")
-				.append("Stay faithful to the data: describe only what it supports, and do not invent landmarks, creatures or ")
-				.append("events. You may judge what something looks like from its shape and size (a large body of water ")
-				.append("is a lake or sea, a long flat stretch of ice is a frozen shore), but do not add details it does not ")
-				.append("suggest. Do not greet the player, address them as a friend, or comment on yourself. Write two or ")
-				.append("three flowing paragraphs, with no headings or bullet points.\n\n");
+				.append("The measurements are for your understanding only; turn them into imagery rather than repeating them. ")
+				.append("Convey distance with phrases like \"just ahead\" or \"far in the distance\", and size with words like ")
+				.append("\"a small pond\" or \"a vast sea\". Use a number only when it really helps, such as \"a drop of about ten ")
+				.append("blocks\", and never list coordinates or heights.\n\n")
+				.append("Describe only what the data supports; do not invent landmarks or events. Do not greet the player or ")
+				.append("comment on yourself. Write two paragraphs of about four sentences each: the first for your immediate ")
+				.append("surroundings, the second for the wider landscape out to the horizon. Give the significant features a ")
+				.append("little detail, but skip minor ones, and use no headings or bullet points.\n\n");
 		out.append("Notes: bearings are compass directions (north is -z, east is +x). Heights like +12 or -3 are ")
 				.append("blocks above or below the player's feet. Distances are in blocks.\n\n");
 
@@ -134,7 +125,6 @@ final class WorldSnapshotText {
 		}
 		appendFalling(out, in);
 		appendSurroundings(out, in);
-		appendNearby(out, in);
 		return out.toString();
 	}
 
@@ -523,17 +513,5 @@ final class WorldSnapshotText {
 			text += " (mostly open)";
 		}
 		return text;
-	}
-
-	private static void appendNearby(StringBuilder out, Input in) {
-		if (in.nearby().isEmpty()) {
-			return;
-		}
-		out.append("== Creatures nearby ==\n");
-		for (Nearby n : in.nearby()) {
-			out.append("- ").append(n.count() > 1 ? n.count() + " " : "").append(n.name().toLowerCase(Locale.ROOT))
-					.append(n.hostile() ? " (hostile)" : "").append(", closest ").append(where(n.dx(), n.dz())).append('\n');
-		}
-		out.append('\n');
 	}
 }
