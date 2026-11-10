@@ -11,6 +11,7 @@ import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.CycleButton;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
@@ -132,6 +133,19 @@ abstract class SettingsListScreen extends Screen {
 			String labelKey, Consumer<Double> onChange) {
 		registerRow(addRenderableWidget(new RangeSlider(x, y, ROW_WIDTH, ROW_HEIGHT, min, max, step, initial,
 				Component.translatable(labelKey), onChange)), y);
+		return y + ROW_HEIGHT + ROW_SPACING;
+	}
+
+	/**
+	 * A row you type into. Its label is the box's own narrated name, so Tab announces which field
+	 * it is landing on, then the text in it.
+	 */
+	protected int addTextField(int x, int y, String labelKey, String initial, int maxLength, Consumer<String> onChange) {
+		EditBox box = new EditBox(this.font, x, y, ROW_WIDTH, ROW_HEIGHT, Component.translatable(labelKey));
+		box.setMaxLength(maxLength);
+		box.setValue(initial);
+		box.setResponder(onChange);
+		registerRow(addRenderableWidget(box), y);
 		return y + ROW_HEIGHT + ROW_SPACING;
 	}
 

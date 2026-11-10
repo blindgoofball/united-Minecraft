@@ -135,6 +135,9 @@ public final class ClientKeyBindings {
 	 */
 	public static final KeybindAction COPY_WORLD_SNAPSHOT =
 			new KeybindAction("copy_world_snapshot", KeybindCategory.GENERAL, Keybind.UNBOUND);
+	/** Unassigned by default - experimental. Has the chosen AI service describe the surroundings - see {@link WorldDescriber}. */
+	public static final KeybindAction DESCRIBE_WORLD =
+			new KeybindAction("describe_world", KeybindCategory.GENERAL, Keybind.UNBOUND);
 	public static final KeybindAction TRAIL_MARK_START = new KeybindAction(
 			"trail_mark_start", KeybindCategory.MOVEMENT_AND_MODES, new Keybind(InputConstants.KEY_X, InputConstants.MOD_ALT));
 

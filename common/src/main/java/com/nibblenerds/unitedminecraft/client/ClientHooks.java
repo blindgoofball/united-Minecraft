@@ -31,6 +31,7 @@ public final class ClientHooks {
 	/** One-time setup. The loader module installs a {@code Platform} before calling this. */
 	public static void init() {
 		UnitedMinecraftConfig.load();
+		AiConfig.load();
 		PrismController.init();
 		ClientKeyBindings.register();
 		KeybindConfig.load();

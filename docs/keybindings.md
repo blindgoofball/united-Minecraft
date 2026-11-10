@@ -22,6 +22,7 @@ key or modifier combination in United Minecraft's own Keybindings screen
 | F6 | Open United Minecraft Settings |
 | F7 | Swap Attack/Destroy and Place/Use between the mouse buttons and your other keys |
 | Unassigned | Experimental: copy a text snapshot of the surrounding world (terrain out to the loaded distance, water and lava falls, walls and ceiling) to the clipboard, to paste into a language model; bind it in the Keybindings screen |
+| Unassigned | Experimental: have an AI service describe your surroundings aloud (set one up under Settings > AI Description first); bind it in the Keybindings screen |
 
 ## Scanner
 

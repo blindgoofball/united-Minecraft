@@ -31,6 +31,9 @@ public final class SettingsScreen extends SettingsListScreen {
 		y = addButton(x, y, "united_minecraft.settings_screen.category.general",
 				() -> Minecraft.getInstance().gui.setScreen(new GeneralSettingsScreen()));
 
+		y = addButton(x, y, "united_minecraft.settings_screen.category.ai",
+				() -> Minecraft.getInstance().gui.setScreen(new AiSettingsScreen()));
+
 		y = addButton(x, y, "united_minecraft.settings_screen.sound_glossary",
 				() -> Minecraft.getInstance().gui.setScreen(new SoundGlossaryScreen()));
 		y = addButton(x, y, "united_minecraft.settings_screen.keybindings",

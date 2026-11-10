@@ -147,6 +147,7 @@ public final class AccessibilityTickHandler {
 			ArrowHitController.reset();
 			EyeOfEnderController.reset();
 			AngleAssistController.reset();
+			WorldDescriber.reset();
 			FishingCatchController.reset();
 			FallWarningController.reset();
 			TreeChoppingAssist.reset();
@@ -449,6 +450,9 @@ public final class AccessibilityTickHandler {
 
 		if (ClientKeyBindings.pressed(ClientKeyBindings.COPY_WORLD_SNAPSHOT)) {
 			WorldSnapshotBuilder.copyToClipboard(client, player);
+		}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.DESCRIBE_WORLD)) {
+			WorldDescriber.describe(client, player);
 		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.ANGLE_ASSIST_CYCLE)) {
 			AngleAssistController.cycle(client);
