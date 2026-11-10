@@ -9,7 +9,10 @@ import java.util.concurrent.CompletionException;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +33,11 @@ final class WorldDescriber {
 	private static final Logger LOGGER = LoggerFactory.getLogger("united_minecraft/ai");
 	private static final HttpClient HTTP = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
 
+	/** Ticks between the clicks that say a description is still being worked on: two seconds. */
+	static final int CLICK_INTERVAL_TICKS = 40;
+
 	private static boolean inFlight;
+	private static int ticksWaiting;
 	/** Bumped on {@link #reset} so an answer that arrives after leaving the world is dropped, not spoken. */
 	private static int generation;
 
@@ -39,6 +46,7 @@ final class WorldDescriber {
 
 	static void reset() {
 		inFlight = false;
+		ticksWaiting = 0;
 		generation++;
 	}
 
@@ -55,6 +63,7 @@ final class WorldDescriber {
 		}
 		String prompt = WorldSnapshotText.render(WorldSnapshotBuilder.capture(client, player));
 		inFlight = true;
+		ticksWaiting = 0;
 		int mine = generation;
 		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.ai_working"));
 
@@ -68,6 +77,21 @@ final class WorldDescriber {
 					inFlight = false;
 					client.getNarrator().saySystemNow(result);
 				}));
+	}
+
+	/** Every client tick: a quiet click each {@link #CLICK_INTERVAL_TICKS} while a request is out, so silence isn't mistaken for a hang. */
+	static void tick(Minecraft client, LocalPlayer player) {
+		if (!inFlight) {
+			return;
+		}
+		if (shouldClick(++ticksWaiting)) {
+			client.getSoundManager().play(new SimpleSoundInstance(SoundEvents.NOTE_BLOCK_HAT.value(), SoundSource.MASTER,
+					CueVolume.scale(0.4f), 1.0f, player.getRandom(), player.getX(), player.getY(), player.getZ()));
+		}
+	}
+
+	static boolean shouldClick(int ticksWaiting) {
+		return ticksWaiting > 0 && ticksWaiting % CLICK_INTERVAL_TICKS == 0;
 	}
 
 	/** The line to speak for a finished response - the description, or why there isn't one. */

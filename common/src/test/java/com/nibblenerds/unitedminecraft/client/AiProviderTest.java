@@ -46,6 +46,14 @@ class AiProviderTest {
 	}
 
 	@Test
+	void theWaitingClickComesEveryTwoSeconds() {
+		assertTrue(!WorldDescriber.shouldClick(0));
+		assertTrue(!WorldDescriber.shouldClick(39));
+		assertTrue(WorldDescriber.shouldClick(40));
+		assertTrue(WorldDescriber.shouldClick(80));
+	}
+
+	@Test
 	void anthropicSendsItsKeyAndVersionHeaders() throws Exception {
 		var provider = new AiProvider.Anthropic("secret", "claude-test");
 		var request = provider.request("hello");

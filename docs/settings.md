@@ -39,7 +39,7 @@ recognize it.
 
 The Describe Surroundings with AI key (unassigned by default) reads the land around you, sends that
 description to the service chosen here, and speaks the answer. Pressing it again while a request is
-out says it is still describing. What is sent is only a text summary of the terrain, water, walls and
+out says it is still describing, and a soft click every two seconds shows it is still working. What is sent is only a text summary of the terrain, water, walls and
 ceiling, with positions relative to you: no player names, world name, server address or coordinates.
 Gemini, Anthropic and OpenAI-compatible services are cloud services that use your own account and key; Ollama
 runs locally and sends nothing off your machine. The key is stored in plain text in
