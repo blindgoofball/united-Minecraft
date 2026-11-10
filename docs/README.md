@@ -14,8 +14,8 @@ you want to do.
 
 - [Narration](narration.md) - on-demand readouts, automatic narration, books, signs, chat, the F3 overlay
 - [The Scanner](scanner.md) - categories, targeting and lock-on, Terrain, Biomes and Structures, Search, Map Markers
-- [Navigation and exploration](navigation.md) - Auto-Walk, Water Exit and elytra landing, Cave Trail, Eye of Ender, Structure Voices
-- [Audio awareness and warnings](awareness.md) - Fall Warning, durability, Navigation Radar, Wall Tones, Mining Radar
+- [Navigation and exploration](navigation.md) - Auto-Walk, Water Exit and elytra landing, boats, Eye of Ender, Structure Voices
+- [Audio awareness and warnings](awareness.md) - Fall Warning, Powder Snow Warning, durability, Navigation Radar, Wall Tones, Mining Radar
 
 ## Doing things
 

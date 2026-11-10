@@ -1,6 +1,7 @@
 package com.nibblenerds.unitedminecraft.client.mixin;
 
-import com.nibblenerds.unitedminecraft.client.ChatMessageSound;
+import com.nibblenerds.unitedminecraft.client.audio.ChatMessageSound;
+import com.nibblenerds.unitedminecraft.client.audio.ChatMessageSound;
 
 import net.minecraft.client.multiplayer.chat.ChatListener;
 import net.minecraft.network.chat.ChatType;

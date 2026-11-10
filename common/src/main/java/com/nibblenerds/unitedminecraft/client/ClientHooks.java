@@ -1,14 +1,29 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.menu.AdvancementsController;
+import com.nibblenerds.unitedminecraft.client.menu.CreativeInventoryController;
+import com.nibblenerds.unitedminecraft.client.menu.MenuAccessibilityController;
+import com.nibblenerds.unitedminecraft.client.scanner.MapMarkerController;
+import com.nibblenerds.unitedminecraft.client.scanner.MarkerShareController;
+import com.nibblenerds.unitedminecraft.client.scanner.NamedBlockController;
+import com.nibblenerds.unitedminecraft.client.scanner.SavedSearchController;
+import com.nibblenerds.unitedminecraft.client.scanner.ScannerFilterController;
+import com.nibblenerds.unitedminecraft.client.settings.RecommendedKeysPrompt;
+import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
+import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
+import com.nibblenerds.unitedminecraft.client.keybind.KeybindConfig;
 import com.nibblenerds.unitedminecraft.client.speech.PrismController;
+import com.nibblenerds.unitedminecraft.share.SharePayloads;
 import com.nibblenerds.unitedminecraft.structure.StructuresNearbyPayload;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.NarratorStatus;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.advancements.AdvancementsScreen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.input.KeyEvent;
+import net.minecraft.network.protocol.game.CommonPlayerSpawnInfo;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
@@ -72,6 +87,9 @@ public final class ClientHooks {
 		if (screen instanceof CreativeModeInventoryScreen creative) {
 			CreativeInventoryController.onScreenInit(creative);
 		}
+		if (screen instanceof AdvancementsScreen advancements) {
+			AdvancementsController.onScreenInit(advancements);
+		}
 	}
 
 	private static boolean narratorCheckDone;
@@ -109,6 +127,9 @@ public final class ClientHooks {
 		if (screen instanceof AbstractContainerScreen<?> container) {
 			MenuAccessibilityController.onScreenRemoved(container);
 		}
+		if (screen instanceof AdvancementsScreen) {
+			AdvancementsController.onScreenRemoved();
+		}
 	}
 
 	/**
@@ -133,6 +154,10 @@ public final class ClientHooks {
 				&& !CreativeInventoryController.handleKey(creative, event)) {
 			return false;
 		}
+		if (screen instanceof AdvancementsScreen advancements
+				&& !AdvancementsController.handleKey(advancements, event)) {
+			return false;
+		}
 		return true;
 	}
 
@@ -150,6 +175,35 @@ public final class ClientHooks {
 	 */
 	public static void onStructuresNearby(StructuresNearbyPayload payload) {
 		StructureVoiceController.onStructuresNearby(payload);
+	}
+
+	/** The server listed the other players who can be shared with - see {@link MarkerShareController}. */
+	public static void onShareTargets(SharePayloads.Targets payload) {
+		MarkerShareController.onTargets(payload);
+	}
+
+	/** Another player shared a marker with this one - see {@link MarkerShareController}. */
+	public static void onShareOffer(SharePayloads.Offer payload) {
+		MarkerShareController.onOffer(payload);
+	}
+
+	/**
+	 * The server told the client which world it is in, by login or respawn packet. Called from a
+	 * mixin rather than a loader bridge, since both packets are vanilla's own.
+	 */
+	public static void onWorldSpawnInfo(CommonPlayerSpawnInfo info) {
+		ServerWorldSeed.onSpawnInfo(info);
+	}
+
+	/**
+	 * A singleplayer save folder was deleted. Called from a mixin on vanilla's own deletion, which
+	 * both the world list and the hardcore-death prompt go through.
+	 */
+	public static void onSingleplayerWorldDeleted(String levelId) {
+		MapMarkerController.onWorldDeleted(levelId);
+		NamedBlockController.onWorldDeleted(levelId);
+		ScannerFilterController.onWorldDeleted(levelId);
+		SavedSearchController.onWorldDeleted(levelId);
 	}
 
 	/** The client is shutting down. */

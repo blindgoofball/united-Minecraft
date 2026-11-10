@@ -12,6 +12,11 @@ These are the `dynamic/release` builds from Prism's prebuilt SDK release for eac
 platform - not `static` (`.a`/`.lib` files are for linking into a C/C++ binary at
 compile time, not for runtime loading) and not `debug`.
 
+The bundled version is 0.18.3. The 0.18.1 Linux builds linked `libspiel` and
+`libspeechd` as hard dependencies, so on a system without them the whole library failed
+to load and no Linux backend (Orca, Speech Dispatcher or Spiel) was usable; 0.18.3 loads
+them on demand instead.
+
 To add another platform/architecture, drop its native library in a matching
 directory and add a case to `PrismController.NativeLibrary#detect()` - everything
 else (method handles, speak/stop/shutdown) is already portable, since Prism's C

@@ -1,0 +1,271 @@
+package com.nibblenerds.unitedminecraft.client.settings;
+
+import com.nibblenerds.unitedminecraft.client.combat.BowBeaconController;
+import com.nibblenerds.unitedminecraft.client.combat.CombatBeacon;
+import com.nibblenerds.unitedminecraft.client.combat.CombatModeController;
+import com.nibblenerds.unitedminecraft.client.travel.BoatAwarenessController;
+import com.nibblenerds.unitedminecraft.client.travel.BoatController;
+import com.nibblenerds.unitedminecraft.client.travel.ElytraAwarenessController;
+import com.nibblenerds.unitedminecraft.client.travel.ElytraLandingController;
+import com.nibblenerds.unitedminecraft.client.autowalk.AutoWalkDoors;
+import com.nibblenerds.unitedminecraft.client.autowalk.ClientPathfinding;
+import com.nibblenerds.unitedminecraft.client.scanner.MapMarkerController;
+import com.nibblenerds.unitedminecraft.client.scanner.MarkerShareController;
+import com.nibblenerds.unitedminecraft.client.audio.ChatMessageSound;
+import com.nibblenerds.unitedminecraft.client.audio.CueVolume;
+import com.nibblenerds.unitedminecraft.client.audio.WallToneSynth;
+import com.nibblenerds.unitedminecraft.client.AccessibilityTickHandler;
+import com.nibblenerds.unitedminecraft.client.AttackUseKeySwap;
+import com.nibblenerds.unitedminecraft.client.autowalk.AutoWalkDoors;
+import com.nibblenerds.unitedminecraft.client.travel.BoatAwarenessController;
+import com.nibblenerds.unitedminecraft.client.travel.BoatController;
+import com.nibblenerds.unitedminecraft.client.combat.BowBeaconController;
+import com.nibblenerds.unitedminecraft.client.audio.ChatMessageSound;
+import com.nibblenerds.unitedminecraft.client.ClientHooks;
+import com.nibblenerds.unitedminecraft.client.autowalk.ClientPathfinding;
+import com.nibblenerds.unitedminecraft.client.combat.CombatBeacon;
+import com.nibblenerds.unitedminecraft.client.combat.CombatModeController;
+import com.nibblenerds.unitedminecraft.client.audio.CueVolume;
+import com.nibblenerds.unitedminecraft.client.travel.ElytraAwarenessController;
+import com.nibblenerds.unitedminecraft.client.travel.ElytraLandingController;
+import com.nibblenerds.unitedminecraft.client.ExplorationRange;
+import com.nibblenerds.unitedminecraft.client.MapBeaconController;
+import com.nibblenerds.unitedminecraft.client.scanner.MapMarkerController;
+import com.nibblenerds.unitedminecraft.client.scanner.MarkerShareController;
+import com.nibblenerds.unitedminecraft.client.PowderSnowWarningController;
+import com.nibblenerds.unitedminecraft.client.SafeFiles;
+import com.nibblenerds.unitedminecraft.client.TitleNarrationController;
+import com.nibblenerds.unitedminecraft.client.audio.WallToneSynth;
+import java.io.IOException;
+import java.io.Reader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonParseException;
+
+import com.nibblenerds.unitedminecraft.platform.Platform;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * United Minecraft's user-configurable settings, persisted as a single JSON file shared
+ * across every world/server (unlike {@link MapMarkerController}'s per-world markers) -
+ * these are player preferences, not something that varies by where you're playing.
+ *
+ * <p>Plain public fields rather than getters/setters - {@link SettingsScreen} mutates
+ * {@link #get()} directly and every controller reads straight from it, matching how
+ * {@link MapMarkerController}'s own {@code MapMarker} record is used elsewhere in this
+ * codebase.
+ */
+public final class UnitedMinecraftConfig {
+	private static final Logger LOGGER = LoggerFactory.getLogger("united_minecraft/config");
+	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+
+	private static UnitedMinecraftConfig instance = new UnitedMinecraftConfig();
+
+	public boolean hostileRadarEnabled = true;
+	public double hostileRadarRange = 16.0;
+	public boolean meleeRangeAlertEnabled = true;
+	public boolean movementAssistEnabled = true;
+	public boolean fallWarningEnabled = true;
+	/** Warn before walking into powder snow - see {@link PowderSnowWarningController}. */
+	public boolean powderSnowWarningEnabled = true;
+	public double fallWarningThreshold = 3.0;
+	public double fallWarningLookaheadSeconds = 1.0;
+	public int miningRadarRange = 8;
+	public int navRadarRange = 8;
+	public double scannerRange = 32.0;
+	public boolean buildModeActionNarrationEnabled = true;
+	public CombatCueMode combatCueMode = CombatCueMode.COMBAT_MODE_ONLY;
+	public CombatStyle combatStyle = CombatStyle.LOCK_ON;
+	/** Beacon guidance while drawing a bow - see {@link BowBeaconController}. Off by default. */
+	public boolean bowBeaconEnabled = false;
+	public boolean durabilityAwarenessEnabled = true;
+	public int durabilityWarningThreshold = 25;
+	public int durabilityCriticalThreshold = 10;
+	public boolean toolHarvestWarningEnabled = true;
+	public boolean scannerSkipEmptyCategories = false;
+	public boolean scannerAutoLockAfterWalk = false;
+	public boolean autoWalkAutoSprint = false;
+	/** Auto-Walk may swim across water, but only along a route that reaches the target - see {@link ClientPathfinding}. */
+	/** Auto-Walk routes through closed doors, opening them and closing them behind the player - see {@link AutoWalkDoors}. */
+	public boolean autoWalkOpenDoors = true;
+	public boolean autoWalkSwim = true;
+	public boolean navRadarEnabled = false;
+	public boolean miningRadarEnabled = true;
+	public boolean autoCrosshairNarrationEnabled = false;
+	/** Auto crosshair narration also speaks when the crosshair moves to another block of the same type. */
+	public boolean autoCrosshairRepeatSameBlock = false;
+	public boolean preciseCoordinatesEnabled = false;
+	public boolean mountJumpCueEnabled = true;
+	public boolean modeToggleSoundsEnabled = true;
+	/** Play a short cue when another player's chat message arrives - see {@link ChatMessageSound}. */
+	public boolean chatSoundEnabled = true;
+	/** Drop markers other players share with this one, silently - see {@link MarkerShareController}. */
+	public boolean ignoreMarkerShares = false;
+	/** Percent; scales every short audio cue - see {@link CueVolume}. */
+	public int cueVolume = 100;
+	/** How fast the arrow keys turn the camera, as a percentage of the original speed - see {@code AccessibilityTickHandler#handleCameraLook}. */
+	public int turnSpeedPercent = 100;
+	/** Narrate on-screen title and subtitle text - see {@link TitleNarrationController}. */
+	public boolean titleNarrationEnabled = true;
+	/** Read an item's tooltip (enchantments, effects and so on, not just name and durability) when switching to it in the hotbar. */
+	public boolean hotbarTooltipsEnabled = true;
+	/** Spoken and audio alerts while gliding on an elytra - see {@link ElytraAwarenessController}. */
+	public boolean elytraAwarenessEnabled = true;
+	/** After an elytra flight to a Scanner target lands short of it, walk the rest of the way - see {@link ElytraLandingController}. */
+	public boolean elytraAutoWalkAfterLanding = false;
+	/** Keep the camera on a boat's heading and let the turn keys steer it - see {@link BoatController}. */
+	public boolean boatAssistEnabled = true;
+	/** Spoken and audio alerts for shore and obstacles ahead of a boat - see {@link BoatAwarenessController}. */
+	public boolean boatAwarenessEnabled = true;
+	public boolean eyeOfEnderCuesEnabled = true;
+	/** Set once the first-launch narrator auto-enable has run - see {@link ClientHooks#enableNarratorOnFirstLaunch}. */
+	public boolean narratorAutoEnableDone = false;
+	/** Set once the first-launch offer to rebind attack/use to comma/period has been shown - see {@link RecommendedKeysPrompt}. */
+	public boolean recommendedKeysAsked = false;
+	/** The Attack/Place keys last left behind by the mouse swap, as key names - null until the first swap; see {@link AttackUseKeySwap}. */
+	public String otherAttackKey = null;
+	public String otherUseKey = null;
+	public boolean mapBeaconEnabled = true;
+	/** A chime toward where a held compass points - see {@link MapBeaconController}. */
+	public boolean compassBeaconEnabled = true;
+	public boolean wallTonesEnabled = false;
+	public int wallToneRange = 8;
+	public int wallToneVolume = 60;
+	public boolean wallToneObstaclesEnabled = true;
+	public boolean wallToneCeilingEnabled = false;
+	public WallToneStyle wallToneStyle = WallToneStyle.TONES;
+	/** How far the Scanner's Biomes and Structures category looks - see {@link ExplorationRange}. */
+	public double exploreScannerRange = ExplorationRange.DEFAULT_SCANNER;
+	public boolean structureVoicesEnabled = true;
+	/** How far out structure voices announce - see {@link ExplorationRange}. */
+	public double structureVoiceRange = ExplorationRange.DEFAULT_VOICES;
+	public int structureVoiceVolume = 80;
+	/** Also narrate "Village, 20 blocks, northeast" through the screen reader when a voice plays. */
+	public boolean structureVoiceNarrate = false;
+	/** Structure ids never announced, e.g. {@code "minecraft:mineshaft"} - only editable in the file for now. */
+	public List<String> structureVoiceMuted = new ArrayList<>();
+
+	/**
+	 * How Combat Mode points the player at the nearest hostile: {@code LOCK_ON} takes over the
+	 * camera and aims for them, {@code BEACON} leaves the camera alone and plays a sound they turn
+	 * toward instead - see {@link CombatBeacon}.
+	 */
+	public enum CombatStyle {
+		LOCK_ON, BEACON
+	}
+
+	/** Governs the audio cue for the weapon attack-strength meter refilling - see {@link CombatModeController#tickAttackCue}. */
+	public enum CombatCueMode {
+		OFF, COMBAT_MODE_ONLY, ALWAYS
+	}
+
+	/** What the wall tones sound like - see {@link WallToneSynth}. */
+	public enum WallToneStyle {
+		TONES, NOISE
+	}
+
+	private UnitedMinecraftConfig() {
+	}
+
+	/**
+	 * Forces every field back into the range {@link SettingsScreen}'s own control for it can
+	 * produce. Only the two durability thresholds were checked before, so a hand-edited or
+	 * partially-corrupt file could set a scannerRange of 10000 (a scan of billions of block
+	 * positions, freezing the client outright), a negative fall-warning threshold, or a
+	 * combatCueMode Gson couldn't parse - which it leaves null, silently disabling the attack cue
+	 * with nothing said about why.
+	 *
+	 * <p>Anything actually out of range is logged rather than corrected silently: it means the
+	 * file on disk disagreed with what the game will now do, which is worth being able to find
+	 * out about from the log.
+	 */
+	private void sanitize() {
+		hostileRadarRange = clamp("hostileRadarRange", hostileRadarRange, 4.0, 32.0);
+		fallWarningThreshold = clamp("fallWarningThreshold", fallWarningThreshold, 1.0, 10.0);
+		fallWarningLookaheadSeconds = clamp("fallWarningLookaheadSeconds", fallWarningLookaheadSeconds, 0.5, 3.0);
+		miningRadarRange = (int) clamp("miningRadarRange", miningRadarRange, 4, 16);
+		navRadarRange = (int) clamp("navRadarRange", navRadarRange, 4, 16);
+		scannerRange = clamp("scannerRange", scannerRange, 8.0, 64.0);
+		exploreScannerRange = clamp("exploreScannerRange", exploreScannerRange, ExplorationRange.MIN, ExplorationRange.MAX);
+		structureVoiceRange = clamp("structureVoiceRange", structureVoiceRange, ExplorationRange.MIN, ExplorationRange.MAX);
+		wallToneRange = (int) clamp("wallToneRange", wallToneRange, 2, 16);
+		wallToneVolume = (int) clamp("wallToneVolume", wallToneVolume, 5, 100);
+		structureVoiceVolume = (int) clamp("structureVoiceVolume", structureVoiceVolume, 5, 100);
+		cueVolume = (int) clamp("cueVolume", cueVolume, 5, 100);
+		turnSpeedPercent = (int) clamp("turnSpeedPercent", turnSpeedPercent, 50, 300);
+		if (structureVoiceMuted == null) {
+			structureVoiceMuted = new ArrayList<>();
+		}
+		durabilityWarningThreshold = (int) clamp("durabilityWarningThreshold", durabilityWarningThreshold, 1, 50);
+		// Deliberately capped by the warning threshold rather than a fixed 50: "critical" above
+		// "getting low" would mean the critical warning always fired first and the other never.
+		durabilityCriticalThreshold =
+				(int) clamp("durabilityCriticalThreshold", durabilityCriticalThreshold, 1, durabilityWarningThreshold);
+		if (wallToneStyle == null) {
+			LOGGER.warn("Setting wallToneStyle was missing or not a recognised value, using {}", WallToneStyle.TONES);
+			wallToneStyle = WallToneStyle.TONES;
+		}
+		if (combatCueMode == null) {
+			LOGGER.warn("Setting combatCueMode was missing or not a recognised value, using {}", CombatCueMode.COMBAT_MODE_ONLY);
+			combatCueMode = CombatCueMode.COMBAT_MODE_ONLY;
+		}
+		if (combatStyle == null) {
+			LOGGER.warn("Setting combatStyle was missing or not a recognised value, using {}", CombatStyle.LOCK_ON);
+			combatStyle = CombatStyle.LOCK_ON;
+		}
+	}
+
+	private static double clamp(String name, double value, double min, double max) {
+		if (Double.isNaN(value) || value < min || value > max) {
+			double clamped = Double.isNaN(value) ? min : Math.max(min, Math.min(max, value));
+			LOGGER.warn("Setting {} was {}, outside its range {} to {} - using {}", name, value, min, max, clamped);
+			return clamped;
+		}
+		return value;
+	}
+
+	public static UnitedMinecraftConfig get() {
+		return instance;
+	}
+
+	private static Path file() {
+		return Platform.get().configDir().resolve("united_minecraft.json");
+	}
+
+	public static void load() {
+		Path file = file();
+		if (!Files.exists(file)) {
+			return;
+		}
+		try (Reader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
+			UnitedMinecraftConfig loaded = GSON.fromJson(reader, UnitedMinecraftConfig.class);
+			if (loaded != null) {
+				loaded.sanitize();
+				instance = loaded;
+			}
+		} catch (IOException | JsonParseException e) {
+			LOGGER.warn("Failed to load settings from {}", file, e);
+			SafeFiles.preserveUnreadable(file, LOGGER);
+		}
+	}
+
+	public static void save() {
+		instance.sanitize();
+		Path file = file();
+		try {
+			SafeFiles.writeAtomically(file, writer -> GSON.toJson(instance, writer));
+		} catch (IOException e) {
+			// Best-effort - losing the ability to persist shouldn't crash the game, and there's
+			// nowhere better than the log to report a disk-write failure to.
+			LOGGER.warn("Failed to save settings to {}", file, e);
+		}
+	}
+}

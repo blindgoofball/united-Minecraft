@@ -7,6 +7,8 @@ import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.util.concurrent.CompletionException;
 
+import com.nibblenerds.unitedminecraft.client.audio.CueVolume;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;

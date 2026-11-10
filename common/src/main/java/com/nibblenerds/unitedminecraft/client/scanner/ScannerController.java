@@ -1,0 +1,3027 @@
+package com.nibblenerds.unitedminecraft.client.scanner;
+
+import com.nibblenerds.unitedminecraft.client.combat.BowBeaconController;
+import com.nibblenerds.unitedminecraft.client.combat.CombatModeController;
+import com.nibblenerds.unitedminecraft.client.autowalk.AutoWalkController;
+import com.nibblenerds.unitedminecraft.client.AccessibilityTickHandler;
+import com.nibblenerds.unitedminecraft.client.AngleAssistController;
+import com.nibblenerds.unitedminecraft.client.AnimalFeedingController;
+import com.nibblenerds.unitedminecraft.client.autowalk.AutoWalkController;
+import com.nibblenerds.unitedminecraft.client.combat.BowBeaconController;
+import com.nibblenerds.unitedminecraft.client.BuildModeController;
+import com.nibblenerds.unitedminecraft.client.CameraUtil;
+import com.nibblenerds.unitedminecraft.client.combat.CombatModeController;
+import com.nibblenerds.unitedminecraft.client.ExplorationRange;
+import com.nibblenerds.unitedminecraft.client.FastBlockAccess;
+import com.nibblenerds.unitedminecraft.client.ItemDescriptions;
+import com.nibblenerds.unitedminecraft.client.LargeObject;
+import com.nibblenerds.unitedminecraft.client.SecondHalves;
+import com.nibblenerds.unitedminecraft.client.StructureVoiceController;
+import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
+import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.EnumMap;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.PriorityQueue;
+import java.util.Set;
+import java.util.function.BiPredicate;
+import java.util.function.Predicate;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
+import net.minecraft.core.component.DataComponentType;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.locale.Language;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.Leashable;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.OwnableEntity;
+import net.minecraft.world.entity.TamableAnimal;
+import net.minecraft.world.entity.animal.allay.Allay;
+import net.minecraft.util.StringRepresentable;
+import net.minecraft.world.entity.animal.equine.AbstractHorse;
+import net.minecraft.world.entity.animal.equine.Horse;
+import net.minecraft.world.entity.animal.equine.Markings;
+import net.minecraft.world.entity.animal.fish.TropicalFish;
+import net.minecraft.world.entity.animal.panda.Panda;
+import net.minecraft.world.entity.animal.parrot.Parrot;
+import net.minecraft.world.entity.animal.sheep.Sheep;
+import net.minecraft.world.entity.animal.wolf.Wolf;
+import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
+import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
+import net.minecraft.world.entity.boss.wither.WitherBoss;
+import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.entity.decoration.Cushion;
+import net.minecraft.world.entity.decoration.ItemFrame;
+import net.minecraft.world.entity.decoration.LeashFenceKnotEntity;
+import net.minecraft.world.entity.decoration.painting.Painting;
+import net.minecraft.world.entity.decoration.painting.PaintingVariant;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.monster.Enemy;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.vehicle.boat.Boat;
+import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
+import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.SwingAnimation;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.block.AbstractBedBlock;
+import net.minecraft.world.level.block.AbstractChestBlock;
+import net.minecraft.world.level.block.BarrelBlock;
+import net.minecraft.world.level.block.BasePressurePlateBlock;
+import net.minecraft.world.level.block.BellBlock;
+import net.minecraft.world.level.block.DaylightDetectorBlock;
+import net.minecraft.world.level.block.DecoratedPotBlock;
+import net.minecraft.world.level.block.DiodeBlock;
+import net.minecraft.world.level.block.DispenserBlock;
+import net.minecraft.world.level.block.HopperBlock;
+import net.minecraft.world.level.block.NoteBlock;
+import net.minecraft.world.level.block.ShulkerBoxBlock;
+import net.minecraft.world.level.block.AttachedStemBlock;
+import net.minecraft.world.level.block.BambooSaplingBlock;
+import net.minecraft.world.level.block.BambooStalkBlock;
+import net.minecraft.world.level.block.CactusBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.ButtonBlock;
+import net.minecraft.world.level.block.CaveVines;
+import net.minecraft.world.level.block.CaveVinesBlock;
+import net.minecraft.world.level.block.CaveVinesPlantBlock;
+import net.minecraft.world.level.block.ChestBlock;
+import net.minecraft.world.level.block.CommandBlock;
+import net.minecraft.world.level.block.JigsawBlock;
+import net.minecraft.world.level.block.StructureBlock;
+import net.minecraft.world.level.block.TestBlock;
+import net.minecraft.world.level.block.TestInstanceBlock;
+import net.minecraft.world.level.block.CocoaBlock;
+import net.minecraft.world.level.block.ChorusFlowerBlock;
+import net.minecraft.world.level.block.ChorusPlantBlock;
+import net.minecraft.world.level.block.CropBlock;
+import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.EndPortalBlock;
+import net.minecraft.world.level.block.EndPortalFrameBlock;
+import net.minecraft.world.level.block.FenceGateBlock;
+import net.minecraft.world.level.block.JukeboxBlock;
+import net.minecraft.world.level.block.KelpBlock;
+import net.minecraft.world.level.block.KelpPlantBlock;
+import net.minecraft.world.level.block.LadderBlock;
+import net.minecraft.world.level.block.LeverBlock;
+import net.minecraft.world.level.block.NetherPortalBlock;
+import net.minecraft.world.level.block.NetherWartBlock;
+import net.minecraft.world.level.block.SaplingBlock;
+import net.minecraft.world.level.block.ScaffoldingBlock;
+import net.minecraft.world.level.block.SelectableSlotContainer;
+import net.minecraft.world.level.block.SignBlock;
+import net.minecraft.world.level.block.StemBlock;
+import net.minecraft.world.level.block.SugarCaneBlock;
+import net.minecraft.world.level.block.SweetBerryBushBlock;
+import net.minecraft.world.level.block.TrapDoorBlock;
+import net.minecraft.world.level.block.TwistingVinesBlock;
+import net.minecraft.world.level.block.TwistingVinesPlantBlock;
+import net.minecraft.world.level.block.VaultBlock;
+import net.minecraft.world.level.block.VineBlock;
+import net.minecraft.world.level.block.WeepingVinesBlock;
+import net.minecraft.world.level.block.WeepingVinesPlantBlock;
+import net.minecraft.world.level.block.entity.ListBackedContainer;
+import net.minecraft.world.level.block.entity.SignBlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BedPart;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.ChestType;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
+import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.LevelChunkSection;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.Vec3;
+
+/**
+ * The "scanner": Home/End cycle a category, Page Up/Down cycle the nearest items within
+ * it, and Enter targets whichever item is currently selected. Doesn't function while
+ * build mode or {@link CombatModeController} is active (Page Up/Down already belong to
+ * the build cursor there, and Combat Mode owns rotation the same way this scanner's own
+ * lock-on does).
+ *
+ * <p>Enter on a block just aims the player at it. Enter on a mob starts a continuous
+ * lock-on that keeps facing it every tick (via {@link CameraUtil#aimAtEntity}, which also
+ * handles aiming a drawn bow with a real ballistic arc) until Delete (stop lock) is
+ * pressed - which takes over rotation entirely while active, so build mode and normal
+ * camera turning are blocked until it's released. Shift+Enter instead auto-walks there via
+ * {@link AutoWalkController} - fully client-side, no server cooperation needed.
+ *
+ * <p>Backslash announces the focused item's coordinates - useful for actually finding your
+ * way to something (an ore vein, say) once the scanner's found it, since distance/direction
+ * alone can be hard to translate into a real destination. Works while locked on too.
+ *
+ * <p>Killing a locked-on hostile mob automatically re-locks onto whichever hostile mob is
+ * now nearest, so tracking a fight doesn't mean re-scanning after every kill. Only fires for
+ * an actual kill - checked via the mob's last synced health reaching zero, since the client
+ * never actually learns *why* an entity was removed (vanilla's own removal-packet handling
+ * always reports a generic reason, regardless of the real one, which stays server-only) -
+ * while the Hostile Mobs category was the one locked from. The mob simply despawning or
+ * wandering out of range still just drops the lock like normal. For tracking a fight against
+ * more than one attacker, where sticking to a single target until it dies isn't what you
+ * want, see {@link CombatModeController} instead.
+ *
+ * <p>The Markers category ({@link MapMarkerController}) is one exception to almost
+ * everything above: it isn't range-limited like every other category (still distance-sorted,
+ * same as everything else), and Delete removes the focused marker outright rather than
+ * meaning "stop lock" - which otherwise does nothing while nothing's locked. Players is a
+ * second exception to the range limit only (still distance-sorted like a normal category) -
+ * vanilla always syncs every other player in the dimension to the client regardless of
+ * distance, so there's no need to cap it at {@link #scanRange()} like every other entity scan.
+ *
+ * <p>Crops additionally narrates "Ripe" once a crop is actually ready to harvest - silent
+ * otherwise, same as Build Mode's powered-block narration - covering farmland crops, pumpkin
+ * and melon stems (and the pumpkin/melon fruit itself, once one has actually grown), nether
+ * wart, cocoa, sweet berry bushes, saplings (including bamboo's own sapling stage and mangrove
+ * propagules), and cave vine segments actually bearing glow berries (see {@link #isCrop}, chorus plants clustered by {@link #addChorusClusters} and
+ * {@link #isRipe}). Grown bamboo, sugar cane, cactus, and kelp are covered too, each narrating its
+ * height instead of "Ripe" - one Scanner entry per stalk rather than per block, or per
+ * horizontally-connected clump - see {@link #scanCrops}, {@link #addStalkClusters}, and {@link
+ * #stalkHeight}.
+ */
+public final class ScannerController {
+	private static final int LEAF_SEARCH_MARGIN = 2;
+
+	// Biomes are a much coarser, exploration-scale thing than everything else the Scanner
+	// finds - a longer range of its own (ExplorationRange.scanner), independent of the user's
+	// configurable scannerRange, and sampled instead of scanned block-by-block (see scanBiomes).
+	// Matches vanilla's own biome storage granularity (one biome value per 4x4x4 cell) - finer
+	// sampling would just repeat the same answer.
+	private static final int BIOME_SAMPLE_STEP = 4;
+
+	private static final List<CategoryRef> BUILT_IN_CATEGORIES = Arrays.stream(ScannerCategory.values()).map(CategoryRef::of).toList();
+
+	// The order Home/End cycle through: the built-in categories, then the player's saved
+	// searches. Rebuilt only when the saved searches change.
+	private static List<CategoryRef> categories = BUILT_IN_CATEGORIES;
+	private static int categoriesVersion = -1;
+
+	private static int categoryIndex = -1;
+	private static List<ScannerItem> items = List.of();
+	private static int itemIndex;
+
+	private static Entity lockedEntity;
+
+	/** The Search category's current term - blank until the player enters one via {@link #openSearchPrompt}. */
+	private static String searchTerm = "";
+
+	// Every Block whose name or id matches a search term, resolved once per term instead of once
+	// per scanned position - see #searchMatches. Several terms are kept (the free Search term and
+	// the saved searches), since a Home/End press probes a number of them in a row.
+	private static final Map<String, Set<Block>> SEARCH_MATCHES = new HashMap<>();
+	private static final int MAX_CACHED_TERMS = 40;
+
+	/** The flat area size Terrain is looking for, {width, depth}, or null while none has been asked for - see {@link #openFlatAreaPrompt}. */
+	private static int[] flatAreaSize;
+
+	// Flat areas are sought over a fixed 64 blocks whatever the Scanner range is set to - like
+	// biomes, "somewhere to build" is a bigger-picture question than "what's within reach" - and
+	// within this many blocks above and below the player, which keeps the column walk bounded.
+	private static final int FLAT_AREA_RANGE = 64;
+	private static final int FLAT_AREA_VERTICAL_RANGE = 24;
+	// Terrain lists these nearest first alongside lakes and ladders; a wide plain would otherwise
+	// bury them. Past this many, the rest are further away than anything shown.
+	private static final int FLAT_AREA_MAX_RESULTS = 12;
+	private static final int MAX_SURFACES_NARRATED = 4;
+
+	private ScannerController() {
+	}
+
+	private static double scanRange() {
+		return UnitedMinecraftConfig.get().scannerRange;
+	}
+
+	/** Every category in cycling order: the built-in ones, then the saved searches. */
+	static List<CategoryRef> categories() {
+		if (SavedSearchController.version() != categoriesVersion) {
+			categoriesVersion = SavedSearchController.version();
+			List<CategoryRef> all = new ArrayList<>(BUILT_IN_CATEGORIES);
+			for (SavedSearchController.SavedSearch saved : SavedSearchController.all()) {
+				all.add(new CategoryRef(ScannerCategory.SEARCH, saved));
+			}
+			categories = List.copyOf(all);
+		}
+		return categories;
+	}
+
+	/** The category the Scanner is on. Only call with a category selected ({@code categoryIndex != -1}). */
+	private static CategoryRef currentRef() {
+		List<CategoryRef> all = categories();
+		return all.get(Math.clamp(categoryIndex, 0, all.size() - 1));
+	}
+
+	private static ScannerCategory currentKind() {
+		return currentRef().kind();
+	}
+
+	public static boolean isLocked() {
+		return lockedEntity != null;
+	}
+
+	/**
+	 * Locked on and steering the camera - false while a drawn bow's beacon has the camera released
+	 * to the player (see {@link BowBeaconController#pausesLock}), though the lock itself is kept.
+	 */
+	public static boolean ownsRotation() {
+		return isLocked() && !BowBeaconController.pausesLock();
+	}
+
+	/** The locked entity, or null - what the bow beacon aims at first. */
+	public static Entity lockedTarget() {
+		return lockedEntity;
+	}
+
+	public static void reset() {
+		categoryIndex = -1;
+		items = List.of();
+		itemIndex = 0;
+		lockedEntity = null;
+		searchTerm = "";
+		flatAreaSize = null;
+	}
+
+	public static void tick(Minecraft client, LocalPlayer player) {
+		boolean prevCategory = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_PREV_CATEGORY);
+		boolean nextCategory = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_NEXT_CATEGORY);
+		boolean jumpToCategory = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_JUMP_TO_CATEGORY);
+		boolean pageDown = ClientKeyBindings.pressed(ClientKeyBindings.PAGE_DOWN);
+		boolean pageDownSameType = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_PAGE_DOWN_SAME_TYPE);
+		boolean pageUp = ClientKeyBindings.pressed(ClientKeyBindings.PAGE_UP);
+		boolean pageUpSameType = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_PAGE_UP_SAME_TYPE);
+		boolean targetPressed = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_TARGET);
+		boolean targetWalkTherePressed = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_TARGET_WALK_THERE);
+		boolean stopPressed = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_STOP_LOCK);
+		boolean coordinatesPressed = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_COORDINATES);
+
+		if (isLocked()) {
+			if (stopPressed) {
+				// Returning matters: everything below this branch reads lockedEntity, which
+				// stopLock just cleared. Falling through with a same-tick Enter still held would
+				// reach the "is focus still the locked entity" check below with both sides null
+				// (for a block-based focus), route into interactWithLocked, and have it bail on
+				// its own null guard - silently swallowing that keypress instead of targeting.
+				stopLock(client);
+				return;
+			}
+			if (coordinatesPressed) {
+				announceCoordinates(client, lockedEntity.blockPosition());
+			}
+			// Category/item cycling never touches rotation (tickLock owns that every tick
+			// regardless), so it's safe to let the player keep looking for something else to
+			// target next without first releasing the lock.
+			if (prevCategory) {
+				switchCategory(client, player, -1);
+			}
+			if (nextCategory) {
+				switchCategory(client, player, 1);
+			}
+			if (jumpToCategory) {
+				client.gui.setScreen(new CategoryJumpScreen());
+			}
+			if (pageDownSameType) {
+				stepItemSameType(client, player, 1);
+			} else if (pageDown) {
+				stepItem(client, player, 1);
+			}
+			if (pageUpSameType) {
+				stepItemSameType(client, player, -1);
+			} else if (pageUp) {
+				stepItem(client, player, -1);
+			}
+			if (targetPressed || targetWalkTherePressed) {
+				// Cycling above may have moved focus onto something other than what's actually
+				// locked - in that case Enter/Shift+Enter should behave exactly as it would if
+				// nothing were locked: drop the old lock (silently - the new target's own
+				// narration below covers it) and dispatch normally. Only when focus is still the
+				// locked entity itself does a plain Enter mean "interact with what I'm locked on".
+				ScannerItem focused = currentItem();
+				if (focused != null && focused.entity() == lockedEntity) {
+					interactWithLocked(client, player);
+				} else {
+					lockedEntity = null;
+					target(client, player);
+				}
+			}
+			return;
+		}
+		if (BuildModeController.isActive() || CombatModeController.ownsRotation()) {
+			return;
+		}
+
+		if (prevCategory) {
+			switchCategory(client, player, -1);
+		}
+		if (nextCategory) {
+			switchCategory(client, player, 1);
+		}
+		if (jumpToCategory) {
+			client.gui.setScreen(new CategoryJumpScreen());
+		}
+		if (pageDownSameType) {
+			stepItemSameType(client, player, 1);
+		} else if (pageDown) {
+			stepItem(client, player, 1);
+		}
+		if (pageUpSameType) {
+			stepItemSameType(client, player, -1);
+		} else if (pageUp) {
+			stepItem(client, player, -1);
+		}
+		if (targetPressed || targetWalkTherePressed) {
+			target(client, player);
+		}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_REMOVE_MARKER) && categoryIndex >= 0) {
+			if (currentKind() == ScannerCategory.MARKERS) {
+				removeCurrentMarker(client, player);
+			} else if (currentRef().isSavedSearch()) {
+				deleteSavedSearch(client, player, currentRef());
+			}
+		}
+		if (coordinatesPressed) {
+			ScannerItem item = currentItem();
+			if (item == null) {
+				client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.scanner_no_item"));
+			} else {
+				announceCoordinates(client, item.entity() != null ? item.entity().blockPosition() : item.blockPos());
+			}
+		}
+	}
+
+	private static void removeCurrentMarker(Minecraft client, LocalPlayer player) {
+		ScannerItem item = currentItem();
+		if (item == null || item.label() == null) {
+			return;
+		}
+		MapMarkerController.MapMarker marker = MapMarkerController.findAt(player.level().dimension(), item.blockPos());
+		if (marker != null) {
+			MapMarkerController.remove(client, marker);
+		} else if (NamedBlockController.isMarker(player.level().dimension(), item.blockPos())) {
+			NamedBlockController.unmark(client, player.level().dimension(), item.blockPos());
+		} else {
+			return;
+		}
+		items = scanVisible(CategoryRef.of(ScannerCategory.MARKERS), player);
+		itemIndex = items.isEmpty() ? 0 : Math.min(itemIndex, items.size() - 1);
+	}
+
+	/**
+	 * Opens a name prompt for the focused item's block, sharing {@link
+	 * ClientKeyBindings#PLACE_MARKER} via Shift the same way several other keys layer a
+	 * second action - Markers already have their own naming flow (plain U places one) so
+	 * this is for every other block-based category, most usefully doors and chests. Once
+	 * named, that name replaces the block's ordinary derived name everywhere the Scanner
+	 * narrates it (cycling with Page Up/Down, targeting, etc.), the same way a Map Marker's
+	 * name does - see {@link #itemName}. Entities have no fixed position to key a saved name
+	 * off of, so this narrates a no-op message while one is focused instead of doing nothing
+	 * silently. The Search category has no "focused item" to name yet the first time it's
+	 * opened - Shift+U there means "enter a search term" instead, via {@link
+	 * #openSearchPrompt}. Terrain gives it up the same way, to "enter a flat area size" via
+	 * {@link #openFlatAreaPrompt}: naming a lake or a ladder was never reliable (the same body
+	 * is found from a different block each scan), so nothing was lost.
+	 */
+	public static void nameFocusedItem(Minecraft client, LocalPlayer player) {
+		if (categoryIndex != -1 && currentRef().isSavedSearch()) {
+			client.gui.setScreen(new SavedSearchEditScreen(currentRef().saved()));
+			return;
+		}
+		if (categoryIndex != -1 && currentKind() == ScannerCategory.SEARCH) {
+			openSearchPrompt(client, player);
+			return;
+		}
+		if (categoryIndex != -1 && currentKind() == ScannerCategory.TERRAIN) {
+			openFlatAreaPrompt(client, player);
+			return;
+		}
+		if (categoryIndex == -1) {
+			return;
+		}
+		if (currentKind() == ScannerCategory.MARKERS) {
+			// A plain marker is renamed by placing a new one, but a marked block is just a
+			// named block, so its name and Markers flag are edited the same way as anywhere else.
+			ScannerItem focused = currentItem();
+			if (focused == null || !NamedBlockController.isMarker(player.level().dimension(), focused.blockPos())) {
+				return;
+			}
+		}
+		if (currentKind() == ScannerCategory.BIOMES_AND_STRUCTURES) {
+			// A biome entry's position is an arbitrary surface sample point on a 4-block grid,
+			// and a structure's is just its nearest point to wherever the player scanned from,
+			// not a block the player pointed at - a name keyed to it would never be read back
+			// (see itemName's own exclusion). Said out loud rather than silently ignored, so
+			// it's clear the key did something and this category simply can't carry a name.
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.named_block_unsupported"));
+			return;
+		}
+		ScannerItem item = currentItem();
+		if (item == null || item.entity() != null) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.scanner_no_item"));
+			return;
+		}
+		ResourceKey<Level> dimension = player.level().dimension();
+		BlockPos pos = item.blockPos();
+		String currentName = NamedBlockController.findAt(dimension, pos);
+		NamedBlockController.openNameScreen(client, dimension, pos, currentName,
+				() -> rescanAndRefocus(player, refreshed -> pos.equals(refreshed.blockPos())));
+	}
+
+	/**
+	 * Opens a prompt for the Search category's term - typing something like "glowstone" then
+	 * re-scans for every visible block whose name contains it, the same "don't x-ray"
+	 * visibility rule Ores and Liquids use (see {@link #scanSearch}). Pre-filled with whatever
+	 * term is already set, so adjusting a search doesn't mean retyping it from scratch.
+	 */
+	private static void openSearchPrompt(Minecraft client, LocalPlayer player) {
+		client.gui.setScreen(new MarkerNameScreen(
+				Component.translatable("united_minecraft.search_screen.title"),
+				Component.translatable("united_minecraft.narrate.search_prompt"),
+				Component.translatable("united_minecraft.narrate.search_cancelled"),
+				Component.translatable("united_minecraft.search_screen.term"),
+				searchTerm,
+				Component.translatable("united_minecraft.search_screen.save_as_category"),
+				false,
+				(term, save) -> {
+					searchTerm = term == null ? "" : term.trim();
+					items = scanVisible(CategoryRef.of(ScannerCategory.SEARCH), player);
+					itemIndex = 0;
+					Component summary = items.isEmpty()
+							? Component.translatable("united_minecraft.narrate.scanner_empty")
+							: Component.translatable("united_minecraft.narrate.scanner_count", items.size())
+									.append(Component.literal(". "))
+									.append(describeItem(ScannerCategory.SEARCH, items.get(0), player));
+					Component spoken = ScannerCategory.SEARCH.label().append(Component.literal(", ")).append(summary);
+					Component saved = save && !searchTerm.isBlank() ? saveCurrentSearch() : null;
+					client.getNarrator().saySystemNow(saved == null ? spoken : saved.copy().append(Component.literal(". ")).append(spoken));
+				}).withButtonLabels(
+						Component.translatable("united_minecraft.search_screen.confirm"),
+						Component.translatable("united_minecraft.search_screen.clear"),
+						Component.translatable("united_minecraft.search_screen.cancel")));
+	}
+
+	/** Saves the term just entered as a category named after it, and says what happened. */
+	private static Component saveCurrentSearch() {
+		SavedSearchController.SaveResult result = SavedSearchController.save(searchTerm, searchTerm);
+		return switch (result) {
+			case ADDED -> Component.translatable("united_minecraft.narrate.search_saved", searchTerm);
+			case UPDATED -> Component.translatable("united_minecraft.narrate.search_save_updated", searchTerm);
+			case FULL -> Component.translatable("united_minecraft.narrate.search_save_full", SavedSearchController.MAX_SAVED);
+			default -> null;
+		};
+	}
+
+	/**
+	 * A saved search was edited: moves to it (its place in the order doesn't change, but the index
+	 * is looked up by id to be safe), re-scans with the new term and says the category and its
+	 * count, which also confirms the new name.
+	 */
+	static void onSavedSearchEdited(Minecraft client, LocalPlayer player, String id) {
+		List<CategoryRef> all = categories();
+		for (int i = 0; i < all.size(); i++) {
+			if (all.get(i).isSavedSearch() && all.get(i).saved().id().equals(id)) {
+				categoryIndex = i;
+				break;
+			}
+		}
+		items = scanVisible(currentRef(), player);
+		itemIndex = 0;
+		narrateCategory(client, player, currentRef());
+	}
+
+	/** Delete on a saved search's category: removes it and the filters kept for it, and moves to plain Search. */
+	private static void deleteSavedSearch(Minecraft client, LocalPlayer player, CategoryRef ref) {
+		SavedSearchController.remove(ref.saved().id());
+		ScannerFilterController.removeAllFor(ref.filterKey());
+		CategoryRef search = CategoryRef.of(ScannerCategory.SEARCH);
+		categoryIndex = categories().indexOf(search);
+		items = scanVisible(search, player);
+		itemIndex = 0;
+		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.saved_search_removed", ref.saved().name()));
+	}
+
+	/**
+	 * Opens a prompt for the flat area size Terrain should look for - "8" for 8 by 8, "8x12" for
+	 * a rectangle - then re-scans Terrain with it. Pre-filled with the size already set, and a
+	 * blank answer switches flat areas off again.
+	 */
+	private static void openFlatAreaPrompt(Minecraft client, LocalPlayer player) {
+		String current = flatAreaSize == null ? "" : flatAreaSize[0] + "x" + flatAreaSize[1];
+		client.gui.setScreen(new MarkerNameScreen(
+				Component.translatable("united_minecraft.flat_area_screen.title"),
+				Component.translatable("united_minecraft.narrate.flat_area_prompt"),
+				Component.translatable("united_minecraft.narrate.flat_area_cancelled"),
+				Component.translatable("united_minecraft.flat_area_screen.size"),
+				current,
+				text -> {
+					Component heading;
+					if (text == null || text.isBlank()) {
+						flatAreaSize = null;
+						heading = Component.translatable("united_minecraft.narrate.flat_area_off");
+					} else {
+						int[] size = FlatAreaFinder.parseSize(text);
+						if (size == null) {
+							client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.flat_area_invalid"));
+							return;
+						}
+						flatAreaSize = size;
+						heading = Component.translatable("united_minecraft.narrate.flat_area_set", size[0], size[1]);
+					}
+					items = scanVisible(CategoryRef.of(ScannerCategory.TERRAIN), player);
+					itemIndex = 0;
+					Component summary = items.isEmpty()
+							? Component.translatable("united_minecraft.narrate.scanner_empty")
+							: Component.translatable("united_minecraft.narrate.scanner_count", items.size())
+									.append(Component.literal(". "))
+									.append(describeItem(ScannerCategory.TERRAIN, items.get(0), player));
+					client.getNarrator().saySystemNow(heading.copy().append(Component.literal(". "))
+							.append(ScannerCategory.TERRAIN.label()).append(Component.literal(", ")).append(summary));
+				}));
+	}
+
+	private static void announceCoordinates(Minecraft client, BlockPos pos) {
+		client.getNarrator().saySystemNow(Component.translatable(
+				"united_minecraft.narrate.coordinates", pos.getX(), pos.getY(), pos.getZ()));
+	}
+
+	/** Continuously re-aims at the locked entity; called every tick instead of normal camera handling while locked. */
+	public static void tickLock(Minecraft client, LocalPlayer player) {
+		if (lockedEntity == null) {
+			return;
+		}
+		if (lockedEntity.isAlive() && lockedEntity.level() == player.level()) {
+			CameraUtil.aimAtEntity(player, lockedEntity);
+			return;
+		}
+
+		// The client never actually learns *why* an entity was removed - vanilla's own
+		// entity-removal packet handling always reports RemovalReason.DISCARDED regardless of
+		// the real server-side reason, which is never sent over the network. The mob's last
+		// synced health is the closest thing to a reliable "it died" signal actually available
+		// client-side (the server syncs health to 0 at or before removal on death).
+		boolean killed = lockedEntity instanceof LivingEntity living && living.isDeadOrDying();
+		lockedEntity = null;
+		if (killed && categoryIndex >= 0 && currentKind() == ScannerCategory.HOSTILE_MOBS
+				&& relockNearestHostile(client, player)) {
+			return;
+		}
+		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.scanner_lock_lost"));
+	}
+
+	/** Re-scans for hostile mobs and locks onto the nearest one, if any are left. */
+	private static boolean relockNearestHostile(Minecraft client, LocalPlayer player) {
+		items = scanVisible(CategoryRef.of(ScannerCategory.HOSTILE_MOBS), player);
+		itemIndex = 0;
+		if (items.isEmpty() || items.get(0).entity() == null) {
+			return false;
+		}
+		targetEntity(client, player, items.get(0).entity(), false);
+		return true;
+	}
+
+	/** Drops the lock without narrating anything - used when Combat Mode is taking over as the exclusive aim-owner. */
+	public static void cancelLock() {
+		lockedEntity = null;
+	}
+
+	/**
+	 * Interacts with the locked entity directly - the same real, server-authoritative
+	 * interaction a right-click sends, but targeting the exact locked entity by identity
+	 * instead of whatever the crosshair's raycast happens to hit. Meant for when another entity
+	 * is physically in the way of the one actually locked on (two chickens crowded together
+	 * trying to breed them, say) - camera aim alone can't distinguish which one gets hit in that
+	 * case, but the Scanner already knows exactly which one is locked.
+	 *
+	 * <p>Mirrors vanilla's own main-hand-then-offhand fallback (see {@code Minecraft.startUseItem}
+	 * and {@link BuildModeController#attemptPlace}, which does the same for block placement):
+	 * stop on a hand that actually consumes the interaction, or on an explicit failure.
+	 *
+	 * <p>Going straight to {@code gameMode.interact} like this skips {@code Minecraft}'s own
+	 * mouse-click handling entirely - including the hook {@link AnimalFeedingController}
+	 * normally relies on for its feed-confirmation sound - so that's triggered explicitly here
+	 * too, same as a real click would.
+	 */
+	private static void interactWithLocked(Minecraft client, LocalPlayer player) {
+		if (lockedEntity == null || !lockedEntity.isAlive()) {
+			return;
+		}
+		EntityHitResult hitResult = new EntityHitResult(lockedEntity, lockedEntity.getBoundingBox().getCenter());
+		for (InteractionHand hand : InteractionHand.values()) {
+			AnimalFeedingController.playFeedSoundIfSuccessful(lockedEntity, player.getItemInHand(hand));
+			InteractionResult result = client.gameMode.interact(player, lockedEntity, hitResult, hand);
+			if (result instanceof InteractionResult.Success success) {
+				if (success.swingSource() == InteractionResult.SwingSource.PREDICTED) {
+					player.swing(hand, SwingAnimation.DEFAULT, true);
+				}
+				return;
+			}
+			if (result instanceof InteractionResult.Fail) {
+				return;
+			}
+		}
+	}
+
+	/**
+	 * Releases the lock (if any) and narrates it - the normal Delete/Stop-Lock action, and also
+	 * reused by {@link AccessibilityTickHandler} for Shift+B: releasing the lock here, before
+	 * that tick's rotation-ownership chain runs, is what lets a same-tick {@code
+	 * resetRotationToNorth} actually stick instead of being stomped by {@link #tickLock} the
+	 * moment it runs again - see the call site there for the full explanation.
+	 */
+	public static void stopLock(Minecraft client) {
+		if (lockedEntity == null) {
+			return;
+		}
+		lockedEntity = null;
+		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.scanner_lock_stopped"));
+	}
+
+	private static void switchCategory(Minecraft client, LocalPlayer player, int direction) {
+		List<CategoryRef> all = categories();
+		if (categoryIndex == -1) {
+			categoryIndex = direction > 0 ? 0 : all.size() - 1;
+		} else {
+			categoryIndex = Math.floorMod(categoryIndex + direction, all.size());
+		}
+
+		CategoryRef category = all.get(categoryIndex);
+		items = scanVisible(category, player);
+
+		if (UnitedMinecraftConfig.get().scannerSkipEmptyCategories && isSkippablyEmpty(category, items)) {
+			// Keep advancing in the same direction until one candidate is non-empty or every
+			// other category has been tried once - the loop bound guards against spinning
+			// forever if genuinely everything is empty, in which case categoryIndex/category/
+			// items just stay on the original (still-empty) selection and fall through to
+			// narrate it as empty below, same as with the setting off.
+			//
+			// categoryHasAny is a cheap existence probe, not a full scan() - a full scan of
+			// every block-cube category (Storage, Workstations, Mechanisms, Ores, Terrain, Crops,
+			// Search, Trees) in the same pass this loop can make up to one fewer than the number of
+			// categories times would mean hundreds of thousands of block reads on a single Home/End
+			// press. Only the category actually settled on below gets the real, full scan().
+			for (int step = 1; step < all.size(); step++) {
+				int candidateIndex = Math.floorMod(categoryIndex + direction * step, all.size());
+				CategoryRef candidate = all.get(candidateIndex);
+				// isSkippablyEmpty never treats Search or Terrain as skippable regardless of their
+				// contents (see that method's doc) - mirror that here rather than probing them.
+				if (isNeverSkipped(candidate) || categoryHasAny(candidate, player)) {
+					categoryIndex = candidateIndex;
+					category = candidate;
+					items = scanVisible(candidate, player);
+					break;
+				}
+			}
+		}
+		itemIndex = 0;
+		narrateCategory(client, player, category);
+	}
+
+	/**
+	 * Jumps straight to {@code target} (from {@link CategoryJumpScreen}), narrating it the same
+	 * way Home/End does. Unlike cycling, an explicit jump to an empty category is honoured and
+	 * reported as empty rather than skipped - the player asked for it by name.
+	 */
+	static void jumpToCategory(Minecraft client, LocalPlayer player, CategoryRef target) {
+		categoryIndex = categories().indexOf(target);
+		items = scanVisible(target, player);
+		itemIndex = 0;
+		narrateCategory(client, player, target);
+	}
+
+	private static void narrateCategory(Minecraft client, LocalPlayer player, CategoryRef category) {
+		if (category.isFreeSearch() && searchTerm.isBlank()) {
+			client.getNarrator().saySystemNow(category.label().append(Component.literal(", "))
+					.append(Component.translatable("united_minecraft.narrate.search_no_term")));
+			return;
+		}
+		if (items.isEmpty()) {
+			client.getNarrator().saySystemNow(category.label().append(Component.literal(", "))
+					.append(Component.translatable("united_minecraft.narrate.scanner_empty")));
+			return;
+		}
+		// "Trees, 13" - just the category and count, no extra wording - then the nearest item.
+		client.getNarrator().saySystemNow(category.label().append(Component.literal(", "))
+				.append(Component.translatable("united_minecraft.narrate.scanner_count", items.size()))
+				.append(Component.literal(". "))
+				.append(describeItem(category.kind(), items.get(0), player)));
+	}
+
+	/**
+	 * Whether {@link #switchCategory} should treat {@code category} as skippable under {@code
+	 * scannerSkipEmptyCategories} - true empty results everywhere except {@link #isNeverSkipped}
+	 * categories.
+	 */
+	private static boolean isSkippablyEmpty(CategoryRef category, List<ScannerItem> items) {
+		return !isNeverSkipped(category) && items.isEmpty();
+	}
+
+	/**
+	 * Categories that are useful even with nothing listed, so cycling always lands on them: Search,
+	 * whose "no term entered yet" state is its own valid narration (see {@link #openSearchPrompt}),
+	 * and Terrain, which hosts the flat-area finder that has to stay reachable wherever the
+	 * player is standing. A saved search is not one of them: it always has a term, so it is skipped
+	 * when it finds nothing, like any other category.
+	 */
+	private static boolean isNeverSkipped(CategoryRef category) {
+		return category.isFreeSearch() || category.kind() == ScannerCategory.TERRAIN;
+	}
+
+	private static void stepItem(Minecraft client, LocalPlayer player, int direction) {
+		if (categoryIndex == -1 || items.isEmpty()) {
+			return;
+		}
+		itemIndex = Math.floorMod(itemIndex + direction, items.size());
+		client.getNarrator().saySystemNow(
+				describeItemWithPosition(currentKind(), items.get(itemIndex), player, itemIndex, items.size()));
+	}
+
+	/**
+	 * Jumps to the next/previous item that's the "same kind of thing" as the currently
+	 * selected one - e.g. skipping past every cow and pig to reach the next sheep - instead
+	 * of stepping one item at a time through the whole distance-sorted list like {@link
+	 * #stepItem}. Falls back to re-narrating the current item if nothing else in the list
+	 * matches. See {@link #sameType} for what "same kind" means per category.
+	 */
+	private static void stepItemSameType(Minecraft client, LocalPlayer player, int direction) {
+		if (categoryIndex == -1 || items.isEmpty()) {
+			return;
+		}
+		ScannerCategory category = currentKind();
+		ScannerItem current = items.get(itemIndex);
+		Level level = player.level();
+		int size = items.size();
+		for (int step = 1; step <= size; step++) {
+			int candidate = Math.floorMod(itemIndex + direction * step, size);
+			if (sameType(category, current, items.get(candidate), level)) {
+				itemIndex = candidate;
+				client.getNarrator().saySystemNow(describeItemWithPosition(category, items.get(itemIndex), player, itemIndex, size));
+				return;
+			}
+		}
+		client.getNarrator().saySystemNow(describeItemWithPosition(category, current, player, itemIndex, size));
+	}
+
+	/**
+	 * Whether {@code a} and {@code b} are the same species/block type - entities compare by
+	 * {@link net.minecraft.world.entity.EntityType}, blocks by their live {@link Block}
+	 * instance at each item's stored position (the same live-lookup pattern {@link
+	 * #describeItem}/{@link #itemName} already use, since a scanned block can change between
+	 * scan time and now). Markers are individually named rather than typed, so they never match.
+	 */
+	private static boolean sameType(ScannerCategory category, ScannerItem a, ScannerItem b, Level level) {
+		if (category == ScannerCategory.MARKERS) {
+			return false;
+		}
+		if (category == ScannerCategory.BIOMES_AND_STRUCTURES) {
+			// Structures match by spoken name, so every kind of village (plains, taiga, ...) counts as
+			// one type. Biome entries carry no label and are already one per biome type.
+			return a.label() != null && a.label().equals(b.label());
+		}
+		if (category == ScannerCategory.TERRAIN && (a.label() != null || b.label() != null)) {
+			// Flat areas are the only labelled Terrain items; they match each other, not a lake.
+			return a.label() != null && b.label() != null;
+		}
+		if (a.entity() != null && b.entity() != null) {
+			return a.entity().getType() == b.entity().getType();
+		}
+		if (a.blockPos() != null && b.blockPos() != null) {
+			return level.getBlockState(a.blockPos()).getBlock() == level.getBlockState(b.blockPos()).getBlock();
+		}
+		return false;
+	}
+
+	private static void target(Minecraft client, LocalPlayer player) {
+		ScannerItem item = currentItem();
+		if (item == null) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.scanner_no_item"));
+			return;
+		}
+
+		boolean walkThere = ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_TARGET_WALK_THERE);
+		ScannerCategory category = currentKind();
+		if (item.entity() != null) {
+			if (category == ScannerCategory.ITEMS) {
+				// Dropped items don't move on their own and aren't a threat to track - just
+				// look at them once, like a block, rather than starting a continuous lock-on.
+				targetEntityOnce(client, player, item.entity(), walkThere);
+			} else {
+				targetEntity(client, player, item.entity(), walkThere);
+			}
+		} else if (item.area() != null) {
+			targetFlatArea(client, player, item, itemName(category, item, player), walkThere);
+		} else if (category == ScannerCategory.MARKERS && !isLiveBlockMarker(player.level(), item.blockPos())) {
+			targetMarkerSpot(client, player, item.blockPos(), itemName(category, item, player), walkThere);
+		} else {
+			targetBlock(client, player, category, item.blockPos(), itemName(category, item, player), walkThere);
+		}
+	}
+
+	/**
+	 * A plain marker is a spot, not a block: walking there goes to those exact coordinates (the
+	 * same {@link AutoWalkController#startExact} Build Mode's walk-to-cursor uses) rather than to
+	 * somewhere beside them, and there's nothing to turn and face once the player is standing on it.
+	 * Without walking it just aims at the spot, as before.
+	 */
+	private static void targetMarkerSpot(Minecraft client, LocalPlayer player, BlockPos pos, Component name, boolean walkThere) {
+		if (walkThere) {
+			AutoWalkController.startExact(client, player, pos, name,
+					() -> rescanAndRefocus(player, item -> pos.equals(item.blockPos())));
+			return;
+		}
+		aimOnceAtBlock(client, player, pos, name);
+	}
+
+	/**
+	 * Walking to a flat area goes to the exact cell standing on its centre block, the way Build
+	 * Mode's walk-to-cursor goes into its cursor cell (see {@link AutoWalkController#startExact}) -
+	 * "stand adjacent" could otherwise stop short of the middle. The cell above the centre block
+	 * is clear by construction (see {@link #scanFlatAreas}). Arriving only re-focuses the entry:
+	 * there is nothing to turn and face when you are standing on it. Without walking it just aims
+	 * at the centre block.
+	 */
+	private static void targetFlatArea(Minecraft client, LocalPlayer player, ScannerItem item, Component name, boolean walkThere) {
+		BlockPos center = item.blockPos();
+		if (walkThere) {
+			AutoWalkController.startExact(client, player, center.above(), name, () -> rescanAndRefocus(player,
+					rescanned -> rescanned.area() != null && rescanned.area().contains(center)));
+			return;
+		}
+		aimOnceAtBlock(client, player, center, name);
+	}
+
+	private static void targetEntity(Minecraft client, LocalPlayer player, Entity entity, boolean walkThere) {
+		if (!entity.isAlive()) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.scanner_target_gone"));
+			return;
+		}
+		if (walkThere) {
+			// Once Auto-Walk actually arrives, lock on exactly as if Enter had been pressed
+			// there - re-checking aliveness, since the entity could've died or wandered off
+			// mid-walk. Also re-scans the category first, so Page Up/Down cycling afterward
+			// continues from wherever this entity now falls in the freshly re-sorted list,
+			// instead of a stale index computed before the player moved.
+			AutoWalkController.start(client, player, entity.blockPosition(), mobDisplayName(entity, player),
+					() -> {
+						if (entity.isAlive()) {
+							rescanAndRefocus(player, item -> item.entity() == entity);
+							// Whether walking up to a mob should then start a continuous lock-on
+							// (today's always-on behavior) or just face it once is now a setting -
+							// deliberately separate from targetBlock's own walk-then-face behavior,
+							// which this doesn't touch.
+							if (UnitedMinecraftConfig.get().scannerAutoLockAfterWalk) {
+								lockOnto(client, player, entity);
+							} else {
+								aimOnceAtEntity(client, player, entity);
+							}
+						}
+					});
+			return;
+		}
+		lockOnto(client, player, entity);
+	}
+
+	// The furthest away a boss is looked for - well past where the Ender Dragon circles the End
+	// island, while still only covering entities the client actually knows about.
+	private static final double BOSS_SEARCH_RANGE = 256.0;
+
+	/**
+	 * Locks straight onto the nearest Ender Dragon or Wither, wherever it is, without finding it in
+	 * the Hostile Mobs list first. Package-private - reached from the tick handler's global key
+	 * handling, which keeps it from firing under Build Mode or Combat Mode.
+	 */
+	public static void lockOnBoss(Minecraft client, LocalPlayer player) {
+		Entity nearest = null;
+		double nearestDistance = Double.MAX_VALUE;
+		AABB box = player.getBoundingBox().inflate(BOSS_SEARCH_RANGE);
+		for (Entity entity : player.level().getEntities(player, box,
+				e -> e.isAlive() && (e instanceof EnderDragon || e instanceof WitherBoss))) {
+			double distance = player.distanceToSqr(entity);
+			if (distance < nearestDistance) {
+				nearestDistance = distance;
+				nearest = entity;
+			}
+		}
+		if (nearest == null) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.scanner_no_boss"));
+			return;
+		}
+		lockOnto(client, player, nearest);
+	}
+
+	private static void lockOnto(Minecraft client, LocalPlayer player, Entity entity) {
+		lockedEntity = entity;
+		CameraUtil.aimAt(player, entity.getBoundingBox().getCenter());
+		client.getNarrator().saySystemNow(
+				Component.translatable("united_minecraft.narrate.scanner_lock_started", mobDisplayName(entity, player)));
+		AngleAssistController.disable(client);
+	}
+
+	private static void targetEntityOnce(Minecraft client, LocalPlayer player, Entity entity, boolean walkThere) {
+		if (!entity.isAlive()) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.scanner_target_gone"));
+			return;
+		}
+		if (walkThere) {
+			AutoWalkController.start(client, player, entity.blockPosition(), mobDisplayName(entity, player),
+					() -> {
+						if (entity.isAlive()) {
+							rescanAndRefocus(player, item -> item.entity() == entity);
+							aimOnceAtEntity(client, player, entity);
+						}
+					});
+			return;
+		}
+		aimOnceAtEntity(client, player, entity);
+	}
+
+	private static void aimOnceAtEntity(Minecraft client, LocalPlayer player, Entity entity) {
+		CameraUtil.aimAt(player, entity.getBoundingBox().getCenter());
+		client.getNarrator().saySystemNow(
+				Component.translatable("united_minecraft.narrate.scanner_facing", mobDisplayName(entity, player)));
+		AngleAssistController.disable(client);
+	}
+
+	/**
+	 * How the Scanner would narrate {@code entity}, entity-type dispatch only (no category
+	 * context, unlike {@link #itemName}) - package-private so {@link SurroundingsScanner} can
+	 * reuse the exact same naming (dropped items, item frames holding something, painting
+	 * titles, and the sheep-color/baby/equipment/leashed handling {@link #mobDisplayName}
+	 * already does for everything else) instead of falling back to a bare {@code
+	 * getDisplayName()} for anything past a living entity.
+	 */
+	static Component describeEntity(Entity entity, Player player) {
+		if (entity instanceof ItemEntity itemEntity) {
+			return ItemDescriptions.describe(itemEntity.getItem(), player);
+		}
+		if (entity instanceof ItemFrame frame) {
+			return describeItemFrame(frame, player);
+		}
+		if (entity instanceof Painting painting) {
+			return describePainting(painting);
+		}
+		if (entity instanceof Cushion cushion) {
+			return describeCushion(cushion);
+		}
+		return mobDisplayName(entity, player);
+	}
+
+	/**
+	 * {@code LivingEntity.isBaby()} covers both breedable animals ({@link
+	 * net.minecraft.world.entity.AgeableMob}) and baby-capable hostiles like zombies, each with
+	 * their own separate synced flag underneath - checking it on the base class here picks up
+	 * both without needing to special-case either.
+	 */
+	private static Component mobDisplayName(Entity entity, Player player) {
+		Component name = entity.getDisplayName();
+		if (entity instanceof Sheep sheep) {
+			// Color goes inside the baby wrap ("Baby White Sheep", not "White Baby Sheep") -
+			// build the colored name first, then let the baby check below wrap the whole thing.
+			name = Component.translatable("united_minecraft.narrate.sheep_colored", dyeColorName(sheep.getColor()), name);
+			if (sheep.isSheared()) {
+				// Still narrate the last-known color even once sheared - just flag the sheared
+				// state alongside it, rather than going silent on color entirely.
+				name = name.copy().append(Component.literal(", ")).append(Component.translatable("united_minecraft.narrate.sheep_sheared"));
+			}
+		}
+		name = withVariant(entity, name);
+		if (entity instanceof LivingEntity living && living.isBaby()) {
+			name = Component.translatable("united_minecraft.narrate.baby_mob", name);
+		}
+		// No comma before these, unlike the sheared/baby wrapping above - a screen reader pauses
+		// on a comma, and the mob's own name/species should be heard immediately, not after a
+		// beat waiting for whatever it's holding.
+		for (Component fragment : tameStatusFragments(entity)) {
+			name = name.copy().append(Component.literal(" ")).append(fragment);
+		}
+		if (entity instanceof LivingEntity living) {
+			for (Component fragment : equipmentFragments(living, player)) {
+				name = name.copy().append(Component.literal(" ")).append(fragment);
+			}
+		}
+		if (entity instanceof Leashable leashable && leashable.isLeashed()) {
+			name = name.copy().append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.scanner_leashed"));
+		}
+		// Any vehicle at all (boat, minecart, horse, strider, ...) - Entity#getVehicle is generic,
+		// so no per-vehicle handling. Its plain display name is enough; its own tame/equipment
+		// details would only bury the mob actually being scanned.
+		Entity vehicle = entity.getVehicle();
+		if (vehicle != null) {
+			name = name.copy().append(Component.literal(" ")).append(
+					Component.translatable("united_minecraft.narrate.mob_riding", vehicle.getDisplayName()));
+		}
+		// The reverse: what's sitting in this boat/minecart/mount. Display names only, like the
+		// vehicle above - a rider's own details are heard by scanning the rider.
+		List<Entity> passengers = entity.getPassengers();
+		if (!passengers.isEmpty()) {
+			MutableComponent riders = null;
+			for (Entity passenger : passengers) {
+				riders = riders == null ? passenger.getDisplayName().copy()
+						: riders.append(Component.literal(", ")).append(passenger.getDisplayName());
+			}
+			name = name.copy().append(Component.literal(" ")).append(
+					Component.translatable("united_minecraft.narrate.mob_carrying", riders));
+		}
+		if (entity instanceof Player shoulderOwner) {
+			for (Component fragment : shoulderParrotFragments(shoulderOwner)) {
+				name = name.copy().append(Component.literal(" ")).append(fragment);
+			}
+		}
+		return name;
+	}
+
+	/**
+	 * Vanilla's fixed main-hand item for mobs that always spawn holding the same weapon (see
+	 * each type's {@code populateDefaultEquipmentSlots} - a skeleton's bow, a pillager's
+	 * crossbow, and so on aren't randomized or chance-based, unlike a zombie's rare weapon
+	 * pickup). Narrating that every time is just noise; the main hand is only worth calling out
+	 * when it differs from what the mob type always carries anyway.
+	 */
+	private static final Map<EntityType<?>, Item> DEFAULT_MAINHAND_ITEM = Map.of(
+			EntityTypes.SKELETON, Items.BOW,
+			EntityTypes.STRAY, Items.BOW,
+			EntityTypes.BOGGED, Items.BOW,
+			EntityTypes.PARCHED, Items.BOW,
+			EntityTypes.WITHER_SKELETON, Items.STONE_SWORD,
+			EntityTypes.PILLAGER, Items.CROSSBOW,
+			EntityTypes.PIGLIN_BRUTE, Items.GOLDEN_AXE,
+			EntityTypes.VINDICATOR, Items.IRON_AXE);
+
+	/**
+	 * Held/worn items worth calling out: an Allay's carried item (its own inventory, not
+	 * equipment), then whatever's in the main hand (skipped when it's just the mob's always-on
+	 * default weapon - see {@link #DEFAULT_MAINHAND_ITEM}), then any worn armor as one combined
+	 * "wearing" fragment. Generic across every {@link LivingEntity} rather than special-cased per
+	 * mob, so a zombie that picked up a helmet gets the same treatment as anything else.
+	 */
+	/**
+	 * "Sitting" (wolves/cats ordered to sit) and "Tamed"/"Tamed by &lt;owner&gt;" - covers both
+	 * {@link TamableAnimal} (wolves, cats, parrots, etc., which also carry the sitting flag) and
+	 * {@link AbstractHorse} (horses/donkeys/mules, tamed but never ordered to sit), since the two
+	 * hierarchies don't share a common tamed/owned supertype despite both implementing {@link
+	 * OwnableEntity}. Sitting is reported first, matching how a player would describe an animal
+	 * ("sitting, tamed by X") - its posture is the more immediately observable fact.
+	 *
+	 * <p>Deliberately {@link TamableAnimal#isInSittingPose} rather than {@link
+	 * TamableAnimal#isOrderedToSit} - the latter is a plain field the client only ever sets
+	 * itself, as a local prediction of the very right-click that toggles it, and is never
+	 * corrected by anything from the server; a pet that was already sitting before this player
+	 * came in range, or was ordered to sit by someone else, would read as not sitting forever.
+	 * {@code isInSittingPose} is the actual synced flag - the server's own {@code
+	 * SitWhenOrderedToGoal} keeps it matching the real order for every client watching the
+	 * entity, which is what the visible sitting animation is driven by anyway.
+	 */
+	private static List<Component> tameStatusFragments(Entity entity) {
+		List<Component> fragments = new ArrayList<>();
+		boolean tamed;
+		if (entity instanceof TamableAnimal tamable) {
+			tamed = tamable.isTame();
+			if (tamed && tamable.isInSittingPose()) {
+				fragments.add(Component.translatable("united_minecraft.narrate.mob_sitting"));
+			}
+		} else if (entity instanceof AbstractHorse horse) {
+			tamed = horse.isTamed();
+		} else {
+			tamed = false;
+		}
+		if (tamed) {
+			LivingEntity owner = ((OwnableEntity) entity).getOwner();
+			fragments.add(owner != null
+					? Component.translatable("united_minecraft.narrate.mob_tamed_by", owner.getDisplayName())
+					: Component.translatable("united_minecraft.narrate.mob_tamed"));
+			if (entity instanceof Wolf wolf) {
+				// Stands in for the tail angle a sighted player reads: a tamed wolf's tail droops
+				// as its health falls. Hearts, formatted like the player's own health readout.
+				fragments.add(Component.translatable("united_minecraft.narrate.wolf_health",
+						AccessibilityTickHandler.formatHalf(wolf.getHealth() / 2.0),
+						AccessibilityTickHandler.formatHalf(wolf.getMaxHealth() / 2.0)));
+			}
+		}
+		return fragments;
+	}
+
+	private static List<Component> equipmentFragments(LivingEntity living, Player player) {
+		List<Component> fragments = new ArrayList<>();
+		if (living instanceof Allay allay && allay.hasItemInHand()) {
+			fragments.add(Component.translatable("united_minecraft.narrate.mob_holding",
+					ItemDescriptions.describe(allay.getInventory().getItem(0), player, false, false)));
+		} else {
+			ItemStack mainHand = living.getItemBySlot(EquipmentSlot.MAINHAND);
+			if (!mainHand.isEmpty() && mainHand.getItem() != DEFAULT_MAINHAND_ITEM.get(living.getType())) {
+				fragments.add(Component.translatable(
+						"united_minecraft.narrate.mob_holding", ItemDescriptions.describe(mainHand, player, false, false)));
+			}
+		}
+		MutableComponent armor = null;
+		for (EquipmentSlot slot : new EquipmentSlot[] {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET}) {
+			ItemStack piece = living.getItemBySlot(slot);
+			if (piece.isEmpty()) {
+				continue;
+			}
+			Component described = ItemDescriptions.describe(piece, player, false, false);
+			armor = armor == null ? described.copy() : armor.append(Component.literal(", ")).append(described);
+		}
+		if (armor != null) {
+			fragments.add(Component.translatable("united_minecraft.narrate.mob_wearing", armor));
+		}
+		return fragments;
+	}
+
+	/**
+	 * Every variant an entity can expose through its data components - cats, wolves, pigs, cows,
+	 * chickens, frogs, rabbits, foxes, llamas, axolotls, mooshrooms, horses, parrots, zombie
+	 * nautilus. {@link Entity#get} answers for the entity's own live variant (not just an item's),
+	 * returns null for any entity that doesn't have that kind, and is the one place vanilla
+	 * treats them uniformly, so a species added later (or a modded one using the same component)
+	 * only needs its id translated. Sheep color is not here: {@link #mobDisplayName} handles it
+	 * along with sheared. Species whose variant isn't a component are handled in {@link #variantFragments}.
+	 */
+	private static final List<DataComponentType<?>> VARIANT_COMPONENTS = List.of(
+			DataComponents.CAT_VARIANT, DataComponents.WOLF_VARIANT, DataComponents.PIG_VARIANT,
+			DataComponents.COW_VARIANT, DataComponents.CHICKEN_VARIANT, DataComponents.FROG_VARIANT,
+			DataComponents.ZOMBIE_NAUTILUS_VARIANT, DataComponents.RABBIT_VARIANT, DataComponents.FOX_VARIANT,
+			DataComponents.LLAMA_VARIANT, DataComponents.AXOLOTL_VARIANT, DataComponents.MOOSHROOM_VARIANT,
+			DataComponents.HORSE_VARIANT, DataComponents.PARROT_VARIANT);
+
+	/** "Tabby Cat", "Chestnut Horse with White Dots", "Orange and White Kob Tropical Fish". */
+	private static Component withVariant(Entity entity, Component name) {
+		for (Component fragment : variantFragments(entity)) {
+			name = Component.translatable("united_minecraft.narrate.mob_variant", fragment, name);
+		}
+		if (entity instanceof Horse horse && horse.getMarkings() != Markings.NONE) {
+			name = name.copy().append(Component.literal(" ")).append(Component.translatable(
+					"united_minecraft.narrate.mob_markings",
+					variantName(horse.getMarkings().name().toLowerCase(Locale.ROOT))));
+		}
+		return name;
+	}
+
+	private static List<Component> variantFragments(Entity entity) {
+		List<Component> fragments = new ArrayList<>();
+		for (DataComponentType<?> type : VARIANT_COMPONENTS) {
+			Object value = entity.get(type);
+			if (value instanceof Parrot.Variant parrot) {
+				fragments.add(parrotVariantName(parrot));
+				continue;
+			}
+			String id = variantId(value);
+			if (id != null) {
+				fragments.add(variantName(id));
+			}
+		}
+		if (entity instanceof Panda panda && !panda.getVariant().getSerializedName().equals("normal")) {
+			fragments.add(variantName(panda.getVariant().getSerializedName()));
+		}
+		if (entity instanceof TropicalFish fish) {
+			fragments.add(Component.translatable("united_minecraft.narrate.tropical_fish_look",
+					dyeColorName(fish.getBaseColor()), dyeColorName(fish.getPatternColor()),
+					variantName(fish.getPattern().getSerializedName())));
+		}
+		return fragments;
+	}
+
+	/** Registry-backed variants carry a key (the namespace is dropped, as modded ones fall back below); enum ones a serialized name. */
+	private static String variantId(Object value) {
+		if (value instanceof Holder<?> holder) {
+			return holder.unwrapKey().map(key -> key.identifier().getPath()).orElse(null);
+		}
+		if (value instanceof StringRepresentable named) {
+			return named.getSerializedName();
+		}
+		return null;
+	}
+
+	/** The translated name, or a readable version of the raw id for a variant we have no key for (modded, or newly added by vanilla). */
+	private static Component variantName(String id) {
+		String key = "united_minecraft.narrate.variant." + id;
+		if (Language.getInstance().has(key)) {
+			return Component.translatable(key);
+		}
+		String spaced = id.replace('_', ' ');
+		return Component.literal(Character.toUpperCase(spaced.charAt(0)) + spaced.substring(1));
+	}
+
+	private static Component dyeColorName(DyeColor color) {
+		return Component.translatable("united_minecraft.color." + color.getName());
+	}
+
+	/**
+	 * A shoulder parrot is never a real, scannable {@link Entity} of its own - riding a shoulder
+	 * discards the actual {@link Parrot} entity server-side and keeps only its variant, synced to
+	 * every client (not just the rider's own) via {@link Player#getShoulderParrotLeft}/{@link
+	 * Player#getShoulderParrotRight}. So this reads straight off {@code player} itself rather than
+	 * scanning for anything, and is why a shoulder parrot needs its own handling here at all
+	 * instead of just being another entity {@link #mobDisplayName} would find and describe
+	 * normally. Also reused by {@link AccessibilityTickHandler} to narrate the local player's own
+	 * shoulder landing/departing, which never goes through this method at all (the Scanner/Build
+	 * Mode cursor only ever narrate other entities, never the player controlling them).
+	 */
+	private static List<Component> shoulderParrotFragments(Player player) {
+		List<Component> fragments = new ArrayList<>();
+		player.getShoulderParrotLeft().ifPresent(variant -> fragments.add(
+				Component.translatable("united_minecraft.narrate.mob_shoulder_parrot_left", parrotVariantName(variant))));
+		player.getShoulderParrotRight().ifPresent(variant -> fragments.add(
+				Component.translatable("united_minecraft.narrate.mob_shoulder_parrot_right", parrotVariantName(variant))));
+		return fragments;
+	}
+
+	public static Component parrotVariantName(Parrot.Variant variant) {
+		return Component.translatable("united_minecraft.narrate.parrot_variant." + variant.getSerializedName());
+	}
+
+	private static void targetBlock(Minecraft client, LocalPlayer player, ScannerCategory category, BlockPos pos, Component name, boolean walkThere) {
+		if (walkThere) {
+			Runnable onArrival = () -> {
+				rescanAndRefocus(player, item -> pos.equals(item.blockPos()));
+				aimOnceAtBlock(client, player, pos, name);
+			};
+			// A ladder/vine/scaffolding/etc. is something you walk *into*, not up to - see
+			// AutoWalkController#startExact's own doc for why the ordinary "stand adjacent"
+			// pathing could otherwise land the player on the wrong side of it entirely, unable
+			// to climb even after aimOnceAtBlock faces them the right way.
+			if ((category == ScannerCategory.TERRAIN || category == ScannerCategory.MARKERS)
+					&& player.level().getBlockState(pos).is(BlockTags.CLIMBABLE)) {
+				AutoWalkController.startExact(client, player, pos, name, onArrival);
+			} else {
+				AutoWalkController.start(client, player, pos, name, onArrival);
+			}
+			return;
+		}
+		aimOnceAtBlock(client, player, pos, name);
+	}
+
+	private static void aimOnceAtBlock(Minecraft client, LocalPlayer player, BlockPos pos, Component name) {
+		CameraUtil.aimAt(player, CameraUtil.aimPointOn(player, pos));
+		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.scanner_facing", name));
+		AngleAssistController.disable(client);
+	}
+
+	/**
+	 * Re-runs the current category's scan and moves focus to whichever item now matches {@code
+	 * originalItem} - used once Auto-Walk arrives, since the walk itself can take long enough
+	 * that distances (and thus sort order) have shifted, or new items have appeared/disappeared,
+	 * leaving the pre-walk index stale. Falls back to clamping the existing index if the
+	 * original item can no longer be found (it was mined, picked up, etc).
+	 */
+	private static void rescanAndRefocus(LocalPlayer player, Predicate<ScannerItem> originalItem) {
+		if (categoryIndex == -1) {
+			return;
+		}
+		items = scanVisible(currentRef(), player);
+		for (int i = 0; i < items.size(); i++) {
+			if (originalItem.test(items.get(i))) {
+				itemIndex = i;
+				return;
+			}
+		}
+		itemIndex = items.isEmpty() ? 0 : Math.min(itemIndex, items.size() - 1);
+	}
+
+	private static ScannerItem currentItem() {
+		if (categoryIndex == -1 || items.isEmpty() || itemIndex >= items.size()) {
+			return null;
+		}
+		return items.get(itemIndex);
+	}
+
+	private static Component describeItem(ScannerCategory category, ScannerItem item, LocalPlayer player) {
+		Vec3 from = player.position();
+		Vec3 to = targetPosition(item);
+		// item.distance() is frozen at scan time (used only for sorting) - recompute live here,
+		// the same eye-to-target measurement the scan itself used, so cycling after walking
+		// (or for Markers/Players, which are never range-limited and can sit scanned from far
+		// away) narrates the player's actual current distance instead of a stale one.
+		int distance = (int) Math.round(player.getEyePosition().distanceTo(to));
+		Component direction = CameraUtil.fullDirectionTo(from, to);
+		Component name = itemName(category, item, player);
+		if (category == ScannerCategory.CROPS) {
+			BlockState state = player.level().getBlockState(item.blockPos());
+			if (isRipe(state)) {
+				name = name.copy().append(Component.literal(", ")).append(Component.translatable("united_minecraft.narrate.scanner_ripe"));
+			}
+			Component height = stalkHeight(player.level(), item.blockPos());
+			if (height != null) {
+				name = name.copy().append(Component.literal(", ")).append(height);
+			}
+		}
+		if (category == ScannerCategory.SEARCH) {
+			// A stalk found by Search is grouped like one in Crops, and says its height the same way.
+			Component height = stalkHeight(player.level(), item.blockPos());
+			if (height != null) {
+				name = name.copy().append(Component.literal(", ")).append(height);
+			}
+		}
+		// A marked block narrates like the block it is, whichever category it would otherwise be in.
+		boolean markedBlock = category == ScannerCategory.MARKERS && isLiveBlockMarker(player.level(), item.blockPos());
+		if (category == ScannerCategory.WORKSTATIONS || markedBlock) {
+			BlockState state = player.level().getBlockState(item.blockPos());
+			if (state.getBlock() instanceof AbstractBedBlock && state.getValue(AbstractBedBlock.OCCUPIED)) {
+				name = name.copy().append(Component.literal(", ")).append(Component.translatable("united_minecraft.narrate.scanner_occupied"));
+			}
+		}
+		if (category == ScannerCategory.STORAGE || markedBlock) {
+			BlockState state = player.level().getBlockState(item.blockPos());
+			// Covers both the Chiseled Bookshelf and (as of Minecraft 26.3) the Poplar Shelf -
+			// both implement SelectableSlotContainer and back their contents with a
+			// ListBackedContainer block entity, so this needs no per-block-type special-casing.
+			if (state.getBlock() instanceof SelectableSlotContainer
+					&& player.level().getBlockEntity(item.blockPos()) instanceof ListBackedContainer container) {
+				name = name.copy().append(Component.literal(", ")).append(Component.translatable(
+						"united_minecraft.narrate.scanner_shelf_items", container.count(), container.getContainerSize()));
+			}
+		}
+		if (category == ScannerCategory.MECHANISMS || markedBlock) {
+			BlockState state = player.level().getBlockState(item.blockPos());
+			if (state.getBlock() instanceof SignBlock) {
+				if (player.level().getBlockEntity(item.blockPos()) instanceof SignBlockEntity sign) {
+					name = name.copy().append(Component.literal(", ")).append(SignNarrationHelper.describeFacingSide(sign, player));
+				}
+			}
+			// Shared by DoorBlock, TrapDoorBlock, and FenceGateBlock alike - see BuildModeController's
+			// own describeCursor for why this one BlockStateProperties constant covers all three.
+			if (state.hasProperty(BlockStateProperties.OPEN) && state.getValue(BlockStateProperties.OPEN)) {
+				name = name.copy().append(Component.literal(", ")).append(Component.translatable("united_minecraft.narrate.scanner_open"));
+			}
+			Component frameStatus = endPortalFrameStatus(player.level(), item.blockPos());
+			if (frameStatus != null) {
+				name = name.copy().append(Component.literal(", ")).append(frameStatus);
+			}
+		}
+		if (item.area() != null) {
+			name = name.copy().append(Component.literal(", ")).append(describeSurfaces(item.area()));
+		}
+		if ((category == ScannerCategory.TERRAIN || category == ScannerCategory.SEARCH || markedBlock)
+				&& player.level().getBlockState(item.blockPos()).is(BlockTags.CLIMBABLE)) {
+			ClimbableRun run = climbableRun(player.level(), item.blockPos());
+			if (run != null) {
+				name = name.copy().append(Component.literal(", "))
+						.append(Component.translatable("united_minecraft.narrate.scanner_height", run.height()))
+						.append(Component.literal(", "))
+						.append(climbableDirection(run, player));
+			}
+		}
+		return Component.translatable("united_minecraft.narrate.scanner_item", name, distance, direction);
+	}
+
+	/**
+	 * "on Grass Block" for a single surface, "on Grass Block, Dirt, Gravel" for a mix, most
+	 * common first. Past {@link #MAX_SURFACES_NARRATED} the rest are summed up as a count - a
+	 * patchwork area would otherwise read out half the palette.
+	 */
+	private static Component describeSurfaces(FlatArea area) {
+		List<Block> surfaces = area.surfaces();
+		Component list = Component.empty();
+		for (int i = 0; i < Math.min(surfaces.size(), MAX_SURFACES_NARRATED); i++) {
+			list = list.copy().append(Component.literal(i == 0 ? "" : ", ")).append(surfaces.get(i).getName());
+		}
+		if (surfaces.size() > MAX_SURFACES_NARRATED) {
+			list = list.copy().append(Component.literal(", ")).append(Component.translatable(
+					"united_minecraft.narrate.flat_area_more_surfaces", surfaces.size() - MAX_SURFACES_NARRATED));
+		}
+		return Component.translatable("united_minecraft.narrate.flat_area_surface", list);
+	}
+
+	/** {@link #describeItem} plus "item N of M" - used when cycling ({@link #stepItem}/{@link #stepItemSameType}), not on category select. */
+	private static Component describeItemWithPosition(ScannerCategory category, ScannerItem item, LocalPlayer player, int index, int total) {
+		return describeItem(category, item, player).copy()
+				.append(Component.literal(", "))
+				.append(Component.translatable("united_minecraft.narrate.scanner_position", index + 1, total));
+	}
+
+	private static Vec3 targetPosition(ScannerItem item) {
+		return item.entity() != null ? item.entity().getBoundingBox().getCenter() : Vec3.atCenterOf(item.blockPos());
+	}
+
+	/**
+	 * {@code eye.distanceToSqr(Vec3.atCenterOf(pos))} without allocating the intermediate {@link
+	 * Vec3} - used only on the per-scanned-position paths ({@link #scanBlocks}, {@link
+	 * #scanBlocksAny}, {@link #scanLiquids}, {@link #addLiquidClusters}'s frontier ordering),
+	 * which run into the hundreds of thousands to millions of calls in a single scan. The
+	 * per-result call sites elsewhere keep the plain, more readable {@code Vec3} form - a handful
+	 * of allocations there isn't worth the noise.
+	 */
+	private static double distanceSqrToCenter(Vec3 eye, BlockPos pos) {
+		double dx = pos.getX() + 0.5 - eye.x();
+		double dy = pos.getY() + 0.5 - eye.y();
+		double dz = pos.getZ() + 0.5 - eye.z();
+		return dx * dx + dy * dy + dz * dz;
+	}
+
+	/**
+	 * The best available name for any entity, regardless of which Scanner category (if any) it
+	 * was found through - an {@link ItemEntity} by its actual item ({@link ItemDescriptions}), an
+	 * {@link ItemFrame}/{@link Painting}/{@link Cushion} by their own dedicated describers, and
+	 * everything else via {@link #mobDisplayName}'s general mob treatment (species, sheep color,
+	 * baby, tamed/owned, held/worn items, leash). Category-independent dispatch is safe here since
+	 * these types are already mutually exclusive by category in practice - an {@link ItemEntity}
+	 * is only ever surfaced under {@link ScannerCategory#ITEMS}, the other three only under {@link
+	 * ScannerCategory#ENTITIES} - so this is exactly what {@link #itemName} already did per
+	 * category, just without needing the category to tell them apart. Also reused by {@link
+	 * BuildModeController} to narrate entities sharing the build cursor's cell, which has no
+	 * category of its own at all.
+	 */
+	public static Component entityDisplayName(Entity entity, Player player) {
+		if (entity instanceof ItemEntity itemEntity) {
+			return ItemDescriptions.describe(itemEntity.getItem(), player);
+		}
+		if (entity instanceof ItemFrame frame) {
+			return describeItemFrame(frame, player);
+		}
+		if (entity instanceof Painting painting) {
+			return describePainting(painting);
+		}
+		if (entity instanceof Cushion cushion) {
+			return describeCushion(cushion);
+		}
+		return mobDisplayName(entity, player);
+	}
+
+	private static Component itemName(ScannerCategory category, ScannerItem item, LocalPlayer player) {
+		if (item.label() != null) {
+			return Component.literal(item.label());
+		}
+		if (item.entity() != null) {
+			return entityDisplayName(item.entity(), player);
+		}
+		Level level = player.level();
+		// Looked up here rather than baked into each scan's ScannerItem: only the item actually
+		// being narrated needs it (one lookup instead of one per scanned result), and doing it in
+		// one place means every block-based category picks custom names up uniformly. Previously
+		// only scanBlocks and scanMechanisms passed a label through, so naming a tree, crop,
+		// liquid, or portal cluster saved and confirmed but then never showed up again.
+		// Biomes are the one exclusion - their blockPos is an arbitrary surface sample point on a
+		// 4-block grid, not a block the player ever pointed at, so a name saved for that exact
+		// position from some other category isn't about this biome entry at all.
+		if (category != ScannerCategory.BIOMES_AND_STRUCTURES) {
+			String customName = NamedBlockController.findAt(level.dimension(), item.blockPos());
+			if (customName != null) {
+				return Component.literal(customName);
+			}
+		}
+		if (category == ScannerCategory.TREES) {
+			return describeTree(level, item.blockPos());
+		}
+		if (category == ScannerCategory.BIOMES_AND_STRUCTURES) {
+			return AccessibilityTickHandler.biomeName(level.getBiome(item.blockPos()));
+		}
+		BlockState state = level.getBlockState(item.blockPos());
+		// Vault and Ominous Vault are the same block with an OMINOUS blockstate property, not
+		// separate blocks, so getName() alone can't tell them apart - narrate it explicitly.
+		if (category == ScannerCategory.STORAGE && state.getBlock() instanceof VaultBlock
+				&& state.getValue(VaultBlock.OMINOUS)) {
+			return Component.translatable("united_minecraft.narrate.ominous_vault");
+		}
+		return state.getBlock().getName();
+	}
+
+	private static Component describeTree(Level level, BlockPos pos) {
+		BlockState state = level.getBlockState(pos);
+		if (!state.is(BlockTags.LOGS)) {
+			// Chopped down or otherwise changed since the scan; fall back to whatever's there now.
+			return state.getBlock().getName();
+		}
+
+		Identifier id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+		String path = id.getPath();
+		String trimmed = path.endsWith("_log") ? path.substring(0, path.length() - 4) : path;
+		return Component.translatable("united_minecraft.narrate.tree_name", titleCaseWords(trimmed));
+	}
+
+	/** "Item Frame" alone if empty, "Item Frame, holding Diamond Sword" (full item narration) if not. */
+	private static Component describeItemFrame(ItemFrame frame, Player player) {
+		Component name = frame.getDisplayName();
+		ItemStack held = frame.getItem();
+		if (held.isEmpty()) {
+			return name;
+		}
+		return Component.translatable("united_minecraft.narrate.item_frame_holding", name, ItemDescriptions.describe(held, player));
+	}
+
+	/**
+	 * Narrates the painting's actual motif rather than the generic "Painting" - vanilla ships a
+	 * real player-facing title translation for every one of its own {@link PaintingVariant}s
+	 * (e.g. "Kebab", "Wanderer"), reached via {@link PaintingVariant#title()}. Falls back to
+	 * title-casing the variant's raw registry path (matching {@link #describeTree}'s fallback
+	 * for a block with no dedicated display name) for a datapack-added variant that skipped the
+	 * optional title field.
+	 */
+	private static Component describePainting(Painting painting) {
+		Holder<PaintingVariant> variantHolder = painting.getVariant();
+		PaintingVariant variant = variantHolder.value();
+		Component title = variant.title().<Component>map(t -> t).orElseGet(() -> Component.literal(
+				titleCaseWords(variantHolder.unwrapKey().map(key -> key.identifier().getPath()).orElse("unknown"))));
+		return Component.translatable("united_minecraft.narrate.painting_title", title);
+	}
+
+	/**
+	 * "Red Cushion" - {@link Cushion#getDisplayName()} alone would just say the generic entity
+	 * name "Cushion" (unlike each colored {@code CushionItem}'s own per-color item name), since
+	 * color here is a synced entity field ({@link Cushion#getColor()}) rather than a distinct
+	 * entity type per color - same underlying gap {@link #describeItemFrame}/{@link
+	 * #describePainting} fill for their own entity types, and the same "prefix the color"
+	 * approach {@link #mobDisplayName}'s {@link net.minecraft.world.entity.animal.sheep.Sheep}
+	 * case already uses.
+	 */
+	private static Component describeCushion(Cushion cushion) {
+		return Component.translatable("united_minecraft.narrate.cushion_colored", dyeColorName(cushion.getColor()), cushion.getDisplayName());
+	}
+
+	/** "warped_stem" -> "Warped Stem" - shared by {@link #describeTree} and {@link #describePainting}'s fallback. */
+	private static String titleCaseWords(String path) {
+		StringBuilder name = new StringBuilder();
+		for (String word : path.split("_")) {
+			if (word.isEmpty()) {
+				continue;
+			}
+			if (!name.isEmpty()) {
+				name.append(' ');
+			}
+			name.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+		}
+		return name.toString();
+	}
+
+	/**
+	 * {@link #scan} without anything the player has filtered out of {@code category} - see {@link
+	 * ScannerFilterController}. A filter is matched against the item's spoken name, so this costs
+	 * a name lookup per result only for a category that has filters.
+	 */
+	private static List<ScannerItem> scanVisible(CategoryRef category, LocalPlayer player) {
+		List<ScannerItem> all = scan(category, player);
+		if (!ScannerFilterController.hasFilters(category.filterKey())) {
+			return all;
+		}
+		List<ScannerItem> kept = new ArrayList<>(all.size());
+		for (ScannerItem item : all) {
+			if (!ScannerFilterController.isFiltered(category.filterKey(), itemName(category.kind(), item, player).getString())) {
+				kept.add(item);
+			}
+		}
+		return kept;
+	}
+
+	/** Opens the filter list for the category the Scanner is on, or says there isn't one. */
+	public static void openFilters(Minecraft client) {
+		if (categoryIndex == -1) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.filters_no_category"));
+			return;
+		}
+		client.gui.setScreen(new ScannerFilterScreen(currentRef()));
+	}
+
+	/**
+	 * A filter was added or removed: re-lists the current category without it (or with it back) and
+	 * keeps the focus where it was, as close as the new list allows. Says nothing - the screen does.
+	 */
+	static void onFiltersChanged(LocalPlayer player) {
+		if (categoryIndex == -1) {
+			return;
+		}
+		items = scanVisible(currentRef(), player);
+		itemIndex = items.isEmpty() ? 0 : Math.min(itemIndex, items.size() - 1);
+	}
+
+	private static List<ScannerItem> scan(CategoryRef ref, LocalPlayer player) {
+		ScannerCategory category = ref.kind();
+		return switch (category) {
+			// Double chests are two blocks sharing one real-world object - only match the
+			// non-right half, so each shows up once.
+			case STORAGE -> scanBlocks(player, storagePredicate());
+			// Beds are two blocks too - only match the head half. Beds have no menu (sleeping/
+			// setting spawn isn't a GUI), but they're something you go to and use, which is
+			// closer to a crafting table than to a lever.
+			case WORKSTATIONS -> scanBlocks(player, workstationsPredicate(player));
+			// A door is two block positions (HALF=LOWER/UPPER) sharing one real-world object -
+			// only match the lower half so each door shows up once, the same fix already applied
+			// to beds and double chests above.
+			case MECHANISMS -> scanMechanisms(player);
+			case ITEMS -> scanEntities(player, entity -> entity instanceof ItemEntity);
+			case TREES -> scanTrees(player);
+			// Deliberately not x-ray: OreDetection.isExposed only counts ore already
+			// bordering air or a fluid, i.e. actually visible through a gap, not buried. Routed
+			// through a FastBlockAccess (see its own doc) rather than Level#getBlockState
+			// directly - isExposed's six-neighbor check adds up fast across every valuable-ore
+			// block in a large scanRange.
+			case ORES -> {
+				FastBlockAccess fastAccess = new FastBlockAccess(player.level());
+				Vec3 eye = player.getEyePosition();
+				yield scanBlocks(player, (pos, state) ->
+						OreDetection.isValuableOre(state) && OreDetection.isExposed(player.level(), fastAccess::getBlockState, pos, eye));
+			}
+			case TERRAIN -> scanTerrain(player);
+			case CROPS -> scanCrops(player);
+			case SEARCH -> scanSearch(player, ref.searchTerm(searchTerm));
+			case BIOMES_AND_STRUCTURES -> scanBiomesAndStructures(player);
+			// instanceof Animal alone missed anything that isn't a beast - villagers, wandering
+			// traders, iron/snow/copper golems, bats, squids, allays - since none of those extend
+			// Animal. Classify by Enemy instead of MobCategory: vanilla buckets some non-hostile
+			// mounts (zombie horse, zombie nautilus, camel husk) into MobCategory.MONSTER for
+			// spawn-rule reasons even though they never attack, so filtering on category as well
+			// as Enemy silently dropped them from every category.
+			case PASSIVE_MOBS -> scanEntities(player, entity -> entity instanceof Mob && !(entity instanceof Enemy));
+			case HOSTILE_MOBS -> scanEntities(player, entity -> entity instanceof Enemy);
+			case MARKERS -> scanMarkers(player);
+			case PLAYERS -> scanPlayers(player);
+			// Deliberately not ItemEntity (that's exclusively the Items category), ExperienceOrb,
+			// EvokerFangs, AreaEffectCloud, LightningBolt, thrown projectiles, FallingBlockEntity,
+			// or PrimedTnt - none of those stick around long enough to be worth scanning for.
+			// GlowItemFrame extends ItemFrame, so instanceof ItemFrame covers both.
+			case ENTITIES -> scanEntities(player, entity ->
+					entity instanceof AbstractMinecart
+							|| entity instanceof Boat
+							|| entity instanceof ArmorStand
+							|| entity instanceof ItemFrame
+							|| entity instanceof EndCrystal
+							|| entity instanceof LeashFenceKnotEntity
+							|| entity instanceof Painting
+							|| entity instanceof Cushion);
+		};
+	}
+
+	/** Blocks whose job is holding items - the Storage category. */
+	private static boolean isStorageBlock(Block block) {
+		return block instanceof AbstractChestBlock<?>
+				|| block instanceof BarrelBlock
+				|| block instanceof ShulkerBoxBlock
+				|| block instanceof HopperBlock
+				|| block instanceof DispenserBlock
+				|| block instanceof DecoratedPotBlock
+				// Vaults have no menu provider - you insert a key by right-clicking rather than
+				// opening a screen. Chiseled Bookshelf and Poplar Shelf alike have none either -
+				// items are swapped in and out by right-clicking a specific slot directly.
+				|| block instanceof VaultBlock
+				|| block instanceof SelectableSlotContainer;
+	}
+
+	/**
+	 * Shared between {@link #scan}'s STORAGE case and {@link #categoryHasAny}'s cheap
+	 * existence probe for it, so the two can never quietly drift apart.
+	 */
+	private static BiPredicate<BlockPos, BlockState> storagePredicate() {
+		return (pos, state) -> isStorageBlock(state.getBlock())
+				&& !(state.hasProperty(ChestBlock.TYPE) && state.getValue(ChestBlock.TYPE) == ChestType.RIGHT);
+	}
+
+	/**
+	 * Shared between {@link #scan}'s WORKSTATIONS case and {@link #categoryHasAny}'s probe, like
+	 * {@link #storagePredicate}. Anything that opens a menu and isn't storage, plus beds and the
+	 * editor-opening command-style blocks.
+	 */
+	private static BiPredicate<BlockPos, BlockState> workstationsPredicate(LocalPlayer player) {
+		return (pos, state) -> {
+			Block block = state.getBlock();
+			if (isStorageBlock(block)) {
+				return false;
+			}
+			if (block instanceof AbstractBedBlock) {
+				return state.getValue(AbstractBedBlock.PART) == BedPart.HEAD;
+			}
+			// Command, structure, jigsaw and test blocks open their editor client-side from a packet rather than
+			// through a menu provider, so the getMenuProvider check below misses them.
+			if (block instanceof CommandBlock || block instanceof StructureBlock
+					|| block instanceof JigsawBlock || block instanceof TestBlock
+					|| block instanceof TestInstanceBlock) {
+				return true;
+			}
+			return state.getMenuProvider(player.level(), pos) != null;
+		};
+	}
+
+	// A real stronghold frame is a 12-block ring; this only bounds the live count below so a
+	// sprawling modded or player-built mass of frames can't make narration walk forever.
+	private static final int FRAME_RING_SEARCH_LIMIT = 64;
+
+	/**
+	 * Whether this end portal frame holds an Eye of Ender, plus how many of the ring it belongs
+	 * to are filled ("Empty, 9 of 12 eyes placed") - the frame's {@code HAS_EYE} state is purely
+	 * visual otherwise, so nothing else would ever say. The ring is found live (same 26-connected
+	 * adjacency {@link #addPortalClusters} uses for the Scanner's one-entry-per-ring grouping) so
+	 * it is always current, not a scan-time snapshot. Package-private - Build Mode's cursor and
+	 * the look-ahead key reuse it. Null when {@code pos} isn't an end portal frame.
+	 */
+	public static Component endPortalFrameStatus(Level level, BlockPos pos) {
+		BlockState state = level.getBlockState(pos);
+		if (!(state.getBlock() instanceof EndPortalFrameBlock)) {
+			return null;
+		}
+		Component own = Component.translatable(state.getValue(EndPortalFrameBlock.HAS_EYE)
+				? "united_minecraft.narrate.frame_has_eye" : "united_minecraft.narrate.frame_empty");
+
+		Set<BlockPos> ring = new HashSet<>();
+		Deque<BlockPos> queue = new ArrayDeque<>();
+		ring.add(pos);
+		queue.add(pos);
+		int filled = 0;
+		while (!queue.isEmpty() && ring.size() <= FRAME_RING_SEARCH_LIMIT) {
+			BlockPos current = queue.poll();
+			if (level.getBlockState(current).getValue(EndPortalFrameBlock.HAS_EYE)) {
+				filled++;
+			}
+			for (BlockPos neighbor : BlockPos.betweenClosed(current.offset(-1, -1, -1), current.offset(1, 1, 1))) {
+				if (!ring.contains(neighbor)
+						&& level.getBlockState(neighbor).getBlock() instanceof EndPortalFrameBlock) {
+					BlockPos immutable = neighbor.immutable();
+					ring.add(immutable);
+					queue.add(immutable);
+				}
+			}
+		}
+		if (ring.size() < 2) {
+			return own;
+		}
+		return own.copy().append(Component.literal(", ")).append(
+				Component.translatable("united_minecraft.narrate.frame_ring_count", filled, ring.size()));
+	}
+
+	private static boolean isMechanism(Block block) {
+		return block instanceof LeverBlock
+				|| block instanceof ButtonBlock
+				|| block instanceof DoorBlock
+				|| block instanceof TrapDoorBlock
+				|| block instanceof FenceGateBlock
+				|| block instanceof NetherPortalBlock
+				|| block instanceof EndPortalBlock
+				|| block instanceof EndPortalFrameBlock
+				|| block instanceof JukeboxBlock
+				// Signs have no menu, but reading one is the same kind of "approach and get
+				// information from it" action as the rest of this category.
+				|| block instanceof SignBlock
+				|| block instanceof DiodeBlock
+				|| block instanceof NoteBlock
+				|| block instanceof BellBlock
+				|| block instanceof BasePressurePlateBlock
+				|| block instanceof DaylightDetectorBlock;
+	}
+
+	/**
+	 * Whether {@code state} belongs in Mechanisms - {@code isMechanism} plus the door-half
+	 * dedup, shared by {@link #scanMechanisms}'s real scan and {@link #categoryHasAny}'s probe.
+	 * {@code isMechanism} already covers the portal/frame block types too, so this alone is a
+	 * complete membership test even though {@link #scanMechanisms} branches those off earlier
+	 * for its own clustering purposes.
+	 */
+	private static boolean mechanismMatches(BlockState state) {
+		Block block = state.getBlock();
+		return block instanceof DoorBlock
+				? state.getValue(DoorBlock.HALF) == DoubleBlockHalf.LOWER
+				: isMechanism(block);
+	}
+
+	/**
+	 * Mechanisms plus nether/end portals, the latter clustered into one entry per structure
+	 * instead of one per block - a nether portal is a multi-block rectangle and an end portal
+	 * frame is a multi-block ring, and cycling through a dozen near-identical "Nether Portal"
+	 * entries for one structure would be pointless. Unlike Ores, these are the visible/
+	 * interactive surface itself, so there's no {@link OreDetection#isExposed} gating here.
+	 */
+	private static List<ScannerItem> scanMechanisms(LocalPlayer player) {
+		Level level = player.level();
+		Vec3 eye = player.getEyePosition();
+		BlockPos center = player.blockPosition();
+		int r = (int) scanRange();
+
+		Map<LargeObject, Set<BlockPos>> groups = bucketsFor(PORTALS);
+		List<ScannerItem> results = new ArrayList<>();
+
+		forEachBlockInRange(level, center, r, (pos, state) -> {
+			if (collect(groups, state.getBlock(), pos)) {
+				return true;
+			}
+			if (!mechanismMatches(state)) {
+				return true;
+			}
+			double distance = eye.distanceTo(Vec3.atCenterOf(pos));
+			if (distance <= scanRange()) {
+				results.add(new ScannerItem(pos.immutable(), null, distance, null));
+			}
+			return true;
+		});
+
+		addGroups(level, eye, groups, results);
+		results.sort(Comparator.comparingDouble(ScannerItem::distance));
+		return results;
+	}
+
+	// Which large objects each category lists once rather than once per block - see LargeObject.
+	private static final Set<LargeObject> PORTALS =
+			EnumSet.of(LargeObject.NETHER_PORTAL, LargeObject.END_PORTAL, LargeObject.END_PORTAL_FRAME);
+	private static final Set<LargeObject> CROP_OBJECTS = EnumSet.of(
+			LargeObject.CHORUS, LargeObject.BAMBOO, LargeObject.SUGAR_CANE, LargeObject.CACTUS, LargeObject.KELP);
+	private static final Set<LargeObject> CLIMBABLE_OBJECTS = EnumSet.of(
+			LargeObject.LADDER, LargeObject.VINE, LargeObject.SCAFFOLDING,
+			LargeObject.WEEPING_VINES, LargeObject.TWISTING_VINES, LargeObject.CAVE_VINES);
+
+	/** An empty set of positions for each of {@code kinds}, to {@link #collect} into. */
+	private static Map<LargeObject, Set<BlockPos>> bucketsFor(Set<LargeObject> kinds) {
+		Map<LargeObject, Set<BlockPos>> buckets = new EnumMap<>(LargeObject.class);
+		for (LargeObject kind : kinds) {
+			buckets.put(kind, new HashSet<>());
+		}
+		return buckets;
+	}
+
+	/** Files {@code pos} under its kind if {@code block} is part of a large object this scan groups; returns whether it was. */
+	private static boolean collect(Map<LargeObject, Set<BlockPos>> buckets, Block block, BlockPos pos) {
+		LargeObject kind = LargeObject.of(block);
+		Set<BlockPos> bucket = kind == null ? null : buckets.get(kind);
+		if (bucket == null) {
+			return false;
+		}
+		bucket.add(pos.immutable());
+		return true;
+	}
+
+	/** Turns each bucket of {@link #collect}ed positions into one entry per object, added to {@code results}. */
+	private static void addGroups(Level level, Vec3 eye, Map<LargeObject, Set<BlockPos>> buckets, List<ScannerItem> results) {
+		for (Map.Entry<LargeObject, Set<BlockPos>> bucket : buckets.entrySet()) {
+			switch (bucket.getKey().shape()) {
+				case STRUCTURE -> addPortalClusters(eye, bucket.getValue(), results);
+				case PLANT -> addChorusClusters(level, eye, bucket.getValue(), results);
+				case STACK -> addStalkClusters(eye, bucket.getValue(), results);
+			}
+		}
+	}
+
+	/**
+	 * Floods {@code positions} (one portal block type at a time, already range-limited) into
+	 * connected structures via {@link #floodFillCluster}, then reports each one once, at
+	 * whichever of its blocks is nearest the player - the same one-entry-per-structure approach
+	 * {@link #addLiquidClusters} uses for lakes, minus that method's exposure gating (a portal's
+	 * blocks are already the visible surface, not something that can be sealed behind stone).
+	 */
+	private static void addPortalClusters(Vec3 eye, Set<BlockPos> positions, List<ScannerItem> results) {
+		Set<BlockPos> visited = new HashSet<>();
+		for (BlockPos start : positions) {
+			if (visited.contains(start)) {
+				continue;
+			}
+			Set<BlockPos> cluster = new HashSet<>();
+			floodFillCluster(start, positions, visited, cluster);
+
+			BlockPos nearest = null;
+			double nearestDistSqr = Double.MAX_VALUE;
+			for (BlockPos pos : cluster) {
+				double distSqr = eye.distanceToSqr(Vec3.atCenterOf(pos));
+				if (distSqr < nearestDistSqr) {
+					nearestDistSqr = distSqr;
+					nearest = pos;
+				}
+			}
+			double distance = eye.distanceTo(Vec3.atCenterOf(nearest));
+			if (distance <= scanRange()) {
+				results.add(new ScannerItem(nearest, null, distance, null));
+			}
+		}
+	}
+
+	/**
+	 * Covers wheat/carrots/potatoes/beetroot/torchflower (all {@link CropBlock}), pumpkin/melon
+	 * stems (both the growing {@link StemBlock} stage and the {@link AttachedStemBlock} stage
+	 * once a fruit has actually formed), the fruit itself (plain {@code Blocks.PUMPKIN}/{@code
+	 * Blocks.MELON} - neither has its own dedicated block class), nether wart, cocoa, sweet
+	 * berries, saplings (including mangrove propagules - a {@link SaplingBlock} subclass),
+	 * bamboo's own single-block sapling stage, and cave vines (any segment, head or body alike -
+	 * {@link #isRipe} is what actually distinguishes a glow-berry-bearing one). Grown bamboo
+	 * stalks, sugar cane, and kelp are deliberately not here - see {@link #addStalkClusters} for
+	 * why they need clustering instead of a flat per-block match like everything else in this
+	 * category. Package-private - {@link BuildModeController} reuses this (and {@link #isRipe})
+	 * so its cursor narrates "Ripe" the same way the Scanner does.
+	 */
+	public static boolean isCrop(Block block) {
+		return block instanceof CropBlock
+				|| block instanceof StemBlock
+				|| block instanceof AttachedStemBlock
+				|| block instanceof NetherWartBlock
+				|| block instanceof CocoaBlock
+				|| block instanceof SweetBerryBushBlock
+				|| block instanceof SaplingBlock
+				|| block instanceof BambooSaplingBlock
+				|| block instanceof CaveVines
+				|| block == Blocks.PUMPKIN
+				|| block == Blocks.MELON;
+	}
+
+	/**
+	 * Full Crops-category membership, {@link #isCrop} plus the three stalk-clustered block
+	 * types {@link #scanCrops} branches off separately for its own clustering - used by {@link
+	 * #categoryHasAny}'s probe, which (unlike the real scan) doesn't need to tell those apart.
+	 */
+	private static boolean cropMatches(Block block) {
+		return block instanceof BambooStalkBlock
+				|| block instanceof ChorusPlantBlock
+				|| block instanceof ChorusFlowerBlock
+				|| block instanceof SugarCaneBlock
+				|| block instanceof CactusBlock
+				|| block instanceof KelpBlock
+				|| block instanceof KelpPlantBlock
+				|| isCrop(block);
+	}
+
+	/**
+	 * Whether a crop block is ready to harvest. Most crops report this via their own age
+	 * property reaching its documented max; sweet berry bushes are the one exception - they're
+	 * pickable (with berries actually dropping) starting at age 2 of 3, not only at full growth.
+	 * Saplings and bamboo's own sapling stage have no such concept and never report ripe.
+	 */
+	public static boolean isRipe(BlockState state) {
+		Block block = state.getBlock();
+		if (block instanceof CropBlock crop) {
+			return crop.isMaxAge(state);
+		}
+		if (block instanceof SweetBerryBushBlock) {
+			return state.getValue(SweetBerryBushBlock.AGE) >= 2;
+		}
+		if (block instanceof StemBlock) {
+			return state.getValue(StemBlock.AGE) >= StemBlock.MAX_AGE;
+		}
+		if (block instanceof NetherWartBlock) {
+			return state.getValue(NetherWartBlock.AGE) >= NetherWartBlock.MAX_AGE;
+		}
+		if (block instanceof CocoaBlock) {
+			return state.getValue(CocoaBlock.AGE) >= CocoaBlock.MAX_AGE;
+		}
+		if (block instanceof CaveVines) {
+			return CaveVines.hasGlowBerries(state);
+		}
+		return false;
+	}
+
+	/**
+	 * How tall the vertical stack of identical blocks starting at {@code base} actually is right
+	 * now - bamboo, sugar cane, and kelp all grow straight up as a stack of otherwise-identical
+	 * blocks with no single property that records the whole stalk's height, so this counts by
+	 * walking upward through matching blocks live rather than relying on anything cached from
+	 * scan time (the same reasoning {@link #isRipe} and the bed-occupied check above it use).
+	 * Null for anything else in the Crops category, which is always a single block already.
+	 */
+	private static Component stalkHeight(Level level, BlockPos base) {
+		Block block = level.getBlockState(base).getBlock();
+		Predicate<Block> partOfStalk;
+		if (block instanceof BambooStalkBlock) {
+			partOfStalk = candidate -> candidate instanceof BambooStalkBlock;
+		} else if (block instanceof SugarCaneBlock) {
+			partOfStalk = candidate -> candidate instanceof SugarCaneBlock;
+		} else if (block instanceof CactusBlock) {
+			partOfStalk = candidate -> candidate instanceof CactusBlock;
+		} else if (block instanceof KelpBlock || block instanceof KelpPlantBlock) {
+			partOfStalk = candidate -> candidate instanceof KelpBlock || candidate instanceof KelpPlantBlock;
+		} else {
+			return null;
+		}
+
+		int height = 1;
+		BlockPos pos = base.above();
+		while (partOfStalk.test(level.getBlockState(pos).getBlock())) {
+			height++;
+			pos = pos.above();
+		}
+		return Component.translatable("united_minecraft.narrate.scanner_height", height);
+	}
+
+	/** How tall a Climbable run is, and the Y levels its base and top blocks currently sit at - see {@link #climbableRun}. */
+	private record ClimbableRun(int height, int baseY, int topY) {
+	}
+
+	/**
+	 * Same idea as {@link #stalkHeight}, for the Climbable category instead of Crops - how tall
+	 * the vertical run of whichever climbable type {@code base} belongs to actually is right now,
+	 * counted live rather than cached from scan time, since a run can get shortened by mining a
+	 * block out of the middle of it between the scan and narrating this particular entry. Weeping/
+	 * twisting/cave vines match either their head or body block type, same pairing {@link
+	 * #scanClimbable} clusters them with. The top Y that comes back alongside the height is what
+	 * {@link #climbableDirection} compares against the player's own feet to say whether climbing
+	 * this run actually takes them up, down, or both from where they're standing.
+	 */
+	private static ClimbableRun climbableRun(Level level, BlockPos base) {
+		Block block = level.getBlockState(base).getBlock();
+		Predicate<Block> partOfRun;
+		if (block instanceof LadderBlock) {
+			partOfRun = candidate -> candidate instanceof LadderBlock;
+		} else if (block instanceof VineBlock) {
+			partOfRun = candidate -> candidate instanceof VineBlock;
+		} else if (block instanceof ScaffoldingBlock) {
+			partOfRun = candidate -> candidate instanceof ScaffoldingBlock;
+		} else if (block instanceof WeepingVinesBlock || block instanceof WeepingVinesPlantBlock) {
+			partOfRun = candidate -> candidate instanceof WeepingVinesBlock || candidate instanceof WeepingVinesPlantBlock;
+		} else if (block instanceof TwistingVinesBlock || block instanceof TwistingVinesPlantBlock) {
+			partOfRun = candidate -> candidate instanceof TwistingVinesBlock || candidate instanceof TwistingVinesPlantBlock;
+		} else if (block instanceof CaveVinesBlock || block instanceof CaveVinesPlantBlock) {
+			partOfRun = candidate -> candidate instanceof CaveVinesBlock || candidate instanceof CaveVinesPlantBlock;
+		} else {
+			return null;
+		}
+
+		int height = 1;
+		BlockPos pos = base.above();
+		while (partOfRun.test(level.getBlockState(pos).getBlock())) {
+			height++;
+			pos = pos.above();
+		}
+		return new ClimbableRun(height, base.getY(), base.getY() + height - 1);
+	}
+
+	/**
+	 * Whether climbing {@code run} actually takes the player up, down, or both, relative to where
+	 * they're currently standing - not just whether the run itself has more above or below its own
+	 * base, which {@link #climbableRun}'s height already covers. A run based at or above the
+	 * player's feet leads up; one topping out at or below their feet leads down; one that straddles
+	 * both (the player's standing partway up or down a long shaft, common in trial chambers) leads
+	 * both ways. The base-at-feet-exactly and single-block-at-feet-exactly cases both fall into
+	 * "leads up" - the far more common real case of standing right at the foot of something about
+	 * to be climbed upward.
+	 */
+	private static Component climbableDirection(ClimbableRun run, LocalPlayer player) {
+		int feetY = player.blockPosition().getY();
+		if (run.baseY() >= feetY) {
+			return Component.translatable("united_minecraft.narrate.scanner_climbable_up");
+		}
+		if (run.topY() <= feetY) {
+			return Component.translatable("united_minecraft.narrate.scanner_climbable_down");
+		}
+		return Component.translatable("united_minecraft.narrate.scanner_climbable_up_and_down");
+	}
+
+	/** Returns {@code true} to keep {@link #forEachBlockInRange} scanning, {@code false} to stop immediately. */
+	@FunctionalInterface
+	private interface BlockVisitor {
+		boolean visit(BlockPos pos, BlockState state);
+	}
+
+	/**
+	 * Visits every block position within the cube spanning {@code r} of {@code center},
+	 * skipping whole chunk sections already known to contain nothing but air ({@link
+	 * LevelChunkSection#hasOnlyAir()}) instead of reading each of their 4096 positions one at
+	 * a time via {@link Level#getBlockState} - at a large {@link #scanRange()}, the
+	 * overwhelming majority of the cube is sky or cave-air sections, and the naive per-position
+	 * {@code getBlockState} scan this replaced scaled with the cube of the range (doubling
+	 * scanRange meant 8x the work). {@code visitor} returns {@code false} to stop scanning
+	 * immediately, used by {@link #scanBlocksAny}'s first-match probe. Chunks outside the
+	 * client's loaded area are silently skipped rather than triggering a load.
+	 */
+	private static void forEachBlockInRange(Level level, BlockPos center, int r, BlockVisitor visitor) {
+		int minX = center.getX() - r;
+		int maxX = center.getX() + r;
+		int minY = center.getY() - r;
+		int maxY = center.getY() + r;
+		int minZ = center.getZ() - r;
+		int maxZ = center.getZ() + r;
+
+		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+		FastBlockAccess fastAccess = new FastBlockAccess(level);
+		for (int cx = minX >> 4; cx <= maxX >> 4; cx++) {
+			for (int cz = minZ >> 4; cz <= maxZ >> 4; cz++) {
+				ChunkAccess chunk = fastAccess.chunkAt(cx, cz);
+				if (chunk == null) {
+					continue;
+				}
+				int chunkMinX = Math.max(minX, cx << 4);
+				int chunkMaxX = Math.min(maxX, (cx << 4) + 15);
+				int chunkMinZ = Math.max(minZ, cz << 4);
+				int chunkMaxZ = Math.min(maxZ, (cz << 4) + 15);
+
+				LevelChunkSection[] sections = chunk.getSections();
+				int minSection = Math.max(chunk.getSectionIndex(minY), 0);
+				int maxSection = Math.min(chunk.getSectionIndex(maxY), sections.length - 1);
+				for (int si = minSection; si <= maxSection; si++) {
+					LevelChunkSection section = sections[si];
+					if (section.hasOnlyAir()) {
+						continue;
+					}
+					int baseY = chunk.getSectionYFromSectionIndex(si) << 4;
+					int sectionMinY = Math.max(minY, baseY);
+					int sectionMaxY = Math.min(maxY, baseY + 15);
+					for (int y = sectionMinY; y <= sectionMaxY; y++) {
+						for (int x = chunkMinX; x <= chunkMaxX; x++) {
+							for (int z = chunkMinZ; z <= chunkMaxZ; z++) {
+								BlockState state = section.getBlockState(x & 15, y & 15, z & 15);
+								if (!visitor.visit(pos.set(x, y, z), state)) {
+									return;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	private static List<ScannerItem> scanBlocks(LocalPlayer player, BiPredicate<BlockPos, BlockState> predicate) {
+		Level level = player.level();
+		Vec3 eye = player.getEyePosition();
+		BlockPos center = player.blockPosition();
+		int r = (int) scanRange();
+		double rangeSqr = scanRange() * scanRange();
+
+		List<ScannerItem> results = new ArrayList<>();
+		forEachBlockInRange(level, center, r, (pos, state) -> {
+			// Distance first, predicate second: a predicate like Ores'/Search's isExposed() does
+			// up to six raycasts, and skipping it for the ~48% of the bounding cube that falls
+			// outside the actual spherical scanRange() (a cube's volume is roughly double its
+			// inscribed sphere's) avoids most of that cost outright instead of throwing the work
+			// away after the fact.
+			double distanceSqr = distanceSqrToCenter(eye, pos);
+			if (distanceSqr > rangeSqr) {
+				return true;
+			}
+			if (predicate.test(pos, state)) {
+				results.add(new ScannerItem(pos.immutable(), null, Math.sqrt(distanceSqr), null));
+			}
+			return true;
+		});
+		results.sort(Comparator.comparingDouble(ScannerItem::distance));
+		return results;
+	}
+
+	/**
+	 * Same range/predicate as {@link #scanBlocks}, but stops at the first match instead of
+	 * collecting and sorting every one - used only by {@link #categoryHasAny}'s "is this
+	 * category worth switching to" probe, which never needs more than a yes/no answer.
+	 */
+	private static boolean scanBlocksAny(LocalPlayer player, BiPredicate<BlockPos, BlockState> predicate) {
+		Level level = player.level();
+		Vec3 eye = player.getEyePosition();
+		BlockPos center = player.blockPosition();
+		int r = (int) scanRange();
+		double rangeSqr = scanRange() * scanRange();
+
+		boolean[] found = {false};
+		forEachBlockInRange(level, center, r, (pos, state) -> {
+			if (distanceSqrToCenter(eye, pos) > rangeSqr) {
+				return true;
+			}
+			if (predicate.test(pos, state)) {
+				found[0] = true;
+				return false;
+			}
+			return true;
+		});
+		return found[0];
+	}
+
+	/**
+	 * Cheap "does this category have anything at all" probe for {@link #switchCategory}'s
+	 * skip-empty-categories loop - unlike {@link #scan}, this never builds a list, sorts, or
+	 * clusters; for the categories that scan the full block cube (the expensive part, hundreds
+	 * of thousands of positions at a typical scanner range) it stops at the very first
+	 * qualifying block via {@link #scanBlocksAny}, reusing the exact same membership predicates
+	 * {@code scan} itself uses so the two can never disagree about what counts. Every other
+	 * category (entity-based, Markers, Players, Biomes) is already cheap enough that this just
+	 * runs the real scan and checks emptiness directly.
+	 */
+	private static boolean categoryHasAny(CategoryRef ref, LocalPlayer player) {
+		if (ScannerFilterController.hasFilters(ref.filterKey())) {
+			// The cheap probes below can't tell that everything they find is filtered out.
+			return !scanVisible(ref, player).isEmpty();
+		}
+		ScannerCategory category = ref.kind();
+		Level level = player.level();
+		Vec3 eye = player.getEyePosition();
+		FastBlockAccess fastAccess = new FastBlockAccess(level);
+		return switch (category) {
+			case STORAGE -> scanBlocksAny(player, storagePredicate());
+			case WORKSTATIONS -> scanBlocksAny(player, workstationsPredicate(player));
+			case MECHANISMS -> scanBlocksAny(player, (pos, state) -> mechanismMatches(state));
+			// Deliberately not x-ray, matching scan()'s own ORES case.
+			case ORES -> scanBlocksAny(player, (pos, state) ->
+					OreDetection.isValuableOre(state) && OreDetection.isExposed(level, fastAccess::getBlockState, pos, eye));
+			// isExposed is evaluated per-block here exactly as it is inside scanLiquids's own
+			// per-cluster search, so "any water/lava block passes" is exactly equivalent to
+			// "some cluster has an exposed member" for existence purposes - clustering only
+			// changes how many entries get reported, never whether any given block qualifies.
+			case TERRAIN -> scanBlocksAny(player, (pos, state) ->
+					(state.is(Blocks.WATER) || state.is(Blocks.LAVA)) && OreDetection.isExposed(level, fastAccess::getBlockState, pos, eye))
+					|| scanBlocksAny(player, (pos, state) -> state.is(BlockTags.CLIMBABLE))
+					|| !scanFlatAreas(player).isEmpty();
+			case CROPS -> scanBlocksAny(player, (pos, state) -> cropMatches(state.getBlock()));
+			case SEARCH -> !ref.searchTerm(searchTerm).isBlank() && scanBlocksAny(player, (pos, state) -> !state.isAir()
+					&& searchMatches(ref.searchTerm(searchTerm)).contains(state.getBlock())
+					&& OreDetection.isExposed(level, fastAccess::getBlockState, pos, eye));
+			case TREES -> scanBlocksAny(player, (pos, state) -> state.is(BlockTags.LOGS) && hasNearbyLeavesAt(level, pos));
+			default -> !scanVisible(ref, player).isEmpty();
+		};
+	}
+
+	/** Per-position version of {@link #hasNearbyLeaves}'s cluster-bbox search, for {@link #categoryHasAny}'s single-block probe. */
+	private static boolean hasNearbyLeavesAt(Level level, BlockPos pos) {
+		BlockPos from = pos.offset(-LEAF_SEARCH_MARGIN, -LEAF_SEARCH_MARGIN, -LEAF_SEARCH_MARGIN);
+		BlockPos to = pos.offset(LEAF_SEARCH_MARGIN, LEAF_SEARCH_MARGIN, LEAF_SEARCH_MARGIN);
+		for (BlockPos candidate : BlockPos.betweenClosed(from, to)) {
+			if (level.getBlockState(candidate).is(BlockTags.LEAVES)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Matches against a player-entered search term instead of a fixed set of block types - see
+	 * {@link #openSearchPrompt}. Deliberately not x-ray, same as Ores/Liquids: {@link
+	 * OreDetection#isExposed} only counts a match already bordering air or a fluid and actually
+	 * visible through that gap, not sealed behind unmined blocks.
+	 */
+	private static List<ScannerItem> scanSearch(LocalPlayer player, String term) {
+		if (term.isBlank()) {
+			return List.of();
+		}
+		Set<Block> matches = searchMatches(term);
+		FastBlockAccess fastAccess = new FastBlockAccess(player.level());
+		Vec3 eye = player.getEyePosition();
+		Level level = player.level();
+		List<ScannerItem> found = scanBlocks(player, (pos, state) -> !state.isAir()
+				&& matches.contains(state.getBlock())
+				&& OreDetection.isExposed(level, fastAccess::getBlockState, pos, eye));
+		List<ScannerItem> oncePerObject = SecondHalves.dropFrom(found, ScannerItem::blockPos,
+				item -> otherHalfOfSecond(level.getBlockState(item.blockPos()), item.blockPos()));
+		return groupLargeObjects(level, eye, oncePerObject);
+	}
+
+	/**
+	 * Collapses the things made of many blocks into one entry each, the way Mechanisms, Crops and
+	 * Terrain list them, so a search for one doesn't narrate every block: portals and portal frames,
+	 * stalks and climbables (one entry per unbroken run, at its base) and chorus plants - every kind
+	 * in {@link LargeObject}. Everything else passes through untouched. Works on what the search
+	 * already found, so it still lists only what is visible.
+	 */
+	private static List<ScannerItem> groupLargeObjects(Level level, Vec3 eye, List<ScannerItem> found) {
+		Map<LargeObject, Set<BlockPos>> groups = bucketsFor(EnumSet.allOf(LargeObject.class));
+		List<ScannerItem> results = new ArrayList<>();
+		for (ScannerItem item : found) {
+			if (!collect(groups, level.getBlockState(item.blockPos()).getBlock(), item.blockPos())) {
+				results.add(item);
+			}
+		}
+		addGroups(level, eye, groups, results);
+		results.sort(Comparator.comparingDouble(ScannerItem::distance));
+		return results;
+	}
+
+	/**
+	 * Where the other half of a two-block object is, if {@code state} is the half that shouldn't be
+	 * listed on its own - the right half of a double chest, a bed's foot, the upper half of a door
+	 * or tall plant (the same halves Storage, Workstations and Mechanisms leave out) - or null for
+	 * anything else.
+	 */
+	private static BlockPos otherHalfOfSecond(BlockState state, BlockPos pos) {
+		if (state.hasProperty(ChestBlock.TYPE) && state.getValue(ChestBlock.TYPE) == ChestType.RIGHT) {
+			return pos.relative(ChestBlock.getConnectedDirection(state));
+		}
+		if (state.hasProperty(AbstractBedBlock.PART) && state.getValue(AbstractBedBlock.PART) == BedPart.FOOT) {
+			return pos.relative(AbstractBedBlock.getConnectedDirection(state));
+		}
+		if (state.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF)
+				&& state.getValue(BlockStateProperties.DOUBLE_BLOCK_HALF) == DoubleBlockHalf.UPPER) {
+			return pos.below();
+		}
+		return null;
+	}
+
+	/**
+	 * Every {@link Block} matching the current {@link #searchTerm}, resolved by walking the block
+	 * registry once (about a thousand entries) and cached until the term changes.
+	 *
+	 * <p>The membership test itself is per-{@code Block}, never per-{@code BlockState} - {@link
+	 * #matchesSearchTerm} only ever read {@code state.getBlock()} anyway - so hoisting it out of
+	 * the scan loop is exactly equivalent, just enormously cheaper. Evaluating it inline meant
+	 * resolving a translatable component to a {@code String}, lowercasing it, and allocating along
+	 * the way for <em>every</em> non-air block in range: at the maximum {@link #scanRange()} of 64
+	 * that's over a million positions on a single keypress (and again on every Home/End press,
+	 * through {@link #categoryHasAny}'s probe), which is seconds of frozen client rather than the
+	 * hash lookup per position it costs now.
+	 */
+	private static Set<Block> searchMatches(String searchTerm) {
+		String term = searchTerm.toLowerCase(Locale.ROOT);
+		Set<Block> cached = SEARCH_MATCHES.get(term);
+		if (cached != null) {
+			return cached;
+		}
+		Set<Block> matches = new HashSet<>();
+		if (!term.isBlank()) {
+			for (Block block : BuiltInRegistries.BLOCK) {
+				if (matchesSearchTerm(block, term)) {
+					matches.add(block);
+				}
+			}
+		}
+		if (SEARCH_MATCHES.size() >= MAX_CACHED_TERMS) {
+			SEARCH_MATCHES.clear();
+		}
+		SEARCH_MATCHES.put(term, matches);
+		return matches;
+	}
+
+	/** Matches either the block's localized display name or its registry id (underscores treated as spaces) against {@code term}. */
+	private static boolean matchesSearchTerm(Block block, String term) {
+		if (block.getName().getString().toLowerCase(Locale.ROOT).contains(term)) {
+			return true;
+		}
+		String path = BuiltInRegistries.BLOCK.getKey(block).getPath().replace('_', ' ');
+		return path.contains(term);
+	}
+
+	private static List<ScannerItem> scanEntities(LocalPlayer player, Predicate<Entity> predicate) {
+		Vec3 eye = player.getEyePosition();
+		AABB box = player.getBoundingBox().inflate(scanRange());
+
+		List<ScannerItem> results = new ArrayList<>();
+		for (Entity entity : player.level().getEntities(player, box, e -> e.isAlive() && predicate.test(e))) {
+			double distance = eye.distanceTo(entity.getBoundingBox().getCenter());
+			if (distance <= scanRange()) {
+				results.add(new ScannerItem(null, entity, distance, null));
+			}
+		}
+		results.sort(Comparator.comparingDouble(ScannerItem::distance));
+		return results;
+	}
+
+	private static List<ScannerItem> scanTrees(LocalPlayer player) {
+		Level level = player.level();
+		Vec3 eye = player.getEyePosition();
+		BlockPos center = player.blockPosition();
+		int r = (int) scanRange();
+
+		Set<BlockPos> logPositions = new HashSet<>();
+		forEachBlockInRange(level, center, r, (pos, state) -> {
+			if (state.is(BlockTags.LOGS)) {
+				logPositions.add(pos.immutable());
+			}
+			return true;
+		});
+
+		List<ScannerItem> results = new ArrayList<>();
+		Set<BlockPos> visited = new HashSet<>();
+		for (BlockPos start : logPositions) {
+			if (visited.contains(start)) {
+				continue;
+			}
+			Set<BlockPos> cluster = new HashSet<>();
+			BlockPos trunkBase = lowestLog(level, floodFillCluster(start, logPositions, visited, cluster));
+			if (!hasNearbyLeaves(level, cluster)) {
+				// A log cluster with no leaves anywhere near it is more likely a player-built
+				// structure (cabin, bridge, etc.) than an actual tree.
+				continue;
+			}
+			double distance = eye.distanceTo(Vec3.atCenterOf(trunkBase));
+			if (distance <= scanRange()) {
+				results.add(new ScannerItem(trunkBase, null, distance, null));
+			}
+		}
+		results.sort(Comparator.comparingDouble(ScannerItem::distance));
+		return results;
+	}
+
+	/**
+	 * Liquids plus everything climbable, merged into one list - both are short, rarely-used
+	 * lists about getting around, so they share a category (and one Home/End stop). Each half
+	 * keeps its own scan, clustering and narration; only the sort is shared.
+	 */
+	private static List<ScannerItem> scanTerrain(LocalPlayer player) {
+		List<ScannerItem> results = new ArrayList<>(scanLiquids(player));
+		results.addAll(scanClimbable(player));
+		results.addAll(scanFlatAreas(player));
+		results.sort(Comparator.comparingDouble(ScannerItem::distance));
+		return results;
+	}
+
+	/**
+	 * Level, open ground at least {@link #flatAreaSize} across, within {@link #FLAT_AREA_RANGE}
+	 * blocks - empty until the player has asked for a size. Walks each column once, bottom to
+	 * top, marking every height where there is solid ground with two clear blocks above it, then
+	 * hands the per-height maps to {@link FlatAreaFinder}. Plants and snow count as clear (you
+	 * can build over them); trees, water, lava, leaves, campfires and magma do not. Only loaded
+	 * chunks are looked at, so with a render distance under 64 blocks the search simply reaches
+	 * as far as the world does.
+	 *
+	 * <p>Each result is reported at the centre block of its area, with its size in the label
+	 * ("12 by 9 flat area") and what its surface is made of in {@link FlatArea#surfaces}.
+	 */
+	private static List<ScannerItem> scanFlatAreas(LocalPlayer player) {
+		int[] size = flatAreaSize;
+		if (size == null) {
+			return List.of();
+		}
+		Level level = player.level();
+		BlockPos origin = player.blockPosition();
+		int span = FLAT_AREA_RANGE * 2 + 1;
+		int minX = origin.getX() - FLAT_AREA_RANGE;
+		int minZ = origin.getZ() - FLAT_AREA_RANGE;
+		int minY = Math.max(level.getMinY(), origin.getY() - FLAT_AREA_VERTICAL_RANGE);
+		int maxY = Math.min(level.getMaxY(), origin.getY() + FLAT_AREA_VERTICAL_RANGE);
+
+		FastBlockAccess fastAccess = new FastBlockAccess(level);
+		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+		Map<Integer, boolean[]> floors = new HashMap<>();
+		for (int x = minX; x < minX + span; x++) {
+			for (int z = minZ; z < minZ + span; z++) {
+				if (fastAccess.chunkAt(x >> 4, z >> 4) == null) {
+					continue;
+				}
+				// standY is the block a player would stand in, once a ground block has been seen
+				// directly under it; clearRun counts the clear blocks since, two being a body's worth.
+				int standY = Integer.MIN_VALUE;
+				int clearRun = 0;
+				for (int y = minY; y <= maxY; y++) {
+					BlockState state = fastAccess.getBlockState(pos.set(x, y, z));
+					boolean fluid = !state.getFluidState().isEmpty();
+					if (state.isAir() || (!fluid && state.getCollisionShape(level, pos).isEmpty())) {
+						if (standY != Integer.MIN_VALUE && ++clearRun == 2) {
+							floors.computeIfAbsent(standY, k -> new boolean[span * span])[(z - minZ) * span + (x - minX)] = true;
+							standY = Integer.MIN_VALUE;
+						}
+					} else if (!fluid && state.isFaceSturdy(level, pos, Direction.UP)
+							&& !state.is(BlockTags.LEAVES) && !state.is(BlockTags.CAMPFIRES) && !state.is(Blocks.MAGMA_BLOCK)) {
+						standY = y + 1;
+						clearRun = 0;
+					} else {
+						standY = Integer.MIN_VALUE;
+						clearRun = 0;
+					}
+				}
+			}
+		}
+
+		Vec3 eye = player.getEyePosition();
+		List<ScannerItem> results = new ArrayList<>();
+		for (FlatAreaFinder.Area area : FlatAreaFinder.find(floors, span, span, size[0], size[1], 64)) {
+			int areaMinX = minX + area.x();
+			int areaMinZ = minZ + area.z();
+			int groundY = area.y() - 1;
+			// An even side has no single middle block; this is the lower of the two.
+			BlockPos center = new BlockPos(areaMinX + (area.width() - 1) / 2, groundY, areaMinZ + (area.depth() - 1) / 2);
+
+			Map<Block, Integer> surfaceCounts = new HashMap<>();
+			for (int x = areaMinX; x < areaMinX + area.width(); x++) {
+				for (int z = areaMinZ; z < areaMinZ + area.depth(); z++) {
+					surfaceCounts.merge(fastAccess.getBlockState(pos.set(x, groundY, z)).getBlock(), 1, Integer::sum);
+				}
+			}
+			// Ties broken by id so the same area narrates its surfaces in the same order every scan.
+			List<Block> surfaces = surfaceCounts.entrySet().stream()
+					.sorted(Comparator.<Map.Entry<Block, Integer>>comparingInt(entry -> -entry.getValue())
+							.thenComparing(entry -> BuiltInRegistries.BLOCK.getKey(entry.getKey()).toString()))
+					.map(Map.Entry::getKey)
+					.toList();
+
+			String label = Component.translatable("united_minecraft.narrate.flat_area",
+					Math.max(area.width(), area.depth()), Math.min(area.width(), area.depth())).getString();
+			results.add(new ScannerItem(center, null, eye.distanceTo(Vec3.atCenterOf(center)), label,
+					new FlatArea(areaMinX, areaMinZ, area.width(), area.depth(), groundY, surfaces)));
+		}
+		results.sort(Comparator.comparingDouble(ScannerItem::distance));
+		return results.size() > FLAT_AREA_MAX_RESULTS ? new ArrayList<>(results.subList(0, FLAT_AREA_MAX_RESULTS)) : results;
+	}
+
+	/**
+	 * Water and lava, each clustered into connected bodies the same way {@link #scanTrees}
+	 * clusters logs into trees - a lake or ocean is one Scanner entry, not one per block.
+	 */
+	private static List<ScannerItem> scanLiquids(LocalPlayer player) {
+		Level level = player.level();
+		Vec3 eye = player.getEyePosition();
+		BlockPos center = player.blockPosition();
+		int r = (int) scanRange();
+
+		// Kept separate per fluid so a lava flow spilling into a lake doesn't cluster the two
+		// into one body with an ambiguous name.
+		Set<BlockPos> waterPositions = new HashSet<>();
+		Set<BlockPos> lavaPositions = new HashSet<>();
+		double rangeSqr = scanRange() * scanRange();
+		forEachBlockInRange(level, center, r, (pos, state) -> {
+			// Unlike scanBlocks, nothing downstream filters these candidates by distance before
+			// flood-filling them into bodies - an ocean or lake is one connected structure, so
+			// without this check every water block in the whole bounding cube (however far past
+			// scanRange() the body actually extends) would get pulled into the flood fill and
+			// sorted, not just the part actually in range.
+			if (distanceSqrToCenter(eye, pos) > rangeSqr) {
+				return true;
+			}
+			if (state.is(Blocks.WATER)) {
+				waterPositions.add(pos.immutable());
+			} else if (state.is(Blocks.LAVA)) {
+				lavaPositions.add(pos.immutable());
+			}
+			return true;
+		});
+
+		FastBlockAccess fastAccess = new FastBlockAccess(level);
+		List<ScannerItem> results = new ArrayList<>();
+		addLiquidClusters(level, fastAccess, eye, waterPositions, results);
+		addLiquidClusters(level, fastAccess, eye, lavaPositions, results);
+		results.sort(Comparator.comparingDouble(ScannerItem::distance));
+		return results;
+	}
+
+	/**
+	 * Floods {@code positions} (one fluid type at a time, already range-limited) into connected
+	 * bodies, then reports each body once, at whichever of its blocks is both nearest the
+	 * player and actually {@link OreDetection#isExposed exposed} - skipping a body entirely if
+	 * none of it is, the same "don't x-ray" rule Ores follows (lava sealed behind unmined stone
+	 * shouldn't show up until there's actually a way to see it).
+	 *
+	 * <p>Expands best-first (a priority queue ordered by distance to the player) instead of a
+	 * plain flood fill: the block popped is always whichever undiscovered one is closest, so the
+	 * first one found exposed is already the globally nearest exposed point in the body - a real
+	 * lake or ocean can be far larger than {@link #scanRange()}, and this only ever walks the
+	 * part of it between the player and the nearest visible water, never the far side. Once an
+	 * answer is found, whatever's left of the body still needs marking visited (so a later
+	 * {@code start} elsewhere in the same body isn't mistaken for the start of a separate one) -
+	 * that remainder is drained through a plain queue instead, since neither distance ordering
+	 * nor further {@code isExposed} checks (each up to six raycasts) are useful once the body's
+	 * answer is already settled.
+	 */
+	private static void addLiquidClusters(Level level, FastBlockAccess fastAccess, Vec3 eye, Set<BlockPos> positions, List<ScannerItem> results) {
+		Set<BlockPos> visited = new HashSet<>();
+		for (BlockPos start : positions) {
+			if (visited.contains(start)) {
+				continue;
+			}
+			PriorityQueue<BlockPos> frontier =
+					new PriorityQueue<>(Comparator.comparingDouble(pos -> distanceSqrToCenter(eye, pos)));
+			frontier.add(start);
+			visited.add(start);
+
+			ScannerItem found = null;
+			while (!frontier.isEmpty()) {
+				BlockPos pos = frontier.poll();
+				boolean exposed = OreDetection.isExposed(level, fastAccess::getBlockState, pos, eye);
+				// Expand this node's neighbors regardless of whether it's the answer - stopping
+				// without expanding the found node would leave anything reachable only through it
+				// (a narrow channel leading deeper into the same body, say) unmarked, and it would
+				// surface as a bogus second "lake" when the outer loop later reaches it as an
+				// unvisited start.
+				addFluidNeighbors(pos, positions, visited, frontier);
+				if (exposed) {
+					found = new ScannerItem(pos.immutable(), null, eye.distanceTo(Vec3.atCenterOf(pos)), null);
+					break;
+				}
+			}
+			if (found == null) {
+				continue;
+			}
+			results.add(found);
+
+			Deque<BlockPos> remainder = new ArrayDeque<>(frontier);
+			while (!remainder.isEmpty()) {
+				addFluidNeighbors(remainder.poll(), positions, visited, remainder);
+			}
+		}
+	}
+
+	/**
+	 * Face-connected (6-connected, not the 26-connected face/edge/corner {@link
+	 * #floodFillCluster} uses for logs) neighbor expansion for {@link #addLiquidClusters} -
+	 * water and lava only ever spread from one block into another across a shared face, never
+	 * diagonally, so two fluid blocks that only touch at an edge or corner were never actually
+	 * part of the same flowing body to begin with. Restricting to real fluid-adjacency cuts the
+	 * neighbor checks a large connected body needs (a real lake or aquifer can run into the tens
+	 * of thousands of blocks) by more than 4x versus 26-connectivity, for the same clustering
+	 * result in every case except a body hand-placed to touch only at a diagonal corner.
+	 */
+	private static void addFluidNeighbors(BlockPos pos, Set<BlockPos> candidates, Set<BlockPos> visited, Collection<BlockPos> frontier) {
+		for (Direction direction : Direction.values()) {
+			BlockPos neighbor = pos.relative(direction);
+			if (candidates.contains(neighbor) && visited.add(neighbor)) {
+				frontier.add(neighbor);
+			}
+		}
+	}
+
+	/**
+	 * Crops, saplings (including bamboo's own single-block sapling stage), pumpkins/melons and
+	 * their stems, and cave vine segments actually bearing glow berries are all sparse
+	 * single-block matches - one Scanner entry per block, same as every other flat category.
+	 * Grown bamboo, sugar cane, and kelp are the exception: each grows as a vertical stack of
+	 * otherwise-identical blocks, so a flat per-block match would narrate the same stalk over
+	 * and over while cycling up it. Each stack instead gets exactly one entry, at its base, via
+	 * {@link #addStalkClusters} - see {@link #stalkHeight} for the height that goes with it.
+	 */
+	private static List<ScannerItem> scanCrops(LocalPlayer player) {
+		Level level = player.level();
+		Vec3 eye = player.getEyePosition();
+		BlockPos center = player.blockPosition();
+		int r = (int) scanRange();
+
+		Map<LargeObject, Set<BlockPos>> groups = bucketsFor(CROP_OBJECTS);
+		List<ScannerItem> results = new ArrayList<>();
+		forEachBlockInRange(level, center, r, (pos, state) -> {
+			Block block = state.getBlock();
+			if (collect(groups, block, pos)) {
+				return true;
+			}
+			if (!isCrop(block)) {
+				return true;
+			}
+			double distance = eye.distanceTo(Vec3.atCenterOf(pos));
+			if (distance <= scanRange()) {
+				results.add(new ScannerItem(pos.immutable(), null, distance, null));
+			}
+			return true;
+		});
+
+		addGroups(level, eye, groups, results);
+		results.sort(Comparator.comparingDouble(ScannerItem::distance));
+		return results;
+	}
+
+	/**
+	 * One entry per connected chorus plant (stems and flowers together), not per block - a single
+	 * plant is dozens of branching blocks, which would otherwise bury everything else in the
+	 * category. Unlike the stalk crops it branches in every direction, so it clusters with the
+	 * same flood fill trees and liquids use. Reported at the cluster's nearest stem block when it
+	 * has any, since chorus fruit drops from breaking stems rather than flowers, falling back to
+	 * the nearest flower for a plant that is only a lone flower so far.
+	 */
+	private static void addChorusClusters(Level level, Vec3 eye, Set<BlockPos> positions, List<ScannerItem> results) {
+		Set<BlockPos> visited = new HashSet<>();
+		for (BlockPos start : positions) {
+			if (visited.contains(start)) {
+				continue;
+			}
+			Set<BlockPos> cluster = new HashSet<>();
+			floodFillCluster(start, positions, visited, cluster);
+			BlockPos nearestStem = null;
+			BlockPos nearestAny = null;
+			double stemDistance = Double.MAX_VALUE;
+			double anyDistance = Double.MAX_VALUE;
+			for (BlockPos pos : cluster) {
+				double distance = eye.distanceTo(Vec3.atCenterOf(pos));
+				if (distance < anyDistance) {
+					anyDistance = distance;
+					nearestAny = pos;
+				}
+				if (distance < stemDistance && level.getBlockState(pos).getBlock() instanceof ChorusPlantBlock) {
+					stemDistance = distance;
+					nearestStem = pos;
+				}
+			}
+			BlockPos chosen = nearestStem != null ? nearestStem : nearestAny;
+			double distance = nearestStem != null ? stemDistance : anyDistance;
+			if (chosen != null && distance <= scanRange()) {
+				results.add(new ScannerItem(chosen, null, distance, null));
+			}
+		}
+	}
+
+	/**
+	 * Reports each contiguous vertical run within {@code positions} (already range-limited, and
+	 * already narrowed to a single stalk type by the caller) exactly once, at its base -
+	 * deliberately only merging straight up/down, not the full 26-connected flood fill {@link
+	 * #scanTrees} and {@link #addLiquidClusters} use, so two stalks planted right next to each
+	 * other stay two separate entries instead of merging into one "clump" the way a dense
+	 * horizontal thicket of bamboo otherwise would.
+	 */
+	private static void addStalkClusters(Vec3 eye, Set<BlockPos> positions, List<ScannerItem> results) {
+		Set<BlockPos> visited = new HashSet<>();
+		for (BlockPos pos : positions) {
+			if (visited.contains(pos) || positions.contains(pos.below())) {
+				// Either already reported as part of another stalk's climb, or not actually this
+				// stalk's base - the block below is part of the same run and will find it instead.
+				continue;
+			}
+			BlockPos top = pos;
+			visited.add(top);
+			while (positions.contains(top.above())) {
+				top = top.above();
+				visited.add(top);
+			}
+			double distance = eye.distanceTo(Vec3.atCenterOf(pos));
+			if (distance <= scanRange()) {
+				results.add(new ScannerItem(pos, null, distance, null));
+			}
+		}
+	}
+
+	/**
+	 * Everything {@link BlockTags#CLIMBABLE} covers - ladders, vines, scaffolding, weeping/twisting
+	 * vines, and cave vines - grouped into one category rather than one apiece, since none of them
+	 * are common enough alone to be worth their own Tab stop, and they're all the same kind of
+	 * thing to a player: "can I climb this to get up/down". Every one of them grows/stacks as a
+	 * long vertical run the same way bamboo/sugar cane/kelp do (see {@link #addStalkClusters}'s
+	 * own doc), so each type gets clustered into one entry per run at its base the same way, rather
+	 * than narrating the same block name once per rung/segment while climbing up it. Weeping/
+	 * twisting/cave vines are each a head block plus a separate plant-body block type for the rest
+	 * of the strand (mirroring kelp in {@link #scanCrops}), so both halves feed the same set to
+	 * cluster as one strand instead of splitting into two entries at the head/body boundary.
+	 */
+	private static List<ScannerItem> scanClimbable(LocalPlayer player) {
+		Level level = player.level();
+		Vec3 eye = player.getEyePosition();
+		BlockPos center = player.blockPosition();
+		int r = (int) scanRange();
+
+		Map<LargeObject, Set<BlockPos>> groups = bucketsFor(CLIMBABLE_OBJECTS);
+		forEachBlockInRange(level, center, r, (pos, state) -> {
+			collect(groups, state.getBlock(), pos);
+			return true;
+		});
+
+		List<ScannerItem> results = new ArrayList<>();
+		addGroups(level, eye, groups, results);
+		results.sort(Comparator.comparingDouble(ScannerItem::distance));
+		return results;
+	}
+
+	/**
+	 * Biomes and structures in one list, nearest first - see {@link #scanBiomes} and {@link #scanStructures}.
+	 * Structure entries carry a label (their spoken name) and biome entries do not, which is how the
+	 * rest of this class tells them apart.
+	 */
+	private static List<ScannerItem> scanBiomesAndStructures(LocalPlayer player) {
+		List<ScannerItem> results = new ArrayList<>(scanBiomes(player));
+		results.addAll(scanStructures(player));
+		results.sort(Comparator.comparingDouble(ScannerItem::distance));
+		return results;
+	}
+
+	/**
+	 * Nearby distinct biomes, one entry per biome type at whichever sampled point of it is
+	 * nearest - meant for deciding which direction to explore, not for finding an exact border.
+	 * Sampled on a {@link #BIOME_SAMPLE_STEP}-block grid (matching vanilla's own biome storage
+	 * granularity) at each column's world surface height rather than scanned block-by-block like
+	 * every other category - a full 3D scan out to {@link ExplorationRange#scanner} would be millions of
+	 * positions for something that barely varies vertically above ground. That surface-height
+	 * sampling does mean a biome that only exists underground (dripstone caves, the deep dark)
+	 * won't show up here - this category is about surface exploration, not cave prospecting.
+	 * The biome the player is already standing in is skipped, since it's not "nearby" in any
+	 * useful sense.
+	 */
+	private static List<ScannerItem> scanBiomes(LocalPlayer player) {
+		Level level = player.level();
+		Vec3 eye = player.getEyePosition();
+		BlockPos center = player.blockPosition();
+		Holder<Biome> currentBiome = level.getBiome(center);
+		double range = ExplorationRange.scanner();
+		int r = (int) range;
+
+		Map<Holder<Biome>, BlockPos> nearestPos = new HashMap<>();
+		Map<Holder<Biome>, Double> nearestDist = new HashMap<>();
+		for (int dx = -r; dx <= r; dx += BIOME_SAMPLE_STEP) {
+			for (int dz = -r; dz <= r; dz += BIOME_SAMPLE_STEP) {
+				if (dx * dx + dz * dz > r * r) {
+					continue;
+				}
+				int x = center.getX() + dx;
+				int z = center.getZ() + dz;
+				// A chunk that isn't loaded has no real biome to read, only a placeholder one.
+				if (!level.hasChunk(x >> 4, z >> 4)) {
+					continue;
+				}
+				int y = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z);
+				BlockPos pos = new BlockPos(x, y, z);
+				Holder<Biome> biome = level.getBiome(pos);
+				if (biome.equals(currentBiome)) {
+					continue;
+				}
+				double distance = eye.distanceTo(Vec3.atCenterOf(pos));
+				if (distance > range) {
+					continue;
+				}
+				Double best = nearestDist.get(biome);
+				if (best == null || distance < best) {
+					nearestDist.put(biome, distance);
+					nearestPos.put(biome, pos);
+				}
+			}
+		}
+
+		List<ScannerItem> results = new ArrayList<>();
+		for (Map.Entry<Holder<Biome>, BlockPos> entry : nearestPos.entrySet()) {
+			results.add(new ScannerItem(entry.getValue(), null, nearestDist.get(entry.getKey()), null));
+		}
+		results.sort(Comparator.comparingDouble(ScannerItem::distance));
+		return results;
+	}
+
+	/**
+	 * Villages, monuments, ruined portals and every other generated structure the server reported
+	 * within the Scanner's range (see {@link StructureVoiceController#nearby}), one entry each at
+	 * its nearest point. Only the server knows where structures are, so this is always empty on a
+	 * server without United Minecraft - and skipped when cycling categories, like any other empty
+	 * one.
+	 */
+	private static List<ScannerItem> scanStructures(LocalPlayer player) {
+		Vec3 eye = player.getEyePosition();
+		List<ScannerItem> results = new ArrayList<>();
+		for (StructureVoiceController.NearbyStructure structure : StructureVoiceController.nearby(player)) {
+			results.add(new ScannerItem(BlockPos.containing(structure.point()), null,
+					eye.distanceTo(structure.point()), structure.name()));
+		}
+		results.sort(Comparator.comparingDouble(ScannerItem::distance));
+		return results;
+	}
+
+	/**
+	 * Whether {@code pos} holds a block the player named and flagged to appear under Markers,
+	 * and that block is still there. A marked block that's since been removed falls back to
+	 * behaving like a plain marker at that spot.
+	 */
+	private static boolean isLiveBlockMarker(Level level, BlockPos pos) {
+		return NamedBlockController.isMarker(level.dimension(), pos) && !level.getBlockState(pos).isAir();
+	}
+
+	/** Every marker in the player's current dimension, distance-sorted but never range-filtered - the whole point of a marker is reaching something you already know is far away. */
+	private static List<ScannerItem> scanMarkers(LocalPlayer player) {
+		Vec3 eye = player.getEyePosition();
+		List<ScannerItem> results = new ArrayList<>();
+		for (MapMarkerController.MapMarker marker : MapMarkerController.inDimension(player.level().dimension())) {
+			BlockPos pos = marker.pos();
+			double distance = eye.distanceTo(Vec3.atCenterOf(pos));
+			results.add(new ScannerItem(pos, null, distance, marker.name()));
+		}
+		// Named blocks flagged "also show in Markers" - behave like the block itself (see target()).
+		for (NamedBlockController.MarkedBlock marked : NamedBlockController.markedBlocksIn(player.level().dimension())) {
+			results.add(new ScannerItem(marked.pos(), null, eye.distanceTo(Vec3.atCenterOf(marked.pos())), marked.name()));
+		}
+		results.sort(Comparator.comparingDouble(ScannerItem::distance));
+		return results;
+	}
+
+	/** Every other player in the dimension, distance-sorted but never range-filtered - vanilla syncs them all regardless. */
+	private static List<ScannerItem> scanPlayers(LocalPlayer player) {
+		Vec3 eye = player.getEyePosition();
+		List<ScannerItem> results = new ArrayList<>();
+		for (Player other : player.level().players()) {
+			if (other == player || !other.isAlive()) {
+				continue;
+			}
+			double distance = eye.distanceTo(other.getBoundingBox().getCenter());
+			results.add(new ScannerItem(null, other, distance, null));
+		}
+		results.sort(Comparator.comparingDouble(ScannerItem::distance));
+		return results;
+	}
+
+	/**
+	 * Floods out from {@code start} through 26-connected members of {@code candidates},
+	 * collecting every position into {@code cluster} and returning the lowest one - the trunk
+	 * base for {@link #scanTrees}'s use; {@link #addLiquidClusters} and {@link
+	 * #addPortalClusters} both ignore the return value and just use {@code cluster} itself.
+	 * {@link #addStalkClusters} clusters bamboo/sugar cane/kelp separately, without this - see
+	 * its own doc for why a straight vertical-only climb suits those better than a full
+	 * 26-connected flood fill.
+	 */
+	private static BlockPos floodFillCluster(BlockPos start, Set<BlockPos> candidates, Set<BlockPos> visited, Set<BlockPos> cluster) {
+		Deque<BlockPos> queue = new ArrayDeque<>();
+		queue.add(start);
+		visited.add(start);
+		cluster.add(start);
+		BlockPos lowest = start;
+
+		while (!queue.isEmpty()) {
+			BlockPos current = queue.poll();
+			if (current.getY() < lowest.getY()) {
+				lowest = current;
+			}
+			for (int dx = -1; dx <= 1; dx++) {
+				for (int dy = -1; dy <= 1; dy++) {
+					for (int dz = -1; dz <= 1; dz++) {
+						if (dx == 0 && dy == 0 && dz == 0) {
+							continue;
+						}
+						BlockPos neighbor = current.offset(dx, dy, dz);
+						if (candidates.contains(neighbor) && visited.add(neighbor)) {
+							cluster.add(neighbor);
+							queue.add(neighbor);
+						}
+					}
+				}
+			}
+		}
+		return lowest;
+	}
+
+	/**
+	 * Walks straight down from {@code lowest} through the real world - not the range-limited
+	 * {@code logPositions} set {@link #floodFillCluster} searched - until the log column
+	 * actually ends. {@code floodFillCluster} only ever sees log blocks that were in scan range
+	 * to begin with, so its own "lowest" is really just "lowest block that happened to be in
+	 * range" - for a tall tree scanned from a distance or from slightly elevated ground, that
+	 * can sit a log or two above the trunk's true base, which is exactly the block {@link
+	 * #target} needs to face to actually connect when chopping it.
+	 */
+	private static BlockPos lowestLog(Level level, BlockPos lowest) {
+		BlockPos below = lowest.below();
+		while (level.getBlockState(below).is(BlockTags.LOGS)) {
+			lowest = below;
+			below = lowest.below();
+		}
+		return lowest;
+	}
+
+	/** Checks the cluster's bounding box, expanded by a small margin, for any leaves at all. */
+	private static boolean hasNearbyLeaves(Level level, Set<BlockPos> cluster) {
+		int minX = Integer.MAX_VALUE;
+		int minY = Integer.MAX_VALUE;
+		int minZ = Integer.MAX_VALUE;
+		int maxX = Integer.MIN_VALUE;
+		int maxY = Integer.MIN_VALUE;
+		int maxZ = Integer.MIN_VALUE;
+		for (BlockPos pos : cluster) {
+			minX = Math.min(minX, pos.getX());
+			minY = Math.min(minY, pos.getY());
+			minZ = Math.min(minZ, pos.getZ());
+			maxX = Math.max(maxX, pos.getX());
+			maxY = Math.max(maxY, pos.getY());
+			maxZ = Math.max(maxZ, pos.getZ());
+		}
+
+		BlockPos from = new BlockPos(minX - LEAF_SEARCH_MARGIN, minY - LEAF_SEARCH_MARGIN, minZ - LEAF_SEARCH_MARGIN);
+		BlockPos to = new BlockPos(maxX + LEAF_SEARCH_MARGIN, maxY + LEAF_SEARCH_MARGIN, maxZ + LEAF_SEARCH_MARGIN);
+		for (BlockPos pos : BlockPos.betweenClosed(from, to)) {
+			if (level.getBlockState(pos).is(BlockTags.LEAVES)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * {@code label} is only ever set for Markers and Structures, whose name has no block to
+	 * derive it from. Every other category derives its narrated name from the live
+	 * block/entity, with any player-assigned name applied on top in {@link #itemName}.
+	 */
+	private record ScannerItem(BlockPos blockPos, Entity entity, double distance, String label, FlatArea area) {
+		ScannerItem(BlockPos blockPos, Entity entity, double distance, String label) {
+			this(blockPos, entity, distance, label, null);
+		}
+	}
+
+	/**
+	 * What a flat-area Terrain entry knows beyond its centre block (its {@link
+	 * ScannerItem#blockPos()}): the rectangle's extent, for recognising it again after a re-scan,
+	 * and the blocks that make up its surface, most common first.
+	 */
+	private record FlatArea(int minX, int minZ, int width, int depth, int groundY, List<Block> surfaces) {
+		boolean contains(BlockPos pos) {
+			return pos.getY() == groundY
+					&& pos.getX() >= minX && pos.getX() < minX + width
+					&& pos.getZ() >= minZ && pos.getZ() < minZ + depth;
+		}
+	}
+}

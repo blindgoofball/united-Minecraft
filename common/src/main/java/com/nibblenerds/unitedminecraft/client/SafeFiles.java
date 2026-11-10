@@ -1,5 +1,7 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
+import com.nibblenerds.unitedminecraft.client.keybind.KeybindConfig;
 import java.io.IOException;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
@@ -19,14 +21,14 @@ import org.slf4j.Logger;
  * so the next save can't overwrite it. Shared by {@link UnitedMinecraftConfig}, {@link
  * KeybindConfig} and {@link WorldScopedStore}.
  */
-final class SafeFiles {
+public final class SafeFiles {
 	private static final DateTimeFormatter BACKUP_STAMP = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss", Locale.ROOT);
 
 	private SafeFiles() {
 	}
 
 	@FunctionalInterface
-	interface WriteAction {
+	public interface WriteAction {
 		void write(Writer writer) throws IOException;
 	}
 
@@ -35,7 +37,7 @@ final class SafeFiles {
 	 * disk is always either the old contents or the new ones in full - never the truncated,
 	 * half-written file an in-place write leaves behind when the game dies mid-save.
 	 */
-	static void writeAtomically(Path file, WriteAction action) throws IOException {
+	public static void writeAtomically(Path file, WriteAction action) throws IOException {
 		Files.createDirectories(file.getParent());
 		Path temp = file.resolveSibling(file.getFileName() + ".tmp");
 		try {
@@ -59,7 +61,7 @@ final class SafeFiles {
 	 * defaults loaded in its place don't overwrite it on the next save - a player (or a bug report)
 	 * can still recover what was in it.
 	 */
-	static void preserveUnreadable(Path file, Logger logger) {
+	public static void preserveUnreadable(Path file, Logger logger) {
 		Path backup = file.resolveSibling(file.getFileName() + ".corrupt-" + LocalDateTime.now().format(BACKUP_STAMP));
 		try {
 			Files.move(file, backup, StandardCopyOption.REPLACE_EXISTING);

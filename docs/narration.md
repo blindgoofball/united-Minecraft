@@ -19,11 +19,18 @@ Each of these has its own key (see [Key bindings](keybindings.md)).
 
 - **Coordinates, standing block and biome.** Shift reads the light level
   instead (combined, plus the block/sky split) - of the block under Build Mode's
-  cursor if it is active, your own block otherwise.
+  cursor if it is active, your own block otherwise. Alt reads your chunk's
+  coordinates and how many blocks you are from each of its four borders
+  (west, east, north, south); 0 means you are standing on the outermost block
+  against that border.
 - **Health and hunger,** on the same 10-heart / 10-shank scale as the sighted
-  heart bar, half points included. Shift reads your experience level. Alt reads
+  heart bar, half points included. While you ride a mount (a horse, camel,
+  nautilus, strider, pig and so on), its health follows. Shift reads your
+  experience level. Alt reads
   your armor value and every active status effect with its level and remaining
-  duration.
+  duration; while you ride a horse, donkey, mule, llama or camel it also gives the
+  mount's speed in blocks per second and the height of its fully charged jump in
+  blocks, for judging how good it is.
 - **Facing direction** in compass degrees, with pitch. Shift+B resets your
   facing to north.
 - **Time of day:** the current period, a clock-style time, then the day count.
@@ -33,6 +40,8 @@ Each of these has its own key (see [Key bindings](keybindings.md)).
   distance. For a block it also says which face your crosshair landed on
   (North, East, South, West, Top or Bottom) - the same raycast the vanilla
   crosshair uses, so it is exactly what a click would hit.
+- **Held items:** the grave accent key (`) reads what is in your main hand and
+  off-hand.
 - **Boss bars** (name and percentage) and the **sidebar scoreboard**. The
   scoreboard is read exactly as the sidebar shows it - your team's own sidebar,
   server lines built from team prefixes, and hidden or reformatted scores
@@ -41,7 +50,10 @@ Each of these has its own key (see [Key bindings](keybindings.md)).
 ## Automatic narration
 
 - Facing direction, hotbar slot, offhand and main-hand swaps, and entering a new
-  biome are narrated as they change.
+  biome are narrated as they change. Switching hotbar slots reads the item's name,
+  count, durability and its tooltip (enchantments, potion effects and so on); turn
+  off Read Tooltips When Switching Hotbar Items in Settings > General to hear only
+  the name, count and durability.
 - The time of day reaching sunrise, noon, sunset, night (when mobs can start
   spawning in the dark) or midnight is narrated. This is silent in the Nether
   and the End, which have no day or night.
@@ -56,6 +68,8 @@ Each of these has its own key (see [Key bindings](keybindings.md)).
   wall you could jump, a drop-off, water, lava) and, if there is a clear way
   around, which side to take. This can be turned off in Settings.
 - **Fishing catches** are narrated.
+- **Vault rewards** are narrated as each item comes out of a trial chamber vault, count
+  first ("3 Emerald"). They are dropped items, so pick them up as usual.
 - **Titles and subtitles** that servers put in the middle of the screen
   (countdowns, area names, minigame announcements) are narrated. A title a server
   re-sends to hold it on screen is read once. This can be turned off in Settings.

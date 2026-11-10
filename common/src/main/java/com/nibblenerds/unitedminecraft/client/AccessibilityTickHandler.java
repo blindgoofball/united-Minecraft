@@ -1,5 +1,28 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.combat.ArrowHitController;
+import com.nibblenerds.unitedminecraft.client.combat.BowBeaconController;
+import com.nibblenerds.unitedminecraft.client.combat.CombatBeacon;
+import com.nibblenerds.unitedminecraft.client.combat.CombatModeController;
+import com.nibblenerds.unitedminecraft.client.combat.HostileRadarController;
+import com.nibblenerds.unitedminecraft.client.travel.BoatAwarenessController;
+import com.nibblenerds.unitedminecraft.client.travel.BoatController;
+import com.nibblenerds.unitedminecraft.client.travel.ElytraAwarenessController;
+import com.nibblenerds.unitedminecraft.client.travel.ElytraLandingController;
+import com.nibblenerds.unitedminecraft.client.travel.MountJumpCueController;
+import com.nibblenerds.unitedminecraft.client.travel.MountStats;
+import com.nibblenerds.unitedminecraft.client.autowalk.AutoWalkController;
+import com.nibblenerds.unitedminecraft.client.scanner.MapMarkerController;
+import com.nibblenerds.unitedminecraft.client.scanner.MarkerShareController;
+import com.nibblenerds.unitedminecraft.client.scanner.NamedBlockController;
+import com.nibblenerds.unitedminecraft.client.scanner.SavedSearchController;
+import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
+import com.nibblenerds.unitedminecraft.client.scanner.ScannerFilterController;
+import com.nibblenerds.unitedminecraft.client.scanner.SurroundingsScanner;
+import com.nibblenerds.unitedminecraft.client.settings.SettingsScreen;
+import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
+import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
+import com.nibblenerds.unitedminecraft.client.keybind.KeybindContext;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -25,6 +48,8 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.Util;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.equine.AbstractHorse;
 import net.minecraft.world.entity.animal.parrot.Parrot;
 import net.minecraft.world.item.Item;
@@ -131,12 +156,17 @@ public final class AccessibilityTickHandler {
 			BowBeaconController.reset();
 			MapMarkerController.reset();
 			NamedBlockController.reset();
+			MarkerShareController.reset();
+			ScannerFilterController.reset();
+			SavedSearchController.reset();
+			ServerWorldSeed.reset();
 			ScannerController.reset();
 			AutoWalkController.reset();
 			WaterExitController.reset();
 			ElytraLandingController.reset();
 			ElytraAwarenessController.reset();
-			TrailController.reset();
+			BoatController.reset();
+			BoatAwarenessController.reset();
 			MovementAssistController.reset();
 			NavRadarController.reset();
 			WallToneController.reset();
@@ -149,7 +179,9 @@ public final class AccessibilityTickHandler {
 			AngleAssistController.reset();
 			WorldDescriber.reset();
 			FishingCatchController.reset();
+			VaultRewardController.reset();
 			FallWarningController.reset();
+			PowderSnowWarningController.reset();
 			TreeChoppingAssist.reset();
 			OreMiningAssist.reset();
 			AutoCrosshairNarrationController.reset();
@@ -187,6 +219,8 @@ public final class AccessibilityTickHandler {
 
 		MapMarkerController.tick(client);
 		NamedBlockController.tick(client);
+		ScannerFilterController.tick(client);
+		SavedSearchController.tick(client);
 
 		if (client.gui.screen() != null && AutoWalkController.isActive()) {
 			// AutoWalkController.tick (and the cancel-key check inside it) only runs below,
@@ -205,9 +239,11 @@ public final class AccessibilityTickHandler {
 			// screen opening mid-glide would otherwise leave it "active" but not flying anything.
 			ElytraLandingController.cancel(client, player);
 		}
-		if (client.gui.screen() != null && TrailController.isActive()) {
-			// Same reasoning again - TrailController swaps player.input the exact same way.
-			TrailController.cancel(client, player);
+
+		if (client.gui.screen() != null) {
+			// The boat's steering is only worked out below, under the screen == null branch - a held
+			// left or right would otherwise go on turning the boat behind an open menu.
+			BoatController.pause();
 		}
 
 		// Durability changes and break events must still be observed while a GUI is open.
@@ -226,10 +262,6 @@ public final class AccessibilityTickHandler {
 			} else if (ElytraLandingController.isActive()) {
 				// Owns rotation for the whole glide, the same way the swim above does for a swim.
 				ElytraLandingController.tick(client, player);
-			} else if (TrailController.isActive()) {
-				// Owns rotation and movement the same way - mutually exclusive with the two
-				// auto-navigate modes just above, only one should ever be walking at once.
-				TrailController.tick(client, player);
 			} else if (ScannerController.ownsRotation()) {
 				ScannerController.tickLock(client, player);
 				ScannerController.tick(client, player);
@@ -245,6 +277,7 @@ public final class AccessibilityTickHandler {
 				ScannerController.tick(client, player);
 				MiningRadarController.tick(client, player);
 				FallWarningController.tick(client, player);
+				PowderSnowWarningController.tick(client, player);
 			} else {
 				// Always safe to run both: ClientKeyBindings.updateAll() already resolved which
 				// of LOOK_LEFT/RIGHT/UP/DOWN (GLOBAL, no modifiers) vs. SNAP_TURN_LEFT/RIGHT/UP/
@@ -265,13 +298,8 @@ public final class AccessibilityTickHandler {
 				NavRadarController.tick(client, player);
 				MiningRadarController.tick(client, player);
 				FallWarningController.tick(client, player);
+				PowderSnowWarningController.tick(client, player);
 				AutoCrosshairNarrationController.tick(client, player);
-			}
-			// Runs no matter which mode owns rotation - the trail should keep recording real
-			// movement regardless of what else is going on, except while it's driving that
-			// movement itself (retracing), which would just record its own synthetic route.
-			if (!TrailController.isActive()) {
-				TrailController.recordTick(client, player);
 			}
 			// Runs no matter which mode owns rotation - a nearby, visible hostile mob is
 			// worth a warning regardless of what else you're doing.
@@ -279,6 +307,11 @@ public final class AccessibilityTickHandler {
 			// Same reasoning - the ground comes up whether or not another mode is flying the camera,
 			// and the landing autopilot is the very case where an unavoidable wall is worth hearing about.
 			ElytraAwarenessController.tick(client, player);
+			// After the chain above, so the turn keys have set a heading before the boat is steered to
+			// it and the camera put back on the boat. It hands steering back whenever a mode owns the camera.
+			BoatController.tick(client, player, rotationOwnedByAMode());
+			// Same reasoning as the elytra - the bank comes up whether or not another mode is steering.
+			BoatAwarenessController.tick(client, player);
 			// Same reasoning - it's purely observational audio/narration and never touches
 			// rotation, so gating it behind Build Mode/Combat Mode/Auto-Walk/Scanner-lock
 			// exclusivity would silence it exactly when it's most useful (e.g. auto-walking
@@ -293,6 +326,8 @@ public final class AccessibilityTickHandler {
 			// Same reasoning - a cast line keeps waiting for a bite regardless of what else
 			// the player is doing meanwhile.
 			FishingCatchController.tick(client, player);
+			// Same reasoning - a vault ejects its rewards on its own schedule.
+			VaultRewardController.tick(client, player);
 			// Same reasoning - the attack-strength meter keeps recharging regardless of what
 			// else is going on, and CombatCueMode.ALWAYS needs it tracked outside Combat Mode too.
 			CombatModeController.tickAttackCue(client, player);
@@ -316,9 +351,7 @@ public final class AccessibilityTickHandler {
 			BowBeaconController.reset();
 		}
 
-		boolean rotationOwned = BuildModeController.isActive() || ScannerController.ownsRotation() || AutoWalkController.isActive()
-				|| CombatModeController.ownsRotation() || WaterExitController.isActive() || ElytraLandingController.isActive()
-				|| TrailController.isActive();
+		boolean rotationOwned = rotationOwnedByAMode();
 		if (!rotationOwned) {
 			if (rotationOwnedLastTick) {
 				// One of those modes just handed rotation back this very tick - it may have
@@ -355,6 +388,12 @@ public final class AccessibilityTickHandler {
 		WallToneController.tick(client, player, client.gui.screen() == null);
 		// Holds its queue while a screen is open rather than talking over it.
 		StructureVoiceController.tick(client, player, client.gui.screen() == null);
+	}
+
+	/** Whether Build Mode, a Scanner lock, Combat Mode or one of the auto-navigate modes is holding the camera right now. */
+	private static boolean rotationOwnedByAMode() {
+		return BuildModeController.isActive() || ScannerController.ownsRotation() || AutoWalkController.isActive()
+				|| CombatModeController.ownsRotation() || WaterExitController.isActive() || ElytraLandingController.isActive();
 	}
 
 	/** Which of the four snap-turn keys ({@link ClientKeyBindings#SNAP_TURN_LEFT} etc.) were just pressed this tick - see {@link #handleKeybindActions}. */
@@ -411,9 +450,6 @@ public final class AccessibilityTickHandler {
 		if (ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_WALL_TONES)) {
 			WallToneController.toggle(client);
 		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_MINING_RADAR)) {
-			MiningRadarController.toggle(client);
-		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_COMBAT_MODE)) {
 			CombatModeController.toggle(client, player);
 		}
@@ -436,16 +472,6 @@ public final class AccessibilityTickHandler {
 			} else {
 				WaterExitController.narrate(client, player);
 			}
-		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.TRAIL_MARK_START)) {
-			// Doesn't touch rotation or movement, so it isn't gated behind the rotation-owning
-			// modes check below - marking was never gated before this key was merged either.
-			TrailController.markStart(client, player);
-		} else if (rotationFree && ClientKeyBindings.pressed(ClientKeyBindings.TRAIL_WALK_BACK)) {
-			// Same rotation-owning modes WATER_ESCAPE is blocked against above, for the same reason.
-			TrailController.start(client, player);
-		} else if (rotationFree && ClientKeyBindings.pressed(ClientKeyBindings.TRAIL)) {
-			TrailController.narrate(client, player);
 		}
 
 		if (ClientKeyBindings.pressed(ClientKeyBindings.COPY_WORLD_SNAPSHOT)) {
@@ -475,6 +501,12 @@ public final class AccessibilityTickHandler {
 		} else if (ClientKeyBindings.pressed(ClientKeyBindings.PLACE_MARKER)) {
 			MapMarkerController.openNameScreen(client, player);
 		}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.SCANNER_FILTERS)) {
+			ScannerController.openFilters(client);
+		}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.OPEN_SHARING)) {
+			MarkerShareController.open(client);
+		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.OPEN_SETTINGS)) {
 			client.gui.setScreen(new SettingsScreen());
 		}
@@ -483,6 +515,9 @@ public final class AccessibilityTickHandler {
 			narrateLightLevel(client, player);
 		} else if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_COORDINATES)) {
 			narrateCoordinates(client, player);
+		}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_CHUNK)) {
+			narrateChunk(client, player);
 		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_COORDINATE_X)) {
 			narrateCoordinateAxis(client, player, "united_minecraft.narrate.axis_x", player.blockPosition().getX(), player.getX());
@@ -521,15 +556,16 @@ public final class AccessibilityTickHandler {
 		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_BOSS_BARS)) {
 			narrateBossBars(client);
 		}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_HANDS)) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.hands_swapped",
+					describeHand(player.getMainHandItem(), player), describeHand(player.getOffhandItem(), player)));
+		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_SCOREBOARD_FULL)) {
 			narrateScoreboard(client, player, true);
 		} else if (ClientKeyBindings.pressed(ClientKeyBindings.NARRATE_SCOREBOARD)) {
 			narrateScoreboard(client, player, false);
 		}
 		DebugOverlayController.handleKeys(client);
-		if (ClientKeyBindings.pressed(ClientKeyBindings.SWAP_ATTACK_USE_KEYS)) {
-			AttackUseKeySwap.toggle(client);
-		}
 
 		return snapTurn;
 	}
@@ -549,6 +585,11 @@ public final class AccessibilityTickHandler {
 		}
 		if (ClientKeyBindings.LOOK_UP.isDown()) {
 			dPitch -= speed;
+		}
+		if (dYaw != 0.0f && BoatController.isActive()) {
+			// Driving a boat: the camera stays on the boat, so the turn goes to the boat's heading instead.
+			BoatController.turnBy(player, dYaw);
+			dYaw = 0.0f;
 		}
 		if (dYaw != 0.0f || dPitch != 0.0f) {
 			player.turn(dYaw * TURN_INPUT_SCALE, dPitch * TURN_INPUT_SCALE);
@@ -570,13 +611,23 @@ public final class AccessibilityTickHandler {
 			boolean leftPressed, boolean rightPressed, boolean upPressed, boolean downPressed) {
 		boolean yawChanged = false;
 		boolean pitchChanged = false;
-		if (leftPressed) {
-			player.setYRot(snapDown45(player.getYRot()));
-			yawChanged = true;
-		}
-		if (rightPressed) {
-			player.setYRot(snapUp45(player.getYRot()));
-			yawChanged = true;
+		if (BoatController.isActive()) {
+			// Driving a boat: the camera stays on the boat, so a snap turn sets the heading the boat swings round to.
+			if (leftPressed) {
+				BoatController.turnTo(player, snapDown45((float) BoatController.heading(player)));
+			}
+			if (rightPressed) {
+				BoatController.turnTo(player, snapUp45((float) BoatController.heading(player)));
+			}
+		} else {
+			if (leftPressed) {
+				player.setYRot(snapDown45(player.getYRot()));
+				yawChanged = true;
+			}
+			if (rightPressed) {
+				player.setYRot(snapUp45(player.getYRot()));
+				yawChanged = true;
+			}
 		}
 		if (upPressed) {
 			player.setXRot(snapDown45(player.getXRot()));
@@ -644,7 +695,7 @@ public final class AccessibilityTickHandler {
 		ItemStack stack = player.getInventory().getItem(slot);
 		Component name = stack.isEmpty()
 				? Component.translatable("united_minecraft.narrate.hotbar_empty")
-				: ItemDescriptions.describe(stack, player);
+				: ItemDescriptions.describe(stack, player, true, UnitedMinecraftConfig.get().hotbarTooltipsEnabled);
 		client.getNarrator().saySystemNow(name);
 	}
 
@@ -739,7 +790,7 @@ public final class AccessibilityTickHandler {
 	}
 
 	/** Package-private - {@link ScannerController} reuses this for its Biomes category. */
-	static Component biomeName(Holder<Biome> biome) {
+	public static Component biomeName(Holder<Biome> biome) {
 		Identifier id = biome.unwrapKey().map(ResourceKey::identifier).orElse(null);
 		return Component.translatable(Util.makeDescriptionId("biome", id));
 	}
@@ -867,6 +918,14 @@ public final class AccessibilityTickHandler {
 		client.getNarrator().saySystemNow(message);
 	}
 
+	/** Speaks the player's chunk and the number of blocks to each of its borders. */
+	private static void narrateChunk(Minecraft client, LocalPlayer player) {
+		BlockPos pos = player.blockPosition();
+		ChunkPosition chunk = ChunkPosition.of(pos.getX(), pos.getZ());
+		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.chunk",
+				chunk.chunkX(), chunk.chunkZ(), chunk.west(), chunk.east(), chunk.north(), chunk.south()));
+	}
+
 	/** Speaks a single axis of the player's position, in the form "{value} X"/"{value} Y"/"{value} Z". */
 	private static void narrateCoordinateAxis(Minecraft client, LocalPlayer player, String axisLabelKey, int blockCoord, double preciseCoord) {
 		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.coordinate_axis",
@@ -903,11 +962,12 @@ public final class AccessibilityTickHandler {
 
 	/**
 	 * Reports on the same 10-heart/10-shank scale the sighted HUD shows, half-point precision
-	 * included. While riding a horse (or donkey/mule/llama/camel - anything under {@link
-	 * AbstractHorse}, the same family {@link TameNotificationController} already treats as one
-	 * group), also reports the mount's own health - the sighted HUD replaces the hunger bar with
-	 * a horse health bar in that situation, and this is the equivalent for narration, appended
-	 * rather than replacing anything so the hunger read isn't lost.
+	 * included. While riding any living mount (a horse, donkey, mule, llama, camel, nautilus,
+	 * strider, pig, happy ghast - whatever the HUD would show a mount health bar for, which
+	 * vanilla decides with {@code Entity#showVehicleHealth}), also reports the mount's own
+	 * health - the sighted HUD replaces the hunger bar with a mount health bar in that situation,
+	 * and this is the equivalent for narration, appended rather than replacing anything so the
+	 * hunger read isn't lost.
 	 */
 	private static void narrateHealth(Minecraft client, LocalPlayer player) {
 		double hearts = player.getHealth() / 2.0;
@@ -915,16 +975,16 @@ public final class AccessibilityTickHandler {
 		double hunger = player.getFoodData().getFoodLevel() / 2.0;
 		Component message = Component.translatable(
 				"united_minecraft.narrate.health", formatHalf(hearts), formatHalf(maxHearts), formatHalf(hunger));
-		if (player.getVehicle() instanceof AbstractHorse horse) {
-			double mountHearts = horse.getHealth() / 2.0;
-			double mountMaxHearts = horse.getMaxHealth() / 2.0;
+		if (player.getVehicle() instanceof LivingEntity mount && mount.showVehicleHealth()) {
+			double mountHearts = mount.getHealth() / 2.0;
+			double mountMaxHearts = mount.getMaxHealth() / 2.0;
 			message = message.copy().append(Component.literal(". ")).append(Component.translatable(
 					"united_minecraft.narrate.mount_health", formatHalf(mountHearts), formatHalf(mountMaxHearts)));
 		}
 		client.getNarrator().saySystemNow(message);
 	}
 
-	private static String formatHalf(double value) {
+	public static String formatHalf(double value) {
 		return value == Math.rint(value) ? String.valueOf((long) value) : String.format(Locale.ROOT, "%.1f", value);
 	}
 
@@ -955,6 +1015,17 @@ public final class AccessibilityTickHandler {
 			for (MobEffectInstance effect : effects) {
 				message = message.append(Component.literal(". ")).append(describeStatusEffect(effect));
 			}
+		}
+		if (player.getVehicle() instanceof AbstractHorse horse) {
+			// The speed and jump a sighted rider judges by watching the mount run and leap - the only way
+			// to tell a good horse from a poor one. Speed is its movement speed attribute in blocks a
+			// second; jump is the height of a fully charged jump, worked out from its jump strength.
+			double speed = MountStats.speedBlocksPerSecond(horse.getAttributeValue(Attributes.MOVEMENT_SPEED));
+			double jump = MountStats.jumpHeight(
+					horse.getAttributeValue(Attributes.JUMP_STRENGTH), horse.getAttributeValue(Attributes.GRAVITY));
+			message = message.append(Component.literal(". ")).append(Component.translatable(
+					"united_minecraft.narrate.mount_stats",
+					String.format(Locale.ROOT, "%.1f", speed), String.format(Locale.ROOT, "%.1f", jump)));
 		}
 		client.getNarrator().saySystemNow(message);
 	}

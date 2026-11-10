@@ -8,12 +8,16 @@ United Minecraft is a Minecraft Java Edition mod, built for both the Fabric and 
 loaders, that adds accessibility features for blind and low-vision players — narration, a
 "Scanner" for locating and targeting things without seeing them, auto-walk, audio radars,
 build/combat modes, and full keyboard navigation of menus. Almost everything is
-client-side and works against any vanilla server. The one exception is Structure Voices,
-which needs the server half in the `structure` package (`StructureScanner`, sending
-`StructuresNearbyPayload`): it runs on the integrated server in single player, and on a
-dedicated server only when the mod is installed there too. Each loader module has a common
-entrypoint (`UnitedMinecraftFabricCommon`, `UnitedMinecraftNeoForgeCommon`) for it, and the
-payload is optional in both directions. See [README.md](README.md) and the feature pages in [docs/](docs/) for the full feature list
+client-side and works against any vanilla server. The two exceptions need a server half:
+Structure Voices (the `structure` package: `StructureScanner`, sending
+`StructuresNearbyPayload`) and marker sharing (the `share` package: `ShareRelay` and
+`SharePayloads`, which only relays offers between players and stores nothing, and
+`ShareCommand`, the `/umshare` command that lets a player without the mod send one; its
+replies are plain text rather than translation keys, since such a client has no copy of the
+language file). Both run on
+the integrated server in single player, and on a dedicated server only when the mod is
+installed there too. Each loader module has a common entrypoint (`UnitedMinecraftFabricCommon`,
+`UnitedMinecraftNeoForgeCommon`) for them, and the payloads are optional in both directions. See [README.md](README.md) and the feature pages in [docs/](docs/) for the full feature list
 and default keybindings (both are useful context when touching related code).
 When a change alters what a player can do or hear, update the matching page in `docs/` in the
 same commit, describing current behavior only - the release notes carry what changed.
@@ -101,7 +105,12 @@ possible while NeoForge is still catching up.
 
 - `common/src/main/java` — essentially everything, under
   `com.nibblenerds.unitedminecraft.client`, plus the `platform` package holding the
-  loader seam. This is where nearly all feature work happens.
+  loader seam. This is where nearly all feature work happens. The `client` package holds the
+  shared hub (`AccessibilityTickHandler`, `ClientHooks`) and the smaller features; larger
+  groups live in subpackages: `keybind`, `settings`, `audio`, `scanner`, `autowalk`,
+  `travel` (elytra, boat, mount), `combat` and `menu` (container, Creative and advancements
+  navigation), alongside `speech`, `mixin`, `access` and `duck`. Anything one package calls
+  in another must be `public`; the rest stays package-private.
 - `common/src/main/resources` — the client mixin config, the bundled Prism natives under
   `prism/<platform>/`, and the assets and lang files.
 - `fabric/` and `neoforge/` — each loader's entrypoint, its `Platform` implementation and
@@ -115,11 +124,12 @@ build's `checkSharedSources` task does, and each module's `check` depends on it.
 
 `Platform` (in `com.nibblenerds.unitedminecraft.platform`) is how shared code asks for
 the things it needs from a loader rather than from vanilla, which turned out to be
-exactly two directories. The loader module installs an implementation before anything
+two directories and, for marker sharing, checking whether the server has a payload and
+sending one to it. The loader module installs an implementation before anything
 else runs.
 
-`ClientHooks` (in the `client` package, so it can reach package-private controller
-methods) is where the controllers' responses to game events live, as plain static calls.
+`ClientHooks` (in the `client` package; the methods it calls on controllers in other
+packages are `public`) is where the controllers' responses to game events live, as plain static calls.
 Each loader's bridge subscribes that loader's events and calls into it; the bridge makes
 no decisions of its own. Ordering inside each hook reproduces what the old
 per-controller event registrations produced and is load-bearing — read the doc comments
@@ -143,12 +153,12 @@ bridge calls at the end of every client tick) is the hub almost all gameplay-fac
 anything that reacts to player state each tick. Key points:
 
 - Each toggleable mode or helper (Build Mode, Combat Mode, Scanner lock-on, Auto-Walk, Water
-  Exit, elytra landing, Cave Trail, Navigation Radar, Mining Radar, Angle Assist) is its own `XxxController` class with static state and a
+  Exit, elytra landing, Navigation Radar, Mining Radar, Angle Assist) is its own `XxxController` class with static state and a
   `tick(client, player)` method, plus a `reset()` called when the player unloads
   (world exit) — controllers must not carry stale state across sessions.
 - Modes are mutually exclusive over rotation/input in a deliberate priority order
   (see the big if/else chain in `onEndTick`): Auto-Walk > Water Exit > Elytra Landing >
-  Cave Trail > Scanner lock-on > Combat Mode > Build Mode > normal camera look.
+  Scanner lock-on > Combat Mode > Build Mode > normal camera look.
   Ask `ScannerController.ownsRotation()` / `CombatModeController.ownsRotation()` whether a mode
   holds the camera, not whether it is merely on: Combat Mode's Beacon style, and the Scanner
   lock while Bow Beacon is aiming, are on without steering. Read the inline comments there before adding a new
@@ -168,7 +178,10 @@ anything that reacts to player state each tick. Key points:
 `ScannerController` + `ScannerCategory` implement cycling through nearby
 blocks/entities by category (the `ScannerCategory` enum is the authoritative list and cycling
 order; Terrain, Biomes and Structures, Players and Search are the ones that need special
-handling), targeting/locking on, and coordinate lookup. `FlatAreaFinder` backs Terrain's
+handling), targeting/locking on, and coordinate lookup. The player's saved searches follow
+Search in that order (`SavedSearchController`), so the Scanner works in `CategoryRef`s - a
+built-in category or a saved search - whose `kind` drives all behaviour: a saved search is
+Search with a term already entered, plus a name and filters of its own. `FlatAreaFinder` backs Terrain's
 flat-area search, and `SignNarrationHelper` is how the Scanner and the look-ahead read signs. Ore detection
 (`OreDetection`) is shared with `MiningRadarController` and deliberately only flags ore
 that's actually visible, not sealed behind unmined blocks. Map Markers
@@ -231,7 +244,7 @@ existing conversions there rather than re-deriving the math.
 ### Persistence
 
 Settings (`UnitedMinecraftConfig`), keybindings (`KeybindConfig`) and per-world data
-(`WorldScopedStore`, behind Map Markers and named blocks) all write through `SafeFiles`:
+(`WorldScopedStore`, behind Map Markers, named blocks and saved Scanner filters) all write through `SafeFiles`:
 atomic writes, and a file that fails to parse is moved aside rather than overwritten by the
 next save. Use it for anything new that persists. `KeybindConfig` stores only bindings that
 differ from their default, so changing a default in `ClientKeyBindings` reaches every player
@@ -240,7 +253,8 @@ who hasn't rebound that action themselves.
 ### Unit tests
 
 Tests live in `common/src/test/java`, in the same packages as the code they test (so they
-can reach package-private methods), and run in the Fabric module only - both modules compile
+can reach package-private methods; `TestPlatform` is public because tests in every
+package install it), and run in the Fabric module only - both modules compile
 the same shared sources, and Fabric is the one always built. JUnit 5.
 
 They cover logic only, never the running game. The rules:

@@ -2,6 +2,7 @@ package com.nibblenerds.unitedminecraft.neoforge;
 
 import com.nibblenerds.unitedminecraft.client.ClientHooks;
 import com.nibblenerds.unitedminecraft.platform.Platform;
+import com.nibblenerds.unitedminecraft.share.SharePayloads;
 import com.nibblenerds.unitedminecraft.structure.StructuresNearbyPayload;
 
 import net.neoforged.api.distmarker.Dist;
@@ -23,7 +24,13 @@ public class UnitedMinecraftNeoForge {
 		ClientHooks.init();
 		NeoForgeEventBridge.register(NeoForge.EVENT_BUS);
 		// The payload itself is registered by UnitedMinecraftNeoForgeCommon.
-		modBus.addListener(RegisterClientPayloadHandlersEvent.class, event -> event.register(
-				StructuresNearbyPayload.TYPE, HandlerThread.MAIN, (payload, context) -> ClientHooks.onStructuresNearby(payload)));
+		modBus.addListener(RegisterClientPayloadHandlersEvent.class, event -> {
+			event.register(StructuresNearbyPayload.TYPE, HandlerThread.MAIN,
+					(payload, context) -> ClientHooks.onStructuresNearby(payload));
+			event.register(SharePayloads.Targets.TYPE, HandlerThread.MAIN,
+					(payload, context) -> ClientHooks.onShareTargets(payload));
+			event.register(SharePayloads.Offer.TYPE, HandlerThread.MAIN,
+					(payload, context) -> ClientHooks.onShareOffer(payload));
+		});
 	}
 }

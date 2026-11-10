@@ -10,6 +10,9 @@
 		"CreativeSlotWrapperAccessorMixin",
 		"AnvilScreenAccessorMixin",
 		"BeaconScreenAccessorMixin",
+		"AdvancementsScreenAccessorMixin",
+		"AdvancementTabMixin",
+		"AdvancementWidgetAccessorMixin",
 		"AbstractRecipeBookScreenAccessorMixin",
 		"RecipeBookComponentAccessorMixin",
 		"EditBoxMixin",
@@ -36,7 +39,9 @@
 		"ChatMessageSoundMixin",
 		"SoundBufferLibraryMixin",
 		"StructureVoiceChannelMixin",
-		"DebugScreenOverlayAccessorMixin"
+		"DebugScreenOverlayAccessorMixin",
+		"ClientPacketListenerMixin",
+		"LevelStorageAccessMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

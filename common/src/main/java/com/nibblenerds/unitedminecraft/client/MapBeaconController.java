@@ -1,10 +1,13 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.audio.CueVolume;
+import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import java.util.Set;
 
+import net.minecraft.core.GlobalPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
@@ -13,7 +16,9 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.MapItem;
+import net.minecraft.world.item.component.LodestoneTracker;
 import net.minecraft.world.item.component.MapDecorations;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.maps.MapDecorationType;
@@ -82,20 +87,27 @@ import net.minecraft.world.phys.Vec3;
  * redundant, always-audible distance cue independent of how far away the target actually is - the
  * same "fixed nearby placement, let Minecraft's own panning do the work" trick {@link
  * NavRadarController#playCue} already uses for its short-range obstacle cues.
+ *
+ * <p>A held compass works the same way, behind its own setting ({@link
+ * UnitedMinecraftConfig#compassBeaconEnabled}): see {@link #resolveCompassTarget} for where each
+ * kind points. The cue machinery above is shared; what differs is the arrival radius (a compass's
+ * target is exact, a map's is not - {@link BeaconTiming} takes it as a parameter), that a lodestone
+ * or a death spot has a height worth saying, and that a compass with nothing to point at, or whose
+ * target is in another dimension, is silent as vanilla's spinning needle is.
  */
 public final class MapBeaconController {
 	private static final double CHIME_FIXED_OFFSET_BLOCKS = 2.0;
-	private static final int CHIME_INTERVAL_FAR_TICKS = 40;
-	private static final int CHIME_INTERVAL_NEAR_TICKS = 10;
-	// Once arrived, a slow idle pulse rather than silence - explorer-map imprecision (and the
-	// total lack of a Y coordinate) means "arrived" is only ever approximate, so the final on-foot
-	// search still benefits from an occasional nudge.
-	private static final int CHIME_INTERVAL_ARRIVED_TICKS = 100;
-	private static final double NEAR_DISTANCE_THRESHOLD_BLOCKS = 50.0;
-	private static final double ARRIVAL_RADIUS_BLOCKS = 16.0;
-	private static final float PITCH_FAR = 0.8f;
-	private static final float PITCH_NEAR = 1.8f;
 	private static final int NARRATION_INTERVAL_TICKS = 100;
+	// Explorer-map imprecision (and the total lack of a Y coordinate) means "arrived" at a map's
+	// target is only ever approximate. A compass's target is exact - a block - so it counts much
+	// closer in.
+	private static final double MAP_ARRIVAL_RADIUS_BLOCKS = 16.0;
+	private static final double COMPASS_ARRIVAL_RADIUS_BLOCKS = 3.0;
+	// A compass target with a real height (a lodestone, where you died) isn't arrived at from far
+	// above or below it, whatever the horizontal distance.
+	private static final int COMPASS_ARRIVAL_HEIGHT_BLOCKS = 4;
+	// A height difference smaller than this isn't worth saying.
+	private static final int VERTICAL_NARRATION_MIN_BLOCKS = 2;
 
 	/** The structure-icon decoration types an explorer map generates - see {@link #isNavigableTarget}. */
 	private static final Set<Holder<MapDecorationType>> STRUCTURE_DECORATION_TYPES = Set.of(
@@ -117,6 +129,9 @@ public final class MapBeaconController {
 	// given for, so it fires once per distinct map/target rather than once per tick for as long
 	// as that same map stays in hand.
 	private static Vec3 lastWrongDimensionTarget;
+	// Which compass was last told "no target" (a compass with nothing to point at, which spins),
+	// so that is said once per compass picked up rather than every tick.
+	private static Source lastNoTargetSource;
 	private static boolean hasAnnouncedArrival;
 	private static int chimeTicks;
 	private static int narrationTicks;
@@ -127,39 +142,47 @@ public final class MapBeaconController {
 	public static void reset() {
 		currentTarget = null;
 		lastWrongDimensionTarget = null;
+		lastNoTargetSource = null;
 		hasAnnouncedArrival = false;
 		chimeTicks = 0;
 		narrationTicks = 0;
 	}
 
 	public static void tick(Minecraft client, LocalPlayer player) {
-		if (!UnitedMinecraftConfig.get().mapBeaconEnabled) {
+		UnitedMinecraftConfig config = UnitedMinecraftConfig.get();
+		if (!config.mapBeaconEnabled && !config.compassBeaconEnabled) {
 			reset();
 			return;
 		}
 
-		InteractionHand hand = mapHand(player);
-		if (hand == null) {
-			// No qualifying item in hand at all - stay completely silent rather than narrating
-			// "not holding a map" on every tick, and re-arm cleanly for whatever's picked up next.
-			reset();
-			return;
-		}
-
-		Target target = resolveTarget(player, player.getItemInHand(hand));
+		Target target = heldTarget(client, player, config);
 		if (target == null) {
-			// A real map, but nothing on it counts as a navigable target (blank, still being
-			// filled in, or only carries markers this feature doesn't care about) - silent, same
-			// reasoning as above.
+			// Nothing qualifying in hand at all, or a map with nothing on it that counts as a
+			// navigable target (blank, still being filled in, or only carrying markers this feature
+			// doesn't care about) - stay completely silent rather than narrating "not holding a map"
+			// on every tick, and re-arm cleanly for whatever's picked up next.
 			reset();
 			return;
 		}
+
+		if (target.pos() == null) {
+			// A compass with nothing to point at: it spins, so there's no direction to give.
+			currentTarget = null;
+			if (target.source() != lastNoTargetSource) {
+				lastNoTargetSource = target.source();
+				client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.compass_beacon_no_target"));
+			}
+			return;
+		}
+		lastNoTargetSource = null;
 
 		if (target.wrongDimension()) {
 			currentTarget = null;
 			if (!target.pos().equals(lastWrongDimensionTarget)) {
 				lastWrongDimensionTarget = target.pos();
-				client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.map_beacon_wrong_dimension"));
+				client.getNarrator().saySystemNow(target.source() == Source.MAP
+						? Component.translatable("united_minecraft.narrate.map_beacon_wrong_dimension")
+						: Component.translatable("united_minecraft.narrate.compass_beacon_wrong_dimension", target.source().label()));
 			}
 			return;
 		}
@@ -173,35 +196,91 @@ public final class MapBeaconController {
 			narrationTicks = 0;
 		}
 
+		double radius = target.source().arrivalRadius();
 		double distance = horizontalDistance(player.position(), currentTarget);
-		if (!hasAnnouncedArrival && distance <= ARRIVAL_RADIUS_BLOCKS) {
+		if (!hasAnnouncedArrival && distance <= radius && isLevelWithTarget(player, target)) {
 			hasAnnouncedArrival = true;
-			client.getNarrator().saySystemQueued(Component.translatable("united_minecraft.narrate.map_beacon_arrived"));
+			client.getNarrator().saySystemQueued(target.source() == Source.MAP
+					? Component.translatable("united_minecraft.narrate.map_beacon_arrived")
+					: Component.translatable("united_minecraft.narrate.compass_beacon_arrived", target.source().label()));
 		}
 
 		if (chimeTicks <= 0) {
-			playChime(client, player, currentTarget, distance);
-			chimeTicks = chimeIntervalTicksFor(distance, hasAnnouncedArrival);
+			playChime(client, player, currentTarget, distance, radius);
+			chimeTicks = BeaconTiming.chimeIntervalTicksFor(distance, radius, hasAnnouncedArrival);
 		} else {
 			chimeTicks--;
 		}
 
 		if (narrationTicks <= 0) {
-			narrateBearing(client, player, currentTarget, distance);
+			narrateBearing(client, player, target, distance);
 			narrationTicks = NARRATION_INTERVAL_TICKS;
 		} else {
 			narrationTicks--;
 		}
 	}
 
-	/** Whichever hand holds a map item, main hand first - null if neither does. Mirrors {@link BuildModeController#bucketHand}. */
-	private static InteractionHand mapHand(LocalPlayer player) {
+	/** A target with a real height isn't arrived at from far above or below it; one without (a map, spawn) has no height to compare. */
+	private static boolean isLevelWithTarget(LocalPlayer player, Target target) {
+		return !target.source().hasHeight()
+				|| Math.abs(targetBlockY(target) - player.blockPosition().getY()) <= COMPASS_ARRIVAL_HEIGHT_BLOCKS;
+	}
+
+	private static int targetBlockY(Target target) {
+		return (int) Math.floor(target.pos().y());
+	}
+
+	/**
+	 * What the first hand holding something qualifying points at, main hand first - null if neither
+	 * does, or a map in hand has nothing on it that counts as a target. A map is only looked at while
+	 * Map Beacon is on, and a compass while Compass Beacon is. Mirrors {@link BuildModeController#bucketHand}.
+	 */
+	private static Target heldTarget(Minecraft client, LocalPlayer player, UnitedMinecraftConfig config) {
 		for (InteractionHand hand : InteractionHand.values()) {
-			if (player.getItemInHand(hand).getItem() instanceof MapItem) {
-				return hand;
+			ItemStack stack = player.getItemInHand(hand);
+			Target target = null;
+			if (config.mapBeaconEnabled && stack.getItem() instanceof MapItem) {
+				target = resolveMapTarget(player, stack);
+			} else if (config.compassBeaconEnabled && (stack.is(Items.COMPASS) || stack.is(Items.RECOVERY_COMPASS))) {
+				target = resolveCompassTarget(client, player, stack);
+			}
+			if (target != null) {
+				return target;
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * Where a compass in hand points, from the same data vanilla draws its needle from: a normal
+	 * compass at world spawn (read off the level), a lodestone compass at the position stored on the
+	 * item, a recovery compass at the player's last death location. The target's {@code pos} is null
+	 * when it has nothing to point at (a lodestone compass whose lodestone is gone, a recovery compass
+	 * before you have died) - the needle spins - and {@code wrongDimension} when the target is in
+	 * another dimension from the one the player is in, where vanilla's needle spins too. A lodestone
+	 * compass is a plain compass carrying a lodestone tracker, the way vanilla's own item model tells
+	 * the two apart.
+	 */
+	private static Target resolveCompassTarget(Minecraft client, LocalPlayer player, ItemStack stack) {
+		Source source;
+		GlobalPos where;
+		if (stack.is(Items.RECOVERY_COMPASS)) {
+			source = Source.DEATH;
+			where = player.getLastDeathLocation().orElse(null);
+		} else {
+			LodestoneTracker tracker = stack.get(DataComponents.LODESTONE_TRACKER);
+			if (tracker != null) {
+				source = Source.LODESTONE;
+				where = tracker.target().orElse(null);
+			} else {
+				source = Source.SPAWN;
+				where = client.level == null ? null : client.level.getRespawnData().globalPos();
+			}
+		}
+		if (where == null) {
+			return new Target(source, null, false);
+		}
+		return new Target(source, Vec3.atCenterOf(where.pos()), !where.dimension().equals(player.level().dimension()));
 	}
 
 	/**
@@ -217,7 +296,7 @@ public final class MapBeaconController {
 	 * map data yet) is treated as "trust it", since the target itself is already known good
 	 * straight from the item component regardless.
 	 */
-	private static Target resolveTarget(LocalPlayer player, ItemStack stack) {
+	private static Target resolveMapTarget(LocalPlayer player, ItemStack stack) {
 		MapDecorations decorations = stack.get(DataComponents.MAP_DECORATIONS);
 		if (decorations == null) {
 			return null;
@@ -242,7 +321,7 @@ public final class MapBeaconController {
 
 		MapItemSavedData data = MapItem.getSavedData(stack, player.level());
 		boolean wrongDimension = data != null && !data.dimension.equals(player.level().dimension());
-		return new Target(new Vec3(nearest.x(), 0, nearest.z()), wrongDimension);
+		return new Target(Source.MAP, new Vec3(nearest.x(), 0, nearest.z()), wrongDimension);
 	}
 
 	/**
@@ -269,30 +348,6 @@ public final class MapBeaconController {
 		return Math.sqrt(dx * dx + dz * dz);
 	}
 
-	/** 0 at/beyond {@link #NEAR_DISTANCE_THRESHOLD_BLOCKS}, 1 at/inside {@link #ARRIVAL_RADIUS_BLOCKS}, linear between. */
-	private static double proximityFactor(double distance) {
-		if (distance <= ARRIVAL_RADIUS_BLOCKS) {
-			return 1.0;
-		}
-		if (distance >= NEAR_DISTANCE_THRESHOLD_BLOCKS) {
-			return 0.0;
-		}
-		return (NEAR_DISTANCE_THRESHOLD_BLOCKS - distance) / (NEAR_DISTANCE_THRESHOLD_BLOCKS - ARRIVAL_RADIUS_BLOCKS);
-	}
-
-	private static float pitchFor(double distance) {
-		double t = proximityFactor(distance);
-		return (float) (PITCH_FAR + (PITCH_NEAR - PITCH_FAR) * t);
-	}
-
-	private static int chimeIntervalTicksFor(double distance, boolean arrived) {
-		if (arrived) {
-			return CHIME_INTERVAL_ARRIVED_TICKS;
-		}
-		double t = proximityFactor(distance);
-		return (int) Math.round(CHIME_INTERVAL_FAR_TICKS + (CHIME_INTERVAL_NEAR_TICKS - CHIME_INTERVAL_FAR_TICKS) * t);
-	}
-
 	/**
 	 * Places a chime {@link #CHIME_FIXED_OFFSET_BLOCKS} from the player along the real direction
 	 * to {@code target} - not at the target's real (possibly huge) distance, see the class doc -
@@ -301,7 +356,7 @@ public final class MapBeaconController {
 	 * direction vector from, this already has the real target vector on hand, so it's normalized
 	 * directly rather than round-tripped through an angle.
 	 */
-	private static void playChime(Minecraft client, LocalPlayer player, Vec3 target, double distance) {
+	private static void playChime(Minecraft client, LocalPlayer player, Vec3 target, double distance, double arrivalRadius) {
 		double dx = target.x() - player.getX();
 		double dz = target.z() - player.getZ();
 		double length = Math.sqrt(dx * dx + dz * dz);
@@ -314,16 +369,70 @@ public final class MapBeaconController {
 		double z = player.getZ() + (dz / length) * CHIME_FIXED_OFFSET_BLOCKS;
 		RandomSource random = player.getRandom();
 		client.getSoundManager().play(new SimpleSoundInstance(
-				SoundEvents.BELL_BLOCK, SoundSource.MASTER, CueVolume.scale(1.0f), pitchFor(distance), random, x, player.getY(), z));
+				SoundEvents.BELL_BLOCK, SoundSource.MASTER, CueVolume.scale(1.0f),
+				BeaconTiming.pitchFor(distance, arrivalRadius), random, x, player.getY(), z));
 	}
 
-	private static void narrateBearing(Minecraft client, LocalPlayer player, Vec3 target, double distance) {
-		Component compass = CameraUtil.compassDirectionTo(player.position(), target);
-		client.getNarrator().saySystemNow(Component.translatable(
-				"united_minecraft.narrate.map_beacon_bearing", compass, Math.round(distance)));
+	/**
+	 * A map reads its bearing and distance. A compass also says what it points at, and - for a
+	 * target with a real height, a lodestone or the place you died - how far above or below you it is.
+	 */
+	private static void narrateBearing(Minecraft client, LocalPlayer player, Target target, double distance) {
+		Component direction = CameraUtil.compassDirectionTo(player.position(), target.pos());
+		if (target.source() == Source.MAP) {
+			client.getNarrator().saySystemNow(Component.translatable(
+					"united_minecraft.narrate.map_beacon_bearing", direction, Math.round(distance)));
+			return;
+		}
+		Component message = Component.translatable("united_minecraft.narrate.compass_beacon_bearing",
+				target.source().label(), direction, Math.round(distance));
+		if (target.source().hasHeight()) {
+			int above = targetBlockY(target) - player.blockPosition().getY();
+			if (Math.abs(above) >= VERTICAL_NARRATION_MIN_BLOCKS) {
+				message = message.copy().append(Component.literal(", ")).append(Component.translatable(
+						above > 0 ? "united_minecraft.narrate.compass_beacon_above" : "united_minecraft.narrate.compass_beacon_below",
+						Math.abs(above)));
+			}
+		}
+		client.getNarrator().saySystemNow(message);
 	}
 
-	/** {@code wrongDimension} is {@code true} when {@code pos} was resolved from a map whose own dimension isn't the player's current one. */
-	private record Target(Vec3 pos, boolean wrongDimension) {
+	/** What a beacon is pointing at, which sets how close counts as arrived and whether it has a height. */
+	private enum Source {
+		MAP(MAP_ARRIVAL_RADIUS_BLOCKS, false, null),
+		SPAWN(COMPASS_ARRIVAL_RADIUS_BLOCKS, false, "united_minecraft.narrate.compass_target_spawn"),
+		LODESTONE(COMPASS_ARRIVAL_RADIUS_BLOCKS, true, "united_minecraft.narrate.compass_target_lodestone"),
+		DEATH(COMPASS_ARRIVAL_RADIUS_BLOCKS, true, "united_minecraft.narrate.compass_target_death");
+
+		private final double arrivalRadius;
+		private final boolean hasHeight;
+		private final String labelKey;
+
+		Source(double arrivalRadius, boolean hasHeight, String labelKey) {
+			this.arrivalRadius = arrivalRadius;
+			this.hasHeight = hasHeight;
+			this.labelKey = labelKey;
+		}
+
+		double arrivalRadius() {
+			return arrivalRadius;
+		}
+
+		/** Whether the target's height is worth comparing with the player's: not a map's (it has none), nor world spawn's (usually unrelated to where you are headed). */
+		boolean hasHeight() {
+			return hasHeight;
+		}
+
+		/** What this is called aloud - compasses only; a map just says its bearing. */
+		Component label() {
+			return Component.translatable(labelKey);
+		}
+	}
+
+	/**
+	 * {@code pos} is null when a compass has nothing to point at, and {@code wrongDimension} is
+	 * {@code true} when it was resolved in a dimension other than the player's current one.
+	 */
+	private record Target(Source source, Vec3 pos, boolean wrongDimension) {
 	}
 }

@@ -10,17 +10,17 @@ key or modifier combination in United Minecraft's own Keybindings screen
 
 | Key | Action |
 | --- | --- |
-| C (Shift = light level of Build Mode's cursor if active, otherwise your block) | Coordinates, standing block and biome |
-| H (Shift = experience level, Alt = armor and status effects) | Health and hunger |
+| C (Shift = light level of Build Mode's cursor if active, otherwise your block, Alt = chunk and distance to its borders) | Coordinates, standing block and biome |
+| H (Shift = experience level, Alt = armor and status effects, and your mount's speed and jump on a horse) | Health and hunger |
 | B (Shift+B = reset facing to north, Alt+B = face the last Eye of Ender's direction) | Facing direction and pitch |
 | R (Shift = toggle Auto Crosshair Narration) | Read what is in front of me |
 | V (Shift = weather and, at night, moon phase) | Time of day |
 | ; | Read the current boss bar(s) |
+| ` | Read what is in your main hand and off-hand |
 | ' (hold Alt for the whole board) | Read the sidebar scoreboard |
 | ] / [ (F3 overlay open) | Next / previous line of the debug overlay section |
 | Shift+] / Shift+[ (F3 overlay open) | Next / previous debug overlay section |
 | F6 | Open United Minecraft Settings |
-| F7 | Swap Attack/Destroy and Place/Use between the mouse buttons and your other keys |
 | Unassigned | Experimental: copy a text snapshot of the surrounding world (terrain out to the loaded distance, water and lava falls, walls and ceiling) to the clipboard, to paste into a language model; bind it in the Keybindings screen |
 | Unassigned | Experimental: have an AI service describe your surroundings aloud (set one up under Settings > AI Description first); bind it in the Keybindings screen |
 
@@ -30,25 +30,25 @@ key or modifier combination in United Minecraft's own Keybindings screen
 | --- | --- |
 | Home / End | Previous / next category |
 | Z | Jump to a category by typing the first letters of its name |
+| Shift+Z | Open the filters for the current category, to leave items out of its list |
 | Page Up / Down (Alt = next / previous item of the same kind) | Cycle the items in a category |
 | Enter (Shift = walk there) | Target the focused item, or interact with it directly while locked on |
 | Alt+; | Lock onto the nearest Ender Dragon or Wither |
 | \ | Announce the focused item's coordinates |
 | U | Place a named map marker at your location |
-| Shift+U | Name the focused item, or enter a Search term or flat-area size when Search or Terrain is selected |
-| Delete | Remove the focused marker in the Markers category |
+| Shift+U | Name the focused item, or enter a Search term or flat-area size when Search or Terrain is selected, or edit a saved search |
+| Delete | Remove the focused marker in the Markers category, or the selected saved search |
+| Alt+U | Open Marker Sharing: review offers from other players, send your markers |
 | Backspace | Stop Scanner lock-on, or cancel Auto-Walk, a swim, a landing or a trail retrace |
 
 ## Movement and navigation
 
 | Key | Action |
 | --- | --- |
-| Arrow keys (Alt = snap-turn 45 degrees) | Turn the camera |
+| Arrow keys (Alt = snap-turn 45 degrees) | Turn the camera, or the boat while you drive one |
 | Y (Shift = go there) | Nearest way out of water, or nearest safe elytra landing, and with Shift swim or fly there |
-| X (Shift = walk there, Alt = mark start) | Way back along the recorded cave trail |
 | N | Toggle Navigation Radar |
 | Shift+N | Toggle Wall Tones |
-| M | Toggle Mining Radar |
 | K | Toggle Combat Mode |
 | Alt+G | Cycle Angle Assist: off, bridge, tunnel, staircase |
 

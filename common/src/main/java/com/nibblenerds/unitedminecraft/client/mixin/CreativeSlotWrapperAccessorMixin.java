@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client.mixin;
 
+import com.nibblenerds.unitedminecraft.client.menu.MenuAccessibilityController;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;

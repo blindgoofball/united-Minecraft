@@ -24,37 +24,37 @@ import org.slf4j.LoggerFactory;
  * <p>Each provider keeps its own fields, so switching between, say, a local Ollama and Gemini does
  * not lose either one's setup.
  */
-final class AiConfig {
+public final class AiConfig {
 	private static final Logger LOGGER = LoggerFactory.getLogger("united_minecraft/ai");
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
 	private static AiConfig instance = new AiConfig();
 
 	/** Which service answers. {@code OFF} until the player has chosen one. */
-	enum Provider {
+	public enum Provider {
 		OFF, GEMINI, ANTHROPIC, OLLAMA, OPENAI_COMPATIBLE
 	}
 
-	Provider provider = Provider.OFF;
+	public Provider provider = Provider.OFF;
 
-	String geminiKey = "";
-	String geminiModel = "gemini-3.6-flash";
+	public String geminiKey = "";
+	public String geminiModel = "gemini-3.6-flash";
 
-	String anthropicKey = "";
-	String anthropicModel = "claude-haiku-5-5";
+	public String anthropicKey = "";
+	public String anthropicModel = "claude-haiku-5-5";
 
-	String ollamaUrl = "http://localhost:11434";
-	String ollamaModel = "gemma4";
+	public String ollamaUrl = "http://localhost:11434";
+	public String ollamaModel = "gemma4";
 
 	/** Any service that speaks the OpenAI chat API: OpenAI itself, OpenRouter, Groq, LM Studio, and so on. */
-	String openAiUrl = "https://api.openai.com/v1";
-	String openAiKey = "";
-	String openAiModel = "gpt-6-luna";
+	public String openAiUrl = "https://api.openai.com/v1";
+	public String openAiKey = "";
+	public String openAiModel = "gpt-6-luna";
 
 	private AiConfig() {
 	}
 
-	static AiConfig get() {
+	public static AiConfig get() {
 		return instance;
 	}
 
@@ -86,7 +86,7 @@ final class AiConfig {
 		return Platform.get().configDir().resolve("united_minecraft_ai.json");
 	}
 
-	static void load() {
+	public static void load() {
 		Path file = file();
 		if (!Files.exists(file)) {
 			return;
@@ -103,7 +103,7 @@ final class AiConfig {
 		}
 	}
 
-	static void save() {
+	public static void save() {
 		instance.sanitize();
 		Path file = file();
 		try {

@@ -2,7 +2,7 @@
 
 [Documentation index](README.md)
 
-On this page: [Moving around](#moving-around) | [Moving items](#moving-items) | [Bundles](#bundles) | [Crafting and the Recipe Book](#crafting-and-the-recipe-book) | [Special stations](#special-stations) | [Creative inventory](#creative-inventory)
+On this page: [Moving around](#moving-around) | [Moving items](#moving-items) | [Bundles](#bundles) | [Crafting and the Recipe Book](#crafting-and-the-recipe-book) | [Special stations](#special-stations) | [Creative inventory](#creative-inventory) | [Advancements](#advancements)
 
 Full keyboard navigation for container menus (chests, furnaces, crafting tables,
 anvils, brewing stands, enchanting tables) and your own inventory. All of these
@@ -57,7 +57,10 @@ Wherever a crafting grid and Recipe Book are both present:
   vanilla's recipe book never says aloud.
 - **Home/End** jump to the first or last group; **Page Up/Down** cycle vanilla's
   recipe-book category tabs.
-- **F** shows only recipes you can craft now.
+- **Letters** jump to the next recipe, across groups and variants, whose result's name
+  starts with that letter, wrapping around, so repeating it cycles through every match.
+  E does not close the screen here either.
+- **Ctrl+F** shows only recipes you can craft now.
 - **Space** opens a search prompt. The term also filters vanilla's own search box
   if it is open, so a sighted player sees the same results.
 - **Enter** places the focused recipe; **Shift+Enter** fills the grid to the max
@@ -94,3 +97,20 @@ These controls are not slots, so each gets its own section.
   filters the grid and narrates the result count, and Up/Down (or Page Up/Down)
   leave the field for the first result. Up from the first result returns to the
   field.
+
+## Advancements
+
+Each tab of the advancements screen is a tree, and the keys walk it like one. Opening
+the screen narrates the current tab and how many of its advancements are done.
+
+- **Up/Down** move through the tab from top to bottom, every branch open.
+- **Right** enters an advancement's first child; **Left** returns to its parent.
+- **Home/End** jump to the first or last advancement.
+- **Tab / Shift+Tab** change tab, narrating its name and progress.
+
+Each stop narrates the title (plus Challenge or Goal where it is one), whether it is
+completed or its progress so far, the description, and its place in the list. The
+screen scrolls to it and shows its usual hover box, so a sighted helper sees the same
+thing. Advancements that are hidden until earned stay out of the list until you earn
+them. The arrows and Tab are the same actions as the container menus' and rebind
+with them.

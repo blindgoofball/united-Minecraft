@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client.access;
 
+import com.nibblenerds.unitedminecraft.client.menu.MenuAccessibilityController;
 import net.minecraft.core.Holder;
 import net.minecraft.world.effect.MobEffect;
 

@@ -38,12 +38,12 @@ Markers and Search.
 | Storage | Chests, barrels, shulker boxes, hoppers, droppers, dispensers, decorated pots, vaults, shelves |
 | Workstations | Everything else that opens a menu (crafting tables, furnaces, anvils...), plus beds and command, structure, jigsaw and test blocks |
 | Mechanisms | Doors, levers, buttons, pressure plates, repeaters, comparators, note blocks, bells, daylight sensors, jukeboxes, signs, and nether and end portals (one entry per portal) |
-| Hostile Mobs, Passive Mobs | Mobs, narrated with their name; sheep include their wool color, sheared ones included; animals with variants include them (tabby cat, chestnut horse with white dots, snowy wolf, and likewise rabbits, foxes, llamas, axolotls, frogs, pigs, cows, chickens, mooshrooms, pandas, parrots, tropical fish); a mob in a boat, minecart or on another mob says what it is riding, and the boat, minecart or mount says who it is carrying; a shoulder parrot is narrated by color and shoulder |
+| Hostile Mobs, Passive Mobs | Mobs, narrated with their name; sheep include their wool color, sheared ones included; animals with variants include them (tabby cat, chestnut horse with white dots, snowy wolf, and likewise rabbits, foxes, llamas, axolotls, frogs, pigs, cows, chickens, mooshrooms, pandas, parrots, tropical fish); a mob in a boat, minecart or on another mob says what it is riding, and the boat, minecart or mount says who it is carrying; a shoulder parrot is narrated by color and shoulder; a tamed wolf also reports its health in hearts, the equivalent of reading its tail |
 | Entities | Minecarts, boats, armor stands, item frames (with what they hold), paintings by name, end crystals, leash knots |
 | Items | Dropped items |
 | Ores | Ore you could actually see (see below) |
 | Trees | Trees, clustered into whole trees |
-| Crops | Farmland crops, stems, nether wart, cocoa, sweet berry bushes, saplings (including mangrove propagules and bamboo), cave vines bearing glow berries, grown bamboo and chorus plants (clustered). "Ripe" is said when ready to harvest and nothing otherwise |
+| Crops | Farmland crops, stems, nether wart, cocoa, sweet berry bushes, saplings (including mangrove propagules and bamboo), cave vines bearing glow berries, grown bamboo, sugar cane, cactus, kelp and chorus plants (each stalk or plant one entry, with its height). "Ripe" is said when ready to harvest and nothing otherwise |
 | Terrain | Liquids, climbables and flat areas (below) |
 | Biomes and Structures | Places worth exploring toward (below) |
 | Players | Every other player in your current dimension, at any distance |
@@ -96,7 +96,41 @@ your render distance.
 ### Search
 
 Shift+U while Search is selected opens a prompt for a term, then finds every
-visible block nearby whose name contains it. "glowstone" locates glowstone blocks.
+visible block nearby whose name contains it. "glowstone" locates glowstone blocks. A door,
+tall plant, bed or double chest, each two blocks, is listed once. Larger things are grouped
+the way they are elsewhere: a portal or portal frame is one entry per structure; a stalk of
+bamboo, sugar cane, cactus or kelp, a ladder, vine or scaffolding run, is one entry (which
+says its height); and a chorus plant is one entry.
+
+The prompt has a "Save as a category" checkbox. Ticked, the search is also saved under its
+own term as its name, as a category of its own in each world: it turns up after Search when
+you cycle with Home and End, and in the Z jump list by name. A saved search works just like
+Search with that term already entered. Unlike plain Search it is skipped by Skip Empty
+Categories when it finds nothing. Saving a term you already saved replaces that one's term,
+and a world holds up to 20.
+
+- Shift+U on a saved search opens its name and term to edit.
+- Delete on a saved search removes it, along with the filters kept for it.
+- Each saved search has filters of its own (Shift+Z), separate from Search's.
+
+### Filters
+
+Shift+Z opens the filters for the category you are on, to leave things out of its list.
+Each category has its own. A filter is a name, and it hides every item in that category
+whose spoken name is exactly that, ignoring capital letters and extra spaces: a "hopper"
+filter on Storage hides Hopper, but not a Hopper Minecart. A name you gave a block counts
+as its name, so a filter can hide it too. Shift+Z with no category selected says so.
+
+- The screen lists the category's filters, each marked as saved or this session only.
+  Remove Filter removes the picked one, Add Filter opens a prompt for the name, and Close
+  or Escape leaves.
+- The prompt has a checkbox, off by default, to keep the filter across sessions. A filter
+  that is not kept is dropped when you leave the world. A kept one is saved for that world
+  and is there again next time you join it.
+- Adding a filter that is already there does nothing, and adding it as kept turns the
+  existing session-only one into a kept one.
+- Filters change what the lists show, so a category whose items are all filtered counts
+  as empty. They do not change an active lock-on.
 
 ## Targeting and lock-on
 
@@ -127,7 +161,10 @@ visible block nearby whose name contains it. "glowstone" locates glowstone block
 
 Shift+U places a named waypoint at your current location. Markers is a Scanner
 category that ignores distance and always lists everything you have placed in
-your current dimension. Markers are saved per world.
+your current dimension. Markers are saved per world. On a multiplayer server a world is told apart by the server's
+address together with the seed the server reports, so two worlds on one address keep separate
+markers. Named blocks are kept the same way. Deleting a singleplayer world from the world
+list also deletes its markers and block names.
 
 - Shift+Enter on a marker walks you to its exact coordinates.
 - You can also mark a block. Name it with Shift+U and tick "Also show in
@@ -135,3 +172,37 @@ your current dimension. Markers are saved per world.
   Targeting it works like targeting the block: you walk up beside it and face it,
   with the same narration (open or closed, shelf contents, sign text).
 - Delete removes a block from Markers but keeps its name.
+
+### Sharing markers
+
+Alt+U opens the Sharing screen, from anywhere. It works when both you and the other
+player have United Minecraft and the server has it too (a single-player world opened to
+LAN counts); on a server without the mod it tells you so. Use Tab to move between its parts
+and Up/Down to move within a list. Escape or Close leaves.
+
+- **Pending offers** lists what other players have sent you, with the sender, the name
+  and how far away it is (or which dimension it is in). Accept saves it to your own
+  markers; Decline discards it. Nothing is saved until you accept.
+- If you already have a different name at that spot, the first Accept tells you so and
+  keeps the offer; Accept again to replace it. A marker you already have exactly is not
+  added twice.
+- **Send to** lists the other players online who have the mod, and **Marker to send**
+  lists your markers in every dimension, including named blocks that appear under Markers.
+  Send to Selected Player sends that marker to that player. Send to All Players sends it
+  to everyone on the list.
+- A named block you share arrives as a named block, with its Markers setting, so it keeps
+  its name wherever the receiver walks up to it.
+- When an offer arrives you hear a bell and a short message with the sender and name.
+  Offers wait in memory until you leave the world.
+- "Ignore Marker Shares From Other Players" in the General settings drops incoming
+  offers without a sound or message. The sender is not told.
+
+#### Sharing from a player without the mod
+
+When the server has the mod, anyone on it can send a marker with a command, with nothing
+installed themselves: `/umshare <player|all> <x y z> <name>`. `all` sends to every other
+player who has the mod, and a player's name sends to that one player; a player who does not
+have the mod is told so. The position accepts `~ ~ ~`, so `/umshare all ~ ~ ~ Camp` shares
+where you are standing. The marker is placed in the dimension you are in, and the name is
+everything after the position, spaces included. It arrives as an offer like any other, and
+the sender is told how many players it went to.

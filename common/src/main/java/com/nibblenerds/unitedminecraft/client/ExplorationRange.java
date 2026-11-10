@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import net.minecraft.client.Minecraft;
 
 /**
@@ -12,19 +13,19 @@ import net.minecraft.client.Minecraft;
  * server's view distance), which is what actually decides how many chunks are loaded around the
  * player.
  */
-final class ExplorationRange {
+public final class ExplorationRange {
 	/** The furthest either setting can go - matches {@link com.nibblenerds.unitedminecraft.structure.StructureScanner#MAX_RANGE}. */
-	static final double MAX = 128.0;
-	static final double MIN = 16.0;
-	static final double DEFAULT_SCANNER = 128.0;
-	static final double DEFAULT_VOICES = 96.0;
+	public static final double MAX = 128.0;
+	public static final double MIN = 16.0;
+	public static final double DEFAULT_SCANNER = 128.0;
+	public static final double DEFAULT_VOICES = 96.0;
 	private static final int BLOCKS_PER_CHUNK = 16;
 
 	private ExplorationRange() {
 	}
 
 	/** The Scanner category's reach right now: its setting, held to the render distance. */
-	static double scanner() {
+	public static double scanner() {
 		return effective(UnitedMinecraftConfig.get().exploreScannerRange, renderDistanceChunks());
 	}
 

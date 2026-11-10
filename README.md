@@ -21,8 +21,8 @@ the same jar on the server.
 - **Combat.** A lock-on mode, a sound-based Beacon mode, bow aiming by ear, and a
   hostile radar. [Details](docs/combat.md)
 - **Navigation.** Auto-Walk (including ladders and swimming), a way out of water,
-  elytra landing help, a cave trail back to where you started, Eye of Ender
-  tracking and Structure Voices. [Details](docs/navigation.md)
+  elytra landing help, Eye of Ender tracking and
+  Structure Voices. [Details](docs/navigation.md)
 - **Audio awareness.** Fall warnings, durability and tool warnings, Wall Tones, and
   navigation and mining radars. [Details](docs/awareness.md)
 - **Building and mining.** Build Mode's virtual cursor, Angle Assist for bridges,
@@ -32,8 +32,10 @@ the same jar on the server.
 
 ## Getting started
 
-1. Follow the [installation guide](docs/installation.md). Fabric is the simpler
-   default; NeoForge builds can lag a new Minecraft version by days or weeks.
+1. On Windows, run the [installer](docs/installation.md#installing-on-windows-with-the-installer);
+   it sets up Fabric, Fabric API and the mod for you, and updates them later. Otherwise follow the
+   [installation guide](docs/installation.md). Fabric is the simpler default; NeoForge builds can lag
+   a new Minecraft version by days or weeks.
 2. The first time the mod runs it turns Minecraft's narrator on for you.
 3. Press **F6** for Settings, and see the [default key bindings](docs/keybindings.md).
    Every binding can be changed in the mod's own Keybindings screen.

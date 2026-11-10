@@ -1,5 +1,7 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.scanner.OreDetection;
+import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
@@ -18,19 +20,19 @@ import net.minecraft.world.level.chunk.LevelChunkSection;
  * share this same resolution step instead of reimplementing it. Not thread-safe; only ever used
  * from the render thread.
  */
-final class FastBlockAccess {
+public final class FastBlockAccess {
 	private final Level level;
 
 	private int cachedChunkX = Integer.MIN_VALUE;
 	private int cachedChunkZ = Integer.MIN_VALUE;
 	private ChunkAccess cachedChunk;
 
-	FastBlockAccess(Level level) {
+	public FastBlockAccess(Level level) {
 		this.level = level;
 	}
 
 	/** The chunk at ({@code chunkX}, {@code chunkZ}) in chunk coordinates, or {@code null} if it isn't currently loaded. */
-	ChunkAccess chunkAt(int chunkX, int chunkZ) {
+	public ChunkAccess chunkAt(int chunkX, int chunkZ) {
 		if (chunkX != cachedChunkX || chunkZ != cachedChunkZ) {
 			cachedChunk = level.hasChunk(chunkX, chunkZ) ? level.getChunk(chunkX, chunkZ) : null;
 			cachedChunkX = chunkX;
@@ -39,7 +41,7 @@ final class FastBlockAccess {
 		return cachedChunk;
 	}
 
-	BlockState getBlockState(BlockPos pos) {
+	public BlockState getBlockState(BlockPos pos) {
 		ChunkAccess chunk = chunkAt(pos.getX() >> 4, pos.getZ() >> 4);
 		if (chunk == null) {
 			// Outside the client's loaded area - fall back to the level's own handling (vanilla

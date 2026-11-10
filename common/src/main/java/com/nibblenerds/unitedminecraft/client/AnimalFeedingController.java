@@ -1,5 +1,7 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
+import com.nibblenerds.unitedminecraft.client.audio.CueVolume;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.sounds.SoundEvents;
@@ -42,7 +44,7 @@ public final class AnimalFeedingController {
 	}
 
 	/** Plays the feed confirmation sound if using {@code stack} on {@code entity} would actually feed it. */
-	static void playFeedSoundIfSuccessful(Entity entity, ItemStack stack) {
+	public static void playFeedSoundIfSuccessful(Entity entity, ItemStack stack) {
 		if (!(entity instanceof Animal animal) || !willFeedSucceed(animal, stack)) {
 			return;
 		}
