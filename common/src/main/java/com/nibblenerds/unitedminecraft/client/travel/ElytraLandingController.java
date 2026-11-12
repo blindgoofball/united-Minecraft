@@ -69,6 +69,14 @@ public final class ElytraLandingController {
 	// Blocks above or below the destination that cost nothing, then the cost of each block beyond.
 	static final int HEIGHT_SLACK = 1;
 	static final double HEIGHT_PENALTY = 1.5;
+	static final double MAX_HEIGHT_PENALTY = 5.0;
+	// Past this many blocks of height difference the ground is not somewhere to walk from at all (a
+	// farm in the sky, a tower), and each further block costs this much.
+	static final int FAR_HEIGHT = 10;
+	static final double FAR_HEIGHT_PENALTY = 0.25;
+	// Cost of a spot without room to come in and slide out: a roof small enough to have none is still
+	// the better place to land than ground a long way off.
+	static final double NO_RUNWAY_PENALTY = 4.0;
 	static final int RUNWAY = 16;
 	static final int RUNOUT = 4;
 	private static final int RUNWAY_DIRECTIONS = 16;
@@ -268,12 +276,9 @@ public final class ElytraLandingController {
 	private static Approach findSpotNear(LocalPlayer player, BlockPos wanted) {
 		Level level = player.level();
 		Vec3 eye = player.getEyePosition();
-		// The nearest spot with room to fly in and slide out, and the nearest of any kind, which is
-		// what gets used when the destination is so hemmed in that there is no spot with room.
+		// The best spot by placementCost, plus a penalty for one without room to fly in and slide out.
 		Spot best = null;
-		double bestOffset = Double.MAX_VALUE;
-		Spot bestOpen = null;
-		double bestOpenOffset = Double.MAX_VALUE;
+		double bestCost = Double.MAX_VALUE;
 		boolean anySafe = false;
 		boolean blocked = false;
 		double extraHeight = Double.MAX_VALUE;
@@ -281,7 +286,7 @@ public final class ElytraLandingController {
 				? level.getHeight(Heightmap.Types.MOTION_BLOCKING, hx, hz) : Integer.MIN_VALUE;
 
 		for (int r = 0; r <= NEAR_TARGET_RADIUS; r++) {
-			if (bestOpen != null && r > bestOpenOffset + 1) {
+			if (best != null && r > bestCost + 1) {
 				break;
 			}
 			for (int dx = -r; dx <= r; dx++) {
@@ -310,29 +315,31 @@ public final class ElytraLandingController {
 						blocked = true;
 						continue;
 					}
-					double offset = placementCost(Math.hypot(dx, dz), top - wanted.getY());
-					if (offset < bestOffset) {
+					double cost = placementCost(Math.hypot(dx, dz), top - wanted.getY());
+					// Looked up last, being the dear part, and only for a spot that could still win.
+					if (cost < bestCost && (cost += hasRunway(heights, x, top, z) ? 0.0 : NO_RUNWAY_PENALTY) < bestCost) {
 						best = new Spot(new BlockPos(x, top, z), distance);
-						bestOffset = offset;
-					}
-					if (offset < bestOpenOffset && hasRunway(heights, x, top, z)) {
-						bestOpen = new Spot(new BlockPos(x, top, z), distance);
-						bestOpenOffset = offset;
+						bestCost = cost;
 					}
 				}
 			}
 		}
-		return new Approach(bestOpen != null ? bestOpen : best, anySafe, blocked, extraHeight);
+		return new Approach(best, anySafe, blocked, extraHeight);
 	}
 
 	/**
 	 * How good a spot is to land on for a destination: its distance from it, plus a penalty for each block
 	 * it is above or below it beyond {@link #HEIGHT_SLACK}. Otherwise the roof over a door is as good a
 	 * place as the step in front of it - nearer, even - and the flight ends clipping the roof's edge
-	 * from below. Lower is better; never less than the distance.
+	 * from below. The penalty tops out at {@link #MAX_HEIGHT_PENALTY}, so ground only wins over a roof that is
+	 * right over the destination when it is within about that many blocks of it: a roof is the place to
+	 * land on a tower or a farm, and walking further than that to avoid one is not worth it. Lower is better;
+	 * never less than the distance.
 	 */
 	static double placementCost(double distance, int heightDifference) {
-		return distance + Math.max(0, Math.abs(heightDifference) - HEIGHT_SLACK) * HEIGHT_PENALTY;
+		int difference = Math.abs(heightDifference);
+		return distance + Math.min(MAX_HEIGHT_PENALTY, Math.max(0, difference - HEIGHT_SLACK) * HEIGHT_PENALTY)
+				+ Math.max(0, difference - FAR_HEIGHT) * FAR_HEIGHT_PENALTY;
 	}
 
 	/** The height of the highest motion-blocking block's top in a column - {@code Integer.MIN_VALUE} where nothing is loaded. */

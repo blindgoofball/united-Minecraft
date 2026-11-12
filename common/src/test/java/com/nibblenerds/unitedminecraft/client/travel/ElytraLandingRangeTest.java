@@ -67,6 +67,20 @@ class ElytraLandingRangeTest {
 	}
 
 	@Test
+	void aRoofOverTheTargetBeatsGroundThatIsFarAway() {
+		// A tower or farm: the roof is right there, the ground is a walk away.
+		assertTrue(ElytraLandingController.placementCost(1, 8) < ElytraLandingController.placementCost(8, 0));
+		assertTrue(ElytraLandingController.placementCost(0, 4) > ElytraLandingController.placementCost(4, 0));
+	}
+
+	@Test
+	void aRoofBeatsGroundAHundredBlocksBelowEvenWithoutARunwayOnIt() {
+		// A farm in the sky: its small roof (no room to slide) against the ground straight under it.
+		double roof = ElytraLandingController.placementCost(2, 3) + ElytraLandingController.NO_RUNWAY_PENALTY;
+		assertTrue(roof < ElytraLandingController.placementCost(0, 100));
+	}
+
+	@Test
 	void groundThatRisesGentlyFarOutDoesNotCountAsAWall() {
 		assertTrue(ElytraLandingController.hasRunway((x, z) -> TOP + Math.min(3, Math.abs(x) / 6), 0, TOP, 0));
 	}

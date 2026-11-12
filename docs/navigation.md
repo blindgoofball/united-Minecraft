@@ -66,7 +66,7 @@ does the same). The target itself is rarely somewhere to land, so the mod lands 
 the nearest flat, safe patch within 10 blocks of it that has room to come in over
 and slide out across (so not one hard up against a building's wall; if there is no
 such patch it settles for the nearest flat one), preferring ground at the target's
-own height over a roof above it, never using fireworks, and says
+own height over a roof above it only when that ground is within about 5 blocks of the target (a tower or farm is landed on from its roof, a farm in the sky always), never using fireworks, and says
 how close to the target it will land as you set off ("Flying toward Village,
 landing 6 blocks southwest of it") and how far from it you came down ("Landed 6
 blocks northeast of Village").
