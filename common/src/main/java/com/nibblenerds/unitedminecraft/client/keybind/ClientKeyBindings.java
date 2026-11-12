@@ -150,15 +150,9 @@ public final class ClientKeyBindings {
 	/** Cycles Angle Assist: off, bridge, tunnel, staircase - see {@link AngleAssistController}. */
 	public static final KeybindAction ANGLE_ASSIST_CYCLE = new KeybindAction("angle_assist_cycle",
 			KeybindCategory.MOVEMENT_AND_MODES, new Keybind(InputConstants.KEY_G, InputConstants.MOD_ALT));
-	/**
-	 * Unassigned by default - experimental. Copies a text description of the surrounding world to
-	 * the clipboard, for pasting into a language model - see {@link WorldSnapshotBuilder}.
-	 */
-	public static final KeybindAction COPY_WORLD_SNAPSHOT =
-			new KeybindAction("copy_world_snapshot", KeybindCategory.GENERAL, Keybind.UNBOUND);
-	/** Unassigned by default - experimental. Has the chosen AI service describe the surroundings - see {@link WorldDescriber}. */
+	/** F7 by default - experimental. Has the chosen AI service describe the surroundings - see {@link WorldDescriber}. */
 	public static final KeybindAction DESCRIBE_WORLD =
-			new KeybindAction("describe_world", KeybindCategory.GENERAL, Keybind.UNBOUND);
+			new KeybindAction("describe_world", KeybindCategory.GENERAL, new Keybind(InputConstants.KEY_F7, 0));
 
 	/**
 	 * Continuous camera-look keys, GLOBAL - {@code handleCameraLook} only ever runs outside

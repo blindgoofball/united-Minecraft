@@ -13,7 +13,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.network.chat.Component;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.ClipContext;
@@ -35,10 +34,8 @@ import com.nibblenerds.unitedminecraft.client.WorldSnapshotText.Sample;
 import com.nibblenerds.unitedminecraft.client.WorldSnapshotText.Surface;
 
 /**
- * Reads the live world around the player into a {@link WorldSnapshotText.Input}, and copies the
- * resulting text to the clipboard so it can be pasted into a language model. Experimental: the
- * point of this is to find out whether this much information is enough for a model to describe
- * the land well, before any model is wired in.
+ * Reads the live world around the player into a {@link WorldSnapshotText.Input}, for {@link
+ * WorldDescriber} to render and send to the AI service. Experimental.
  *
  * <p>Three layers, all from what the client already has loaded - nothing is requested from the
  * server:
@@ -66,14 +63,6 @@ final class WorldSnapshotBuilder {
 	private static final int MAX_WATER_DEPTH = 40;
 
 	private WorldSnapshotBuilder() {
-	}
-
-	/** {@link ClientKeyBindings#COPY_WORLD_SNAPSHOT}. */
-	static void copyToClipboard(Minecraft client, LocalPlayer player) {
-		String text = WorldSnapshotText.render(capture(client, player));
-		client.keyboardHandler.setClipboard(text);
-		client.getNarrator().saySystemNow(
-				Component.translatable("united_minecraft.narrate.world_snapshot_copied", text.length()));
 	}
 
 	static WorldSnapshotText.Input capture(Minecraft client, LocalPlayer player) {

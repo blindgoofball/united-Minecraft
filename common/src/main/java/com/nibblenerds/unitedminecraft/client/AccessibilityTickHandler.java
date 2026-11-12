@@ -481,9 +481,6 @@ public final class AccessibilityTickHandler {
 			}
 		}
 
-		if (ClientKeyBindings.pressed(ClientKeyBindings.COPY_WORLD_SNAPSHOT)) {
-			WorldSnapshotBuilder.copyToClipboard(client, player);
-		}
 		WorldDescriber.tick(client, player);
 		if (ClientKeyBindings.pressed(ClientKeyBindings.DESCRIBE_WORLD)) {
 			WorldDescriber.describe(client, player);

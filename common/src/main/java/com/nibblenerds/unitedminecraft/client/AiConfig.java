@@ -38,7 +38,7 @@ public final class AiConfig {
 	public Provider provider = Provider.OFF;
 
 	public String geminiKey = "";
-	public String geminiModel = "gemini-3.6-flash";
+	public String geminiModel = "gemini-3.5-flash-lite";
 
 	public String anthropicKey = "";
 	public String anthropicModel = "claude-haiku-5-5";
@@ -63,7 +63,7 @@ public final class AiConfig {
 			provider = Provider.OFF;
 		}
 		geminiKey = trimmed(geminiKey);
-		geminiModel = orDefault(geminiModel, "gemini-3.6-flash");
+		geminiModel = orDefault(geminiModel, "gemini-3.5-flash-lite");
 		anthropicKey = trimmed(anthropicKey);
 		anthropicModel = orDefault(anthropicModel, "claude-haiku-5-5");
 		ollamaUrl = orDefault(ollamaUrl, "http://localhost:11434");
