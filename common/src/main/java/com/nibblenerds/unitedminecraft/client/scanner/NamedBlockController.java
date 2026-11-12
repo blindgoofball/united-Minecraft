@@ -44,14 +44,14 @@ public final class NamedBlockController {
 
 	// marker: also listed in the Scanner's Markers category. Absent from worlds saved before this
 	// existed, where Gson fills in false.
-	private record NamedBlock(String name, String dimension, int x, int y, int z, boolean marker) {
+	private record NamedBlock(String name, String dimension, int x, int y, int z, boolean marker, boolean proximity) {
 		BlockPos pos() {
 			return new BlockPos(x, y, z);
 		}
 	}
 
 	/** A named block flagged to appear under Markers. */
-	public record MarkedBlock(String name, BlockPos pos) {
+	public record MarkedBlock(String name, BlockPos pos, boolean proximity) {
 	}
 
 	private record DimPos(String dimension, BlockPos pos) {
@@ -84,6 +84,12 @@ public final class NamedBlockController {
 		return named != null && named.marker();
 	}
 
+	/** Whether the named block at {@code pos} is flagged to appear under Markers only while within the Scanner's range. */
+	private static boolean isProximity(ResourceKey<Level> dimension, BlockPos pos) {
+		NamedBlock named = namedBlocksByPos.get(new DimPos(dimension.identifier().toString(), pos));
+		return named != null && named.marker() && named.proximity();
+	}
+
 	/** The name of the block at {@code pos} in the dimension with this id, or null - for shared blocks, whose dimension may not be the one the player is in. */
 	static String nameAt(String dimension, BlockPos pos) {
 		NamedBlock named = namedBlocksByPos.get(new DimPos(dimension, pos));
@@ -111,7 +117,7 @@ public final class NamedBlockController {
 	/** Names the block at {@code pos} as another player shared it, replacing any name already there. Says nothing - the caller narrates. */
 	static void importNamedBlock(String name, String dimension, BlockPos pos, boolean marker) {
 		STORE.entries().removeIf(named -> named.dimension().equals(dimension) && named.pos().equals(pos));
-		STORE.entries().add(new NamedBlock(name, dimension, pos.getX(), pos.getY(), pos.getZ(), marker));
+		STORE.entries().add(new NamedBlock(name, dimension, pos.getX(), pos.getY(), pos.getZ(), marker, false));
 		STORE.save();
 		rebuildIndex();
 	}
@@ -122,7 +128,7 @@ public final class NamedBlockController {
 		List<MarkedBlock> result = new ArrayList<>();
 		for (NamedBlock named : STORE.entries()) {
 			if (named.marker() && named.dimension().equals(key)) {
-				result.add(new MarkedBlock(named.name(), named.pos()));
+				result.add(new MarkedBlock(named.name(), named.pos(), named.proximity()));
 			}
 		}
 		return result;
@@ -135,7 +141,7 @@ public final class NamedBlockController {
 		for (int i = 0; i < entries.size(); i++) {
 			NamedBlock named = entries.get(i);
 			if (named.marker() && named.dimension().equals(key) && named.pos().equals(pos)) {
-				entries.set(i, new NamedBlock(named.name(), named.dimension(), named.x(), named.y(), named.z(), false));
+				entries.set(i, new NamedBlock(named.name(), named.dimension(), named.x(), named.y(), named.z(), false, false));
 				STORE.save();
 				rebuildIndex();
 				client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.marker_removed", named.name()));
@@ -165,12 +171,16 @@ public final class NamedBlockController {
 				Component.translatable("united_minecraft.named_block_screen.marker"),
 				currentlyMarker,
 				(name, marker) -> {
-					setName(client, dimension, pos, name, marker);
-					afterNamed.run();
-				}));
+				}).withSecondToggle(
+						Component.translatable("united_minecraft.named_block_screen.proximity"),
+						isProximity(dimension, pos),
+						(name, marker, proximity) -> {
+							setName(client, dimension, pos, name, marker, proximity);
+							afterNamed.run();
+						}));
 	}
 
-	private static void setName(Minecraft client, ResourceKey<Level> dimension, BlockPos pos, String name, boolean marker) {
+	private static void setName(Minecraft client, ResourceKey<Level> dimension, BlockPos pos, String name, boolean marker, boolean proximity) {
 		String key = dimension.identifier().toString();
 		STORE.entries().removeIf(named -> named.dimension().equals(key) && named.pos().equals(pos));
 		if (name == null || name.isBlank()) {
@@ -180,10 +190,12 @@ public final class NamedBlockController {
 			return;
 		}
 		String finalName = name.trim();
-		STORE.entries().add(new NamedBlock(finalName, key, pos.getX(), pos.getY(), pos.getZ(), marker));
+		STORE.entries().add(new NamedBlock(finalName, key, pos.getX(), pos.getY(), pos.getZ(), marker, proximity));
 		STORE.save();
 		rebuildIndex();
-		client.getNarrator().saySystemNow(Component.translatable(
-				marker ? "united_minecraft.narrate.named_block_set_marker" : "united_minecraft.narrate.named_block_set", finalName));
+		String narration = !marker ? "united_minecraft.narrate.named_block_set"
+				: proximity ? "united_minecraft.narrate.named_block_set_proximity"
+				: "united_minecraft.narrate.named_block_set_marker";
+		client.getNarrator().saySystemNow(Component.translatable(narration, finalName));
 	}
 }

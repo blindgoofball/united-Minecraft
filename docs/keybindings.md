@@ -36,7 +36,7 @@ key or modifier combination in United Minecraft's own Keybindings screen
 | Alt+; | Lock onto the nearest Ender Dragon or Wither |
 | \ | Announce the focused item's coordinates |
 | U | Place a named map marker at your location |
-| Shift+U | Name the focused item, or enter a Search term or flat-area size when Search or Terrain is selected, or edit a saved search |
+| Shift+U | Name the focused item, or enter a Search term or flat-area size when Search or Terrain is selected, edit a saved search, or edit the focused marker in the Markers category |
 | Delete | Remove the focused marker in the Markers category, or the selected saved search |
 | Alt+U | Open Marker Sharing: review offers from other players, send your markers |
 | Backspace | Stop Scanner lock-on, or cancel Auto-Walk, a swim, a landing or a trail retrace |

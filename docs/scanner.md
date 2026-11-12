@@ -167,8 +167,14 @@ markers. Named blocks are kept the same way. Deleting a singleplayer world from 
 list also deletes its markers and block names.
 
 - Shift+Enter on a marker walks you to its exact coordinates.
+- Shift+U on a marker opens it to edit: its name, and "Only show in Scanner range".
+  A blank name keeps the old one.
+- Tick "Only show in Scanner range" when placing a marker, or when editing one, to make it
+  a proximity marker. It then only appears in the list while it is within the Scanner's
+  range, and drops out when you are further away.
 - You can also mark a block. Name it with Shift+U and tick "Also show in
-  Markers", and it appears in the list under that name from any distance.
+  Markers", and it appears in the list under that name from any distance. Ticking that
+  reveals "Only show in Scanner range", which makes it a proximity marker the same way.
   Targeting it works like targeting the block: you walk up beside it and face it,
   with the same narration (open or closed, shelf contents, sign text).
 - Delete removes a block from Markers but keeps its name.

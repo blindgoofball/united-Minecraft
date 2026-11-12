@@ -39,8 +39,14 @@ public final class MarkerNameScreen extends Screen {
 	// Only set by the toggle constructor; null means no checkbox is shown at all.
 	private final Component toggleLabel;
 	private final boolean toggleInitial;
-	private final BiConsumer<String, Boolean> onConfirmWithToggle;
+	private BiConsumer<String, Boolean> onConfirmWithToggle;
 	private Checkbox toggleBox;
+	// Optional second checkbox, only usable while the first is ticked - see withSecondToggle.
+	private Component secondToggleLabel;
+	private boolean secondToggleInitial;
+	private Checkbox secondToggleBox;
+	// Whether the checkbox variant offers a Clear button when it opens with a name in the field.
+	private boolean clearButton = true;
 	// The checkbox variant's buttons; the Name Block wording unless a caller says otherwise.
 	private Component confirmLabel = Component.translatable("united_minecraft.named_block_screen.confirm");
 	private Component clearLabel = Component.translatable("united_minecraft.named_block_screen.clear");
@@ -92,6 +98,30 @@ public final class MarkerNameScreen extends Screen {
 		return this;
 	}
 
+	/** Drops the Clear button, for a prompt where a blank name doesn't mean "remove this" (editing a marker). */
+	MarkerNameScreen withoutClearButton() {
+		this.clearButton = false;
+		return this;
+	}
+
+	/** Receives the name and both checkboxes' states; the second is always false while the first is unticked. */
+	@FunctionalInterface
+	public interface TwoToggleConsumer {
+		void accept(String name, boolean first, boolean second);
+	}
+
+	/**
+	 * Adds a second checkbox under the first that can only be used while the first is ticked - it is
+	 * hidden and skipped by Tab otherwise - and replaces the confirm callback with one that gets both.
+	 * Only for the checkbox variant.
+	 */
+	MarkerNameScreen withSecondToggle(Component label, boolean initial, TwoToggleConsumer onConfirm) {
+		this.secondToggleLabel = label;
+		this.secondToggleInitial = initial;
+		this.onConfirmWithToggle = (name, first) -> onConfirm.accept(name, first, first && secondToggleBox.selected());
+		return this;
+	}
+
 	/** The checkbox variant, returning to {@code returnTo} afterwards instead of closing to the game - see the {@code returnTo} constructor above. */
 	public MarkerNameScreen(Component title, Component prompt, Component cancelled, Component fieldLabel, String initialValue,
 			Component toggleLabel, boolean toggleInitial, Screen returnTo, BiConsumer<String, Boolean> onConfirm) {
@@ -117,13 +147,30 @@ public final class MarkerNameScreen extends Screen {
 			toggleBox = Checkbox.builder(toggleLabel, this.font)
 					.pos(this.width / 2 - 100, this.height / 2 + 20)
 					.selected(toggleBox != null ? toggleBox.selected() : toggleInitial)
+					.onValueChange((box, selected) -> {
+						if (secondToggleBox != null) {
+							secondToggleBox.visible = selected;
+							secondToggleBox.active = selected;
+						}
+					})
 					.build();
 			addRenderableWidget(toggleBox);
-			// Tab order is name field, checkbox, Clear name (only when there is one), Confirm, then
-			// Cancel - Confirm and Cancel stay side by side at the end. Enter confirms from the name
-			// field or while Confirm is focused; on the checkbox it does what vanilla's does and toggles.
+			// Tab order is name field, checkbox, second checkbox (when shown), Clear name (only when
+			// there is one), Confirm, then Cancel - Confirm and Cancel stay side by side at the end.
+			// Enter confirms from the name field or while Confirm is focused; on a checkbox it does
+			// what vanilla's does and toggles.
 			int buttonY = this.height / 2 + 50;
-			if (!initialValue.isEmpty()) {
+			if (secondToggleLabel != null) {
+				secondToggleBox = Checkbox.builder(secondToggleLabel, this.font)
+						.pos(this.width / 2 - 100, this.height / 2 + 44)
+						.selected(secondToggleBox != null ? secondToggleBox.selected() : secondToggleInitial)
+						.build();
+				secondToggleBox.visible = toggleBox.selected();
+				secondToggleBox.active = toggleBox.selected();
+				addRenderableWidget(secondToggleBox);
+				buttonY += 24;
+			}
+			if (clearButton && !initialValue.isEmpty()) {
 				// A blank name is what removes one (and its Markers flag), so this is just confirming
 				// blank without having to empty the field first.
 				addRenderableWidget(Button.builder(clearLabel, button -> clear())

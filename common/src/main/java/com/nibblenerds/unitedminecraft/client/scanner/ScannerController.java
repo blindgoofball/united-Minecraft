@@ -467,10 +467,29 @@ public final class ScannerController {
 			return;
 		}
 		if (currentKind() == ScannerCategory.MARKERS) {
-			// A plain marker is renamed by placing a new one, but a marked block is just a
-			// named block, so its name and Markers flag are edited the same way as anywhere else.
+			// A plain marker has its own edit screen; a marked block is just a named block, so its
+			// name and Markers flags are edited the same way as anywhere else.
 			ScannerItem focused = currentItem();
-			if (focused == null || !NamedBlockController.isMarker(player.level().dimension(), focused.blockPos())) {
+			if (focused == null || focused.blockPos() == null) {
+				return;
+			}
+			MapMarkerController.MapMarker marker = MapMarkerController.findAt(player.level().dimension(), focused.blockPos());
+			if (marker != null) {
+				BlockPos markerPos = focused.blockPos();
+				MapMarkerController.openEditScreen(client, marker, () -> {
+					items = scanVisible(CategoryRef.of(ScannerCategory.MARKERS), player);
+					int refocused = -1;
+					for (int i = 0; i < items.size(); i++) {
+						if (markerPos.equals(items.get(i).blockPos())) {
+							refocused = i;
+							break;
+						}
+					}
+					itemIndex = refocused >= 0 ? refocused : Math.min(itemIndex, Math.max(0, items.size() - 1));
+				});
+				return;
+			}
+			if (!NamedBlockController.isMarker(player.level().dimension(), focused.blockPos())) {
 				return;
 			}
 		}
@@ -2885,18 +2904,25 @@ public final class ScannerController {
 		return NamedBlockController.isMarker(level.dimension(), pos) && !level.getBlockState(pos).isAir();
 	}
 
-	/** Every marker in the player's current dimension, distance-sorted but never range-filtered - the whole point of a marker is reaching something you already know is far away. */
+	/** Every marker in the player's current dimension, distance-sorted and not range-filtered - the whole point of a marker is reaching something you already know is far away - except a proximity marker, which only appears within {@link #scanRange()}. */
 	private static List<ScannerItem> scanMarkers(LocalPlayer player) {
 		Vec3 eye = player.getEyePosition();
 		List<ScannerItem> results = new ArrayList<>();
 		for (MapMarkerController.MapMarker marker : MapMarkerController.inDimension(player.level().dimension())) {
 			BlockPos pos = marker.pos();
 			double distance = eye.distanceTo(Vec3.atCenterOf(pos));
+			if (marker.proximity() && distance > scanRange()) {
+				continue;
+			}
 			results.add(new ScannerItem(pos, null, distance, marker.name()));
 		}
 		// Named blocks flagged "also show in Markers" - behave like the block itself (see target()).
 		for (NamedBlockController.MarkedBlock marked : NamedBlockController.markedBlocksIn(player.level().dimension())) {
-			results.add(new ScannerItem(marked.pos(), null, eye.distanceTo(Vec3.atCenterOf(marked.pos())), marked.name()));
+			double distance = eye.distanceTo(Vec3.atCenterOf(marked.pos()));
+			if (marked.proximity() && distance > scanRange()) {
+				continue;
+			}
+			results.add(new ScannerItem(marked.pos(), null, distance, marked.name()));
 		}
 		results.sort(Comparator.comparingDouble(ScannerItem::distance));
 		return results;

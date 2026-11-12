@@ -48,7 +48,9 @@ public final class MapMarkerController {
 	private MapMarkerController() {
 	}
 
-	public record MapMarker(String name, String dimension, int x, int y, int z) {
+	// proximity: only listed under Markers while within the Scanner's range. Absent from worlds
+	// saved before this existed, where Gson fills in false.
+	public record MapMarker(String name, String dimension, int x, int y, int z, boolean proximity) {
 		BlockPos pos() {
 			return new BlockPos(x, y, z);
 		}
@@ -106,7 +108,7 @@ public final class MapMarkerController {
 	/** Saves a marker another player shared, replacing whatever marker was already at that spot. Says nothing - the caller narrates. */
 	static void importMarker(String name, String dimension, BlockPos pos) {
 		STORE.entries().removeIf(marker -> marker.dimension().equals(dimension) && marker.pos().equals(pos));
-		STORE.entries().add(new MapMarker(name, dimension, pos.getX(), pos.getY(), pos.getZ()));
+		STORE.entries().add(new MapMarker(name, dimension, pos.getX(), pos.getY(), pos.getZ(), false));
 		STORE.save();
 		rebuildIndex();
 	}
@@ -122,20 +124,63 @@ public final class MapMarkerController {
 	public static void openNameScreen(Minecraft client, LocalPlayer player) {
 		BlockPos pos = player.blockPosition();
 		String dimension = player.level().dimension().identifier().toString();
-		client.gui.setScreen(new MarkerNameScreen(name -> addMarker(client, name, dimension, pos)));
+		client.gui.setScreen(new MarkerNameScreen(
+				Component.translatable("united_minecraft.marker_screen.title"),
+				Component.translatable("united_minecraft.narrate.marker_prompt"),
+				Component.translatable("united_minecraft.narrate.marker_cancelled"),
+				Component.translatable("united_minecraft.marker_screen.name"),
+				"",
+				Component.translatable("united_minecraft.marker_screen.proximity"),
+				false,
+				(name, proximity) -> addMarker(client, name, dimension, pos, proximity)));
 	}
 
-	private static void addMarker(Minecraft client, String name, String dimension, BlockPos pos) {
+	/**
+	 * Shift+U on a marker in the Markers category: the same prompt as placing one, filled in with
+	 * its name and setting. {@code afterEdit} runs once the change is saved (not on cancel).
+	 */
+	static void openEditScreen(Minecraft client, MapMarker marker, Runnable afterEdit) {
+		client.gui.setScreen(new MarkerNameScreen(
+				Component.translatable("united_minecraft.marker_screen.edit_title"),
+				Component.translatable("united_minecraft.narrate.marker_edit_prompt"),
+				Component.translatable("united_minecraft.narrate.marker_cancelled"),
+				Component.translatable("united_minecraft.marker_screen.name"),
+				marker.name(),
+				Component.translatable("united_minecraft.marker_screen.proximity"),
+				marker.proximity(),
+				(name, proximity) -> {
+					edit(client, marker, name, proximity);
+					afterEdit.run();
+				}).withoutClearButton());
+	}
+
+	private static void edit(Minecraft client, MapMarker marker, String name, boolean proximity) {
+		List<MapMarker> entries = STORE.entries();
+		int index = entries.indexOf(marker);
+		if (index < 0) {
+			return;
+		}
+		// A blank name keeps the old one rather than clearing it - a marker can't be nameless.
+		String finalName = name == null || name.isBlank() ? marker.name() : name.trim();
+		entries.set(index, new MapMarker(finalName, marker.dimension(), marker.x(), marker.y(), marker.z(), proximity));
+		STORE.save();
+		rebuildIndex();
+		client.getNarrator().saySystemNow(Component.translatable(
+				proximity ? "united_minecraft.narrate.marker_updated_proximity" : "united_minecraft.narrate.marker_updated", finalName));
+	}
+
+	private static void addMarker(Minecraft client, String name, String dimension, BlockPos pos, boolean proximity) {
 		// The marker's own name field is a plain String (it's saved to disk and narrated
 		// verbatim elsewhere), so the default name is resolved through the translation key
 		// once, right here, rather than storing a raw English literal.
 		String finalName = name == null || name.isBlank()
 				? Component.translatable("united_minecraft.narrate.marker_default_name", STORE.entries().size() + 1).getString()
 				: name.trim();
-		STORE.entries().add(new MapMarker(finalName, dimension, pos.getX(), pos.getY(), pos.getZ()));
+		STORE.entries().add(new MapMarker(finalName, dimension, pos.getX(), pos.getY(), pos.getZ(), proximity));
 		STORE.save();
 		rebuildIndex();
-		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.marker_placed", finalName));
+		client.getNarrator().saySystemNow(Component.translatable(
+				proximity ? "united_minecraft.narrate.marker_placed_proximity" : "united_minecraft.narrate.marker_placed", finalName));
 	}
 
 	public static void remove(Minecraft client, MapMarker marker) {
