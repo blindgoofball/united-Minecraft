@@ -68,6 +68,7 @@ import net.minecraft.world.entity.animal.equine.AbstractHorse;
 import net.minecraft.world.entity.animal.equine.Horse;
 import net.minecraft.world.entity.animal.equine.Markings;
 import net.minecraft.world.entity.animal.fish.TropicalFish;
+import net.minecraft.world.entity.animal.golem.CopperGolem;
 import net.minecraft.world.entity.animal.panda.Panda;
 import net.minecraft.world.entity.animal.parrot.Parrot;
 import net.minecraft.world.entity.animal.sheep.Sheep;
@@ -152,6 +153,7 @@ import net.minecraft.world.level.block.WeepingVinesBlock;
 import net.minecraft.world.level.block.WeepingVinesPlantBlock;
 import net.minecraft.world.level.block.entity.ListBackedContainer;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
+import net.minecraft.world.level.block.WeatheringCopper;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BedPart;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -1262,6 +1264,11 @@ public final class ScannerController {
 			fragments.add(Component.translatable("united_minecraft.narrate.tropical_fish_look",
 					dyeColorName(fish.getBaseColor()), dyeColorName(fish.getPatternColor()),
 					variantName(fish.getPattern().getSerializedName())));
+		}
+		// "Exposed Copper Golem": its patina, which is all that tells one from another. A new, unweathered one
+		// is just "Copper Golem", as the unweathered copper blocks are.
+		if (entity instanceof CopperGolem golem && golem.getWeatherState() != WeatheringCopper.WeatherState.UNAFFECTED) {
+			fragments.add(variantName(golem.getWeatherState().name().toLowerCase(Locale.ROOT)));
 		}
 		return fragments;
 	}
