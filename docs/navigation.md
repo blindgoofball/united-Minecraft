@@ -83,7 +83,8 @@ ground (cactus, magma, a campfire) or lava is spoken a few seconds before it
 happens ("Wall ahead", "Wall close", "Wall now"), then beeped at increasing urgency. A gentle
 landing gets a chime, "Safe landing", and the height above ground at 50, 30, 20,
 10 and 5 blocks. Only hits that would actually hurt count, and armor is ignored,
-so it errs on the cautious side.
+so it errs on the cautious side. They stay silent while the elytra landing is
+flying for you, and come back if control is handed back.
 
 ## Boats
 

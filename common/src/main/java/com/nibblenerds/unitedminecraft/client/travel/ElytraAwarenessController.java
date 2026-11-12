@@ -39,8 +39,9 @@ import net.minecraft.world.phys.Vec3;
  * <li><b>A gentle landing</b> (or water) is good news: a chime and "Safe landing", then the height
  * above the ground called out as it comes down.</li>
  * </ul>
- * While {@link ElytraLandingController} is flying the landing itself, only the warnings still sound -
- * it already narrates the approach.
+ * While {@link ElytraLandingController} is flying the landing itself, none of this sounds - it
+ * already narrates the approach, and a prediction from where the player happens to be looking says
+ * nothing about a flight the autopilot is steering. It resumes if control is handed back.
  *
  * <p>Damage estimates mirror vanilla: hitting a wall costs ten times the horizontal speed lost against
  * it, minus three ({@code LivingEntity#handleFallFlyingCollisions}), and a landing hurts once the
@@ -97,6 +98,12 @@ public final class ElytraAwarenessController {
 	}
 
 	public static void tick(Minecraft client, LocalPlayer player) {
+		if (ElytraLandingController.isActive()) {
+			// The landing assist is flying and narrating; predicting from where the player is looking
+			// would only call a deliberate dive onto the spot too fast.
+			reset();
+			return;
+		}
 		boolean gliding = player.isFallFlying() && UnitedMinecraftConfig.get().elytraAwarenessEnabled
 				&& !player.isSpectator() && !player.getAbilities().invulnerable;
 		if (!gliding) {
