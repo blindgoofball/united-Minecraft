@@ -20,7 +20,8 @@ final class ElytraFlight {
 	 * set when the controller would have given control back for a predicted collision - the
 	 * flight stops there, so {@code x}/{@code z}/{@code sink} describe where it was at that point.
 	 */
-	record Landing(double x, double z, double sink, int ticks, List<ElytraAutopilot.Phase> phases, boolean handedBack) {
+	record Landing(double x, double z, double sink, int ticks, List<ElytraAutopilot.Phase> phases, boolean handedBack,
+			double vx, double vz) {
 		double missFrom(double tx, double tz) {
 			return Math.hypot(x - tx, z - tz);
 		}
@@ -47,7 +48,7 @@ final class ElytraFlight {
 			// The same hand-back rule ElytraLandingController applies.
 			hazardTicks = command.hazard() ? hazardTicks + 1 : 0;
 			if (hazardTicks >= ElytraLandingController.HAZARD_TICKS_TO_ABORT) {
-				return new Landing(s.x(), s.z(), -s.vy(), tick, phases, true);
+				return new Landing(s.x(), s.z(), -s.vy(), tick, phases, true, s.vx(), s.vz());
 			}
 
 			double[] v = ElytraPhysics.step(s.vx(), s.vy(), s.vz(), command.yaw(), command.pitch());
@@ -58,7 +59,7 @@ final class ElytraFlight {
 			if (y <= surface) {
 				// Where between the last two positions the feet crossed the surface.
 				double fraction = s.y() <= surface || s.y() == y ? 1.0 : (s.y() - surface) / (s.y() - y);
-				return new Landing(s.x() + (x - s.x()) * fraction, s.z() + (z - s.z()) * fraction, -v[1], tick, phases, false);
+				return new Landing(s.x() + (x - s.x()) * fraction, s.z() + (z - s.z()) * fraction, -v[1], tick, phases, false, v[0], v[2]);
 			}
 			s = new ElytraAutopilot.State(x, y, z, v[0], v[1], v[2], command.yaw(), command.pitch());
 		}

@@ -54,13 +54,19 @@ line down, within the distance your height allows. If there is none, it says so.
 Shift+Y flies you onto it. The mod takes the camera, steering and pitching to
 touch down gently, diving steeply from a height and levelling off to shed speed
 just above the ground (a wide circle only if it cannot reach the spot from where
-you are), and hands control back when you land. Backspace cancels, and control
+you are), keeping a block clear of walls and corners on the way down and circling
+on until it can come in without skimming one, and only touching down where the few
+blocks you will slide on, the way you are going, are still solid ground rather than
+an edge. It hands control back when you land. Backspace cancels, and control
 is handed back if terrain is unavoidable.
 
 **Flying to a Scanner target:** while gliding, Shift+Enter on something in the
 Scanner flies you toward it instead of walking (Build Mode's walk-to-cursor key
 does the same). The target itself is rarely somewhere to land, so the mod lands on
-the nearest flat, safe patch within 8 blocks of it, never using fireworks, and says
+the nearest flat, safe patch within 10 blocks of it that has room to come in over
+and slide out across (so not one hard up against a building's wall; if there is no
+such patch it settles for the nearest flat one), preferring ground at the target's
+own height over a roof above it, never using fireworks, and says
 how close to the target it will land as you set off ("Flying toward Village,
 landing 6 blocks southwest of it") and how far from it you came down ("Landed 6
 blocks northeast of Village").

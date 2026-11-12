@@ -100,6 +100,54 @@ class ElytraAutopilotTest {
 		assertTrue(landing.handedBack(), "flew on toward the wall: " + landing);
 	}
 
+	@Test
+	void landsBesideABuildingRatherThanFlyingIntoIt() {
+		// The spot is a few blocks in front of a wide wall, and the player comes in from the wall's
+		// side: gliding straight at the spot meets the wall, very gently, a couple of blocks from the
+		// target - which used to count as a landing on it. It has to come round to the open side.
+		ElytraAutopilot.GroundProbe building = (x, z) -> z >= -1.9 && z <= -1.0 && Math.abs(x) < 30 ? TY + 12 : TY;
+		for (float yaw : new float[] {0f, 90f, 180f}) {
+			ElytraFlight.Landing landing = ElytraFlight.fly(new ElytraAutopilot(TX, TY, TZ, building), start(40, 40, yaw, 1.2), building);
+			String flight = "yaw " + yaw + ": " + landing;
+			assertFalse(landing.handedBack(), "gave up " + flight);
+			assertTrue(building.height(landing.x(), landing.z()) <= TY + 1, "flew into the building " + flight);
+			assertTrue(landing.sink() < DAMAGING_SINK, "landed hard enough to hurt " + flight);
+			assertTrue(landing.missFrom(TX, TZ) <= ElytraAutopilot.COMMIT_MISS, "missed the spot " + flight);
+		}
+	}
+
+	@Test
+	void landsOnARoofWithoutClippingItsEdgeOrSlidingOffIt() {
+		// A flat roof six blocks above the ground whose edge is two blocks from the spot, which is
+		// all the roof's edge is to a flight coming in from that side: gliding in low it meets the
+		// edge from below, at the spot's own height, and that used to count as the landing. Coming in
+		// from the far side it would land and then slide on off the edge. It has to come in along it.
+		ElytraAutopilot.GroundProbe roof = (x, z) -> Math.abs(x) <= 60 && z >= -1.5 && z <= 60 ? TY : TY - 6;
+		for (float yaw : new float[] {0f, 90f, 180f, 270f}) {
+			ElytraFlight.Landing landing = ElytraFlight.fly(new ElytraAutopilot(TX, TY, TZ, roof), ElytraFlight.gliding(TX + 5, TY + 30, TZ + 45, yaw, 1.2), roof);
+			String flight = "yaw " + yaw + ": " + landing;
+			assertFalse(landing.handedBack(), "gave up " + flight);
+			assertTrue(roof.height(landing.x(), landing.z()) == TY, "did not land on the roof " + flight);
+			assertTrue(landing.sink() < DAMAGING_SINK, "landed hard enough to hurt " + flight);
+			assertTrue(landing.missFrom(TX, TZ) <= ElytraAutopilot.COMMIT_MISS, "missed the spot " + flight);
+			// And the slide on from touching down, a few blocks along the way it was going, stays on the roof.
+			double speed = Math.hypot(landing.vx(), landing.vz());
+			for (int k = 1; k <= Math.ceil(speed * 3); k++) {
+				double ahead = roof.height(landing.x() + landing.vx() / speed * k, landing.z() + landing.vz() / speed * k);
+				assertTrue(ahead >= TY - 1, "slid off the edge " + flight);
+			}
+		}
+	}
+
+	@Test
+	void doesNotCommitToAnApproachThatSkimsAWall() {
+		// A wall running along the way in, a few tenths of a block off the line to the spot: the
+		// centre of the flight clears it, a wingtip does not, so the way in down that line is no good.
+		ElytraAutopilot.GroundProbe skim = (x, z) -> x >= 1.2 && z <= 0 && z >= -60 ? TY + 12 : TY;
+		ElytraAutopilot.Command first = new ElytraAutopilot(TX, TY, TZ, skim).step(start(40, 30, 0f, 1.2));
+		assertTrue(first.phase() == ElytraAutopilot.Phase.ORBIT, "committed to flying along the wall: " + first);
+	}
+
 	/**
 	 * Every combination of distance, height, heading and speed the controller would take on - over
 	 * 900 flights, a couple of minutes. Not part of the normal build; run it with {@code ./gradlew

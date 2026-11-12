@@ -85,6 +85,19 @@ final class ElytraAutopilot {
 	private static final double LANDING_ZONE = 10.0;
 	// How far above the spot's own ground a contact has to be to count as terrain in the way.
 	private static final double TERRAIN_RISE = 1.0;
+	// Within this height of the ground, flight is checked against the ground a block either side of
+	// it too, so a path that skims a wall or a corner is not taken for a clear one.
+	private static final double MARGIN_ZONE = 8.0;
+	private static final double[][] MARGIN_OFFSETS = {
+			{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+	// Sink rate (blocks/tick) an unsafe landing - into a wall, or on to an edge - is scored as, well past what a landing allows.
+	private static final double UNSAFE_LANDING_SINK = 2.0;
+	// A path that meets ground more than this far below its top has gone in the side of it.
+	private static final double SIDE_HIT_DEPTH = 0.5;
+	// How far the slide after touching down is checked, per block/tick of speed (it carries about
+	// that far, and this leaves a margin), and the drop that counts as going over an edge.
+	private static final double SLIDE_BLOCKS_PER_SPEED = 3.0;
+	private static final double MAX_SLIDE_DROP = 1.0;
 
 	private final double tx;
 	private final double ty;
@@ -164,6 +177,9 @@ final class ElytraAutopilot {
 		float yaw = s.yaw();
 		float pitch = s.pitch();
 		for (int t = 0; t < ORBIT_LOOKAHEAD_TICKS; t++) {
+			double prevX = x;
+			double prevY = y;
+			double prevZ = z;
 			double dx = tx - x;
 			double dz = tz - z;
 			double distance = Math.hypot(dx, dz);
@@ -179,12 +195,67 @@ final class ElytraAutopilot {
 			x += vx;
 			y += vy;
 			z += vz;
-			double surface = ground.height(x, z);
-			if (y <= surface) {
-				return surface > ty + TERRAIN_RISE && Math.hypot(x - tx, z - tz) > LANDING_ZONE;
+			double[] touch = contact(prevX, prevY, prevZ, x, y, z);
+			if (touch != null) {
+				return touch[2] > ty + TERRAIN_RISE && Math.hypot(touch[0] - tx, touch[1] - tz) > LANDING_ZONE;
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * Whether the slide after touching down at {@code (x, z)} on ground {@code surface} high, still going
+	 * {@code (vx, vz)}, stays on ground that is no more than a block lower, over the next few blocks - far
+	 * enough for the speed carried in. Touching down is not the end of the movement: the player keeps
+	 * going, and over the edge of a roof or a ledge that is a fall.
+	 */
+	private boolean slideStaysOnGround(double x, double surface, double z, double vx, double vz) {
+		double speed = Math.hypot(vx, vz);
+		if (speed < 1e-6) {
+			return true;
+		}
+		int blocks = (int) Math.ceil(speed * SLIDE_BLOCKS_PER_SPEED) + 1;
+		for (int k = 1; k <= blocks; k++) {
+			if (ground.height(x + vx / speed * k, z + vz / speed * k) < surface - MAX_SLIDE_DROP) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * Where the move from one position to the next first meets the ground, as {@code {x, z, surface,
+	 * side}}, or null if it doesn't. Checked every block or so along the way rather than only at the end: a
+	 * fast glide covers several blocks a tick, enough to step clean through a wall one block thick.
+	 */
+	private double[] contact(double x0, double y0, double z0, double x1, double y1, double z1) {
+		int samples = Math.max(1, (int) Math.ceil(Math.hypot(x1 - x0, z1 - z0)));
+		double prevX = x0;
+		double prevY = y0;
+		double prevZ = z0;
+		for (int i = 1; i <= samples; i++) {
+			double f = (double) i / samples;
+			double x = x0 + (x1 - x0) * f;
+			double y = y0 + (y1 - y0) * f;
+			double z = z0 + (z1 - z0) * f;
+			double surface = ground.height(x, z);
+			if (y - surface < MARGIN_ZONE) {
+				// Low enough for a wingtip to matter: a block of ground beside the path counts as in it.
+				for (double[] offset : MARGIN_OFFSETS) {
+					surface = Math.max(surface, ground.height(x + offset[0], z + offset[1]));
+				}
+			}
+			if (y <= surface) {
+				double fraction = prevY <= surface || prevY == y ? 1.0 : (prevY - surface) / (prevY - y);
+				// The last entry is 1 when the path ran into the side of the ground rather than coming down onto it.
+				return new double[] {prevX + (x - prevX) * fraction, prevZ + (z - prevZ) * fraction, surface,
+						prevY < surface - SIDE_HIT_DEPTH ? 1.0 : 0.0};
+			}
+			prevX = x;
+			prevY = y;
+			prevZ = z;
+		}
+		return null;
 	}
 
 	/**
@@ -256,13 +327,18 @@ final class ElytraAutopilot {
 			if (t % PATH_SAMPLE_TICKS == 0) {
 				path.add(new double[] {x, y, z});
 			}
-			double surface = ground.height(x, z);
-			if (y <= surface) {
-				double fraction = prevY <= surface || prevY == y ? 1.0 : (prevY - surface) / (prevY - y);
-				double touchX = prevX + (x - prevX) * fraction;
-				double touchZ = prevZ + (z - prevZ) * fraction;
-				path.add(new double[] {touchX, surface, touchZ});
-				return new Prediction(Math.hypot(touchX - tx, touchZ - tz), -vy, pitchNow, true, path, t + 1);
+			double[] touch = contact(prevX, prevY, prevZ, x, y, z);
+			if (touch != null) {
+				path.add(new double[] {touch[0], touch[2], touch[1]});
+				// Ground standing well above the spot is a wall or a hillside met head-on, not the
+				// landing - and so is a roof's edge reached below the roof, which the roof being at the
+				// spot's own height doesn't change: a landing comes down onto the ground from above.
+				// However slowly either is met, that is a crash, so it counts as a hard landing; so
+				// does one that would slide on off an edge.
+				boolean crash = touch[2] > ty + TERRAIN_RISE || touch[3] > 0.0
+						|| !slideStaysOnGround(touch[0], touch[2], touch[1], vx, vz);
+				double sink = crash ? Math.max(-vy, UNSAFE_LANDING_SINK) : -vy;
+				return new Prediction(Math.hypot(touch[0] - tx, touch[1] - tz), sink, pitchNow, true, path, t + 1);
 			}
 		}
 		return new Prediction(Double.MAX_VALUE, 0.0, pitchNow, false, path, MAX_PREDICT_TICKS);

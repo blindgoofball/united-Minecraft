@@ -62,7 +62,16 @@ public final class ElytraLandingController {
 	// noise in the prediction shouldn't throw the player out of an otherwise fine landing.
 	static final int HAZARD_TICKS_TO_ABORT = 5;
 	// How far from a chosen destination a landing spot is looked for.
-	private static final int NEAR_TARGET_RADIUS = 8;
+	// Wide enough to get out from against a building to open ground; the walk from there is short.
+	private static final int NEAR_TARGET_RADIUS = 10;
+	// Room a landing spot needs: blocks of clear approach, and of clear ground to slide on afterwards,
+	// found along one of this many evenly spaced directions.
+	// Blocks above or below the destination that cost nothing, then the cost of each block beyond.
+	static final int HEIGHT_SLACK = 1;
+	static final double HEIGHT_PENALTY = 1.5;
+	static final int RUNWAY = 16;
+	static final int RUNOUT = 4;
+	private static final int RUNWAY_DIRECTIONS = 16;
 	// Landing this close to the destination counts as having got there.
 	private static final double ARRIVED_DISTANCE = 3.0;
 
@@ -259,14 +268,20 @@ public final class ElytraLandingController {
 	private static Approach findSpotNear(LocalPlayer player, BlockPos wanted) {
 		Level level = player.level();
 		Vec3 eye = player.getEyePosition();
+		// The nearest spot with room to fly in and slide out, and the nearest of any kind, which is
+		// what gets used when the destination is so hemmed in that there is no spot with room.
 		Spot best = null;
 		double bestOffset = Double.MAX_VALUE;
+		Spot bestOpen = null;
+		double bestOpenOffset = Double.MAX_VALUE;
 		boolean anySafe = false;
 		boolean blocked = false;
 		double extraHeight = Double.MAX_VALUE;
+		HeightAt heights = (hx, hz) -> level.hasChunkAt(new BlockPos(hx, 0, hz))
+				? level.getHeight(Heightmap.Types.MOTION_BLOCKING, hx, hz) : Integer.MIN_VALUE;
 
 		for (int r = 0; r <= NEAR_TARGET_RADIUS; r++) {
-			if (best != null && r > bestOffset + 1) {
+			if (bestOpen != null && r > bestOpenOffset + 1) {
 				break;
 			}
 			for (int dx = -r; dx <= r; dx++) {
@@ -295,15 +310,73 @@ public final class ElytraLandingController {
 						blocked = true;
 						continue;
 					}
-					double offset = Math.hypot(dx, dz);
+					double offset = placementCost(Math.hypot(dx, dz), top - wanted.getY());
 					if (offset < bestOffset) {
 						best = new Spot(new BlockPos(x, top, z), distance);
 						bestOffset = offset;
 					}
+					if (offset < bestOpenOffset && hasRunway(heights, x, top, z)) {
+						bestOpen = new Spot(new BlockPos(x, top, z), distance);
+						bestOpenOffset = offset;
+					}
 				}
 			}
 		}
-		return new Approach(best, anySafe, blocked, extraHeight);
+		return new Approach(bestOpen != null ? bestOpen : best, anySafe, blocked, extraHeight);
+	}
+
+	/**
+	 * How good a spot is to land on for a destination: its distance from it, plus a penalty for each block
+	 * it is above or below it beyond {@link #HEIGHT_SLACK}. Otherwise the roof over a door is as good a
+	 * place as the step in front of it - nearer, even - and the flight ends clipping the roof's edge
+	 * from below. Lower is better; never less than the distance.
+	 */
+	static double placementCost(double distance, int heightDifference) {
+		return distance + Math.max(0, Math.abs(heightDifference) - HEIGHT_SLACK) * HEIGHT_PENALTY;
+	}
+
+	/** The height of the highest motion-blocking block's top in a column - {@code Integer.MIN_VALUE} where nothing is loaded. */
+	interface HeightAt {
+		int height(int x, int z);
+	}
+
+	/**
+	 * Whether a spot has room to be landed on: some direction along which a glider can come in over
+	 * clear ground for {@link #RUNWAY} blocks (allowing the rise a glide of {@link #GLIDE_RATIO} clears)
+	 * and carry on sliding for {@link #RUNOUT} blocks after touching down, a block either side of that
+	 * line included. A flat patch up against the wall of a building has none, however close it is to
+	 * the door: the only ways in are through the wall.
+	 */
+	static boolean hasRunway(HeightAt heights, int x, int top, int z) {
+		for (int i = 0; i < RUNWAY_DIRECTIONS; i++) {
+			double angle = 2 * Math.PI * i / RUNWAY_DIRECTIONS;
+			double dx = Math.cos(angle);
+			double dz = Math.sin(angle);
+			if (lineIsClear(heights, x, top, z, dx, dz, RUNWAY, true) && lineIsClear(heights, x, top, z, -dx, -dz, RUNOUT, false)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static boolean lineIsClear(HeightAt heights, int x, int top, int z, double dx, double dz, int length, boolean rising) {
+		for (int k = 1; k <= length; k++) {
+			// A glide in comes down from above, so ground can be higher the further out it is.
+			int allowed = top + 1 + (rising ? (int) (k / GLIDE_RATIO) : 0);
+			for (int side = -1; side <= 1; side++) {
+				int cx = (int) Math.floor(x + 0.5 + dx * k - dz * side);
+				int cz = (int) Math.floor(z + 0.5 + dz * k + dx * side);
+				int h = heights.height(cx, cz);
+				if (h > allowed) {
+					return false;
+				}
+				// Sliding on past the spot, an edge is as bad as a wall; ground not loaded is no edge.
+				if (!rising && h != Integer.MIN_VALUE && h < top - 1) {
+					return false;
+				}
+			}
+		}
+		return true;
 	}
 
 	public static void cancel(Minecraft client, LocalPlayer player) {
