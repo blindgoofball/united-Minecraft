@@ -11,6 +11,13 @@ narrates it, and locks the cursor's movement to that orientation.
 - **Moving the cursor:** Up/Down step forward and back, Left/Right strafe, Page
   Up/Down move vertically. Each step narrates the block, coordinates and whether
   it is placeable. The cursor roams a 65x65 area centered where you turned it on.
+- **Locking the area:** M places a marker at the cursor, and a second M places the
+  opposite corner. The cursor is then locked to the rectangle between the two
+  corners, and stepping past an edge says "edge of area". Alt+M clears both markers
+  and the usual 65x65 area applies again, as does turning Build Mode off. A third M
+  starts over with a new first corner. Alt+I then only moves the cursor to you, and
+  says so if you are outside the area. "Build Mode: Area Markers Also Limit Height"
+  in Settings makes the corners limit how high and low the cursor can go too.
 - **Turning:** Alt+Left/Right turns both the camera and the cursor's orientation a
   quarter turn, the same snap-turn used outside Build Mode.
 - **Recentering:** Alt+I snaps the cursor to where you are standing and recenters

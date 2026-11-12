@@ -64,6 +64,7 @@ key or modifier combination in United Minecraft's own Keybindings screen
 | G | Walk to the cursor |
 | J (Alt+J reverses) | Cycle placement facing |
 | Ctrl+J | Toggle upper or lower half placement |
+| M (Alt+M clears) | Place an area marker, then a second to lock the cursor between them |
 
 ## Inside menus
 

@@ -444,6 +444,13 @@ public final class AccessibilityTickHandler {
 				&& ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_BUILD_MODE)) {
 			BuildModeController.toggle(client, player);
 		}
+		// Both are BUILD_MODE-context keys, so they only fire while Build Mode is on.
+		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_AREA_MARKER)) {
+			BuildModeController.placeAreaMarker(client, player);
+		}
+		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_AREA_CLEAR)) {
+			BuildModeController.clearAreaMarkers(client);
+		}
 		if (ClientKeyBindings.pressed(ClientKeyBindings.TOGGLE_NAV_RADAR)) {
 			NavRadarController.toggle(client);
 		}

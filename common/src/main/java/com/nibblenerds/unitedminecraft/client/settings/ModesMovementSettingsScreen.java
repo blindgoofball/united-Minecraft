@@ -22,6 +22,8 @@ final class ModesMovementSettingsScreen extends SettingsListScreen {
 				"united_minecraft.settings_screen.turn_speed_percent", value -> config.turnSpeedPercent = (int) Math.round(value));
 		y = addToggle(x, y, "united_minecraft.settings_screen.build_mode_action_narration_enabled",
 				config.buildModeActionNarrationEnabled, value -> config.buildModeActionNarrationEnabled = value);
+		y = addToggle(x, y, "united_minecraft.settings_screen.build_mode_area_lock_height",
+				config.buildModeAreaLockHeight, value -> config.buildModeAreaLockHeight = value);
 		y = addCycle(x, y, "united_minecraft.settings_screen.combat_style",
 				List.of(UnitedMinecraftConfig.CombatStyle.values()), config.combatStyle,
 				style -> Component.translatable("united_minecraft.settings_screen.combat_style." + style.name().toLowerCase(Locale.ROOT)),

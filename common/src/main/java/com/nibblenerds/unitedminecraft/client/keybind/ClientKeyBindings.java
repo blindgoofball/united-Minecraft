@@ -110,6 +110,13 @@ public final class ClientKeyBindings {
 	public static final KeybindAction BUILD_BREAK = new KeybindAction(
 			"build_break", KeybindCategory.BUILD_MODE, new Keybind(InputConstants.KEY_RSHIFT, 0), KeybindContext.BUILD_MODE);
 
+	/** M places the first, then the second corner that locks the cursor to the box between them - see {@code BuildArea}. A third starts over. */
+	public static final KeybindAction BUILD_AREA_MARKER = new KeybindAction(
+			"build_area_marker", KeybindCategory.BUILD_MODE, new Keybind(InputConstants.KEY_M, 0), KeybindContext.BUILD_MODE);
+	/** Alt+M - shares M with {@link #BUILD_AREA_MARKER}; takes both corners away again. */
+	public static final KeybindAction BUILD_AREA_CLEAR = new KeybindAction("build_area_clear",
+			KeybindCategory.BUILD_MODE, new Keybind(InputConstants.KEY_M, InputConstants.MOD_ALT), KeybindContext.BUILD_MODE);
+
 	public static final KeybindAction BUILD_WALK_TO_CURSOR =
 			new KeybindAction("build_walk_to_cursor", KeybindCategory.BUILD_MODE, new Keybind(InputConstants.KEY_G, 0));
 

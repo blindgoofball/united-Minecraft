@@ -214,6 +214,10 @@ public final class BuildModeController {
 	private static BlockPos cursor;
 	private static int anchorX;
 	private static int anchorZ;
+	// The corner markers placed with BUILD_AREA_MARKER. Once both are set the cursor is locked to the
+	// box between them instead of the GRID_RADIUS area around the anchor - see areaLock().
+	private static BlockPos areaCornerA;
+	private static BlockPos areaCornerB;
 	private static Direction selectedFacing;
 	// Nudges stairs/slabs/trapdoors to place their upper half instead of the lower - see
 	// #attemptPlacementSequence's hitLocation construction and #faceTryOrder for how this
@@ -262,6 +266,8 @@ public final class BuildModeController {
 	public static void reset() {
 		active = false;
 		cursor = null;
+		areaCornerA = null;
+		areaCornerB = null;
 		selectedFacing = null;
 		placeUpperHalf = false;
 		facing = Direction.NORTH;
@@ -276,6 +282,8 @@ public final class BuildModeController {
 			breakHeld = ClientKeyBindings.BUILD_BREAK.isDown();
 			selectedFacing = null;
 			placeUpperHalf = false;
+			areaCornerA = null;
+			areaCornerB = null;
 			cursor = player.blockPosition();
 			anchorX = cursor.getX();
 			anchorZ = cursor.getZ();
@@ -306,6 +314,8 @@ public final class BuildModeController {
 				player.setYHeadRot(pendingSavedYaw);
 			}
 			cursor = null;
+			areaCornerA = null;
+			areaCornerB = null;
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_mode_off"));
 		}
 	}
@@ -321,10 +331,69 @@ public final class BuildModeController {
 	 * direction the way {@link #toggle} does.
 	 */
 	public static void recenterCursor(Minecraft client, LocalPlayer player) {
+		BuildArea locked = areaLock();
+		if (locked != null) {
+			// A locked area stays where it was placed; recentering only moves the cursor to you, and
+			// only when you are inside it - the cursor can never leave the box.
+			if (!locked.contains(player.blockPosition(), UnitedMinecraftConfig.get().buildModeAreaLockHeight)) {
+				client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_area_outside"));
+				return;
+			}
+			cursor = player.blockPosition();
+			client.getNarrator().saySystemNow(describeCursor(player));
+			return;
+		}
 		cursor = player.blockPosition();
 		anchorX = cursor.getX();
 		anchorZ = cursor.getZ();
 		client.getNarrator().saySystemNow(describeCursor(player));
+	}
+
+	/** The box the cursor is locked to, or null until both corner markers are placed. */
+	private static BuildArea areaLock() {
+		return areaCornerA != null && areaCornerB != null ? new BuildArea(areaCornerA, areaCornerB) : null;
+	}
+
+	/**
+	 * {@link ClientKeyBindings#BUILD_AREA_MARKER} (M): the first press marks one corner at the cursor,
+	 * the second marks the opposite corner and locks the cursor to the box between them, and a third
+	 * starts over with a new first corner. The cursor is already on the corner just placed, so it
+	 * never needs moving. The lock lasts until {@link #clearAreaMarkers} or Build Mode turns off.
+	 */
+	public static void placeAreaMarker(Minecraft client, LocalPlayer player) {
+		BlockPos at = cursor;
+		if (at == null) {
+			return;
+		}
+		if (areaCornerA == null || areaCornerB != null) {
+			boolean startedOver = areaCornerB != null;
+			areaCornerA = at;
+			areaCornerB = null;
+			Component first = Component.translatable("united_minecraft.narrate.build_area_first",
+					at.getX(), at.getY(), at.getZ());
+			client.getNarrator().saySystemNow(startedOver
+					? Component.translatable("united_minecraft.narrate.build_area_restarted").append(Component.literal(" ")).append(first)
+					: first);
+			return;
+		}
+		areaCornerB = at;
+		BuildArea area = areaLock();
+		boolean lockHeight = UnitedMinecraftConfig.get().buildModeAreaLockHeight;
+		client.getNarrator().saySystemNow(lockHeight
+				? Component.translatable("united_minecraft.narrate.build_area_locked_height",
+						area.width(), area.depth(), area.height())
+				: Component.translatable("united_minecraft.narrate.build_area_locked", area.width(), area.depth()));
+	}
+
+	/** {@link ClientKeyBindings#BUILD_AREA_CLEAR} (Alt+M): drops both corners, so the cursor roams the usual area again. */
+	public static void clearAreaMarkers(Minecraft client) {
+		if (areaCornerA == null) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_area_none"));
+			return;
+		}
+		areaCornerA = null;
+		areaCornerB = null;
+		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_area_cleared"));
 	}
 
 	public static void tick(Minecraft client, LocalPlayer player) {
@@ -1468,7 +1537,14 @@ public final class BuildModeController {
 		// The cursor is free to roam the whole grid regardless of reach - place()/breakBlock()
 		// check reach for themselves at the point it actually matters. Only the grid's own
 		// horizontal bounds and the world's real height limits stop movement outright.
-		if (Math.abs(candidate.getX() - anchorX) > GRID_RADIUS || Math.abs(candidate.getZ() - anchorZ) > GRID_RADIUS) {
+		BuildArea locked = areaLock();
+		if (locked != null) {
+			// Two corner markers replace the grid around the anchor with the box between them.
+			if (!locked.contains(candidate, UnitedMinecraftConfig.get().buildModeAreaLockHeight)) {
+				client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_edge_of_area"));
+				return false;
+			}
+		} else if (Math.abs(candidate.getX() - anchorX) > GRID_RADIUS || Math.abs(candidate.getZ() - anchorZ) > GRID_RADIUS) {
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_edge_of_area"));
 			return false;
 		}

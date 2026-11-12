@@ -82,6 +82,8 @@ public final class UnitedMinecraftConfig {
 	public int navRadarRange = 8;
 	public double scannerRange = 32.0;
 	public boolean buildModeActionNarrationEnabled = true;
+	/** Whether Build Mode's two area markers also limit how high and low the cursor can go - see {@code BuildArea}. */
+	public boolean buildModeAreaLockHeight = false;
 	public CombatCueMode combatCueMode = CombatCueMode.COMBAT_MODE_ONLY;
 	public CombatStyle combatStyle = CombatStyle.LOCK_ON;
 	/** Beacon guidance while drawing a bow - see {@link BowBeaconController}. Off by default. */
