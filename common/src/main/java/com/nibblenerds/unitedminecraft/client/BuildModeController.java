@@ -3,6 +3,7 @@ package com.nibblenerds.unitedminecraft.client;
 import com.nibblenerds.unitedminecraft.client.autowalk.AutoWalkController;
 import com.nibblenerds.unitedminecraft.client.scanner.OreDetection;
 import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
+import com.nibblenerds.unitedminecraft.client.audio.BuildCursorSound;
 import com.nibblenerds.unitedminecraft.client.audio.ModeToggleSound;
 import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
@@ -295,6 +296,7 @@ public final class BuildModeController {
 					.append(Component.literal(" "))
 					.append(describeCursor(player));
 			client.getNarrator().saySystemNow(message);
+			BuildCursorSound.playCursorCue(client, player, cursor);
 			AngleAssistController.disable(client);
 		} else {
 			if (breakHeld) {
@@ -340,12 +342,14 @@ public final class BuildModeController {
 				return;
 			}
 			cursor = player.blockPosition();
+			BuildCursorSound.playCursorCue(client, player, cursor);
 			client.getNarrator().saySystemNow(describeCursor(player));
 			return;
 		}
 		cursor = player.blockPosition();
 		anchorX = cursor.getX();
 		anchorZ = cursor.getZ();
+		BuildCursorSound.playCursorCue(client, player, cursor);
 		client.getNarrator().saySystemNow(describeCursor(player));
 	}
 
@@ -461,6 +465,7 @@ public final class BuildModeController {
 		}
 
 		if (moved) {
+			BuildCursorSound.playCursorCue(client, player, cursor);
 			client.getNarrator().saySystemNow(describeCursor(player));
 		}
 

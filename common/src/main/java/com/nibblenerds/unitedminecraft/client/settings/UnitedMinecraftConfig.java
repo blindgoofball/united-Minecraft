@@ -82,6 +82,8 @@ public final class UnitedMinecraftConfig {
 	public int navRadarRange = 8;
 	public double scannerRange = 32.0;
 	public boolean buildModeActionNarrationEnabled = true;
+	/** Whether the Build Mode virtual cursor plays 3D spatial sound cues when moving - see {@code BuildCursorSound}. */
+	public boolean buildModeSoundCuesEnabled = true;
 	/** Whether Build Mode's two area markers also limit how high and low the cursor can go - see {@code BuildArea}. */
 	public boolean buildModeAreaLockHeight = false;
 	public CombatCueMode combatCueMode = CombatCueMode.COMBAT_MODE_ONLY;
