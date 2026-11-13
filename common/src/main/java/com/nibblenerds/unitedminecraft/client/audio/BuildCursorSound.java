@@ -1,6 +1,7 @@
 package com.nibblenerds.unitedminecraft.client.audio;
 
 import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
+import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig.BuildCursorFeedback;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -19,18 +20,18 @@ import net.minecraft.world.phys.Vec3;
 /**
  * 3D spatial audio cues for Build Mode's virtual cursor.
  *
- * <p>Plays material-specific hit sounds when stepping over blocks, a distinct percussion tick
+ * <p>Plays material-specific hit sounds when stepping over blocks, a distinct snow hit puff
  * when over air / empty space, and fluid sounds when over water or lava. Sounds are positioned
  * in 3D relative to the player's eye so stereo panning and elevation indicate the cursor's
- * spatial position, with distance clamped so sounds remain clearly audible even when the cursor
- * roams far away.
+ * spatial position, with distance clamped so sounds remain clearly audible and loud even when
+ * the cursor roams far away.
  */
 public final class BuildCursorSound {
-	public static final double MAX_AUDIO_OFFSET_BLOCKS = 3.5;
-	public static final float AIR_VOLUME = 0.5f;
-	public static final float AIR_PITCH = 1.6f;
-	public static final float FLUID_VOLUME = 0.6f;
-	public static final float SOLID_VOLUME_SCALE = 0.8f;
+	public static final double MAX_AUDIO_OFFSET_BLOCKS = 2.0;
+	public static final float AIR_VOLUME = 1.4f;
+	public static final float AIR_PITCH = 1.2f;
+	public static final float FLUID_VOLUME = 1.2f;
+	public static final float SOLID_VOLUME_SCALE = 1.6f;
 
 	private BuildCursorSound() {
 	}
@@ -39,7 +40,7 @@ public final class BuildCursorSound {
 	 * Plays the spatial audio cue for the cursor's current position and block.
 	 */
 	public static void playCursorCue(Minecraft client, LocalPlayer player, BlockPos cursor) {
-		if (!UnitedMinecraftConfig.get().buildModeSoundCuesEnabled) {
+		if (UnitedMinecraftConfig.get().buildCursorFeedback == BuildCursorFeedback.SPEAK_ONLY) {
 			return;
 		}
 		Level level = player.level();
@@ -65,13 +66,13 @@ public final class BuildCursorSound {
 				pitch = 1.2f;
 			}
 		} else if (state.isAir()) {
-			sound = SoundEvents.NOTE_BLOCK_HAT.value();
+			sound = SoundEvents.SNOW_HIT;
 			volume = AIR_VOLUME;
 			pitch = AIR_PITCH;
 		} else {
 			SoundType soundType = state.getSoundType();
 			sound = soundType.getHitSound();
-			volume = Math.max(0.4f, soundType.getVolume() * SOLID_VOLUME_SCALE);
+			volume = Math.max(1.0f, soundType.getVolume() * SOLID_VOLUME_SCALE);
 			pitch = soundType.getPitch();
 		}
 
@@ -123,7 +124,7 @@ public final class BuildCursorSound {
 	public static void previewAir(Minecraft client, LocalPlayer player) {
 		Vec3 pos = player.position();
 		client.getSoundManager().play(new SimpleSoundInstance(
-				SoundEvents.NOTE_BLOCK_HAT.value(),
+				SoundEvents.SNOW_HIT,
 				SoundSource.MASTER,
 				CueVolume.scale(AIR_VOLUME),
 				AIR_PITCH,

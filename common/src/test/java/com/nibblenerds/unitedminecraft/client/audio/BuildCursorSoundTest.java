@@ -12,7 +12,7 @@ class BuildCursorSoundTest {
 	@Test
 	void audioPositionAtEyeReturnsEye() {
 		Vec3 eye = new Vec3(10.0, 64.0, -10.0);
-		Vec3 result = BuildCursorSound.calculateAudioPosition(eye, eye, 3.5);
+		Vec3 result = BuildCursorSound.calculateAudioPosition(eye, eye, BuildCursorSound.MAX_AUDIO_OFFSET_BLOCKS);
 		assertEquals(eye.x, result.x, EPSILON);
 		assertEquals(eye.y, result.y, EPSILON);
 		assertEquals(eye.z, result.z, EPSILON);
@@ -21,10 +21,10 @@ class BuildCursorSoundTest {
 	@Test
 	void audioPositionWithinMaxDistanceReturnsExactTarget() {
 		Vec3 eye = new Vec3(0.0, 64.0, 0.0);
-		Vec3 target = new Vec3(1.0, 65.0, -1.0);
-		assertTrue(target.distanceTo(eye) <= 3.5);
+		Vec3 target = new Vec3(0.5, 64.5, -0.5);
+		assertTrue(target.distanceTo(eye) <= BuildCursorSound.MAX_AUDIO_OFFSET_BLOCKS);
 
-		Vec3 result = BuildCursorSound.calculateAudioPosition(eye, target, 3.5);
+		Vec3 result = BuildCursorSound.calculateAudioPosition(eye, target, BuildCursorSound.MAX_AUDIO_OFFSET_BLOCKS);
 		assertEquals(target.x, result.x, EPSILON);
 		assertEquals(target.y, result.y, EPSILON);
 		assertEquals(target.z, result.z, EPSILON);
@@ -35,11 +35,11 @@ class BuildCursorSoundTest {
 		Vec3 eye = new Vec3(0.0, 64.0, 0.0);
 		Vec3 target = new Vec3(20.0, 64.0, 0.0); // 20 blocks east
 
-		Vec3 result = BuildCursorSound.calculateAudioPosition(eye, target, 3.5);
-		assertEquals(3.5, result.x, EPSILON);
+		Vec3 result = BuildCursorSound.calculateAudioPosition(eye, target, BuildCursorSound.MAX_AUDIO_OFFSET_BLOCKS);
+		assertEquals(2.0, result.x, EPSILON);
 		assertEquals(64.0, result.y, EPSILON);
 		assertEquals(0.0, result.z, EPSILON);
-		assertEquals(3.5, result.distanceTo(eye), EPSILON);
+		assertEquals(2.0, result.distanceTo(eye), EPSILON);
 	}
 
 	@Test
@@ -47,9 +47,9 @@ class BuildCursorSoundTest {
 		Vec3 eye = new Vec3(0.0, 0.0, 0.0);
 		Vec3 target = new Vec3(0.0, 10.0, 0.0); // 10 blocks straight up
 
-		Vec3 result = BuildCursorSound.calculateAudioPosition(eye, target, 3.5);
+		Vec3 result = BuildCursorSound.calculateAudioPosition(eye, target, BuildCursorSound.MAX_AUDIO_OFFSET_BLOCKS);
 		assertEquals(0.0, result.x, EPSILON);
-		assertEquals(3.5, result.y, EPSILON);
+		assertEquals(2.0, result.y, EPSILON);
 		assertEquals(0.0, result.z, EPSILON);
 	}
 
@@ -58,8 +58,8 @@ class BuildCursorSoundTest {
 		Vec3 eye = new Vec3(0.0, 0.0, 0.0);
 		Vec3 target = new Vec3(-10.0, 10.0, -10.0);
 
-		Vec3 result = BuildCursorSound.calculateAudioPosition(eye, target, 3.5);
-		assertEquals(3.5, result.distanceTo(eye), EPSILON);
+		Vec3 result = BuildCursorSound.calculateAudioPosition(eye, target, BuildCursorSound.MAX_AUDIO_OFFSET_BLOCKS);
+		assertEquals(2.0, result.distanceTo(eye), EPSILON);
 
 		Vec3 expectedDirection = target.normalize();
 		Vec3 actualDirection = result.normalize();

@@ -290,13 +290,18 @@ public final class BuildModeController {
 			anchorZ = cursor.getZ();
 			facing = nearestCardinal(player.getYRot());
 			snapYawTo(player, facing);
-			Component message = Component.translatable("united_minecraft.narrate.build_mode_on")
+			UnitedMinecraftConfig.BuildCursorFeedback feedback = UnitedMinecraftConfig.get().buildCursorFeedback;
+			if (feedback != UnitedMinecraftConfig.BuildCursorFeedback.SPEAK_ONLY) {
+				BuildCursorSound.playCursorCue(client, player, cursor);
+			}
+			MutableComponent message = Component.translatable("united_minecraft.narrate.build_mode_on")
 					.append(Component.literal(" "))
-					.append(Component.translatable("united_minecraft.narrate.build_facing", directionName(facing)))
-					.append(Component.literal(" "))
-					.append(describeCursor(player));
+					.append(Component.translatable("united_minecraft.narrate.build_facing", directionName(facing)));
+			if (feedback != UnitedMinecraftConfig.BuildCursorFeedback.SOUND_ONLY) {
+				message = message.append(Component.literal(" "))
+						.append(describeCursor(player));
+			}
 			client.getNarrator().saySystemNow(message);
-			BuildCursorSound.playCursorCue(client, player, cursor);
 			AngleAssistController.disable(client);
 		} else {
 			if (breakHeld) {
@@ -342,15 +347,25 @@ public final class BuildModeController {
 				return;
 			}
 			cursor = player.blockPosition();
-			BuildCursorSound.playCursorCue(client, player, cursor);
-			client.getNarrator().saySystemNow(describeCursor(player));
+			UnitedMinecraftConfig.BuildCursorFeedback feedback = UnitedMinecraftConfig.get().buildCursorFeedback;
+			if (feedback != UnitedMinecraftConfig.BuildCursorFeedback.SPEAK_ONLY) {
+				BuildCursorSound.playCursorCue(client, player, cursor);
+			}
+			if (feedback != UnitedMinecraftConfig.BuildCursorFeedback.SOUND_ONLY) {
+				client.getNarrator().saySystemNow(describeCursor(player));
+			}
 			return;
 		}
 		cursor = player.blockPosition();
 		anchorX = cursor.getX();
 		anchorZ = cursor.getZ();
-		BuildCursorSound.playCursorCue(client, player, cursor);
-		client.getNarrator().saySystemNow(describeCursor(player));
+		UnitedMinecraftConfig.BuildCursorFeedback feedback = UnitedMinecraftConfig.get().buildCursorFeedback;
+		if (feedback != UnitedMinecraftConfig.BuildCursorFeedback.SPEAK_ONLY) {
+			BuildCursorSound.playCursorCue(client, player, cursor);
+		}
+		if (feedback != UnitedMinecraftConfig.BuildCursorFeedback.SOUND_ONLY) {
+			client.getNarrator().saySystemNow(describeCursor(player));
+		}
 	}
 
 	/** The box the cursor is locked to, or null until both corner markers are placed. */
@@ -465,8 +480,13 @@ public final class BuildModeController {
 		}
 
 		if (moved) {
-			BuildCursorSound.playCursorCue(client, player, cursor);
-			client.getNarrator().saySystemNow(describeCursor(player));
+			UnitedMinecraftConfig.BuildCursorFeedback feedback = UnitedMinecraftConfig.get().buildCursorFeedback;
+			if (feedback != UnitedMinecraftConfig.BuildCursorFeedback.SPEAK_ONLY) {
+				BuildCursorSound.playCursorCue(client, player, cursor);
+			}
+			if (feedback != UnitedMinecraftConfig.BuildCursorFeedback.SOUND_ONLY) {
+				client.getNarrator().saySystemNow(describeCursor(player));
+			}
 		}
 
 		tickPendingPlacement(client, player);
