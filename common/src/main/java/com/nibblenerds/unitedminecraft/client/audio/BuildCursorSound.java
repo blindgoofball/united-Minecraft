@@ -6,6 +6,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -20,18 +21,17 @@ import net.minecraft.world.phys.Vec3;
 /**
  * 3D spatial audio cues for Build Mode's virtual cursor.
  *
- * <p>Plays material-specific hit sounds when stepping over blocks, a distinct snow hit puff
- * when over air / empty space, and fluid sounds when over water or lava. Sounds are positioned
- * in 3D relative to the player's eye so stereo panning and elevation indicate the cursor's
- * spatial position, with distance clamped so sounds remain clearly audible and loud even when
- * the cursor roams far away.
+ * <p>Plays material-specific footstep/step sounds when stepping over blocks, a custom licensed air
+ * whoosh cue when over air / empty space, and fluid cues when over water or lava. Sounds are
+ * positioned directly at the cursor's 3D coordinates so Minecraft's internal OpenAL audio handler
+ * performs accurate spatial panning, elevation, and direction calculation.
  */
 public final class BuildCursorSound {
+	public static final SoundEvent AIR_SOUND =
+			SoundEvent.createVariableRangeEvent(Identifier.fromNamespaceAndPath("united_minecraft", "build_cursor_air"));
+
 	public static final double MAX_AUDIO_OFFSET_BLOCKS = 2.0;
-	public static final float AIR_VOLUME = 1.4f;
-	public static final float AIR_PITCH = 1.2f;
-	public static final float FLUID_VOLUME = 1.2f;
-	public static final float SOLID_VOLUME_SCALE = 1.6f;
+	public static final float BASE_CUE_VOLUME = 2.5f;
 
 	private BuildCursorSound() {
 	}
@@ -45,9 +45,7 @@ public final class BuildCursorSound {
 		}
 		Level level = player.level();
 		BlockState state = level.getBlockState(cursor);
-		Vec3 eye = player.getEyePosition();
 		Vec3 target = Vec3.atCenterOf(cursor);
-		Vec3 audioPos = calculateAudioPosition(eye, target, MAX_AUDIO_OFFSET_BLOCKS);
 		RandomSource random = player.getRandom();
 
 		SoundEvent sound;
@@ -58,41 +56,38 @@ public final class BuildCursorSound {
 		if (!fluid.isEmpty()) {
 			if (fluid.is(FluidTags.LAVA)) {
 				sound = SoundEvents.LAVA_POP;
-				volume = FLUID_VOLUME;
+				volume = CueVolume.scale(BASE_CUE_VOLUME);
 				pitch = 1.2f;
 			} else {
 				sound = SoundEvents.POINTED_DRIPSTONE_DRIP_WATER_INTO_CAULDRON;
-				volume = FLUID_VOLUME;
+				volume = CueVolume.scale(BASE_CUE_VOLUME);
 				pitch = 1.2f;
 			}
 		} else if (state.isAir()) {
-			sound = SoundEvents.SNOW_HIT;
-			volume = AIR_VOLUME;
-			pitch = AIR_PITCH;
+			sound = AIR_SOUND;
+			volume = CueVolume.scale(BASE_CUE_VOLUME);
+			pitch = 1.0f;
 		} else {
 			SoundType soundType = state.getSoundType();
-			sound = soundType.getHitSound();
-			volume = Math.max(1.0f, soundType.getVolume() * SOLID_VOLUME_SCALE);
+			sound = soundType.getStepSound();
+			volume = CueVolume.scale(Math.max(1.5f, soundType.getVolume() * BASE_CUE_VOLUME));
 			pitch = soundType.getPitch();
 		}
 
 		client.getSoundManager().play(new SimpleSoundInstance(
 				sound,
 				SoundSource.MASTER,
-				CueVolume.scale(volume),
+				volume,
 				pitch,
 				random,
-				audioPos.x(),
-				audioPos.y(),
-				audioPos.z()));
+				target.x(),
+				target.y(),
+				target.z()));
 	}
 
 	/**
-	 * Computes the 3D position vector where the sound instance should be emitted in OpenAL.
-	 *
-	 * <p>Clamps the distance along the ray from {@code eye} to {@code targetCenter} to {@code maxDistance}
-	 * so directional stereo panning and elevation are preserved without letting the sound attenuate into
-	 * silence when the cursor is far from the player.
+	 * Computes the 3D position vector where a sound instance is emitted in OpenAL.
+	 * Kept as a pure mathematical helper for testing ray projections.
 	 */
 	public static Vec3 calculateAudioPosition(Vec3 eye, Vec3 targetCenter, double maxDistance) {
 		Vec3 offset = targetCenter.subtract(eye);
@@ -106,13 +101,13 @@ public final class BuildCursorSound {
 		return eye.add(offset.scale(maxDistance / distance));
 	}
 
-	/** Plays the block hit sound cue for preview in {@link SoundGlossaryScreen}. */
+	/** Plays the block step sound cue for preview in {@link SoundGlossaryScreen}. */
 	public static void previewBlock(Minecraft client, LocalPlayer player) {
 		Vec3 pos = player.position();
 		client.getSoundManager().play(new SimpleSoundInstance(
-				SoundEvents.STONE_HIT,
+				SoundEvents.STONE_STEP,
 				SoundSource.MASTER,
-				CueVolume.scale(SOLID_VOLUME_SCALE),
+				CueVolume.scale(BASE_CUE_VOLUME),
 				1.0f,
 				player.getRandom(),
 				pos.x(),
@@ -124,10 +119,10 @@ public final class BuildCursorSound {
 	public static void previewAir(Minecraft client, LocalPlayer player) {
 		Vec3 pos = player.position();
 		client.getSoundManager().play(new SimpleSoundInstance(
-				SoundEvents.SNOW_HIT,
+				AIR_SOUND,
 				SoundSource.MASTER,
-				CueVolume.scale(AIR_VOLUME),
-				AIR_PITCH,
+				CueVolume.scale(BASE_CUE_VOLUME),
+				1.0f,
 				player.getRandom(),
 				pos.x(),
 				pos.y(),
