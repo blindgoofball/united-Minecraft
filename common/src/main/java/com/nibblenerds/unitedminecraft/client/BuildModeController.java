@@ -280,6 +280,9 @@ public final class BuildModeController {
 		active = !active;
 		ModeToggleSound.playBuildMode(client, player, active);
 		if (active) {
+			if (!client.options.directionalAudio().get()) {
+				client.options.directionalAudio().set(true);
+			}
 			breakHeld = ClientKeyBindings.BUILD_BREAK.isDown();
 			selectedFacing = null;
 			placeUpperHalf = false;

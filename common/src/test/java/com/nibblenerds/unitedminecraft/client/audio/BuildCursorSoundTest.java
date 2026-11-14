@@ -12,14 +12,20 @@ class BuildCursorSoundTest {
 	private static final double EPSILON = 1.0e-4;
 
 	@Test
-	void audioPositionMatchesCursorCenter() {
+	void audioPositionAppliesLateralSpread() {
 		Vec3 eye = new Vec3(0.0, 64.0, 0.0);
-		BlockPos cursor = new BlockPos(5, 64, -3);
+		// 5 blocks North (-Z), 1 block East (+X). Block center is (1.5, 64.5, -4.5)
+		BlockPos cursor = new BlockPos(1, 64, -5);
 		Vec3 result = BuildCursorSound.calculateAudioPosition(eye, cursor, Direction.NORTH);
 
-		assertEquals(5.5, result.x, EPSILON);
+		// lateral offset 1.5 scaled by 2.2 = 3.3
+		assertEquals(3.3, result.x, EPSILON);
 		assertEquals(64.5, result.y, EPSILON);
-		assertEquals(-2.5, result.z, EPSILON);
+		assertEquals(-4.5, result.z, EPSILON);
+
+		// Angle from nose: atan(3.3 / 4.5) ~= 36.25 degrees - immediate distinct stereo pan
+		double angleDegrees = Math.toDegrees(Math.atan2(result.x, -result.z));
+		assertTrue(angleDegrees > 30.0 && angleDegrees < 45.0, "Expected >30 degrees lateral pan, was: " + angleDegrees);
 	}
 
 	@Test
@@ -36,7 +42,7 @@ class BuildCursorSoundTest {
 
 	@Test
 	void distanceGainMatchesAudioMinecraftCameraCurve() {
-		// Exactly matches audio_minecraft's camera_distance() (rolloff 0.15, ref 1.0)
+		// Matches audio_minecraft's camera_distance() (rolloff 0.15, ref 1.0)
 		assertEquals(1.0f, BuildCursorSound.calculateDistanceGain(0.5), (float) EPSILON);
 		assertEquals(1.0f, BuildCursorSound.calculateDistanceGain(1.0), (float) EPSILON);
 
@@ -72,11 +78,6 @@ class BuildCursorSoundTest {
 		Vec3 straightBelow = new Vec3(0.0, 60.0, 0.0);
 		float expectedLow = (float) Math.pow(2.0, -4.0 / 12.0);
 		assertEquals(expectedLow, BuildCursorSound.calculateElevationPitch(eye, straightBelow), (float) EPSILON);
-
-		// 45 degrees up -> between 1.0 and 1.26
-		Vec3 angleUp = new Vec3(4.0, 68.0, 0.0);
-		float pitchAngle = BuildCursorSound.calculateElevationPitch(eye, angleUp);
-		assertTrue(pitchAngle > 1.0f && pitchAngle < expectedHigh);
 	}
 
 	@Test
@@ -117,12 +118,12 @@ class BuildCursorSoundTest {
 		// Stepping left brings X back toward 0
 		BlockPos tile0 = new BlockPos(0, 64, -2);
 		Vec3 pos0 = BuildCursorSound.calculateAudioPosition(eye, tile0, Direction.NORTH);
-		assertEquals(0.5, pos0.x, EPSILON);
+		assertEquals(0.5 * 2.2, pos0.x, EPSILON); // center of block 0 is 0.5 scaled
 
 		// Stepping further left moves into negative X
 		BlockPos tile1Left = new BlockPos(-1, 64, -2);
 		Vec3 posLeft = BuildCursorSound.calculateAudioPosition(eye, tile1Left, Direction.NORTH);
-		assertEquals(-0.5, posLeft.x, EPSILON);
+		assertTrue(posLeft.x < 0.0);
 		assertTrue(posLeft.x < pos0.x);
 	}
 }

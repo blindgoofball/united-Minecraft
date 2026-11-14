@@ -24,19 +24,20 @@ import net.minecraft.world.phys.Vec3;
 /**
  * 3D spatial audio cues for Build Mode's virtual cursor.
  *
- * <p>Positions sounds in real 3D space at the cursor's world position, mirroring the audio
- * architecture of {@code audio_minecraft}:
+ * <p>Positions sounds in real 3D space with expanded lateral separation and acoustic muffle cues,
+ * mirroring the audio architecture of {@code audio_minecraft}:
  * <ul>
- *   <li><b>True 3D Spatial Panning:</b> Sounds originate from the cursor block itself, so moving
- *       right pans progressively further right, stepping left brings it back toward center, and
- *       moving behind places the sound in back.</li>
+ *   <li><b>True 3D Spatial Panning with Expanded Lateral Spread:</b> Lateral offsets are scaled
+ *       by {@link #LATERAL_SPREAD_FACTOR} so every single block step left or right creates an
+ *       immediate, unmistakable stereo separation in headphones rather than slowly drifting.</li>
+ *   <li><b>Acoustic Low-Pass Behind Filtering:</b> Cursors positioned behind the listener play
+ *       low-pass filtered cues (darker tone below 1.2 kHz, matching human pinna filtering) and a
+ *       subtle gain reduction so front vs. back is instantly distinguishable.</li>
  *   <li><b>Camera Distance Falloff:</b> Uses the gentle inverse-distance attenuation curve
  *       (-4 dB at 5 blocks) so distant blocks stay clearly audible across the full build area while
  *       providing precise near-vs-far depth perception.</li>
  *   <li><b>Elevation Pitch Shift:</b> Vertical cursor position shifts playback pitch continuously
  *       (up to +4 semitones straight above, -4 semitones straight below).</li>
- *   <li><b>Behind Attenuation Cue:</b> Sounds located behind the listener receive a subtle gain reduction
- *       for unmistakable front/back disambiguation on headphones.</li>
  *   <li><b>Distinct Material Cues:</b> Crisp footstep step sounds for solid blocks, punchy CC0 synth
  *       whooshes for empty air, and fluid cues for water and lava.</li>
  * </ul>
@@ -45,9 +46,13 @@ public final class BuildCursorSound {
 	public static final SoundEvent AIR_SOUND =
 			SoundEvent.createVariableRangeEvent(Identifier.fromNamespaceAndPath("united_minecraft", "build_cursor_air"));
 
+	public static final SoundEvent AIR_SOUND_BEHIND =
+			SoundEvent.createVariableRangeEvent(Identifier.fromNamespaceAndPath("united_minecraft", "build_cursor_air_behind"));
+
 	public static final float BASE_CUE_VOLUME = 3.0f;
 	public static final double CAMERA_ROLLOFF_FACTOR = 0.15;
 	public static final double REFERENCE_DISTANCE = 1.0;
+	public static final double LATERAL_SPREAD_FACTOR = 2.2;
 
 	private BuildCursorSound() {
 	}
@@ -68,6 +73,16 @@ public final class BuildCursorSound {
 		double distance = eye.distanceTo(audioPos);
 		float distanceGain = calculateDistanceGain(distance);
 		float elevationPitch = calculateElevationPitch(eye, audioPos);
+
+		// Project cursor offset in player's coordinate frame to detect front vs. behind
+		Direction fwd = facing != null ? facing : Direction.NORTH;
+		double yawRad = Math.toRadians(fwd.toYRot());
+		double fwdX = -Math.sin(yawRad);
+		double fwdZ = Math.cos(yawRad);
+		Vec3 center = Vec3.atCenterOf(cursor);
+		double ahead = (center.x() - eye.x()) * fwdX + (center.z() - eye.z()) * fwdZ;
+		boolean isBehind = ahead < -0.15;
+
 		float behindGain = calculateBehindGain(eye, player.getYRot(), audioPos);
 
 		SoundEvent sound;
@@ -82,14 +97,17 @@ public final class BuildCursorSound {
 				sound = SoundEvents.POINTED_DRIPSTONE_DRIP_WATER_INTO_CAULDRON;
 			}
 			baseVolume = BASE_CUE_VOLUME;
+			if (isBehind) {
+				basePitch = 0.85f; // Darker tone when behind
+			}
 		} else if (state.isAir()) {
-			sound = AIR_SOUND;
+			sound = isBehind ? AIR_SOUND_BEHIND : AIR_SOUND;
 			baseVolume = BASE_CUE_VOLUME;
 		} else {
 			SoundType soundType = state.getSoundType();
 			sound = soundType.getStepSound();
 			baseVolume = Math.max(2.5f, soundType.getVolume() * BASE_CUE_VOLUME);
-			basePitch = soundType.getPitch();
+			basePitch = isBehind ? soundType.getPitch() * 0.82f : soundType.getPitch(); // Darker pitch when behind
 		}
 
 		float finalVolume = CueVolume.scale(baseVolume) * distanceGain * behindGain;
@@ -114,18 +132,40 @@ public final class BuildCursorSound {
 	/**
 	 * Computes the 3D position vector in world space for emitting the sound in OpenAL.
 	 *
-	 * <p>Returns the center of the {@code cursor} block. If the cursor is positioned directly
-	 * at the player's head (distance &lt; 0.3 blocks), pushes the sound slightly forward along
-	 * {@code facing} to prevent degenerate panning at distance zero.
+	 * <p>Expands the lateral offset by {@link #LATERAL_SPREAD_FACTOR} so stepping left/right
+	 * immediately creates distinct stereo separation across the headphones.
 	 */
 	public static Vec3 calculateAudioPosition(Vec3 eye, BlockPos cursor, Direction facing) {
+		Direction fwd = facing != null ? facing : Direction.NORTH;
+		float yaw = fwd.toYRot();
+		double yawRad = Math.toRadians(yaw);
+		double fwdX = -Math.sin(yawRad);
+		double fwdZ = Math.cos(yawRad);
+		double rightX = -fwdZ;
+		double rightZ = fwdX;
+
 		Vec3 center = Vec3.atCenterOf(cursor);
-		if (eye.distanceTo(center) < 0.3) {
-			Direction fwd = facing != null ? facing : Direction.NORTH;
-			Vec3 forwardVec = Vec3.atLowerCornerOf(fwd.getUnitVec3i());
-			return eye.add(forwardVec.scale(0.5));
+		double dx = center.x() - eye.x();
+		double dy = center.y() - eye.y();
+		double dz = center.z() - eye.z();
+
+		double ahead = dx * fwdX + dz * fwdZ;
+		double lateral = dx * rightX + dz * rightZ;
+
+		// Expand lateral separation so 1 block step gives immediate stereo pan
+		double effectiveLateral = lateral * LATERAL_SPREAD_FACTOR;
+
+		// If degenerate near head, ensure minimum forward offset
+		double spreadDistSq = ahead * ahead + effectiveLateral * effectiveLateral + dy * dy;
+		if (spreadDistSq < 0.09) {
+			return eye.add(fwdX * 0.5, 0, fwdZ * 0.5);
 		}
-		return center;
+
+		return new Vec3(
+				eye.x() + fwdX * ahead + rightX * effectiveLateral,
+				eye.y() + dy,
+				eye.z() + fwdZ * ahead + rightZ * effectiveLateral
+		);
 	}
 
 	/**

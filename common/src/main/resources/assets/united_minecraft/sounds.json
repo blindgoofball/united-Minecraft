@@ -6,5 +6,11 @@
       "united_minecraft:build_cursor_air_2",
       "united_minecraft:build_cursor_air_3"
     ]
+  },
+  "build_cursor_air_behind": {
+    "category": "master",
+    "sounds": [
+      "united_minecraft:build_cursor_air_behind"
+    ]
   }
 }
