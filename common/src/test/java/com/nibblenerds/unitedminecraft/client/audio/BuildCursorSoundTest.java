@@ -1,70 +1,97 @@
 package com.nibblenerds.unitedminecraft.client.audio;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import net.minecraft.core.Direction;
 import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.Test;
 
 class BuildCursorSoundTest {
 	private static final double EPSILON = 1.0e-5;
+	private static final double DISTANCE = 1.8;
 
 	@Test
-	void audioPositionAtEyeReturnsEye() {
+	void stationaryAudioPositionFacesDeadAhead() {
 		Vec3 eye = new Vec3(10.0, 64.0, -10.0);
-		Vec3 result = BuildCursorSound.calculateAudioPosition(eye, eye, BuildCursorSound.MAX_AUDIO_OFFSET_BLOCKS);
+		Vec3 result = BuildCursorSound.calculateAudioPosition(eye, Direction.NORTH, null, DISTANCE);
 		assertEquals(eye.x, result.x, EPSILON);
+		assertEquals(eye.y, result.y, EPSILON);
+		assertEquals(eye.z - DISTANCE, result.z, EPSILON); // North is -Z
+	}
+
+	@Test
+	void facingNorthSteppingLeftPansToLeftEar() {
+		Vec3 eye = new Vec3(0.0, 64.0, 0.0);
+		Direction facing = Direction.NORTH;
+		Direction stepLeft = facing.getCounterClockWise(); // West (-X)
+
+		Vec3 result = BuildCursorSound.calculateAudioPosition(eye, facing, stepLeft, DISTANCE);
+		assertEquals(eye.x - DISTANCE, result.x, EPSILON);
 		assertEquals(eye.y, result.y, EPSILON);
 		assertEquals(eye.z, result.z, EPSILON);
 	}
 
 	@Test
-	void audioPositionWithinMaxDistanceReturnsExactTarget() {
+	void facingNorthSteppingRightPansToRightEar() {
 		Vec3 eye = new Vec3(0.0, 64.0, 0.0);
-		Vec3 target = new Vec3(0.5, 64.5, -0.5);
-		assertTrue(target.distanceTo(eye) <= BuildCursorSound.MAX_AUDIO_OFFSET_BLOCKS);
+		Direction facing = Direction.NORTH;
+		Direction stepRight = facing.getClockWise(); // East (+X)
 
-		Vec3 result = BuildCursorSound.calculateAudioPosition(eye, target, BuildCursorSound.MAX_AUDIO_OFFSET_BLOCKS);
-		assertEquals(target.x, result.x, EPSILON);
-		assertEquals(target.y, result.y, EPSILON);
-		assertEquals(target.z, result.z, EPSILON);
+		Vec3 result = BuildCursorSound.calculateAudioPosition(eye, facing, stepRight, DISTANCE);
+		assertEquals(eye.x + DISTANCE, result.x, EPSILON);
+		assertEquals(eye.y, result.y, EPSILON);
+		assertEquals(eye.z, result.z, EPSILON);
 	}
 
 	@Test
-	void audioPositionBeyondMaxDistanceClampsDistanceAlongRay() {
+	void facingNorthSteppingForwardPositionsAhead() {
 		Vec3 eye = new Vec3(0.0, 64.0, 0.0);
-		Vec3 target = new Vec3(20.0, 64.0, 0.0); // 20 blocks east
+		Direction facing = Direction.NORTH;
 
-		Vec3 result = BuildCursorSound.calculateAudioPosition(eye, target, BuildCursorSound.MAX_AUDIO_OFFSET_BLOCKS);
-		assertEquals(2.0, result.x, EPSILON);
-		assertEquals(64.0, result.y, EPSILON);
-		assertEquals(0.0, result.z, EPSILON);
-		assertEquals(2.0, result.distanceTo(eye), EPSILON);
+		Vec3 result = BuildCursorSound.calculateAudioPosition(eye, facing, facing, DISTANCE);
+		assertEquals(eye.x, result.x, EPSILON);
+		assertEquals(eye.y, result.y, EPSILON);
+		assertEquals(eye.z - DISTANCE, result.z, EPSILON);
 	}
 
 	@Test
-	void audioPositionElevatedClampsWithCorrectElevation() {
-		Vec3 eye = new Vec3(0.0, 0.0, 0.0);
-		Vec3 target = new Vec3(0.0, 10.0, 0.0); // 10 blocks straight up
+	void facingNorthSteppingBackwardPositionsBehind() {
+		Vec3 eye = new Vec3(0.0, 64.0, 0.0);
+		Direction facing = Direction.NORTH;
 
-		Vec3 result = BuildCursorSound.calculateAudioPosition(eye, target, BuildCursorSound.MAX_AUDIO_OFFSET_BLOCKS);
-		assertEquals(0.0, result.x, EPSILON);
-		assertEquals(2.0, result.y, EPSILON);
-		assertEquals(0.0, result.z, EPSILON);
+		Vec3 result = BuildCursorSound.calculateAudioPosition(eye, facing, facing.getOpposite(), DISTANCE);
+		assertEquals(eye.x, result.x, EPSILON);
+		assertEquals(eye.y, result.y, EPSILON);
+		assertEquals(eye.z + DISTANCE, result.z, EPSILON);
 	}
 
 	@Test
-	void audioPositionDiagonalPreservesUnitVector() {
-		Vec3 eye = new Vec3(0.0, 0.0, 0.0);
-		Vec3 target = new Vec3(-10.0, 10.0, -10.0);
+	void steppingUpPositionsAbove() {
+		Vec3 eye = new Vec3(0.0, 64.0, 0.0);
+		Vec3 result = BuildCursorSound.calculateAudioPosition(eye, Direction.NORTH, Direction.UP, DISTANCE);
+		assertEquals(eye.x, result.x, EPSILON);
+		assertEquals(eye.y + DISTANCE, result.y, EPSILON);
+		assertEquals(eye.z, result.z, EPSILON);
+	}
 
-		Vec3 result = BuildCursorSound.calculateAudioPosition(eye, target, BuildCursorSound.MAX_AUDIO_OFFSET_BLOCKS);
-		assertEquals(2.0, result.distanceTo(eye), EPSILON);
+	@Test
+	void steppingDownPositionsBelow() {
+		Vec3 eye = new Vec3(0.0, 64.0, 0.0);
+		Vec3 result = BuildCursorSound.calculateAudioPosition(eye, Direction.NORTH, Direction.DOWN, DISTANCE);
+		assertEquals(eye.x, result.x, EPSILON);
+		assertEquals(eye.y - DISTANCE, result.y, EPSILON);
+		assertEquals(eye.z, result.z, EPSILON);
+	}
 
-		Vec3 expectedDirection = target.normalize();
-		Vec3 actualDirection = result.normalize();
-		assertEquals(expectedDirection.x, actualDirection.x, EPSILON);
-		assertEquals(expectedDirection.y, actualDirection.y, EPSILON);
-		assertEquals(expectedDirection.z, actualDirection.z, EPSILON);
+	@Test
+	void facingWestSteppingLeftPansSouth() {
+		Vec3 eye = new Vec3(0.0, 64.0, 0.0);
+		Direction facing = Direction.WEST; // -X
+		Direction stepLeft = facing.getCounterClockWise(); // South (+Z)
+
+		Vec3 result = BuildCursorSound.calculateAudioPosition(eye, facing, stepLeft, DISTANCE);
+		assertEquals(eye.x, result.x, EPSILON);
+		assertEquals(eye.y, result.y, EPSILON);
+		assertEquals(eye.z + DISTANCE, result.z, EPSILON);
 	}
 }

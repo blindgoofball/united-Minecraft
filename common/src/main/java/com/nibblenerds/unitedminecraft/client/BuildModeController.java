@@ -292,7 +292,7 @@ public final class BuildModeController {
 			snapYawTo(player, facing);
 			UnitedMinecraftConfig.BuildCursorFeedback feedback = UnitedMinecraftConfig.get().buildCursorFeedback;
 			if (feedback != UnitedMinecraftConfig.BuildCursorFeedback.SPEAK_ONLY) {
-				BuildCursorSound.playCursorCue(client, player, cursor);
+				BuildCursorSound.playCursorCue(client, player, cursor, null, facing);
 			}
 			MutableComponent message = Component.translatable("united_minecraft.narrate.build_mode_on")
 					.append(Component.literal(" "))
@@ -349,7 +349,7 @@ public final class BuildModeController {
 			cursor = player.blockPosition();
 			UnitedMinecraftConfig.BuildCursorFeedback feedback = UnitedMinecraftConfig.get().buildCursorFeedback;
 			if (feedback != UnitedMinecraftConfig.BuildCursorFeedback.SPEAK_ONLY) {
-				BuildCursorSound.playCursorCue(client, player, cursor);
+				BuildCursorSound.playCursorCue(client, player, cursor, null, facing);
 			}
 			if (feedback != UnitedMinecraftConfig.BuildCursorFeedback.SOUND_ONLY) {
 				client.getNarrator().saySystemNow(describeCursor(player));
@@ -361,7 +361,7 @@ public final class BuildModeController {
 		anchorZ = cursor.getZ();
 		UnitedMinecraftConfig.BuildCursorFeedback feedback = UnitedMinecraftConfig.get().buildCursorFeedback;
 		if (feedback != UnitedMinecraftConfig.BuildCursorFeedback.SPEAK_ONLY) {
-			BuildCursorSound.playCursorCue(client, player, cursor);
+			BuildCursorSound.playCursorCue(client, player, cursor, null, facing);
 		}
 		if (feedback != UnitedMinecraftConfig.BuildCursorFeedback.SOUND_ONLY) {
 			client.getNarrator().saySystemNow(describeCursor(player));
@@ -447,6 +447,7 @@ public final class BuildModeController {
 		boolean reorientRightPressed = ClientKeyBindings.pressed(ClientKeyBindings.BUILD_REORIENT_RIGHT);
 
 		boolean moved = false;
+		Direction stepDirection = null;
 		if (reorientLeftPressed || reorientRightPressed) {
 			// BUILD_REORIENT_LEFT/RIGHT reorients instead of moving - see cycleOrientation. Their
 			// own KeybindContext.BUILD_MODE plus ClientKeyBindings.updateAll()'s specificity
@@ -459,30 +460,35 @@ public final class BuildModeController {
 				cycleOrientation(client, player, 1);
 			}
 		} else {
-			if (leftPressed) {
-				moved |= tryMove(client, player, cursor.relative(facing.getCounterClockWise()));
+			if (leftPressed && tryMove(client, player, cursor.relative(facing.getCounterClockWise()))) {
+				moved = true;
+				stepDirection = facing.getCounterClockWise();
+			} else if (rightPressed && tryMove(client, player, cursor.relative(facing.getClockWise()))) {
+				moved = true;
+				stepDirection = facing.getClockWise();
 			}
-			if (rightPressed) {
-				moved |= tryMove(client, player, cursor.relative(facing.getClockWise()));
-			}
 		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_UP)) {
-			moved |= tryMove(client, player, cursor.relative(facing));
+		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_UP) && tryMove(client, player, cursor.relative(facing))) {
+			moved = true;
+			stepDirection = facing;
 		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_DOWN)) {
-			moved |= tryMove(client, player, cursor.relative(facing.getOpposite()));
+		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_DOWN) && tryMove(client, player, cursor.relative(facing.getOpposite()))) {
+			moved = true;
+			stepDirection = facing.getOpposite();
 		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_ASCEND)) {
-			moved |= tryMove(client, player, cursor.above());
+		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_ASCEND) && tryMove(client, player, cursor.above())) {
+			moved = true;
+			stepDirection = Direction.UP;
 		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_DESCEND)) {
-			moved |= tryMove(client, player, cursor.below());
+		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_DESCEND) && tryMove(client, player, cursor.below())) {
+			moved = true;
+			stepDirection = Direction.DOWN;
 		}
 
 		if (moved) {
 			UnitedMinecraftConfig.BuildCursorFeedback feedback = UnitedMinecraftConfig.get().buildCursorFeedback;
 			if (feedback != UnitedMinecraftConfig.BuildCursorFeedback.SPEAK_ONLY) {
-				BuildCursorSound.playCursorCue(client, player, cursor);
+				BuildCursorSound.playCursorCue(client, player, cursor, stepDirection, facing);
 			}
 			if (feedback != UnitedMinecraftConfig.BuildCursorFeedback.SOUND_ONLY) {
 				client.getNarrator().saySystemNow(describeCursor(player));
