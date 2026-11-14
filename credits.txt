@@ -1,1 +1,0 @@
-build_cursor_air (1, 2, 3): GameSynth / Kenney (CC0 1.0 Universal / Public Domain Dedication).

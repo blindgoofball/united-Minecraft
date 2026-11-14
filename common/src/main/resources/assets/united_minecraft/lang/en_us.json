@@ -846,7 +846,7 @@
 	"united_minecraft.glossary.elytra_safe_landing": "Elytra safe landing - a gentle touchdown is predicted",
 	"united_minecraft.glossary.ai_waiting": "A soft click every two seconds: an AI description is still being worked on",
 	"united_minecraft.glossary.build_cursor_block": "Build Mode cursor: block inspected (material footstep sound in 3D stereo)",
-	"united_minecraft.glossary.build_cursor_air": "Build Mode cursor: air / empty space (air whoosh in 3D stereo)",
+	"united_minecraft.glossary.build_cursor_air": "Build Mode cursor: air / empty space (soft air cue in 3D stereo)",
 	"united_minecraft.glossary.chat_message": "Another player's chat message has arrived",
 	"united_minecraft.glossary.map_beacon_chime": "A map or compass you're holding has a real target - points toward its bearing",
 	"united_minecraft.glossary.wall_tone_ahead": "Wall tone, ahead: the highest of the four, louder as a wall in front of you gets closer",

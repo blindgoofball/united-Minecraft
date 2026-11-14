@@ -10,10 +10,11 @@ narrates it, and locks the cursor's movement to that orientation.
 
 - **Moving the cursor:** Up/Down step forward and back, Left/Right strafe, Page
   Up/Down move vertically. Each step plays an immediate 3D stereo sound cue
-  representing the block at the cursor (the block's material hit sound, water/lava
-  sounds, or a distinct snow hit puff for air / empty space) and narrates the block,
+  representing the block at the cursor (the block's material step sound, water/lava
+  sounds, or a soft tone for air / empty space) and narrates the block,
   coordinates and whether it is placeable. The sound originates from the cursor's location
-  in 3D stereo space (left/right/elevation), allowing rapid auditory surveying of structures.
+  in 3D stereo space (left/right/elevation, with a pitch drop when behind you), allowing rapid
+  auditory surveying of structures.
   In Settings (`F6`), the "Build Mode: Cursor Feedback" setting lets you choose between
   **Speech and Sound**, **Sound Only** (for fast surveying and building without narration clutter),
   or **Speech Only**. The cursor roams a 65x65 area centered where you turned it on.

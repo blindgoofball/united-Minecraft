@@ -280,9 +280,6 @@ public final class BuildModeController {
 		active = !active;
 		ModeToggleSound.playBuildMode(client, player, active);
 		if (active) {
-			if (!client.options.directionalAudio().get()) {
-				client.options.directionalAudio().set(true);
-			}
 			breakHeld = ClientKeyBindings.BUILD_BREAK.isDown();
 			selectedFacing = null;
 			placeUpperHalf = false;
@@ -294,13 +291,14 @@ public final class BuildModeController {
 			facing = nearestCardinal(player.getYRot());
 			snapYawTo(player, facing);
 			UnitedMinecraftConfig.BuildCursorFeedback feedback = UnitedMinecraftConfig.get().buildCursorFeedback;
-			if (feedback != UnitedMinecraftConfig.BuildCursorFeedback.SPEAK_ONLY) {
+			if (feedback.playsSound()) {
 				BuildCursorSound.playCursorCue(client, player, cursor, null, facing);
 			}
+			// Activation message always announces entry and facing direction across all feedback modes (including Sound Only)
 			MutableComponent message = Component.translatable("united_minecraft.narrate.build_mode_on")
 					.append(Component.literal(" "))
 					.append(Component.translatable("united_minecraft.narrate.build_facing", directionName(facing)));
-			if (feedback != UnitedMinecraftConfig.BuildCursorFeedback.SOUND_ONLY) {
+			if (feedback.speaks()) {
 				message = message.append(Component.literal(" "))
 						.append(describeCursor(player));
 			}
@@ -350,23 +348,25 @@ public final class BuildModeController {
 				return;
 			}
 			cursor = player.blockPosition();
-			UnitedMinecraftConfig.BuildCursorFeedback feedback = UnitedMinecraftConfig.get().buildCursorFeedback;
-			if (feedback != UnitedMinecraftConfig.BuildCursorFeedback.SPEAK_ONLY) {
-				BuildCursorSound.playCursorCue(client, player, cursor, null, facing);
-			}
-			if (feedback != UnitedMinecraftConfig.BuildCursorFeedback.SOUND_ONLY) {
-				client.getNarrator().saySystemNow(describeCursor(player));
-			}
+			notifyCursorFeedback(client, player, null);
 			return;
 		}
 		cursor = player.blockPosition();
 		anchorX = cursor.getX();
 		anchorZ = cursor.getZ();
+		notifyCursorFeedback(client, player, null);
+	}
+
+	/**
+	 * Delivers audio cue and/or spoken narration for the cursor according to
+	 * {@link UnitedMinecraftConfig#buildCursorFeedback}.
+	 */
+	private static void notifyCursorFeedback(Minecraft client, LocalPlayer player, Direction stepDirection) {
 		UnitedMinecraftConfig.BuildCursorFeedback feedback = UnitedMinecraftConfig.get().buildCursorFeedback;
-		if (feedback != UnitedMinecraftConfig.BuildCursorFeedback.SPEAK_ONLY) {
-			BuildCursorSound.playCursorCue(client, player, cursor, null, facing);
+		if (feedback.playsSound()) {
+			BuildCursorSound.playCursorCue(client, player, cursor, stepDirection, facing);
 		}
-		if (feedback != UnitedMinecraftConfig.BuildCursorFeedback.SOUND_ONLY) {
+		if (feedback.speaks()) {
 			client.getNarrator().saySystemNow(describeCursor(player));
 		}
 	}
@@ -463,6 +463,8 @@ public final class BuildModeController {
 				cycleOrientation(client, player, 1);
 			}
 		} else {
+			// Mutually exclusive so pressing both lateral keys in the same tick does not double-step
+			// or conflict on the movement direction.
 			if (leftPressed && tryMove(client, player, cursor.relative(facing.getCounterClockWise()))) {
 				moved = true;
 				stepDirection = facing.getCounterClockWise();
@@ -489,13 +491,7 @@ public final class BuildModeController {
 		}
 
 		if (moved) {
-			UnitedMinecraftConfig.BuildCursorFeedback feedback = UnitedMinecraftConfig.get().buildCursorFeedback;
-			if (feedback != UnitedMinecraftConfig.BuildCursorFeedback.SPEAK_ONLY) {
-				BuildCursorSound.playCursorCue(client, player, cursor, stepDirection, facing);
-			}
-			if (feedback != UnitedMinecraftConfig.BuildCursorFeedback.SOUND_ONLY) {
-				client.getNarrator().saySystemNow(describeCursor(player));
-			}
+			notifyCursorFeedback(client, player, stepDirection);
 		}
 
 		tickPendingPlacement(client, player);

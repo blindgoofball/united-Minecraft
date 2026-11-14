@@ -170,7 +170,15 @@ public final class UnitedMinecraftConfig {
 	public enum BuildCursorFeedback {
 		SPEAK_AND_SOUND,
 		SOUND_ONLY,
-		SPEAK_ONLY
+		SPEAK_ONLY;
+
+		public boolean playsSound() {
+			return this != SPEAK_ONLY;
+		}
+
+		public boolean speaks() {
+			return this != SOUND_ONLY;
+		}
 	}
 
 	/** Governs the audio cue for the weapon attack-strength meter refilling - see {@link CombatModeController#tickAttackCue}. */
