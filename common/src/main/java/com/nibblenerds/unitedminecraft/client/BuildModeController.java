@@ -3,6 +3,7 @@ package com.nibblenerds.unitedminecraft.client;
 import com.nibblenerds.unitedminecraft.client.autowalk.AutoWalkController;
 import com.nibblenerds.unitedminecraft.client.scanner.OreDetection;
 import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
+import com.nibblenerds.unitedminecraft.client.audio.BuildCursorSound;
 import com.nibblenerds.unitedminecraft.client.audio.ModeToggleSound;
 import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
@@ -289,11 +290,18 @@ public final class BuildModeController {
 			anchorZ = cursor.getZ();
 			facing = nearestCardinal(player.getYRot());
 			snapYawTo(player, facing);
-			Component message = Component.translatable("united_minecraft.narrate.build_mode_on")
+			UnitedMinecraftConfig.BuildCursorFeedback feedback = UnitedMinecraftConfig.get().buildCursorFeedback;
+			if (feedback.playsSound()) {
+				BuildCursorSound.playCursorCue(client, player, cursor, null, facing);
+			}
+			// Activation message always announces entry and facing direction across all feedback modes (including Sound Only)
+			MutableComponent message = Component.translatable("united_minecraft.narrate.build_mode_on")
 					.append(Component.literal(" "))
-					.append(Component.translatable("united_minecraft.narrate.build_facing", directionName(facing)))
-					.append(Component.literal(" "))
-					.append(describeCursor(player));
+					.append(Component.translatable("united_minecraft.narrate.build_facing", directionName(facing)));
+			if (feedback.speaks()) {
+				message = message.append(Component.literal(" "))
+						.append(describeCursor(player));
+			}
 			client.getNarrator().saySystemNow(message);
 			AngleAssistController.disable(client);
 		} else {
@@ -340,13 +348,27 @@ public final class BuildModeController {
 				return;
 			}
 			cursor = player.blockPosition();
-			client.getNarrator().saySystemNow(describeCursor(player));
+			notifyCursorFeedback(client, player, null);
 			return;
 		}
 		cursor = player.blockPosition();
 		anchorX = cursor.getX();
 		anchorZ = cursor.getZ();
-		client.getNarrator().saySystemNow(describeCursor(player));
+		notifyCursorFeedback(client, player, null);
+	}
+
+	/**
+	 * Delivers audio cue and/or spoken narration for the cursor according to
+	 * {@link UnitedMinecraftConfig#buildCursorFeedback}.
+	 */
+	private static void notifyCursorFeedback(Minecraft client, LocalPlayer player, Direction stepDirection) {
+		UnitedMinecraftConfig.BuildCursorFeedback feedback = UnitedMinecraftConfig.get().buildCursorFeedback;
+		if (feedback.playsSound()) {
+			BuildCursorSound.playCursorCue(client, player, cursor, stepDirection, facing);
+		}
+		if (feedback.speaks()) {
+			client.getNarrator().saySystemNow(describeCursor(player));
+		}
 	}
 
 	/** The box the cursor is locked to, or null until both corner markers are placed. */
@@ -428,6 +450,7 @@ public final class BuildModeController {
 		boolean reorientRightPressed = ClientKeyBindings.pressed(ClientKeyBindings.BUILD_REORIENT_RIGHT);
 
 		boolean moved = false;
+		Direction stepDirection = null;
 		if (reorientLeftPressed || reorientRightPressed) {
 			// BUILD_REORIENT_LEFT/RIGHT reorients instead of moving - see cycleOrientation. Their
 			// own KeybindContext.BUILD_MODE plus ClientKeyBindings.updateAll()'s specificity
@@ -440,28 +463,35 @@ public final class BuildModeController {
 				cycleOrientation(client, player, 1);
 			}
 		} else {
-			if (leftPressed) {
-				moved |= tryMove(client, player, cursor.relative(facing.getCounterClockWise()));
+			// Mutually exclusive so pressing both lateral keys in the same tick does not double-step
+			// or conflict on the movement direction.
+			if (leftPressed && tryMove(client, player, cursor.relative(facing.getCounterClockWise()))) {
+				moved = true;
+				stepDirection = facing.getCounterClockWise();
+			} else if (rightPressed && tryMove(client, player, cursor.relative(facing.getClockWise()))) {
+				moved = true;
+				stepDirection = facing.getClockWise();
 			}
-			if (rightPressed) {
-				moved |= tryMove(client, player, cursor.relative(facing.getClockWise()));
-			}
 		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_UP)) {
-			moved |= tryMove(client, player, cursor.relative(facing));
+		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_UP) && tryMove(client, player, cursor.relative(facing))) {
+			moved = true;
+			stepDirection = facing;
 		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_DOWN)) {
-			moved |= tryMove(client, player, cursor.relative(facing.getOpposite()));
+		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_DOWN) && tryMove(client, player, cursor.relative(facing.getOpposite()))) {
+			moved = true;
+			stepDirection = facing.getOpposite();
 		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_ASCEND)) {
-			moved |= tryMove(client, player, cursor.above());
+		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_ASCEND) && tryMove(client, player, cursor.above())) {
+			moved = true;
+			stepDirection = Direction.UP;
 		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_DESCEND)) {
-			moved |= tryMove(client, player, cursor.below());
+		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_DESCEND) && tryMove(client, player, cursor.below())) {
+			moved = true;
+			stepDirection = Direction.DOWN;
 		}
 
 		if (moved) {
-			client.getNarrator().saySystemNow(describeCursor(player));
+			notifyCursorFeedback(client, player, stepDirection);
 		}
 
 		tickPendingPlacement(client, player);
