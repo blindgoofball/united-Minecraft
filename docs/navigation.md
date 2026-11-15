@@ -18,8 +18,11 @@ Shift with the target key). It works on any server with no special permissions.
 - It goes through closed doors the way a villager does (Auto-Walk Opens Doors in
   Settings > Modes & Movement, on by default): it stops a couple of blocks short,
   opens the door, waits for it to swing open, and closes it again once you are
-  through. A door that was already open is left open. Iron doors stay shut, since
-  they need redstone, and a door that will not open stops the walk.
+  through. A door that was already open is left open. An iron door is routed through
+  only from a side where a button that would power it can be pressed (one beside or
+  above the door, or on the block next to it or over it): the walk presses the button from beside the door, waits
+  for it to open and walks through, and the door shuts itself. An iron door with no
+  such button is a wall, and a door that will not open stops the walk.
 - It routes around powder snow, and only crosses the top of it if you are wearing
   leather boots.
 - Riding a saddled horse, donkey, mule or similar, it rides you there instead,

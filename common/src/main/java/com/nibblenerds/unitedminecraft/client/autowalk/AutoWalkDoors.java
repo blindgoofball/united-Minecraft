@@ -31,7 +31,8 @@ import net.minecraft.world.phys.Vec3;
  * make, and the walk waits for it to swing open. Each door opened this way is remembered, and closed
  * again once the player is a little way past it; a door that was already open is never touched, so the
  * player leaves things as they found them. Doors still open when the walk ends are closed too, if the
- * player has got through them.
+ * player has got through them. An iron door is opened by pressing the button that powers it ({@link
+ * ButtonDoors}), once the player is next to it, and is left to shut by itself.
  */
 public final class AutoWalkDoors {
 	enum Gate {
@@ -54,6 +55,12 @@ public final class AutoWalkDoors {
 	// Opens tried on one door before it counts as stuck - a server that keeps refusing (a protected
 	// area, say) would otherwise be clicked at forever.
 	private static final int MAX_ATTEMPTS = 3;
+
+	// A button-operated door is only pressed from this close, so it is still open when the player reaches
+	// it: a stone button holds it for a second, and the player stands still until it has swung open.
+	private static final double BUTTON_PRESS_DISTANCE = 1.5;
+	// How far from the player's eye a button can be pressed.
+	private static final double BUTTON_REACH = 4.0;
 
 	/** A door this walk opened, and the way the player was heading as they opened it. */
 	private record Opened(BlockPos pos, double dirX, double dirZ) {
@@ -84,8 +91,17 @@ public final class AutoWalkDoors {
 			double dx = door.getX() + 0.5 - player.getX();
 			double dz = door.getZ() + 0.5 - player.getZ();
 			double distance = Math.hypot(dx, dz);
-			if (distance > OPEN_DISTANCE) {
+			boolean handless = ButtonDoors.isHandlessDoor(level.getBlockState(door));
+			// The button has to be one this side of the door can reach.
+			BlockPos button = handless
+					? ButtonDoors.buttonFor(level, door, ButtonDoors.sideOf(level.getBlockState(door), door, player.getX(), player.getZ()))
+					: null;
+			if (distance > (handless ? BUTTON_PRESS_DISTANCE : OPEN_DISTANCE)) {
 				return Gate.CLEAR;
+			}
+			if (handless && (button == null || player.getEyePosition().distanceTo(Vec3.atCenterOf(button)) > BUTTON_REACH)) {
+				// No button to press, or one that cannot be reached from here.
+				return Gate.FAILED;
 			}
 			int attempts = ATTEMPTS.getOrDefault(door, 0);
 			if (++sinceAttempt >= RETRY_TICKS || attempts == 0) {
@@ -94,6 +110,12 @@ public final class AutoWalkDoors {
 				}
 				ATTEMPTS.put(door, attempts + 1);
 				sinceAttempt = 0;
+				if (button != null) {
+					// Pressed, not toggled: the door shuts by itself when the button lets go, so it
+					// is never recorded as one to close behind.
+					toggle(client, player, button);
+					return Gate.WAIT;
+				}
 				toggle(client, player, door);
 				if (OPENED.stream().noneMatch(opened -> opened.pos().equals(door))) {
 					OPENED.add(new Opened(door, dx / distance, dz / distance));
@@ -138,16 +160,22 @@ public final class AutoWalkDoors {
 		return (x - (door.getX() + 0.5)) * dirX + (z - (door.getZ() + 0.5)) * dirZ;
 	}
 
-	/** The lower half of the closed, hand-openable door at {@code pos}, or null if it is anything else. */
+	/** The lower half of the closed door at {@code pos} that a hand or a button can open, or null if it is anything else. */
 	private static BlockPos closedDoorAt(Level level, BlockPos pos) {
 		BlockState state = level.getBlockState(pos);
-		if (!(state.getBlock() instanceof DoorBlock door) || state.getValue(DoorBlock.OPEN) || !door.type().canOpenByHand()) {
+		if (!(state.getBlock() instanceof DoorBlock door) || state.getValue(DoorBlock.OPEN)) {
 			return null;
 		}
-		return state.getValue(DoorBlock.HALF) == DoubleBlockHalf.UPPER ? pos.below() : pos;
+		// An iron door is one to open only when a button powers it; the route never goes through one
+		// that nothing does.
+		BlockPos lower = ButtonDoors.lowerHalf(state, pos);
+		if (!door.type().canOpenByHand() && ButtonDoors.buttonFor(level, lower, null) == null) {
+			return null;
+		}
+		return lower;
 	}
 
-	/** Opens or closes a door with the same click a player would make. */
+	/** Opens or closes a door, or presses a button, with the same click a player would make. */
 	private static void toggle(Minecraft client, LocalPlayer player, BlockPos door) {
 		BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(door), Direction.UP, door, false);
 		InteractionResult result = client.gameMode.useItemOn(player, InteractionHand.MAIN_HAND, hit);

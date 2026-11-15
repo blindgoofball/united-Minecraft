@@ -40,7 +40,11 @@ import net.minecraft.world.level.pathfinder.PathFinder;
  * WalkNodeEvaluator}.
  */
 public final class ClientPathfinding {
-	private static final int SEARCH_MARGIN = 16;
+	// How far past the start and target the search may look, and the nodes it may visit before it settles
+	// for the closest it has got. A node is one block cell, and a ladder shaft or a long stair is a node
+	// per block, so the 4096 vanilla's own mobs get runs out on a winding route and the walk stops short.
+	private static final int SEARCH_MARGIN = 32;
+	private static final int MAX_VISITED_NODES = 16384;
 	// Flying approach spots (see flightApproaches): the rider's eye this many blocks from the target in
 	// each direction, at least APPROACH_MIN_DISTANCE out, and the box corner counts as there within a couple of blocks.
 	private static final int APPROACH_RADIUS = 4;
@@ -121,7 +125,7 @@ public final class ClientPathfinding {
 				: body instanceof AbstractNautilus
 						? new SwimNodeEvaluator(false)
 						: new AutoWalkNodeEvaluator(swim, PowderSnowBlock.canEntityWalkOnPowderSnow(player), openDoors);
-		PathFinder finder = new PathFinder(evaluator, 4096);
+		PathFinder finder = new PathFinder(evaluator, MAX_VISITED_NODES);
 		Set<BlockPos> targets = Set.of(target);
 		if (AutoWalkController.movesInThreeDimensions(body)) {
 			Set<BlockPos> approaches = flightApproaches(level, player, body, target);

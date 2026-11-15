@@ -1,9 +1,11 @@
 package com.nibblenerds.unitedminecraft.client.autowalk;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.pathfinder.Node;
@@ -46,8 +48,8 @@ import net.minecraft.world.level.pathfinder.WalkNodeEvaluator;
  * without leather boots walks straight through and sinks. So unless the player can walk on powder
  * snow, those cells are treated as powder snow itself, which vanilla already refuses to route through.
  *
- * <p><b>Doors.</b> With {@code openDoors}, a closed door that opens by hand is routed through, as a
- * villager's is; the walker ({@link AutoWalkDoors}) is what opens and closes it. Without it, a closed
+ * <p><b>Doors.</b> With {@code openDoors}, a closed door that opens by hand, or an iron door with a
+ * button that powers it ({@link ButtonDoors}), is routed through, as a villager's is; the walker ({@link AutoWalkDoors}) is what opens and closes it. Without it, a closed
  * door is a wall, exactly as vanilla's land pathfinding treats one for a mob that cannot open doors.
  */
 final class AutoWalkNodeEvaluator extends WalkNodeEvaluator {
@@ -86,6 +88,29 @@ final class AutoWalkNodeEvaluator extends WalkNodeEvaluator {
 
 	@Override
 	public int getNeighbors(Node[] neighbors, Node pos) {
+		int count = climbingNeighbors(neighbors, pos);
+		// An iron door is only a way through from a side its button can be pressed from.
+		int kept = 0;
+		for (int i = 0; i < count; i++) {
+			if (!isButtonDoorWithoutButton(neighbors[i], pos)) {
+				neighbors[kept++] = neighbors[i];
+			}
+		}
+		return kept;
+	}
+
+	private boolean isButtonDoorWithoutButton(Node to, Node from) {
+		BlockPos doorPos = new BlockPos(to.x, to.y, to.z);
+		BlockState state = this.currentContext.getBlockState(doorPos);
+		if (!ButtonDoors.isHandlessDoor(state) || state.getValue(DoorBlock.OPEN)) {
+			return false;
+		}
+		BlockPos lower = ButtonDoors.lowerHalf(state, doorPos);
+		Direction side = ButtonDoors.sideOf(state, lower, from.x + 0.5, from.z + 0.5);
+		return side == null || ButtonDoors.buttonFor(this.currentContext.level(), lower, side) == null;
+	}
+
+	private int climbingNeighbors(Node[] neighbors, Node pos) {
 		int count = super.getNeighbors(neighbors, pos);
 		if (!isClimbable(this.currentContext.getBlockState(new BlockPos(pos.x, pos.y, pos.z)))) {
 			return count;
@@ -130,6 +155,15 @@ final class AutoWalkNodeEvaluator extends WalkNodeEvaluator {
 			return PathType.OPEN;
 		}
 		PathType type = super.getPathType(context, x, y, z);
+		if (type == PathType.DOOR_IRON_CLOSED && this.canOpenDoors()) {
+			// An iron door with a button that powers it is as good as a wooden one: the walker presses
+			// the button (see AutoWalkDoors) where a villager would pull the door open.
+			BlockPos doorPos = new BlockPos(x, y, z);
+			BlockPos lower = ButtonDoors.lowerHalf(context.getBlockState(doorPos), doorPos);
+			if (ButtonDoors.buttonFor(context.level(), lower, null) != null) {
+				return PathType.DOOR_WOOD_CLOSED;
+			}
+		}
 		if (type == PathType.ON_TOP_OF_POWDER_SNOW && !walkOnPowderSnow) {
 			return PathType.POWDER_SNOW;
 		}
