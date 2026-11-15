@@ -4,85 +4,32 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import net.minecraft.SharedConstants;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.server.Bootstrap;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.phys.Vec3;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 class BuildCursorSoundTest {
 	private static final double EPSILON = 1.0e-4;
 
-	@BeforeAll
-	static void setupMinecraft() {
-		SharedConstants.tryDetectVersion();
-		Bootstrap.bootStrap();
+	@Test
+	void fluidAndAirCuesDropInPitchBehindThePlayer() {
+		assertEquals(1.0f, BuildCursorSound.fluidPitch(false), (float) EPSILON);
+		assertEquals(0.85f, BuildCursorSound.fluidPitch(true), (float) EPSILON);
+		assertEquals(1.0f, BuildCursorSound.airPitch(false), (float) EPSILON);
+		assertEquals(0.82f, BuildCursorSound.airPitch(true), (float) EPSILON);
 	}
 
 	@Test
-	void chooseCueForAir() {
-		BuildCursorSound.Cue frontCue = BuildCursorSound.chooseCue(Blocks.AIR.defaultBlockState(), false);
-		assertTrue(frontCue.isAir());
-		assertEquals(BuildCursorSound.AIR_SOUND, frontCue.sound());
-		assertEquals(BuildCursorSound.BASE_CUE_VOLUME, frontCue.baseVolume(), (float) EPSILON);
-		assertEquals(1.0f, frontCue.basePitch(), (float) EPSILON);
-
-		BuildCursorSound.Cue behindCue = BuildCursorSound.chooseCue(Blocks.AIR.defaultBlockState(), true);
-		assertTrue(behindCue.isAir());
-		assertEquals(BuildCursorSound.AIR_SOUND, behindCue.sound());
-		assertEquals(BuildCursorSound.BASE_CUE_VOLUME, behindCue.baseVolume(), (float) EPSILON);
-		assertEquals(0.82f, behindCue.basePitch(), (float) EPSILON);
+	void blockCueKeepsTheBlocksOwnPitchAndDropsItBehind() {
+		assertEquals(1.2f, BuildCursorSound.blockPitch(1.2f, false), (float) EPSILON);
+		assertEquals(1.2f * 0.82f, BuildCursorSound.blockPitch(1.2f, true), (float) EPSILON);
 	}
 
 	@Test
-	void chooseCueForWater() {
-		BuildCursorSound.Cue frontCue = BuildCursorSound.chooseCue(Blocks.WATER.defaultBlockState(), false);
-		assertFalse(frontCue.isAir());
-		assertEquals(SoundEvents.POINTED_DRIPSTONE_DRIP_WATER_INTO_CAULDRON, frontCue.sound());
-		assertEquals(BuildCursorSound.BASE_CUE_VOLUME, frontCue.baseVolume(), (float) EPSILON);
-		assertEquals(1.0f, frontCue.basePitch(), (float) EPSILON);
-
-		BuildCursorSound.Cue behindCue = BuildCursorSound.chooseCue(Blocks.WATER.defaultBlockState(), true);
-		assertFalse(behindCue.isAir());
-		assertEquals(SoundEvents.POINTED_DRIPSTONE_DRIP_WATER_INTO_CAULDRON, behindCue.sound());
-		assertEquals(BuildCursorSound.BASE_CUE_VOLUME, behindCue.baseVolume(), (float) EPSILON);
-		assertEquals(0.85f, behindCue.basePitch(), (float) EPSILON);
-	}
-
-	@Test
-	void chooseCueForLava() {
-		BuildCursorSound.Cue frontCue = BuildCursorSound.chooseCue(Blocks.LAVA.defaultBlockState(), false);
-		assertFalse(frontCue.isAir());
-		assertEquals(SoundEvents.LAVA_POP, frontCue.sound());
-		assertEquals(BuildCursorSound.BASE_CUE_VOLUME, frontCue.baseVolume(), (float) EPSILON);
-		assertEquals(1.0f, frontCue.basePitch(), (float) EPSILON);
-
-		BuildCursorSound.Cue behindCue = BuildCursorSound.chooseCue(Blocks.LAVA.defaultBlockState(), true);
-		assertFalse(behindCue.isAir());
-		assertEquals(SoundEvents.LAVA_POP, behindCue.sound());
-		assertEquals(BuildCursorSound.BASE_CUE_VOLUME, behindCue.baseVolume(), (float) EPSILON);
-		assertEquals(0.85f, behindCue.basePitch(), (float) EPSILON);
-	}
-
-	@Test
-	void chooseCueForSolidBlock() {
-		SoundType stoneSound = Blocks.STONE.defaultBlockState().getSoundType();
-
-		BuildCursorSound.Cue frontCue = BuildCursorSound.chooseCue(Blocks.STONE.defaultBlockState(), false);
-		assertFalse(frontCue.isAir());
-		assertEquals(stoneSound.getStepSound(), frontCue.sound());
-		assertEquals(Math.max(2.5f, stoneSound.getVolume() * BuildCursorSound.BASE_CUE_VOLUME), frontCue.baseVolume(), (float) EPSILON);
-		assertEquals(stoneSound.getPitch(), frontCue.basePitch(), (float) EPSILON);
-
-		BuildCursorSound.Cue behindCue = BuildCursorSound.chooseCue(Blocks.STONE.defaultBlockState(), true);
-		assertFalse(behindCue.isAir());
-		assertEquals(stoneSound.getStepSound(), behindCue.sound());
-		assertEquals(stoneSound.getPitch() * 0.82f, behindCue.basePitch(), (float) EPSILON);
+	void blockCueVolumeHasAFloorSoQuietMaterialsStayAudible() {
+		assertEquals(2.5f, BuildCursorSound.blockVolume(0.1f), (float) EPSILON);
+		assertEquals(BuildCursorSound.BASE_CUE_VOLUME, BuildCursorSound.blockVolume(1.0f), (float) EPSILON);
 	}
 
 	@Test
@@ -127,8 +74,8 @@ class BuildCursorSoundTest {
 	}
 
 	@Test
-	void distanceGainMatchesAudioMinecraftCameraCurve() {
-		// Matches audio_minecraft's camera_distance() (rolloff 0.15, ref 1.0)
+	void distanceGainFallsOffGently() {
+		// Rolloff 0.15 past a 1 block reference distance
 		assertEquals(1.0f, BuildCursorSound.calculateDistanceGain(0.5), (float) EPSILON);
 		assertEquals(1.0f, BuildCursorSound.calculateDistanceGain(1.0), (float) EPSILON);
 
@@ -179,7 +126,7 @@ class BuildCursorSoundTest {
 		Vec3 side = new Vec3(5.0, 64.0, 0.0);
 		assertEquals(1.0f, BuildCursorSound.calculateBehindGain(eye, yawNorth, side), (float) EPSILON);
 
-		// Straight behind (South: +Z) -> 0.7 gain (-30% volume, matching audio_minecraft)
+		// Straight behind (South: +Z) -> 0.7 gain (30% quieter)
 		Vec3 behind = new Vec3(0.0, 64.0, 5.0);
 		assertEquals(0.7f, BuildCursorSound.calculateBehindGain(eye, yawNorth, behind), (float) EPSILON);
 	}

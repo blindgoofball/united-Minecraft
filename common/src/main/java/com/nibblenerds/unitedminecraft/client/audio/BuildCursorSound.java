@@ -25,7 +25,7 @@ import net.minecraft.world.phys.Vec3;
  * 3D spatial audio cues for Build Mode's virtual cursor.
  *
  * <p>Positions sounds in real 3D space with expanded lateral separation and acoustic depth cues,
- * mirroring the audio architecture of {@code audio_minecraft}:
+ * so the cursor's place in the build area is audible:
  * <ul>
  *   <li><b>True 3D Spatial Panning with Expanded Lateral Spread:</b> Lateral offsets are scaled
  *       by {@link #LATERAL_SPREAD_FACTOR} so every single block step left or right creates an
@@ -57,6 +57,26 @@ public final class BuildCursorSound {
 	private BuildCursorSound() {
 	}
 
+	/** Pitch multiplier for a fluid cue; the darker tone is how a cursor behind the player is told from one ahead. */
+	public static float fluidPitch(boolean isBehind) {
+		return isBehind ? 0.85f : 1.0f;
+	}
+
+	/** Pitch multiplier for the air cue; see {@link #fluidPitch}. */
+	public static float airPitch(boolean isBehind) {
+		return isBehind ? 0.82f : 1.0f;
+	}
+
+	/** Pitch for a solid block's step sound, given the block's own sound-type pitch; see {@link #fluidPitch}. */
+	public static float blockPitch(float soundTypePitch, boolean isBehind) {
+		return isBehind ? soundTypePitch * 0.82f : soundTypePitch;
+	}
+
+	/** Volume for a solid block's step sound, given the block's own sound-type volume. */
+	public static float blockVolume(float soundTypeVolume) {
+		return Math.max(2.5f, soundTypeVolume * BASE_CUE_VOLUME);
+	}
+
 	/**
 	 * Selects the sound, volume, and pitch multiplier for the block, fluid, or air at the cursor.
 	 */
@@ -67,16 +87,13 @@ public final class BuildCursorSound {
 			SoundEvent sound = isLava
 					? SoundEvents.LAVA_POP
 					: SoundEvents.POINTED_DRIPSTONE_DRIP_WATER_INTO_CAULDRON;
-			float basePitch = isBehind ? 0.85f : 1.0f;
-			return new Cue(sound, false, BASE_CUE_VOLUME, basePitch);
+			return new Cue(sound, false, BASE_CUE_VOLUME, fluidPitch(isBehind));
 		} else if (state.isAir()) {
-			float basePitch = isBehind ? 0.82f : 1.0f;
-			return new Cue(AIR_SOUND, true, BASE_CUE_VOLUME, basePitch);
+			return new Cue(AIR_SOUND, true, BASE_CUE_VOLUME, airPitch(isBehind));
 		} else {
 			SoundType soundType = state.getSoundType();
-			float baseVolume = Math.max(2.5f, soundType.getVolume() * BASE_CUE_VOLUME);
-			float basePitch = isBehind ? soundType.getPitch() * 0.82f : soundType.getPitch();
-			return new Cue(soundType.getStepSound(), false, baseVolume, basePitch);
+			return new Cue(soundType.getStepSound(), false, blockVolume(soundType.getVolume()),
+					blockPitch(soundType.getPitch(), isBehind));
 		}
 	}
 

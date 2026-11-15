@@ -18,7 +18,6 @@ import net.minecraft.resources.Identifier;
  */
 public final class BuildCursorAirSynth {
 	public static final String NAMESPACE = "united_minecraft";
-	public static final String PATH_PREFIX = "sounds/build_cursor/";
 	public static final String BUFFER_PATH = "sounds/build_cursor/air.ogg";
 
 	/** The sound location played by {@link BuildCursorAirSound}. */
@@ -35,7 +34,7 @@ public final class BuildCursorAirSynth {
 
 	public static boolean handles(Identifier path) {
 		return path.getNamespace().equals(NAMESPACE)
-				&& (path.getPath().startsWith(PATH_PREFIX) || path.getPath().equals("sounds/build_cursor_air.ogg"));
+				&& path.getPath().equals(BUFFER_PATH);
 	}
 
 	public static SoundBuffer create(Identifier path) {
