@@ -9,8 +9,15 @@ face them. Turning it on snaps your camera to the nearest cardinal direction,
 narrates it, and locks the cursor's movement to that orientation.
 
 - **Moving the cursor:** Up/Down step forward and back, Left/Right strafe, Page
-  Up/Down move vertically. Each step narrates the block, coordinates and whether
-  it is placeable. The cursor roams a 65x65 area centered where you turned it on.
+  Up/Down move vertically. Each step plays an immediate 3D stereo sound cue
+  representing the block at the cursor (the block's material step sound, water/lava
+  sounds, or a soft tone for air / empty space) and narrates the block,
+  coordinates and whether it is placeable. The sound originates from the cursor's location
+  in 3D stereo space (left/right/elevation, with a pitch drop when behind you), allowing rapid
+  auditory surveying of structures.
+  In Settings (`F6`), the "Build Mode: Cursor Feedback" setting lets you choose between
+  **Speech and Sound**, **Sound Only** (for fast surveying and building without narration clutter),
+  or **Speech Only**. The cursor roams a 65x65 area centered where you turned it on.
 - **Locking the area:** M places a marker at the cursor, and a second M places the
   opposite corner. The cursor is then locked to the rectangle between the two
   corners, and stepping past an edge says "edge of area". Alt+M clears both markers

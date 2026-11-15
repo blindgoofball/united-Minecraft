@@ -1,6 +1,7 @@
 package com.nibblenerds.unitedminecraft.client;
 
 import com.nibblenerds.unitedminecraft.client.combat.CombatBeacon;
+import com.nibblenerds.unitedminecraft.client.audio.BuildCursorSound;
 import com.nibblenerds.unitedminecraft.client.audio.CueVolume;
 import com.nibblenerds.unitedminecraft.client.audio.WallToneVoice;
 import com.nibblenerds.unitedminecraft.client.settings.SettingsScreen;
@@ -75,6 +76,8 @@ public final class SoundGlossaryScreen extends Screen {
 			GlossaryEntry.vanilla("united_minecraft.glossary.elytra_safe_landing", SoundEvents.NOTE_BLOCK_BANJO::value, 0.8f, 1.5f),
 			GlossaryEntry.vanilla("united_minecraft.glossary.chat_message", SoundEvents.NOTE_BLOCK_IRON_XYLOPHONE::value, 0.5f, 1.8f),
 			GlossaryEntry.vanilla("united_minecraft.glossary.ai_waiting", SoundEvents.NOTE_BLOCK_HAT::value, 0.4f, 1.0f),
+			new GlossaryEntry("united_minecraft.glossary.build_cursor_block", BuildCursorSound::previewBlock),
+			new GlossaryEntry("united_minecraft.glossary.build_cursor_air", BuildCursorSound::previewAir),
 			GlossaryEntry.wallTone("united_minecraft.glossary.wall_tone_ahead", WallToneVoice.WALL_AHEAD),
 			GlossaryEntry.wallTone("united_minecraft.glossary.wall_tone_left", WallToneVoice.WALL_LEFT),
 			GlossaryEntry.wallTone("united_minecraft.glossary.wall_tone_right", WallToneVoice.WALL_RIGHT),

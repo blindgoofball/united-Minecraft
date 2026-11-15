@@ -82,6 +82,8 @@ public final class UnitedMinecraftConfig {
 	public int navRadarRange = 8;
 	public double scannerRange = 32.0;
 	public boolean buildModeActionNarrationEnabled = true;
+	/** How the Build Mode cursor reports movement and inspection - see {@link BuildCursorFeedback}. */
+	public BuildCursorFeedback buildCursorFeedback = BuildCursorFeedback.SPEAK_AND_SOUND;
 	/** Whether Build Mode's two area markers also limit how high and low the cursor can go - see {@code BuildArea}. */
 	public boolean buildModeAreaLockHeight = false;
 	public CombatCueMode combatCueMode = CombatCueMode.COMBAT_MODE_ONLY;
@@ -164,6 +166,21 @@ public final class UnitedMinecraftConfig {
 		LOCK_ON, BEACON
 	}
 
+	/** How the Build Mode cursor reports movement and inspection. */
+	public enum BuildCursorFeedback {
+		SPEAK_AND_SOUND,
+		SOUND_ONLY,
+		SPEAK_ONLY;
+
+		public boolean playsSound() {
+			return this != SPEAK_ONLY;
+		}
+
+		public boolean speaks() {
+			return this != SOUND_ONLY;
+		}
+	}
+
 	/** Governs the audio cue for the weapon attack-strength meter refilling - see {@link CombatModeController#tickAttackCue}. */
 	public enum CombatCueMode {
 		OFF, COMBAT_MODE_ONLY, ALWAYS
@@ -214,6 +231,10 @@ public final class UnitedMinecraftConfig {
 		if (wallToneStyle == null) {
 			LOGGER.warn("Setting wallToneStyle was missing or not a recognised value, using {}", WallToneStyle.TONES);
 			wallToneStyle = WallToneStyle.TONES;
+		}
+		if (buildCursorFeedback == null) {
+			LOGGER.warn("Setting buildCursorFeedback was missing or not a recognised value, using {}", BuildCursorFeedback.SPEAK_AND_SOUND);
+			buildCursorFeedback = BuildCursorFeedback.SPEAK_AND_SOUND;
 		}
 		if (combatCueMode == null) {
 			LOGGER.warn("Setting combatCueMode was missing or not a recognised value, using {}", CombatCueMode.COMBAT_MODE_ONLY);
