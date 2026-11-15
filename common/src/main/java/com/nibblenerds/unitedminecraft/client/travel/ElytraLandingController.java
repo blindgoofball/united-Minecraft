@@ -6,7 +6,10 @@ import com.nibblenerds.unitedminecraft.client.WaterExitController;
 import com.nibblenerds.unitedminecraft.client.autowalk.AutoWalkController;
 import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import net.minecraft.client.Minecraft;
@@ -77,6 +80,8 @@ public final class ElytraLandingController {
 	// Cost of a spot without room to come in and slide out: a roof small enough to have none is still
 	// the better place to land than ground a long way off.
 	static final double NO_RUNWAY_PENALTY = 4.0;
+	// Clear height a spot under something needs, for the player to stand in.
+	private static final int COVERED_HEADROOM = 2;
 	static final int RUNWAY = 16;
 	static final int RUNOUT = 4;
 	private static final int RUNWAY_DIRECTIONS = 16;
@@ -97,6 +102,18 @@ public final class ElytraLandingController {
 	// Column surface heights already looked up this tick - the autopilot asks for the same columns
 	// over and over while predicting, and every one of them is a heightmap read.
 	private static final Map<Long, Double> SURFACE_CACHE = new HashMap<>();
+	// For columns with something over the flight, the ground it would meet instead: {surface, highest
+	// height it holds for}. Terrain doesn't change under a flight, so these are kept for a while.
+	private static final Map<Long, double[]> BELOW_CACHE = new HashMap<>();
+	private static final int BELOW_CACHE_TICKS = 20;
+	// How far under the destination ground is looked for when it has something over it.
+	private static final int COVERED_DEPTH = 8;
+	// How far below the spot the flight is given up as missed.
+	private static final double MISSED_BELOW = 3.0;
+	// How far below the search limit ground is taken to be where none was found - a void.
+	private static final int NO_GROUND_DEPTH = 64;
+	// Blocks either way from the spot whose ground goes in a flight's log.
+	private static final int RECORDED_RADIUS = 24;
 
 	private ElytraLandingController() {
 	}
@@ -110,6 +127,7 @@ public final class ElytraLandingController {
 	}
 
 	public static void reset() {
+		ElytraFlightRecorder.end("reset", "control released");
 		autopilot = null;
 		target = null;
 		announcedPhase = null;
@@ -120,6 +138,7 @@ public final class ElytraLandingController {
 		destinationExact = false;
 		destinationArrival = null;
 		SURFACE_CACHE.clear();
+		BELOW_CACHE.clear();
 	}
 
 	/** Reports distance, direction and height to the nearest landing spot within glide range, or that there is none. */
@@ -167,8 +186,9 @@ public final class ElytraLandingController {
 	private static boolean engage(Minecraft client, LocalPlayer player, Spot spot, Component started) {
 		Level level = player.level();
 		ElytraAutopilot pilot = new ElytraAutopilot(spot.feet().getX() + 0.5, spot.feet().getY(), spot.feet().getZ() + 0.5,
-				(x, z) -> surfaceHeight(level, x, z, spot.feet().getY()));
+				new LevelProbe(level, spot.feet().getY() - COVERED_DEPTH, spot.feet().getY()));
 		SURFACE_CACHE.clear();
+		BELOW_CACHE.clear();
 		ElytraAutopilot.Command first = pilot.step(stateOf(player));
 		if (first.phase() == ElytraAutopilot.Phase.ORBIT && player.getY() - spot.feet().getY() < MIN_START_HEIGHT_TO_CIRCLE) {
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.elytra_landing_too_low"));
@@ -182,6 +202,7 @@ public final class ElytraLandingController {
 		hazardTicks = 0;
 		client.getNarrator().saySystemNow(started);
 		AngleAssistController.disable(client);
+		startRecording(player, spot, pilot, level, first);
 		apply(player, first);
 		return true;
 	}
@@ -226,6 +247,7 @@ public final class ElytraLandingController {
 		destinationName = name;
 		destinationExact = exact;
 		destinationArrival = onArrival;
+		ElytraFlightRecorder.row(String.format(java.util.Locale.ROOT, "# destination,%d,%d,%d", wanted.getX(), wanted.getY(), wanted.getZ()));
 	}
 
 	/** Says how far from the destination the flight ended, and walks the rest of the way if the player has asked for that. */
@@ -284,6 +306,8 @@ public final class ElytraLandingController {
 		double extraHeight = Double.MAX_VALUE;
 		HeightAt heights = (hx, hz) -> level.hasChunkAt(new BlockPos(hx, 0, hz))
 				? level.getHeight(Heightmap.Types.MOTION_BLOCKING, hx, hz) : Integer.MIN_VALUE;
+		LevelProbe probe = new LevelProbe(level, wanted.getY() - COVERED_DEPTH, wanted.getY());
+		BELOW_CACHE.clear();
 
 		for (int r = 0; r <= NEAR_TARGET_RADIUS; r++) {
 			if (best != null && r > bestCost + 1) {
@@ -299,27 +323,46 @@ public final class ElytraLandingController {
 					if (!level.hasChunkAt(new BlockPos(x, 0, z))) {
 						continue;
 					}
-					int top = level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z);
-					if (!isFlatSafePatch(level, x, top, z)) {
-						continue;
-					}
-					anySafe = true;
-					double height = player.getY() - top;
-					double distance = Math.hypot(x + 0.5 - player.getX(), z + 0.5 - player.getZ());
-					if (!inGlideRange(height, distance)) {
-						extraHeight = Math.min(extraHeight, heightNeeded(distance) - height);
-						continue;
-					}
-					Vec3 aim = new Vec3(x + 0.5, top + APPROACH_AIM_HEIGHT, z + 0.5);
-					if (level.clip(new ClipContext(eye, aim, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player)).getType() != HitResult.Type.MISS) {
-						blocked = true;
-						continue;
-					}
-					double cost = placementCost(Math.hypot(dx, dz), top - wanted.getY());
-					// Looked up last, being the dear part, and only for a spot that could still win.
-					if (cost < bestCost && (cost += hasRunway(heights, x, top, z) ? 0.0 : NO_RUNWAY_PENALTY) < bestCost) {
-						best = new Spot(new BlockPos(x, top, z), distance);
-						bestCost = cost;
+					int surface = level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z);
+					// Two places to land in a column: on top of it, and - where something is built over
+					// the destination, like a platform higher up - on the ground under that, beside the
+					// target. The column's surface is only the first of them.
+					for (int layer = 0; layer < 2; layer++) {
+						boolean covered = layer == 1;
+						int top = surface;
+						if (covered) {
+							top = (int) Math.floor(probe.heightBelow(x + 0.5, wanted.getY() + 1.5, z + 0.5));
+							if (top <= wanted.getY() - COVERED_DEPTH || top + COVERED_HEADROOM > surface) {
+								continue;
+							}
+						}
+						if (covered ? !isFlatSafeFloor(level, x, top, z) : !isFlatSafePatch(level, x, top, z)) {
+							continue;
+						}
+						anySafe = true;
+						double height = player.getY() - top;
+						double distance = Math.hypot(x + 0.5 - player.getX(), z + 0.5 - player.getZ());
+						if (!inGlideRange(height, distance)) {
+							extraHeight = Math.min(extraHeight, heightNeeded(distance) - height);
+							continue;
+						}
+						// Under something there is no straight line down to it; the autopilot finds the way in
+						// from the side, and says so if there isn't one.
+						Vec3 aim = new Vec3(x + 0.5, top + APPROACH_AIM_HEIGHT, z + 0.5);
+						if (!covered && level.clip(new ClipContext(eye, aim, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player)).getType() != HitResult.Type.MISS) {
+							blocked = true;
+							continue;
+						}
+						double cost = placementCost(Math.hypot(dx, dz), top - wanted.getY());
+						int floorTop = top;
+						HeightAt around = covered ? (hx, hz) -> level.hasChunkAt(new BlockPos(hx, 0, hz))
+								? (int) Math.floor(probe.heightBelow(hx + 0.5, floorTop + 2.0, hz + 0.5)) : Integer.MIN_VALUE
+								: heights;
+						// Looked up last, being the dear part, and only for a spot that could still win.
+						if (cost < bestCost && (cost += hasRunway(around, x, top, z) ? 0.0 : NO_RUNWAY_PENALTY) < bestCost) {
+							best = new Spot(new BlockPos(x, top, z), distance);
+							bestCost = cost;
+						}
 					}
 				}
 			}
@@ -390,6 +433,7 @@ public final class ElytraLandingController {
 		if (!isActive()) {
 			return;
 		}
+		ElytraFlightRecorder.end("cancelled", endState(player));
 		reset();
 		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.elytra_landing_cancelled"));
 	}
@@ -404,6 +448,7 @@ public final class ElytraLandingController {
 		}
 		if (!player.isFallFlying()) {
 			boolean landed = player.onGround();
+			ElytraFlightRecorder.end(landed ? "touchdown" : "stopped-gliding", endState(player));
 			BlockPos wanted = destination;
 			Component wantedName = destinationName;
 			boolean wantedExact = destinationExact;
@@ -421,11 +466,30 @@ public final class ElytraLandingController {
 			return;
 		}
 
+		if (player.onGround()) {
+			// Down, but the glide has not ended: left alone it carries on across the ground for several
+			// ticks at nearly the speed it came in, into whatever is there - a wall at the speed of the
+			// glide, or off the edge of a platform. Stop it where it touched down.
+			Vec3 v = player.getDeltaMovement();
+			player.setDeltaMovement(0.0, Math.min(v.y(), 0.0), 0.0);
+			return;
+		}
+		if (player.getY() < target.feet().getY() - MISSED_BELOW) {
+			// Below the spot: it can't be landed on now, and flying on only makes the fall longer.
+			ElytraFlightRecorder.end("missed", endState(player));
+			reset();
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.elytra_landing_missed"));
+			return;
+		}
 		SURFACE_CACHE.clear();
+		if (ticksFlown % BELOW_CACHE_TICKS == 0) {
+			BELOW_CACHE.clear();
+		}
 		ElytraAutopilot.Command command = autopilot.step(stateOf(player));
 
 		hazardTicks = command.hazard() ? hazardTicks + 1 : 0;
 		if (hazardTicks >= HAZARD_TICKS_TO_ABORT) {
+			ElytraFlightRecorder.end("hazard", endState(player));
 			reset();
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.elytra_landing_hazard"));
 			return;
@@ -438,6 +502,7 @@ public final class ElytraLandingController {
 					? "united_minecraft.narrate.elytra_landing_circling" : "united_minecraft.narrate.elytra_landing_final"));
 		}
 		ticksFlown++;
+		recordTick(player, command);
 		if (ticksFlown % STATUS_INTERVAL_TICKS == 0) {
 			Vec3 to = Vec3.atBottomCenterOf(target.feet());
 			double horizontal = Math.hypot(to.x() - player.getX(), to.z() - player.getZ());
@@ -445,6 +510,53 @@ public final class ElytraLandingController {
 					(int) Math.round(horizontal), (int) Math.round(player.getY() - to.y())));
 		}
 		apply(player, command);
+	}
+
+	/** Opens the flight's log: what it is headed for, where it starts, and the ground around the spot as the autopilot sees it. */
+	private static void startRecording(LocalPlayer player, Spot spot, ElytraAutopilot pilot, Level level, ElytraAutopilot.Command first) {
+		BlockPos feet = spot.feet();
+		List<String> lines = new ArrayList<>();
+		lines.add("# elytra landing flight log");
+		lines.add(String.format(Locale.ROOT, "# spot,%d,%d,%d", feet.getX(), feet.getY(), feet.getZ()));
+		lines.add(destination == null ? "# destination,none" : String.format(Locale.ROOT, "# destination,%d,%d,%d",
+				destination.getX(), destination.getY(), destination.getZ()));
+		lines.add("# dimension," + level.dimension());
+		lines.add(String.format(Locale.ROOT, "# start,%.2f,%.2f,%.2f,v=%.3f,%.3f,%.3f,yaw=%.1f,pitch=%.1f",
+				player.getX(), player.getY(), player.getZ(), player.getDeltaMovement().x(), player.getDeltaMovement().y(),
+				player.getDeltaMovement().z(), player.getYRot(), player.getXRot()));
+		lines.add("# first-phase," + first.phase() + ",predicted-miss=" + String.format(Locale.ROOT, "%.2f", first.predictedMiss()));
+		lines.add("# G-columns,x,z,surface,below (ground a flight just over the spot meets)");
+		LevelProbe probe = new LevelProbe(level, feet.getY() - COVERED_DEPTH, feet.getY());
+		for (int dx = -RECORDED_RADIUS; dx <= RECORDED_RADIUS; dx++) {
+			for (int dz = -RECORDED_RADIUS; dz <= RECORDED_RADIUS; dz++) {
+				int x = feet.getX() + dx;
+				int z = feet.getZ() + dz;
+				lines.add(String.format(Locale.ROOT, "G,%d,%d,%.0f,%.0f", x, z,
+						probe.height(x + 0.5, z + 0.5), probe.heightBelow(x + 0.5, feet.getY() + 2.0, z + 0.5)));
+			}
+		}
+		lines.add("# T-columns,tick,x,y,z,vx,vy,vz,yaw,pitch,cmdYaw,cmdPitch,phase,predictedMiss,hazard,onGround");
+		ElytraFlightRecorder.begin(lines);
+	}
+
+	private static void recordTick(LocalPlayer player, ElytraAutopilot.Command command) {
+		if (!ElytraFlightRecorder.isRecording()) {
+			return;
+		}
+		Vec3 v = player.getDeltaMovement();
+		ElytraFlightRecorder.row(String.format(Locale.ROOT, "T,%d,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.1f,%.1f,%.1f,%.1f,%s,%.2f,%b,%b",
+				ticksFlown, player.getX(), player.getY(), player.getZ(), v.x(), v.y(), v.z(), player.getYRot(), player.getXRot(),
+				command.yaw(), command.pitch(), command.phase(), command.predictedMiss(), command.hazard(), player.onGround()));
+	}
+
+	/** Where the player is and how far from the spot, for the last line of a flight's log. */
+	private static String endState(LocalPlayer player) {
+		Vec3 v = player.getDeltaMovement();
+		String away = target == null ? "" : String.format(Locale.ROOT, ",spot-offset=%.2f,height-over-spot=%.2f",
+				Math.hypot(target.feet().getX() + 0.5 - player.getX(), target.feet().getZ() + 0.5 - player.getZ()),
+				player.getY() - target.feet().getY());
+		return String.format(Locale.ROOT, "pos=%.2f;%.2f;%.2f,v=%.3f;%.3f;%.3f,onGround=%b%s",
+				player.getX(), player.getY(), player.getZ(), v.x(), v.y(), v.z(), player.onGround(), away);
 	}
 
 	private static ElytraAutopilot.State stateOf(LocalPlayer player) {
@@ -473,6 +585,60 @@ public final class ElytraLandingController {
 				: fallback;
 		SURFACE_CACHE.put(key, height);
 		return height;
+	}
+
+	/**
+	 * The ground as the autopilot sees it. Its surface in a column is the first thing a flight from above
+	 * would meet, but one flying under something - a platform over the landing, say - meets what is
+	 * below it, and only counts what is no deeper than {@code lowest}.
+	 */
+	private static final class LevelProbe implements ElytraAutopilot.GroundProbe {
+		private final Level level;
+		private final int lowest;
+		private final double fallback;
+
+		LevelProbe(Level level, int lowest, double fallback) {
+			this.level = level;
+			this.lowest = lowest;
+			this.fallback = fallback;
+		}
+
+		@Override
+		public double height(double x, double z) {
+			return surfaceHeight(level, x, z, fallback);
+		}
+
+		@Override
+		public double heightBelow(double x, double y, double z) {
+			double top = height(x, z);
+			if (y >= top) {
+				return top;
+			}
+			int blockX = (int) Math.floor(x);
+			int blockZ = (int) Math.floor(z);
+			long key = (((long) blockX) << 32) ^ (blockZ & 0xffffffffL);
+			double[] known = BELOW_CACHE.get(key);
+			if (known != null && y >= known[0] && y <= known[1]) {
+				return known[0];
+			}
+			// Down from the flight until something solid (or liquid): its top is the ground. Starting inside
+			// something solid finds that straight away, with its top above the flight - which is a hit.
+			int blockY = (int) Math.floor(y);
+			// Nothing solid down to the limit is no ground at all, not ground at the limit: a flight below
+			// the surface of a platform it is passing under must not be taken to have landed under it.
+			double surface = lowest - NO_GROUND_DEPTH;
+			BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+			for (int by = blockY; by >= lowest; by--) {
+				pos.set(blockX, by, blockZ);
+				BlockState state = level.getBlockState(pos);
+				if (!state.getCollisionShape(level, pos).isEmpty() || !state.getFluidState().isEmpty()) {
+					surface = by + 1;
+					break;
+				}
+			}
+			BELOW_CACHE.put(key, new double[] {surface, blockY + 0.999});
+			return surface;
+		}
 	}
 
 	private static Spot findSpot(LocalPlayer player) {
@@ -529,6 +695,33 @@ public final class ElytraLandingController {
 			return null;
 		}
 		return new Spot(new BlockPos(x, top, z), distance);
+	}
+
+	/**
+	 * Like {@link #isFlatSafePatch}, for ground with something built over it, so the heightmap says nothing about
+	 * it: a 3x3 patch whose every block is a safe place to land on, with room to stand over all of it.
+	 */
+	private static boolean isFlatSafeFloor(Level level, int x, int top, int z) {
+		for (int dx = -1; dx <= 1; dx++) {
+			for (int dz = -1; dz <= 1; dz++) {
+				BlockPos ground = new BlockPos(x + dx, top - 1, z + dz);
+				BlockState state = level.getBlockState(ground);
+				if (!state.isFaceSturdy(level, ground, Direction.UP)
+						|| state.is(BlockTags.LEAVES)
+						|| state.is(BlockTags.CAMPFIRES)
+						|| state.is(Blocks.MAGMA_BLOCK)) {
+					return false;
+				}
+				for (int up = 0; up < COVERED_HEADROOM; up++) {
+					BlockPos space = ground.above(1 + up);
+					BlockState inside = level.getBlockState(space);
+					if (!inside.getCollisionShape(level, space).isEmpty() || !inside.getFluidState().isEmpty()) {
+						return false;
+					}
+				}
+			}
+		}
+		return true;
 	}
 
 	/** A 3x3 patch centred on the column, all at {@code top}, every block a safe place to land on. */

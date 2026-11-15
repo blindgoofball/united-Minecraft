@@ -55,11 +55,15 @@ final class ElytraFlight {
 			double x = s.x() + v[0];
 			double y = s.y() + v[1];
 			double z = s.z() + v[2];
-			double surface = ground.height(x, z);
-			if (y <= surface) {
-				// Where between the last two positions the feet crossed the surface.
-				double fraction = s.y() <= surface || s.y() == y ? 1.0 : (s.y() - surface) / (s.y() - y);
-				return new Landing(s.x() + (x - s.x()) * fraction, s.z() + (z - s.z()) * fraction, -v[1], tick, phases, false, v[0], v[2]);
+			// The game's collision is continuous, so the ground is met anywhere along the move, not only at its
+			// end: checked every block, as the autopilot predicts it. The player ends the tick wherever the
+			// move took it; the landing assist then stops the glide there.
+			int samples = Math.max(1, (int) Math.ceil(Math.hypot(x - s.x(), z - s.z())));
+			for (int i = 1; i <= samples; i++) {
+				double f = (double) i / samples;
+				if (s.y() + (y - s.y()) * f <= ground.heightBelow(s.x() + (x - s.x()) * f, s.y() + (y - s.y()) * f, s.z() + (z - s.z()) * f)) {
+					return new Landing(x, z, -v[1], tick, phases, false, v[0], v[2]);
+				}
 			}
 			s = new ElytraAutopilot.State(x, y, z, v[0], v[1], v[2], command.yaw(), command.pitch());
 		}

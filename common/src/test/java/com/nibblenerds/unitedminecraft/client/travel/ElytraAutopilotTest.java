@@ -132,9 +132,76 @@ class ElytraAutopilotTest {
 			assertTrue(landing.missFrom(TX, TZ) <= ElytraAutopilot.COMMIT_MISS, "missed the spot " + flight);
 			// And the slide on from touching down, a few blocks along the way it was going, stays on the roof.
 			double speed = Math.hypot(landing.vx(), landing.vz());
-			for (int k = 1; k <= Math.ceil(speed * 3); k++) {
+			for (int k = 1; k <= Math.ceil(speed * 1.5); k++) {
 				double ahead = roof.height(landing.x() + landing.vx() / speed * k, landing.z() + landing.vz() / speed * k);
 				assertTrue(ahead >= TY - 1, "slid off the edge " + flight);
+			}
+		}
+	}
+
+	/** A thin, square slab {@code half} blocks either side of {@code (cx, cz)} at {@code top}; void elsewhere. */
+	private static boolean onSlab(double x, double z, double cx, double cz, double half) {
+		return Math.abs(x - cx) <= half && Math.abs(z - cz) <= half;
+	}
+
+	@Test
+	void landsOnASmallPlatformInTheVoidRatherThanClippingItsSide() {
+		// The End's spawn platform: five blocks square, nothing around it.
+		ElytraAutopilot.GroundProbe platform = (x, z) -> onSlab(x, z, TX, TZ, 2.5) ? TY : TY - 60;
+		for (float yaw : new float[] {0f, 90f, 180f, 270f}) {
+			for (double distance : new double[] {20, 60}) {
+				ElytraFlight.Landing landing = ElytraFlight.fly(new ElytraAutopilot(TX, TY, TZ, platform), start(distance, 40, yaw, 1.2), platform);
+				String flight = "yaw " + yaw + ", " + distance + " out: " + landing;
+				assertFalse(landing.handedBack(), "gave up " + flight);
+				assertTrue(platform.height(landing.x(), landing.z()) == TY, "missed the platform " + flight);
+				assertTrue(landing.sink() < DAMAGING_SINK, "landed hard enough to hurt " + flight);
+			}
+		}
+	}
+
+	@Test
+	void landsOnAPlatformBeneathAnother() {
+		// An enderman farm: the platform to land on, and another 40 blocks over it, wider, which a
+		// flight that treats each column's highest block as its ground takes for the only ground there is.
+		double upperBottom = TY + 39;
+		ElytraAutopilot.GroundProbe stacked = new ElytraAutopilot.GroundProbe() {
+			@Override
+			public double height(double x, double z) {
+				return onSlab(x, z, TX, TZ, 14) ? TY + 40 : onSlab(x, z, TX, TZ, 8) ? TY : TY - 60;
+			}
+
+			@Override
+			public double heightBelow(double x, double y, double z) {
+				if (onSlab(x, z, TX, TZ, 14) && y >= upperBottom) {
+					return TY + 40;
+				}
+				return onSlab(x, z, TX, TZ, 8) ? TY : TY - 60;
+			}
+		};
+		for (float yaw : new float[] {0f, 90f, 180f, 270f}) {
+			ElytraFlight.Landing landing = ElytraFlight.fly(new ElytraAutopilot(TX, TY, TZ, stacked),
+					ElytraFlight.gliding(TX, TY + 90, TZ - 60, yaw, 1.2), stacked);
+			String flight = "yaw " + yaw + ": " + landing;
+			assertFalse(landing.handedBack(), "gave up " + flight);
+			assertTrue(onSlab(landing.x(), landing.z(), TX, TZ, 8) && landing.missFrom(TX, TZ) <= ElytraAutopilot.COMMIT_MISS,
+					"did not land on the lower platform " + flight);
+			assertTrue(landing.sink() < DAMAGING_SINK, "landed hard enough to hurt " + flight);
+		}
+	}
+
+	@Test
+	void landsOnTheSpotOverRollingGround() {
+		// Natural ground: bumps of a couple of blocks all round a flat patch. Neighbouring ground a block or
+		// two higher than the path is not a wall to keep clear of, and must not turn every landing into a crash.
+		ElytraAutopilot.GroundProbe rolling = (x, z) -> Math.hypot(x - TX, z - TZ) <= 2.5 ? TY
+				: TY + Math.round(1.5 * Math.sin(Math.floor(x) / 3.0) * Math.cos(Math.floor(z) / 3.0) + 1.0);
+		for (float yaw : new float[] {0f, 90f, 180f, 270f}) {
+			for (double distance : new double[] {30, 80}) {
+				ElytraFlight.Landing landing = ElytraFlight.fly(new ElytraAutopilot(TX, TY, TZ, rolling), start(distance, 40, yaw, 1.2), rolling);
+				String flight = "yaw " + yaw + ", " + distance + " out: " + landing;
+				assertFalse(landing.handedBack(), "gave up " + flight);
+				assertTrue(landing.sink() < DAMAGING_SINK, "landed hard enough to hurt " + flight);
+				assertTrue(landing.missFrom(TX, TZ) <= ElytraAutopilot.COMMIT_MISS, "missed the spot " + flight);
 			}
 		}
 	}
@@ -143,7 +210,7 @@ class ElytraAutopilotTest {
 	void doesNotCommitToAnApproachThatSkimsAWall() {
 		// A wall running along the way in, a few tenths of a block off the line to the spot: the
 		// centre of the flight clears it, a wingtip does not, so the way in down that line is no good.
-		ElytraAutopilot.GroundProbe skim = (x, z) -> x >= 1.2 && z <= 0 && z >= -60 ? TY + 12 : TY;
+		ElytraAutopilot.GroundProbe skim = (x, z) -> x >= 0.9 && z <= 0 && z >= -60 ? TY + 12 : TY;
 		ElytraAutopilot.Command first = new ElytraAutopilot(TX, TY, TZ, skim).step(start(40, 30, 0f, 1.2));
 		assertTrue(first.phase() == ElytraAutopilot.Phase.ORBIT, "committed to flying along the wall: " + first);
 	}

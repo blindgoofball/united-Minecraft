@@ -512,6 +512,7 @@
 	"united_minecraft.narrate.elytra_landing_ended": "Flight ended",
 	"united_minecraft.narrate.elytra_landing_cancelled": "Landing assist off",
 	"united_minecraft.narrate.elytra_landing_hazard": "Terrain ahead, landing assist off. You have control",
+	"united_minecraft.narrate.elytra_landing_missed": "Missed the landing, landing assist off. You have control",
 	"united_minecraft.narrate.water_exit_none": "Can't find a way out",
 	"united_minecraft.narrate.water_exit_direction": "%s blocks %s",
 	"united_minecraft.narrate.water_exit_started": "Swimming to the nearest way out",

@@ -41,6 +41,16 @@ final class ElytraAutopilot {
 	/** The surface height at a column - what the predicted flight must stay above, and where it ends. */
 	interface GroundProbe {
 		double height(double x, double z);
+
+		/**
+		 * The surface a flight at height {@code y} in this column would meet: the top of the highest ground
+		 * at or below {@code y}, so a platform higher up, which the flight is below and passes under, is not
+		 * mistaken for the ground. Ground that reaches above {@code y} is what it is in, so is met at its top.
+		 * Defaults to the column's surface, for ground with nothing over it.
+		 */
+		default double heightBelow(double x, double y, double z) {
+			return height(x, z);
+		}
 	}
 
 	/**
@@ -85,19 +95,31 @@ final class ElytraAutopilot {
 	private static final double LANDING_ZONE = 10.0;
 	// How far above the spot's own ground a contact has to be to count as terrain in the way.
 	private static final double TERRAIN_RISE = 1.0;
-	// Within this height of the ground, flight is checked against the ground a block either side of
-	// it too, so a path that skims a wall or a corner is not taken for a clear one.
-	private static final double MARGIN_ZONE = 8.0;
+	// Within this height of the ground, flight is checked against the ground half a block either side
+	// of it too (the player is 0.6 wide, and the flight is never quite as predicted), so a path that
+	// skims a wall or a corner is not taken for a clear one.
+	private static final double MARGIN_ZONE = 20.0;
+	private static final double WING = 0.5;
 	private static final double[][] MARGIN_OFFSETS = {
-			{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+			{WING, 0}, {-WING, 0}, {0, WING}, {0, -WING}, {WING, WING}, {WING, -WING}, {-WING, WING}, {-WING, -WING}};
+	// Ground beside the path only counts when it stands this much higher than the ground under it - a
+	// wall, a building, the edge of a platform, not the bumps of natural ground - and then the path has
+	// to stay this far above it: on a platform only a few blocks across the edge is all there is to
+	// hit, and coming in a little low clips it, and the glide on from there is down into the void.
+	private static final double WALL_RISE = 3.0;
+	private static final double EDGE_CLEARANCE = 0.5;
 	// Sink rate (blocks/tick) an unsafe landing - into a wall, or on to an edge - is scored as, well past what a landing allows.
 	private static final double UNSAFE_LANDING_SINK = 2.0;
 	// A path that meets ground more than this far below its top has gone in the side of it.
 	private static final double SIDE_HIT_DEPTH = 0.5;
-	// How far the slide after touching down is checked, per block/tick of speed (it carries about
-	// that far, and this leaves a margin), and the drop that counts as going over an edge.
-	private static final double SLIDE_BLOCKS_PER_SPEED = 3.0;
+	// How far the slide after touching down is checked, per block/tick of speed: ground friction (0.6 x
+	// 0.91 a tick) carries the player about 1.2 blocks per block/tick, so this leaves some margin without
+	// ruling out a landing on anything much smaller than the slide itself. And the drop that counts as an edge.
+	private static final double SLIDE_BLOCKS_PER_SPEED = 1.0;
 	private static final double MAX_SLIDE_DROP = 1.0;
+	// Ground this far to each side of a touchdown has to be there too: see slideStaysOnGround.
+	private static final double LIP = 1.5;
+	private static final double[][] LIP_OFFSETS = {{LIP, 0}, {-LIP, 0}, {0, LIP}, {0, -LIP}};
 
 	private final double tx;
 	private final double ty;
@@ -210,13 +232,21 @@ final class ElytraAutopilot {
 	 * going, and over the edge of a roof or a ledge that is a fall.
 	 */
 	private boolean slideStaysOnGround(double x, double surface, double z, double vx, double vz) {
+		// Touching down right on the lip of a platform is no landing on it: the flight is never quite as
+		// predicted, and a touchdown a little further out is a miss and a glide on into the void.
+		double look = surface + 1.5;
+		for (double[] side : LIP_OFFSETS) {
+			if (ground.heightBelow(x + side[0], look, z + side[1]) < surface - MAX_SLIDE_DROP) {
+				return false;
+			}
+		}
 		double speed = Math.hypot(vx, vz);
 		if (speed < 1e-6) {
 			return true;
 		}
-		int blocks = (int) Math.ceil(speed * SLIDE_BLOCKS_PER_SPEED) + 1;
+		int blocks = (int) Math.ceil(speed * SLIDE_BLOCKS_PER_SPEED);
 		for (int k = 1; k <= blocks; k++) {
-			if (ground.height(x + vx / speed * k, z + vz / speed * k) < surface - MAX_SLIDE_DROP) {
+			if (ground.heightBelow(x + vx / speed * k, surface + 1.5, z + vz / speed * k) < surface - MAX_SLIDE_DROP) {
 				return false;
 			}
 		}
@@ -238,11 +268,15 @@ final class ElytraAutopilot {
 			double x = x0 + (x1 - x0) * f;
 			double y = y0 + (y1 - y0) * f;
 			double z = z0 + (z1 - z0) * f;
-			double surface = ground.height(x, z);
-			if (y - surface < MARGIN_ZONE) {
-				// Low enough for a wingtip to matter: a block of ground beside the path counts as in it.
+			double surface = ground.heightBelow(x, y, z);
+			if (y > surface && y - surface < MARGIN_ZONE) {
+				double wall = surface;
 				for (double[] offset : MARGIN_OFFSETS) {
-					surface = Math.max(surface, ground.height(x + offset[0], z + offset[1]));
+					wall = Math.max(wall, ground.heightBelow(x + offset[0], y, z + offset[1]));
+				}
+				if (wall >= surface + WALL_RISE && y <= wall + EDGE_CLEARANCE) {
+					// A wingtip in a wall, or in the edge of a platform, before the ground under the path is reached.
+					return new double[] {x, z, wall, 1.0};
 				}
 			}
 			if (y <= surface) {
@@ -309,7 +343,7 @@ final class ElytraAutopilot {
 		double pitchNow = pitchTarget;
 		for (int t = 0; t < MAX_PREDICT_TICKS; t++) {
 			yaw = steerYaw(yaw, bearingTo(x, z, tx, tz));
-			double wanted = levelOffHeight > 0.0 && y - ground.height(x, z) <= levelOffHeight ? 0.0 : pitchTarget;
+			double wanted = levelOffHeight > 0.0 && y - ground.heightBelow(x, y, z) <= levelOffHeight ? 0.0 : pitchTarget;
 			if (t == 0) {
 				pitchNow = wanted;
 			}
@@ -336,9 +370,14 @@ final class ElytraAutopilot {
 				// However slowly either is met, that is a crash, so it counts as a hard landing; so
 				// does one that would slide on off an edge.
 				boolean crash = touch[2] > ty + TERRAIN_RISE || touch[3] > 0.0
-						|| !slideStaysOnGround(touch[0], touch[2], touch[1], vx, vz);
+						|| ground.heightBelow(x, touch[2] + 1.5, z) > touch[2] + TERRAIN_RISE
+						|| !slideStaysOnGround(x, touch[2], z, vx, vz);
 				double sink = crash ? Math.max(-vy, UNSAFE_LANDING_SINK) : -vy;
-				return new Prediction(Math.hypot(touch[0] - tx, touch[1] - tz), sink, pitchNow, true, path, t + 1);
+				// Where the player ends the tick it lands in: the whole of that tick's move is made, only its
+				// fall is stopped, and the landing assist stops the glide there. (A wall is hit where it is.)
+				double landedX = crash ? touch[0] : x;
+				double landedZ = crash ? touch[1] : z;
+				return new Prediction(Math.hypot(landedX - tx, landedZ - tz), sink, pitchNow, true, path, t + 1);
 			}
 		}
 		return new Prediction(Double.MAX_VALUE, 0.0, pitchNow, false, path, MAX_PREDICT_TICKS);

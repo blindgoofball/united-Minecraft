@@ -57,7 +57,8 @@ just above the ground (a wide circle only if it cannot reach the spot from where
 you are), keeping a block clear of walls and corners on the way down and circling
 on until it can come in without skimming one, and only touching down where the few
 blocks you will slide on, the way you are going, are still solid ground rather than
-an edge. It hands control back when you land. Backspace cancels, and control
+an edge. It stops the glide where you touch down, so you do not slide on across the ground, and it
+gives the flight up ("Missed the landing") if you end up below the spot. It hands control back when you land. Backspace cancels, and control
 is handed back if terrain is unavoidable.
 
 **Flying to a Scanner target:** while gliding, Shift+Enter on something in the
@@ -66,7 +67,7 @@ does the same). The target itself is rarely somewhere to land, so the mod lands 
 the nearest flat, safe patch within 10 blocks of it that has room to come in over
 and slide out across (so not one hard up against a building's wall; if there is no
 such patch it settles for the nearest flat one), preferring ground at the target's
-own height over a roof above it only when that ground is within about 5 blocks of the target (a tower or farm is landed on from its roof, a farm in the sky always), never using fireworks, and says
+own height over a roof above it only when that ground is within about 5 blocks of the target (a tower or farm is landed on from its roof, a farm in the sky always), also landing on ground under a platform or roof built over the target (it comes in from the side), never using fireworks, and says
 how close to the target it will land as you set off ("Flying toward Village,
 landing 6 blocks southwest of it") and how far from it you came down ("Landed 6
 blocks northeast of Village").
@@ -75,6 +76,10 @@ safe place to land near the target, terrain is in the way, or you are too low ("
 low to reach Village, you need about 40 more blocks of height"). Turn on Walk to
 Target After Elytra Landing in Settings > Modes & Movement to have it walk the rest
 of the way once you are down. Backspace cancels the flight.
+
+Each landing flight is recorded to a text file in `united_minecraft/elytra-flights/` in the game
+folder (the last ten are kept): the spot, the ground around it, every tick of the flight and how it
+ended, for working out why a landing went wrong.
 
 **Elytra flight alerts** (on by default, Settings > Modes & Movement) predict the
 rest of your flight every tick, assuming you keep looking where you are, and check
