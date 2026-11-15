@@ -59,7 +59,11 @@ import net.minecraft.world.inventory.AbstractFurnaceMenu;
 import net.minecraft.world.inventory.AnvilMenu;
 import net.minecraft.world.inventory.BeaconMenu;
 import net.minecraft.world.inventory.BrewingStandMenu;
+import net.minecraft.client.gui.screens.inventory.CrafterScreen;
 import net.minecraft.world.inventory.ContainerInput;
+import net.minecraft.world.inventory.CrafterMenu;
+import net.minecraft.world.inventory.CrafterSlot;
+import com.nibblenerds.unitedminecraft.client.access.SlotClickAccess;
 import net.minecraft.world.inventory.EnchantmentMenu;
 import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.inventory.LoomMenu;
@@ -1210,6 +1214,14 @@ public final class MenuAccessibilityController {
 			return true;
 		}
 
+		// The Crafter locks and unlocks a slot in its screen's own slotClicked, before the click
+		// reaches the menu, so a click sent straight to the menu would never toggle it. Go through
+		// the screen for it, as a mouse click does; it still sends the click on afterward.
+		if (screen instanceof CrafterScreen && slot instanceof CrafterSlot && screen instanceof SlotClickAccess access) {
+			access.unitedMinecraft$slotClicked(slot, slot.index, button, input);
+			return true;
+		}
+
 		// handleContainerInput already calls menu.clicked(...) internally (to diff slots for
 		// the outgoing packet) before sending it to the server, so calling menu.clicked()
 		// ourselves too would apply the click twice - e.g. splitting an already-split stack.
@@ -2269,6 +2281,11 @@ public final class MenuAccessibilityController {
 				&& !slot.getItem().isEmpty() && anvilMenu.getCost() > 0) {
 			message = message.append(Component.literal(", "))
 					.append(Component.translatable("united_minecraft.menu.anvil_cost", anvilMenu.getCost()));
+		}
+
+		if (menu instanceof CrafterMenu crafterMenu && slot instanceof CrafterSlot
+				&& crafterMenu.isSlotDisabled(slot.index)) {
+			message = message.append(Component.literal(", ")).append(Component.translatable("united_minecraft.menu.crafter_locked"));
 		}
 
 		if (announceSection) {

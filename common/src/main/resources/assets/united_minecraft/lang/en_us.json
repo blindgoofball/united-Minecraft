@@ -672,6 +672,7 @@
 	"united_minecraft.menu.slot.hotbar": "Hotbar",
 	"united_minecraft.menu.slot.inventory": "Inventory",
 	"united_minecraft.menu.slot.storage": "Storage",
+	"united_minecraft.menu.crafter_locked": "Locked",
 	"united_minecraft.menu.slot.input": "Input",
 	"united_minecraft.menu.slot.output": "Output",
 	"united_minecraft.menu.slot.fuel": "Fuel",

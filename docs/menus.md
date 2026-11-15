@@ -79,6 +79,9 @@ These controls are not slots, so each gets its own section.
   one, and the result waits in the output slot, one Shift+Tab back.
 - **Anvil:** a Rename section ahead of its slots. Tab reaches it and leaves it like
   any section, and every other key reaches the text field normally.
+- **Crafter:** Enter on an empty grid slot locks or unlocks it, as a mouse click does,
+  and a locked slot is narrated as "Locked". In Build Mode the Crafter's narration
+  includes the side it faces, which is where it ejects the result.
 
 ## Creative inventory
 

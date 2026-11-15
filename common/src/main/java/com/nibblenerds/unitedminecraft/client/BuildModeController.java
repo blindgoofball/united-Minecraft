@@ -1804,6 +1804,11 @@ public final class BuildModeController {
 
 	/** The block's own {@code FACING}/{@code HORIZONTAL_FACING} value, whichever it has - null if neither. */
 	private static Direction directionPropertyOf(BlockState state) {
+		// The Crafter (and Jigsaw) store a front-and-top pair, not a plain Direction; the front is
+		// the side the Crafter drops its items out of.
+		if (state.hasProperty(BlockStateProperties.ORIENTATION)) {
+			return state.getValue(BlockStateProperties.ORIENTATION).front();
+		}
 		for (Property<?> property : state.getProperties()) {
 			if (property.getValueClass() == Direction.class) {
 				return (Direction) getValue(state, property);
