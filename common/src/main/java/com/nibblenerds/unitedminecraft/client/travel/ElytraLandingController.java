@@ -6,10 +6,7 @@ import com.nibblenerds.unitedminecraft.client.WaterExitController;
 import com.nibblenerds.unitedminecraft.client.autowalk.AutoWalkController;
 import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 import net.minecraft.client.Minecraft;
@@ -112,8 +109,6 @@ public final class ElytraLandingController {
 	private static final double MISSED_BELOW = 3.0;
 	// How far below the search limit ground is taken to be where none was found - a void.
 	private static final int NO_GROUND_DEPTH = 64;
-	// Blocks either way from the spot whose ground goes in a flight's log.
-	private static final int RECORDED_RADIUS = 24;
 
 	private ElytraLandingController() {
 	}
@@ -127,7 +122,6 @@ public final class ElytraLandingController {
 	}
 
 	public static void reset() {
-		ElytraFlightRecorder.end("reset", "control released");
 		autopilot = null;
 		target = null;
 		announcedPhase = null;
@@ -202,7 +196,6 @@ public final class ElytraLandingController {
 		hazardTicks = 0;
 		client.getNarrator().saySystemNow(started);
 		AngleAssistController.disable(client);
-		startRecording(player, spot, pilot, level, first);
 		apply(player, first);
 		return true;
 	}
@@ -247,7 +240,6 @@ public final class ElytraLandingController {
 		destinationName = name;
 		destinationExact = exact;
 		destinationArrival = onArrival;
-		ElytraFlightRecorder.row(String.format(java.util.Locale.ROOT, "# destination,%d,%d,%d", wanted.getX(), wanted.getY(), wanted.getZ()));
 	}
 
 	/** Says how far from the destination the flight ended, and walks the rest of the way if the player has asked for that. */
@@ -433,7 +425,6 @@ public final class ElytraLandingController {
 		if (!isActive()) {
 			return;
 		}
-		ElytraFlightRecorder.end("cancelled", endState(player));
 		reset();
 		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.elytra_landing_cancelled"));
 	}
@@ -448,7 +439,6 @@ public final class ElytraLandingController {
 		}
 		if (!player.isFallFlying()) {
 			boolean landed = player.onGround();
-			ElytraFlightRecorder.end(landed ? "touchdown" : "stopped-gliding", endState(player));
 			BlockPos wanted = destination;
 			Component wantedName = destinationName;
 			boolean wantedExact = destinationExact;
@@ -476,7 +466,6 @@ public final class ElytraLandingController {
 		}
 		if (player.getY() < target.feet().getY() - MISSED_BELOW) {
 			// Below the spot: it can't be landed on now, and flying on only makes the fall longer.
-			ElytraFlightRecorder.end("missed", endState(player));
 			reset();
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.elytra_landing_missed"));
 			return;
@@ -489,7 +478,6 @@ public final class ElytraLandingController {
 
 		hazardTicks = command.hazard() ? hazardTicks + 1 : 0;
 		if (hazardTicks >= HAZARD_TICKS_TO_ABORT) {
-			ElytraFlightRecorder.end("hazard", endState(player));
 			reset();
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.elytra_landing_hazard"));
 			return;
@@ -502,7 +490,6 @@ public final class ElytraLandingController {
 					? "united_minecraft.narrate.elytra_landing_circling" : "united_minecraft.narrate.elytra_landing_final"));
 		}
 		ticksFlown++;
-		recordTick(player, command);
 		if (ticksFlown % STATUS_INTERVAL_TICKS == 0) {
 			Vec3 to = Vec3.atBottomCenterOf(target.feet());
 			double horizontal = Math.hypot(to.x() - player.getX(), to.z() - player.getZ());
@@ -510,53 +497,6 @@ public final class ElytraLandingController {
 					(int) Math.round(horizontal), (int) Math.round(player.getY() - to.y())));
 		}
 		apply(player, command);
-	}
-
-	/** Opens the flight's log: what it is headed for, where it starts, and the ground around the spot as the autopilot sees it. */
-	private static void startRecording(LocalPlayer player, Spot spot, ElytraAutopilot pilot, Level level, ElytraAutopilot.Command first) {
-		BlockPos feet = spot.feet();
-		List<String> lines = new ArrayList<>();
-		lines.add("# elytra landing flight log");
-		lines.add(String.format(Locale.ROOT, "# spot,%d,%d,%d", feet.getX(), feet.getY(), feet.getZ()));
-		lines.add(destination == null ? "# destination,none" : String.format(Locale.ROOT, "# destination,%d,%d,%d",
-				destination.getX(), destination.getY(), destination.getZ()));
-		lines.add("# dimension," + level.dimension());
-		lines.add(String.format(Locale.ROOT, "# start,%.2f,%.2f,%.2f,v=%.3f,%.3f,%.3f,yaw=%.1f,pitch=%.1f",
-				player.getX(), player.getY(), player.getZ(), player.getDeltaMovement().x(), player.getDeltaMovement().y(),
-				player.getDeltaMovement().z(), player.getYRot(), player.getXRot()));
-		lines.add("# first-phase," + first.phase() + ",predicted-miss=" + String.format(Locale.ROOT, "%.2f", first.predictedMiss()));
-		lines.add("# G-columns,x,z,surface,below (ground a flight just over the spot meets)");
-		LevelProbe probe = new LevelProbe(level, feet.getY() - COVERED_DEPTH, feet.getY());
-		for (int dx = -RECORDED_RADIUS; dx <= RECORDED_RADIUS; dx++) {
-			for (int dz = -RECORDED_RADIUS; dz <= RECORDED_RADIUS; dz++) {
-				int x = feet.getX() + dx;
-				int z = feet.getZ() + dz;
-				lines.add(String.format(Locale.ROOT, "G,%d,%d,%.0f,%.0f", x, z,
-						probe.height(x + 0.5, z + 0.5), probe.heightBelow(x + 0.5, feet.getY() + 2.0, z + 0.5)));
-			}
-		}
-		lines.add("# T-columns,tick,x,y,z,vx,vy,vz,yaw,pitch,cmdYaw,cmdPitch,phase,predictedMiss,hazard,onGround");
-		ElytraFlightRecorder.begin(lines);
-	}
-
-	private static void recordTick(LocalPlayer player, ElytraAutopilot.Command command) {
-		if (!ElytraFlightRecorder.isRecording()) {
-			return;
-		}
-		Vec3 v = player.getDeltaMovement();
-		ElytraFlightRecorder.row(String.format(Locale.ROOT, "T,%d,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.1f,%.1f,%.1f,%.1f,%s,%.2f,%b,%b",
-				ticksFlown, player.getX(), player.getY(), player.getZ(), v.x(), v.y(), v.z(), player.getYRot(), player.getXRot(),
-				command.yaw(), command.pitch(), command.phase(), command.predictedMiss(), command.hazard(), player.onGround()));
-	}
-
-	/** Where the player is and how far from the spot, for the last line of a flight's log. */
-	private static String endState(LocalPlayer player) {
-		Vec3 v = player.getDeltaMovement();
-		String away = target == null ? "" : String.format(Locale.ROOT, ",spot-offset=%.2f,height-over-spot=%.2f",
-				Math.hypot(target.feet().getX() + 0.5 - player.getX(), target.feet().getZ() + 0.5 - player.getZ()),
-				player.getY() - target.feet().getY());
-		return String.format(Locale.ROOT, "pos=%.2f;%.2f;%.2f,v=%.3f;%.3f;%.3f,onGround=%b%s",
-				player.getX(), player.getY(), player.getZ(), v.x(), v.y(), v.z(), player.onGround(), away);
 	}
 
 	private static ElytraAutopilot.State stateOf(LocalPlayer player) {

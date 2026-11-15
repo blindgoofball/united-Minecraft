@@ -80,10 +80,6 @@ low to reach Village, you need about 40 more blocks of height"). Turn on Walk to
 Target After Elytra Landing in Settings > Modes & Movement to have it walk the rest
 of the way once you are down. Backspace cancels the flight.
 
-Each landing flight is recorded to a text file in `united_minecraft/elytra-flights/` in the game
-folder (the last ten are kept): the spot, the ground around it, every tick of the flight and how it
-ended, for working out why a landing went wrong.
-
 **Elytra flight alerts** (on by default, Settings > Modes & Movement) predict the
 rest of your flight every tick, assuming you keep looking where you are, and check
 it against the real blocks. A wall, a landing too fast to survive unhurt, harmful
