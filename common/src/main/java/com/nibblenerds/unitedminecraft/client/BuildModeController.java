@@ -43,6 +43,7 @@ import net.minecraft.world.level.block.FarmlandBlock;
 import net.minecraft.world.level.block.HopperBlock;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.ObserverBlock;
+import net.minecraft.world.level.block.PoweredRailBlock;
 import net.minecraft.world.level.block.RedstoneWireBlock;
 import net.minecraft.world.level.block.RepeaterBlock;
 import net.minecraft.world.level.block.SlabBlock;
@@ -135,7 +136,9 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * rather than special-casing block types - see {@link #directionPropertyOf}.
  * Redstone power is checked generically too, via {@link Level#hasNeighborSignal}
  * rather than a block-specific "powered" property (plenty of blocks respond to
- * power without exposing one), and only narrated when actually powered - silence
+ * power without exposing one), plus a powered/activator rail's own stored state
+ * (power travels along a line of rails without a signal reaching each one), and
+ * only narrated when actually powered - silence
  * otherwise, since knowing a block isn't powered is rarely as actionable as
  * knowing it is. A few redstone components carry state that generic property
  * scanning can't surface (a repeater's delay and a comparator's mode are both
@@ -1633,7 +1636,11 @@ public final class BuildModeController {
 				message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_upside_down"));
 			}
 		}
-		if (level.hasNeighborSignal(cursor)) {
+		// A powered/activator rail passes power along up to eight rails, which is a state it stores
+		// itself rather than a signal hasNeighborSignal can see from the rails in between.
+		boolean railPowered = state.getBlock() instanceof PoweredRailBlock
+				&& state.getValue(PoweredRailBlock.POWERED);
+		if (railPowered || level.hasNeighborSignal(cursor)) {
 			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_powered"));
 		}
 		if (state.getBlock() instanceof SlabBlock) {
