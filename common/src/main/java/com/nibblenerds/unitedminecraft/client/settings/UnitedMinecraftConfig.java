@@ -145,6 +145,8 @@ public final class UnitedMinecraftConfig {
 	public int wallToneVolume = 60;
 	public boolean wallToneObstaclesEnabled = true;
 	public boolean wallToneCeilingEnabled = false;
+	/** Wall and ceiling tones sound on open space and fall silent against a wall, instead of the reverse. */
+	public boolean wallToneInverted = false;
 	public WallToneStyle wallToneStyle = WallToneStyle.TONES;
 	/** How far the Scanner's Biomes and Structures category looks - see {@link ExplorationRange}. */
 	public double exploreScannerRange = ExplorationRange.DEFAULT_SCANNER;

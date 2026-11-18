@@ -66,6 +66,11 @@ adapted for a 3D first-person world.
   out as you walk is a doorway or side passage. A room plays all four, loudest
   toward the nearest wall. A corner is ahead plus one side; a dead end is ahead
   plus both sides. Outdoors is mostly silence, with pulses on hilly ground.
+- **Sound on Open Space:** an option in the Wall Tones settings that flips the
+  wall and ceiling sounds around. Each direction is then loudest when it is open
+  for the full range and falls silent against a wall, so a corridor plays ahead
+  and behind while the walls on either side are quiet. The pulsing step sound is
+  not flipped.
 - **Not included:** drops and holes (Fall Warning covers those), water, lava, tall
   grass, flowers and mobs. Each direction checks one straight line from your
   center, so turning slowly in place sweeps the room.

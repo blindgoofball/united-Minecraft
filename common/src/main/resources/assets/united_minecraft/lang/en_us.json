@@ -916,6 +916,7 @@
 	"united_minecraft.settings_screen.wall_tone_style.noise": "Noise",
 	"united_minecraft.settings_screen.wall_tone_obstacles_enabled": "Wall Tones: Separate Pulsing Tone for Jumpable Obstacles",
 	"united_minecraft.settings_screen.wall_tone_ceiling_enabled": "Wall Tones: Ceiling Tone",
+	"united_minecraft.settings_screen.wall_tone_inverted": "Wall Tones: Sound on Open Space",
 	"united_minecraft.narrate.tool_mismatch_diamond": "Warning: %s requires diamond pickaxe or higher to drop items",
 	"united_minecraft.narrate.tool_mismatch_iron": "Warning: %s requires iron pickaxe or higher to drop items",
 	"united_minecraft.narrate.tool_mismatch_stone": "Warning: %s requires stone pickaxe or higher to drop items",

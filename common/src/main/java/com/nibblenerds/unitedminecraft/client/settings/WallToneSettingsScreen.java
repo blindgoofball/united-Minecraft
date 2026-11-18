@@ -32,6 +32,8 @@ final class WallToneSettingsScreen extends SettingsListScreen {
 				config.wallToneObstaclesEnabled, value -> config.wallToneObstaclesEnabled = value);
 		y = addToggle(x, y, "united_minecraft.settings_screen.wall_tone_ceiling_enabled",
 				config.wallToneCeilingEnabled, value -> config.wallToneCeilingEnabled = value);
+		y = addToggle(x, y, "united_minecraft.settings_screen.wall_tone_inverted",
+				config.wallToneInverted, value -> config.wallToneInverted = value);
 
 		addButton(x, y + ROW_SPACING, "united_minecraft.settings_screen.back",
 				() -> Minecraft.getInstance().gui.setScreen(new SettingsScreen()));
