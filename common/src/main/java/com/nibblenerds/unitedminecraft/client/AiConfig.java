@@ -37,6 +37,9 @@ public final class AiConfig {
 
 	public Provider provider = Provider.OFF;
 
+	/** Also put each description on the clipboard when it arrives, for pasting into notes or a braille display. */
+	public boolean copyToClipboard = false;
+
 	public String geminiKey = "";
 	public String geminiModel = "gemini-3.5-flash-lite";
 

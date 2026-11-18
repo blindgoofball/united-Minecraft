@@ -77,7 +77,10 @@ final class WorldDescriber {
 						return;
 					}
 					inFlight = false;
-					client.getNarrator().saySystemNow(result);
+					client.getNarrator().saySystemNow(result.line());
+					if (result.copyable() && AiConfig.get().copyToClipboard) {
+						client.keyboardHandler.setClipboard(result.line().getString());
+					}
 				}));
 	}
 
@@ -96,8 +99,12 @@ final class WorldDescriber {
 		return ticksWaiting > 0 && ticksWaiting % CLICK_INTERVAL_TICKS == 0;
 	}
 
+	/** What to speak for a finished request; {@code copyable} is true only for a real description, not an error. */
+	private record Outcome(Component line, boolean copyable) {
+	}
+
 	/** The line to speak for a finished response - the description, or why there isn't one. */
-	private static Component read(AiProvider provider, HttpResponse<String> response) {
+	private static Outcome read(AiProvider provider, HttpResponse<String> response) {
 		try {
 			if (response.statusCode() / 100 != 2) {
 				String reason = provider.errorMessage(response.body());
@@ -107,7 +114,7 @@ final class WorldDescriber {
 			if (text.isEmpty()) {
 				return failed("the answer was empty");
 			}
-			return Component.literal(text);
+			return new Outcome(Component.literal(text), true);
 		} catch (AiProvider.AiException e) {
 			return failed(e.getMessage());
 		} catch (RuntimeException e) {
@@ -117,7 +124,7 @@ final class WorldDescriber {
 		}
 	}
 
-	private static Component failure(Throwable error) {
+	private static Outcome failure(Throwable error) {
 		Throwable cause = error instanceof CompletionException && error.getCause() != null ? error.getCause() : error;
 		LOGGER.warn("AI request failed", cause);
 		if (cause instanceof HttpTimeoutException) {
@@ -129,7 +136,7 @@ final class WorldDescriber {
 		return failed(cause.getClass().getSimpleName());
 	}
 
-	private static Component failed(String reason) {
-		return Component.translatable("united_minecraft.narrate.ai_failed", reason);
+	private static Outcome failed(String reason) {
+		return new Outcome(Component.translatable("united_minecraft.narrate.ai_failed", reason), false);
 	}
 }

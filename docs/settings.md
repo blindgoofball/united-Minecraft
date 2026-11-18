@@ -50,6 +50,9 @@ runs locally and sends nothing off your machine. The key is stored in plain text
 `united_minecraft_ai.json` in the config folder, a separate file from your settings so that sharing
 your settings does not share it.
 
+Copy Description to Clipboard (off by default) also puts each description on the clipboard as it is
+spoken, so you can paste it into notes or read it on a braille display. Errors are not copied.
+
 ## Config files
 
 Settings, keybindings and per-world data (map markers, named blocks) are written

@@ -766,6 +766,7 @@
 	"united_minecraft.ai_settings_screen.api_key": "API Key",
 	"united_minecraft.ai_settings_screen.model": "Model",
 	"united_minecraft.ai_settings_screen.url": "Server Address",
+	"united_minecraft.ai_settings_screen.copy_to_clipboard": "Copy Description to Clipboard",
 	"united_minecraft.settings_screen.back": "Back",
 	"united_minecraft.detection_alerts_screen.title": "Detection & Alerts",
 	"united_minecraft.wall_tone_settings_screen.title": "Wall Tones",

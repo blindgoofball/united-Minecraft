@@ -62,6 +62,11 @@ final class AiSettingsScreen extends SettingsListScreen {
 			}
 		}
 
+		if (config.provider != AiConfig.Provider.OFF) {
+			y = addToggle(x, y, "united_minecraft.ai_settings_screen.copy_to_clipboard", config.copyToClipboard,
+					value -> config.copyToClipboard = value);
+		}
+
 		addButton(x, y + ROW_SPACING, "united_minecraft.settings_screen.back", this::onClose);
 	}
 
