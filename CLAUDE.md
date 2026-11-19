@@ -123,16 +123,15 @@ build's `checkSharedSources` task does, and each module's `check` depends on it.
 ### The loader seam
 
 `Platform` (in `com.nibblenerds.unitedminecraft.platform`) is how shared code asks for
-the things it needs from a loader rather than from vanilla, which turned out to be
-two directories and, for marker sharing, checking whether the server has a payload and
+the things it needs from a loader rather than from vanilla: the config and game
+directories and, for marker sharing, checking whether the server has a payload and
 sending one to it. The loader module installs an implementation before anything
 else runs.
 
 `ClientHooks` (in the `client` package; the methods it calls on controllers in other
 packages are `public`) is where the controllers' responses to game events live, as plain static calls.
 Each loader's bridge subscribes that loader's events and calls into it; the bridge makes
-no decisions of its own. Ordering inside each hook reproduces what the old
-per-controller event registrations produced and is load-bearing — read the doc comments
+no decisions of its own. Ordering inside each hook is load-bearing — read the doc comments
 there before changing it.
 
 Adding a feature that needs a new game event means adding a hook to `ClientHooks` and
