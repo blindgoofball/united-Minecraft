@@ -44,6 +44,7 @@ import net.minecraft.world.level.block.HopperBlock;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.ObserverBlock;
 import net.minecraft.world.level.block.PoweredRailBlock;
+import net.minecraft.world.level.block.LiquidBlockContainer;
 import net.minecraft.world.level.block.RedstoneWireBlock;
 import net.minecraft.world.level.block.RepeaterBlock;
 import net.minecraft.world.level.block.SlabBlock;
@@ -1114,9 +1115,18 @@ public final class BuildModeController {
 			Vec3 point = pointOnShape(level, player, cursor, level.getBlockState(cursor));
 			return hasClearLineOfSight(level, player, cursor, point) ? point : null;
 		}
-		for (Direction face : faceTryOrder(null)) {
-			BlockPos neighborPos = cursor.relative(face);
-			BlockState neighborState = level.getBlockState(neighborPos);
+		// Water poured onto a waterloggable block (a slab, stairs, fence, trapdoor...) waterlogs it
+		// rather than going into the cell beside it, but only when the ray lands on that block
+		// itself - so aim at the cursor's own shape instead of at a neighbor to fill the cell from.
+		BlockState cursorState = level.getBlockState(cursor);
+		if (bucketItem.getContent() == Fluids.WATER && cursorState.getBlock() instanceof LiquidBlockContainer container
+				&& container.canPlaceLiquid(player, level, cursor, cursorState, Fluids.WATER)) {
+			Vec3 point = pointOnShape(level, player, cursor, cursorState);
+			return hasClearLineOfSight(level, player, cursor, point) ? point : null;
+		}
+		for (Direction face : faceTryOrder(null)) {
+			BlockPos neighborPos = cursor.relative(face);
+			BlockState neighborState = level.getBlockState(neighborPos);
 			if (neighborState.canBeReplaced()) {
 				continue;
 			}

@@ -37,7 +37,9 @@ narrates it, and locks the cursor's movement to that orientation.
   does: through a wall, it says "Can't see it". Placing a block has no such
   limit. Build Mode also works with hoes, axes and
   shovels on blocks, and with water and lava buckets, including pouring into a
-  spot with no clickable face, such as a narrow hole. Boats and rafts are placed
+  spot with no clickable face, such as a narrow hole. A water bucket used with the
+  cursor on a waterloggable block (a slab, stairs, a fence, a trapdoor) waterlogs
+  it. Boats and rafts are placed
   on the water at the cursor, or on the ground when the cursor is on dry land
   (including on a block shorter than a full one, like a dirt path); the
   boat faces away from you. A boat needs a space about a block and a half wide
