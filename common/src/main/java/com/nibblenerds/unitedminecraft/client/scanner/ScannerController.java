@@ -141,10 +141,12 @@ import net.minecraft.world.level.block.SaplingBlock;
 import net.minecraft.world.level.block.ScaffoldingBlock;
 import net.minecraft.world.level.block.SelectableSlotContainer;
 import net.minecraft.world.level.block.SignBlock;
+import net.minecraft.world.level.block.SpawnerBlock;
 import net.minecraft.world.level.block.StemBlock;
 import net.minecraft.world.level.block.SugarCaneBlock;
 import net.minecraft.world.level.block.SweetBerryBushBlock;
 import net.minecraft.world.level.block.TrapDoorBlock;
+import net.minecraft.world.level.block.TrialSpawnerBlock;
 import net.minecraft.world.level.block.TwistingVinesBlock;
 import net.minecraft.world.level.block.TwistingVinesPlantBlock;
 import net.minecraft.world.level.block.VaultBlock;
@@ -153,6 +155,9 @@ import net.minecraft.world.level.block.WeepingVinesBlock;
 import net.minecraft.world.level.block.WeepingVinesPlantBlock;
 import net.minecraft.world.level.block.entity.ListBackedContainer;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
+import net.minecraft.world.level.block.entity.SpawnerBlockEntity;
+import net.minecraft.world.level.block.entity.TrialSpawnerBlockEntity;
+import net.minecraft.world.level.block.entity.trialspawner.TrialSpawner;
 import net.minecraft.world.level.block.WeatheringCopper;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BedPart;
@@ -1439,6 +1444,11 @@ public final class ScannerController {
 			if (frameStatus != null) {
 				name = name.copy().append(Component.literal(", ")).append(frameStatus);
 			}
+			Entity spawnerMob = spawnerMob(player.level(), item.blockPos());
+			if (spawnerMob != null) {
+				name = name.copy().append(Component.literal(", ")).append(Component.translatable(
+						"united_minecraft.narrate.build_spawner_mob", spawnerMob.getType().getDescription()));
+			}
 		}
 		if (item.area() != null) {
 			name = name.copy().append(Component.literal(", ")).append(describeSurfaces(item.area()));
@@ -1826,6 +1836,22 @@ public final class ScannerController {
 				Component.translatable("united_minecraft.narrate.frame_ring_count", filled, ring.size()));
 	}
 
+	/**
+	 * The mob a monster spawner or trial spawner at {@code pos} spawns, or null when it is neither.
+	 * The type isn't in the block state; the client gets it from the block entity, which is how
+	 * vanilla draws the spinning mob in the cage. Shared with Build Mode's cursor.
+	 */
+	public static Entity spawnerMob(Level level, BlockPos pos) {
+		if (level.getBlockEntity(pos) instanceof SpawnerBlockEntity spawner) {
+			return spawner.getSpawner().getOrCreateDisplayEntity(level, pos);
+		}
+		if (level.getBlockEntity(pos) instanceof TrialSpawnerBlockEntity trialBlock) {
+			TrialSpawner trial = trialBlock.getTrialSpawner();
+			return trial.getStateData().getOrCreateDisplayEntity(trial, level, trial.getState());
+		}
+		return null;
+	}
+
 	private static boolean isMechanism(Block block) {
 		return block instanceof LeverBlock
 				|| block instanceof ButtonBlock
@@ -1839,6 +1865,10 @@ public final class ScannerController {
 				// Signs have no menu, but reading one is the same kind of "approach and get
 				// information from it" action as the rest of this category.
 				|| block instanceof SignBlock
+				// Spawners are only ever approached to deal with them (light them up, fight what comes
+				// out, or avoid them), so they are found the same way, with the mob they spawn.
+				|| block instanceof SpawnerBlock
+				|| block instanceof TrialSpawnerBlock
 				|| block instanceof DiodeBlock
 				|| block instanceof NoteBlock
 				|| block instanceof BellBlock
