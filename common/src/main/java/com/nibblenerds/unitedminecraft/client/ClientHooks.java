@@ -1,6 +1,7 @@
 package com.nibblenerds.unitedminecraft.client;
 
 import com.nibblenerds.unitedminecraft.client.menu.AdvancementsController;
+import com.nibblenerds.unitedminecraft.client.menu.SlotChangeNarration;
 import com.nibblenerds.unitedminecraft.client.scanner.MapMarkerController;
 import com.nibblenerds.unitedminecraft.client.scanner.MarkerShareController;
 import com.nibblenerds.unitedminecraft.client.scanner.NamedBlockController;
@@ -60,6 +61,7 @@ public final class ClientHooks {
 		AccessibilityTickHandler.onEndTick(client);
 		TitleNarrationController.tick(client);
 		RecommendedKeysPrompt.tick(client);
+		SlotChangeNarration.tick(client);
 	}
 
 	/**
