@@ -8,7 +8,14 @@ On this page: [Container menus and Creative](#container-menus-and-creative) | [A
 
 Chests, furnaces, crafting tables, anvils, brewing stands, enchanting tables, the
 Recipe Book, your own inventory and the Creative inventory use the game's own keyboard
-navigation and narration. United Minecraft adds nothing to these screens.
+navigation and narration, with a few additions:
+
+- **Letters** jump to the next slot in the same group whose item name starts with that
+  letter, wrapping around, so repeating it cycles through every match. A letter with
+  Ctrl or Alt held is left to the game, so Alt+Q (drop one item), Ctrl+Q (drop the
+  stack) and Ctrl+F (swap with the off-hand) still work. E does not close these screens; Escape does.
+- Stepping to a slot that reads the same as the last one still says it, so you know you
+  moved, and a slot is said again when what is in it changes while you are on it.
 
 ## Advancements
 

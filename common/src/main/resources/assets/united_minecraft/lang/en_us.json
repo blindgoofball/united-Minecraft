@@ -280,6 +280,7 @@
 	"united_minecraft.narrate.advancements_no_children": "No advancements below this one",
 	"united_minecraft.narrate.sign_side_front": "Front",
 	"united_minecraft.narrate.sign_side_back": "Back",
+	"united_minecraft.narrate.menu_no_item_with_letter": "No item starting with %s",
 	"united_minecraft.narrate.sign_content": "%s says: %s",
 	"united_minecraft.narrate.sign_back_content": "%s back says: %s",
 	"united_minecraft.narrate.sign_blank": "%s, blank",

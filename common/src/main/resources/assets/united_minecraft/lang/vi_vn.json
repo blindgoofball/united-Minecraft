@@ -265,6 +265,7 @@
 	"united_minecraft.narrate.advancements_no_children": "Không có tiến trình con nào bên dưới mục này",
 	"united_minecraft.narrate.sign_side_front": "Mặt trước",
 	"united_minecraft.narrate.sign_side_back": "Mặt sau",
+	"united_minecraft.narrate.menu_no_item_with_letter": "Không có vật phẩm nào bắt đầu bằng %s",
 	"united_minecraft.narrate.sign_content": "%s có nội dung: %s",
 	"united_minecraft.narrate.sign_back_content": "%s mặt sau có nội dung: %s",
 	"united_minecraft.narrate.sign_blank": "%s trống",

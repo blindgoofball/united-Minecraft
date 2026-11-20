@@ -2,6 +2,7 @@ package com.nibblenerds.unitedminecraft.client;
 
 import com.nibblenerds.unitedminecraft.client.menu.AdvancementsController;
 import com.nibblenerds.unitedminecraft.client.menu.SlotChangeNarration;
+import com.nibblenerds.unitedminecraft.client.menu.SlotLetterJump;
 import com.nibblenerds.unitedminecraft.client.scanner.MapMarkerController;
 import com.nibblenerds.unitedminecraft.client.scanner.MarkerShareController;
 import com.nibblenerds.unitedminecraft.client.scanner.NamedBlockController;
@@ -122,6 +123,9 @@ public final class ClientHooks {
 	 *         whose event is phrased as "cancel" instead inverts it in its own bridge.
 	 */
 	public static boolean onScreenKeyPressed(Screen screen, KeyEvent event) {
+		if (screen instanceof AbstractContainerScreen<?> container && !SlotLetterJump.handleKey(container, event)) {
+			return false;
+		}
 		if (screen instanceof AdvancementsScreen advancements
 				&& !AdvancementsController.handleKey(advancements, event)) {
 			return false;
