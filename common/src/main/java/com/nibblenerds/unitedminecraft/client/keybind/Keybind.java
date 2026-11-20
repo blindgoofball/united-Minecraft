@@ -1,7 +1,5 @@
 package com.nibblenerds.unitedminecraft.client.keybind;
 
-import com.nibblenerds.unitedminecraft.client.menu.MenuAccessibilityController;
-import com.nibblenerds.unitedminecraft.client.menu.MenuAccessibilityController;
 import com.mojang.blaze3d.platform.InputConstants;
 
 import net.minecraft.client.input.KeyEvent;
@@ -11,9 +9,7 @@ import net.minecraft.network.chat.Component;
 /**
  * One rebindable chord: a primary {@link InputConstants} key plus an {@link InputConstants}
  * modifier bitmask (the same bitmask {@link net.minecraft.client.input.KeyEvent#modifiers()}
- * already produces - see {@link MenuAccessibilityController#handleKey} for another place in
- * this codebase that already reads {@code InputConstants.MOD_SHIFT}/{@code
- * InputConstants.MOD_CONTROL} off it the same way).
+ * already produces).
  * {@code modifiers == 0} is just a plain key, the same as every one of this mod's existing
  * defaults - no special case needed anywhere else in the model for that, including a bare
  * modifier key itself (e.g. {@link ClientKeyBindings#BUILD_PLACE}'s default of bare Right
@@ -62,7 +58,7 @@ public record Keybind(int key, int modifiers) {
 	 * actions, which are dispatched directly off a screen's own key events rather than polled
 	 * through {@link ClientKeyBindings#updateAll()}. Exact modifier equality, not a subset check
 	 * like {@code updateAll} uses: a container-screen chord like Shift+Enter is a fully separate
-	 * action from plain Enter (see {@link ClientKeyBindings#CONTAINER_QUICK_MOVE}), not a more
+	 * action from plain Enter, not a more
 	 * specific variant competing for the same primary key. The event's modifiers are {@link
 	 * #normalizeModifiers normalized} first - see that method for why comparing its raw value
 	 * directly would silently never match.

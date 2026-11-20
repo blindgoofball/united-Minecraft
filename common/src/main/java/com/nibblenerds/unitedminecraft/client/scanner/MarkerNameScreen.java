@@ -1,7 +1,5 @@
 package com.nibblenerds.unitedminecraft.client.scanner;
 
-import com.nibblenerds.unitedminecraft.client.menu.MenuAccessibilityController;
-import com.nibblenerds.unitedminecraft.client.menu.MenuAccessibilityController;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -66,7 +64,7 @@ public final class MarkerNameScreen extends Screen {
 
 	/**
 	 * {@code returnTo} lets a caller reopen inside another screen instead of closing to the
-	 * game world - e.g. the recipe book's own search prompt (see {@link MenuAccessibilityController})
+	 * game world - e.g. the recipe book's own search prompt
 	 * needs to reopen the crafting/furnace screen it was invoked from, not exit the container
 	 * entirely the way the Scanner's world-space search or a Map Marker name does (both pass
 	 * {@code null}, preserving the original behavior of closing to nothing).

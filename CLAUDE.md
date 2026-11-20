@@ -108,7 +108,7 @@ possible while NeoForge is still catching up.
   loader seam. This is where nearly all feature work happens. The `client` package holds the
   shared hub (`AccessibilityTickHandler`, `ClientHooks`) and the smaller features; larger
   groups live in subpackages: `keybind`, `settings`, `audio`, `scanner`, `autowalk`,
-  `travel` (elytra, boat, mount), `combat` and `menu` (container, Creative and advancements
+  `travel` (elytra, boat, mount), `combat` and `menu` (advancements
   navigation), alongside `speech`, `mixin`, `access` and `duck`. Anything one package calls
   in another must be `public`; the rest stays package-private.
 - `common/src/main/resources` — the client mixin config, the bundled Prism natives under
@@ -209,15 +209,12 @@ per-world to disk.
 - `ItemDescriptions` centralizes how an `ItemStack` gets turned into narrated text —
   reuse it instead of formatting item names ad hoc.
 
-### Menu/inventory accessibility
+### Menu accessibility
 
-`MenuAccessibilityController` and `CreativeInventoryController` (plus their
-`access`/`mixin` support classes, `CreativeModeInventoryScreenAccessorMixin` /
-`CreativeSlotWrapperAccessorMixin`) implement keyboard-only navigation of container
-screens and the Creative inventory — Tab/Shift+Tab between sections, 2D arrow-key
-movement within a section, Enter/Shift+Enter to pick up/quick-move. These use mixins to
-reach otherwise-inaccessible vanilla screen internals; check `access/` for the accessor
-interfaces before adding a new one.
+Container screens and the Creative inventory use the game's own keyboard navigation and
+narration. `AdvancementsController` (in `menu`) adds keyboard navigation of the
+advancements tree, reaching vanilla screen internals through mixins; check `access/` for
+the accessor interfaces before adding a new one.
 
 ### Mixins
 

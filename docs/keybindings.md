@@ -67,15 +67,12 @@ key or modifier combination in United Minecraft's own Keybindings screen
 
 ## Inside menus
 
-These apply in container menus, the Creative inventory and settings or list
-screens. See [Menus and inventory](menus.md) for what each does.
+These apply on the advancements screen and in settings or list screens. See
+[Menus and advancements](menus.md) for what each does.
 
 | Key | Action |
 | --- | --- |
-| Tab / Shift+Tab | Next / previous section |
-| Arrow keys | Move within a section |
-| Enter (Shift = quick-move, Ctrl = split, Alt = gather) | Pick up or place the focused stack |
-| Backspace / Ctrl+Backspace | Drop one item / drop the whole stack |
-| Delete / Ctrl+Delete | Drop the carried stack / one carried item |
+| Tab / Shift+Tab | Next / previous section or tab |
+| Arrow keys | Move within the screen |
 
 The Keybindings screen lists the current default of every screen-specific action.

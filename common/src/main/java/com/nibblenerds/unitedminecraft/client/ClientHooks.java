@@ -1,8 +1,6 @@
 package com.nibblenerds.unitedminecraft.client;
 
 import com.nibblenerds.unitedminecraft.client.menu.AdvancementsController;
-import com.nibblenerds.unitedminecraft.client.menu.CreativeInventoryController;
-import com.nibblenerds.unitedminecraft.client.menu.MenuAccessibilityController;
 import com.nibblenerds.unitedminecraft.client.scanner.MapMarkerController;
 import com.nibblenerds.unitedminecraft.client.scanner.MarkerShareController;
 import com.nibblenerds.unitedminecraft.client.scanner.NamedBlockController;
@@ -62,31 +60,15 @@ public final class ClientHooks {
 		AccessibilityTickHandler.onEndTick(client);
 		TitleNarrationController.tick(client);
 		RecommendedKeysPrompt.tick(client);
-		MenuAccessibilityController.recheckInitialSlotNarration(client);
-		MenuAccessibilityController.recheckFocusedSlotForExternalChange(client);
-		MenuAccessibilityController.clearStrayFocus(client);
-		MenuAccessibilityController.tickDrag(client);
-		MenuAccessibilityController.openPendingSearchPrompt(client);
-		CreativeInventoryController.recheckSearchResults(client);
 	}
 
 	/**
-	 * A screen finished {@code init()}. Fires for a same-instance re-init too, which both
+	 * A screen finished {@code init()}. Fires for a same-instance re-init too, which the
 	 * controllers depend on - see their own doc comments.
-	 *
-	 * <p>{@link CreativeModeInventoryScreen} is itself an {@link AbstractContainerScreen}, so
-	 * a creative screen legitimately goes through both controllers; they divide the screen
-	 * between them at key-handling time rather than here.
 	 */
 	public static void onScreenInit(Screen screen) {
 		enableNarratorOnFirstLaunch();
 		RecommendedKeysPrompt.onScreenInit(screen);
-		if (screen instanceof AbstractContainerScreen<?> container) {
-			MenuAccessibilityController.onScreenInit(container);
-		}
-		if (screen instanceof CreativeModeInventoryScreen creative) {
-			CreativeInventoryController.onScreenInit(creative);
-		}
 		if (screen instanceof AdvancementsScreen advancements) {
 			AdvancementsController.onScreenInit(advancements);
 		}
@@ -124,9 +106,6 @@ public final class ClientHooks {
 
 	/** A screen was removed - either really closed, or swapped out for another. */
 	public static void onScreenRemoved(Screen screen) {
-		if (screen instanceof AbstractContainerScreen<?> container) {
-			MenuAccessibilityController.onScreenRemoved(container);
-		}
 		if (screen instanceof AdvancementsScreen) {
 			AdvancementsController.onScreenRemoved();
 		}
@@ -139,21 +118,8 @@ public final class ClientHooks {
 	 *         consumed it. This is the same polarity the controllers' own {@code handleKey}
 	 *         methods use, and the same one Fabric's {@code allowKeyPress} expects; a loader
 	 *         whose event is phrased as "cancel" instead inverts it in its own bridge.
-	 *
-	 * <p>Both controllers get a look on a creative screen, Menu first, stopping at the first
-	 * one that consumes - exactly what registering both listeners on the same per-screen event
-	 * used to do. Each defers to the other for the parts of the screen it doesn't own
-	 * ({@code isHandledByCreativeItemGrid} / {@code isItemGridTab}), so the order is load-bearing.
 	 */
 	public static boolean onScreenKeyPressed(Screen screen, KeyEvent event) {
-		if (screen instanceof AbstractContainerScreen<?> container
-				&& !MenuAccessibilityController.handleKey(container, event)) {
-			return false;
-		}
-		if (screen instanceof CreativeModeInventoryScreen creative
-				&& !CreativeInventoryController.handleKey(creative, event)) {
-			return false;
-		}
 		if (screen instanceof AdvancementsScreen advancements
 				&& !AdvancementsController.handleKey(advancements, event)) {
 			return false;

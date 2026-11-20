@@ -218,13 +218,8 @@ public final class KeybindScreen extends Screen {
 
 	/**
 	 * Only actions that could ever both actually be reachable at the same time as {@code
-	 * editing}'s really conflict. {@link KeybindContext#canOverlap} handles that at the
-	 * tick-loop-mode level; within two {@link KeybindContext#CONTAINER_SCREEN} actions specifically,
-	 * {@link ContainerScope} refines it further - e.g. {@code recipe_book_search} and {@code
-	 * container_describe_slot} share a context but can never both fire (Recipe Book search vs.
-	 * ordinary slot navigation are different, mutually exclusive screen sections), so scoping
-	 * keeps that from being flagged as a false-positive conflict. See {@link ContainerScope}'s
-	 * own doc for why {@code null} scope still conflicts with everything.
+	 * editing}'s really conflict; {@link KeybindContext#canOverlap} decides that at the
+	 * tick-loop-mode level.
 	 */
 	private static KeybindAction findConflict(KeybindAction editing, Keybind candidate) {
 		if (candidate.isUnbound()) {
@@ -232,17 +227,11 @@ public final class KeybindScreen extends Screen {
 		}
 		for (KeybindAction other : ClientKeyBindings.allActions()) {
 			if (other != editing && other.current().equals(candidate)
-					&& KeybindContext.canOverlap(other.context(), editing.context())
-					&& scopesCanOverlap(other, editing)) {
+					&& KeybindContext.canOverlap(other.context(), editing.context())) {
 				return other;
 			}
 		}
 		return null;
-	}
-
-	/** {@code null} scope means "reachable from more than one place, treat as universally conflicting" - see {@link ContainerScope}. */
-	private static boolean scopesCanOverlap(KeybindAction a, KeybindAction b) {
-		return a.scope() == null || b.scope() == null || a.scope() == b.scope();
 	}
 
 	@Override

@@ -17,7 +17,6 @@ public final class KeybindAction {
 	private final Keybind default_;
 	private final KeybindContext context;
 	private final KeybindCategory category;
-	private final ContainerScope scope;
 
 	private Keybind current;
 	private boolean held;
@@ -28,16 +27,10 @@ public final class KeybindAction {
 	}
 
 	KeybindAction(String id, KeybindCategory category, Keybind default_, KeybindContext context) {
-		this(id, category, default_, context, null);
-	}
-
-	/** See {@link ContainerScope}'s own doc for what {@code scope} means and when it should be non-null. */
-	KeybindAction(String id, KeybindCategory category, Keybind default_, KeybindContext context, ContainerScope scope) {
 		this.id = id;
 		this.category = category;
 		this.default_ = default_;
 		this.context = context;
-		this.scope = scope;
 		this.current = default_;
 	}
 
@@ -55,11 +48,6 @@ public final class KeybindAction {
 
 	public KeybindCategory category() {
 		return category;
-	}
-
-	/** {@code null} unless this is a {@link KeybindContext#CONTAINER_SCREEN} action reachable from only one {@link ContainerScope}. */
-	public ContainerScope scope() {
-		return scope;
 	}
 
 	public Keybind current() {

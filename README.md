@@ -27,8 +27,8 @@ the same jar on the server.
   navigation and mining radars. [Details](docs/awareness.md)
 - **Building and mining.** Build Mode's virtual cursor, Angle Assist for bridges,
   tunnels and staircases, and tree-chopping help. [Details](docs/building.md)
-- **Menus and inventory.** Full keyboard navigation of containers, the Recipe Book
-  and the Creative inventory. [Details](docs/menus.md)
+- **Menus and advancements.** Keyboard navigation of the advancements tree.
+  [Details](docs/menus.md)
 
 ## Getting started
 
@@ -58,7 +58,7 @@ the same jar on the server.
 - [Navigation and exploration](docs/navigation.md)
 - [Audio awareness and warnings](docs/awareness.md)
 - [Building and mining aids](docs/building.md)
-- [Menus and inventory](docs/menus.md)
+- [Menus and advancements](docs/menus.md)
 - [Settings](docs/settings.md)
 - [Default key bindings](docs/keybindings.md)
 - [Installation](docs/installation.md)

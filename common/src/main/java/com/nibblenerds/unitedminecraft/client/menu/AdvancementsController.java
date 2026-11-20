@@ -77,7 +77,7 @@ public final class AdvancementsController {
 
 	/**
 	 * @return {@code true} to let vanilla handle the key, {@code false} if consumed - the same
-	 *         polarity as {@link MenuAccessibilityController#handleKey}
+	 *         polarity as {@code ClientHooks#onScreenKeyPressed}
 	 */
 	public static boolean handleKey(AdvancementsScreen screen, KeyEvent event) {
 		if (ClientKeyBindings.CONTAINER_SWITCH_SECTION_NEXT.current().matches(event)) {

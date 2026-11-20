@@ -21,7 +21,7 @@ you want to do.
 
 - [Combat](combat.md) - Combat Mode, Bow Beacon, Hostile Radar
 - [Building and mining aids](building.md) - Build Mode, Angle Assist, Tree Chopping Assist
-- [Menus and inventory](menus.md) - containers, the Recipe Book, special stations, Creative
+- [Menus and advancements](menus.md) - the advancements tree
 
 For building the mod from source, see the [README](../README.md); for how the code
 is organized, see [CLAUDE.md](../CLAUDE.md).

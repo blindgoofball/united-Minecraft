@@ -1,7 +1,5 @@
 package com.nibblenerds.unitedminecraft.client.keybind;
 
-import com.nibblenerds.unitedminecraft.client.menu.CreativeInventoryController;
-import com.nibblenerds.unitedminecraft.client.menu.MenuAccessibilityController;
 import com.nibblenerds.unitedminecraft.client.combat.CombatModeController;
 import com.nibblenerds.unitedminecraft.client.autowalk.AutoWalkController;
 import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
@@ -9,8 +7,6 @@ import com.nibblenerds.unitedminecraft.client.AccessibilityTickHandler;
 import com.nibblenerds.unitedminecraft.client.autowalk.AutoWalkController;
 import com.nibblenerds.unitedminecraft.client.BuildModeController;
 import com.nibblenerds.unitedminecraft.client.combat.CombatModeController;
-import com.nibblenerds.unitedminecraft.client.menu.CreativeInventoryController;
-import com.nibblenerds.unitedminecraft.client.menu.MenuAccessibilityController;
 import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
 import com.nibblenerds.unitedminecraft.client.WaterExitController;
 import net.minecraft.client.Minecraft;
@@ -54,8 +50,8 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
  * coincide with e.g. {@link #BUILD_MODE} still being toggled on in the background. That's safe
  * here only because nothing reads a {@link #CONTAINER_SCREEN} action through {@link
  * ClientKeyBindings#updateAll()}'s polling/{@code isDown()} path the way every other context's
- * actions are - {@link MenuAccessibilityController} and {@link CreativeInventoryController}
- * dispatch those actions directly off the screen's own key-press events instead (matching each
+ * actions are - the Advancements controller
+ * dispatches those actions directly off the screen's own key-press events instead (matching each
  * event's key/modifiers against the action's current {@link Keybind} themselves), which only
  * ever runs while that screen genuinely owns keyboard input. Were a container-screen action ever
  * polled the same way as the others, two simultaneously-"active" non-{@link #GLOBAL} contexts

@@ -1,7 +1,5 @@
 package com.nibblenerds.unitedminecraft.client.keybind;
 
-import com.nibblenerds.unitedminecraft.client.menu.CreativeInventoryController;
-import com.nibblenerds.unitedminecraft.client.menu.MenuAccessibilityController;
 import com.nibblenerds.unitedminecraft.client.scanner.CategoryJumpScreen;
 import com.nibblenerds.unitedminecraft.client.scanner.MarkerShareController;
 import com.nibblenerds.unitedminecraft.client.scanner.MarkerShareScreen;
@@ -9,10 +7,8 @@ import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
 import com.nibblenerds.unitedminecraft.client.scanner.ScannerFilterScreen;
 import com.nibblenerds.unitedminecraft.client.AccessibilityTickHandler;
 import com.nibblenerds.unitedminecraft.client.AngleAssistController;
-import com.nibblenerds.unitedminecraft.client.menu.CreativeInventoryController;
 import com.nibblenerds.unitedminecraft.client.EyeOfEnderController;
 import com.nibblenerds.unitedminecraft.client.scanner.MarkerShareController;
-import com.nibblenerds.unitedminecraft.client.menu.MenuAccessibilityController;
 import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -275,7 +271,7 @@ public final class ClientKeyBindings {
 
 	// --- Inventory/container-screen actions -------------------------------------------------
 	// CONTAINER_SCREEN context (see that enum constant's own doc): dispatched directly off each
-	// screen's key-press events by MenuAccessibilityController/CreativeInventoryController, never
+	// screen's key-press events (the Advancements screen), never
 	// polled through updateAll()/isDown() the way every action above is.
 
 	public static final KeybindAction CONTAINER_SWITCH_SECTION_NEXT = new KeybindAction("container_switch_section_next",
@@ -293,109 +289,6 @@ public final class ClientKeyBindings {
 	public static final KeybindAction CONTAINER_NAV_DOWN = new KeybindAction(
 			"container_nav_down", KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_DOWN, 0), KeybindContext.CONTAINER_SCREEN);
 
-	/** Left-click equivalent: picks up the focused slot's stack, or places the carried one there. */
-	public static final KeybindAction CONTAINER_PICKUP = new KeybindAction(
-			"container_pickup", KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_RETURN, 0), KeybindContext.CONTAINER_SCREEN);
-	/** Was Ctrl+Enter - see {@link #CONTAINER_PICKUP}; right-click equivalent - splits a stack in half onto the cursor, or places one item at a time back from it. */
-	public static final KeybindAction CONTAINER_PICKUP_SPLIT = new KeybindAction("container_pickup_split",
-			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_RETURN, InputConstants.MOD_CONTROL), KeybindContext.CONTAINER_SCREEN);
-	/** Was Shift+Enter - see {@link #CONTAINER_PICKUP}; quick-moves the focused slot instead of just picking it up. */
-	public static final KeybindAction CONTAINER_QUICK_MOVE = new KeybindAction("container_quick_move",
-			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_RETURN, InputConstants.MOD_SHIFT), KeybindContext.CONTAINER_SCREEN);
-
-	// Reachable from both MenuAccessibilityController's ordinary sections AND
-	// CreativeInventoryController's item-grid/hotbar sections (see each method's own doc) - not
-	// scoped to ContainerScope.ORDINARY_SLOTS, since that would understate where they can
-	// actually fire; null (universally-conflicting) is the correct, conservative scope here.
-	/** Discards whatever's picked up on the cursor in Creative (see {@link MenuAccessibilityController#discardCarriedItem}); everywhere else it drops the whole carried stack. */
-	public static final KeybindAction CONTAINER_DISCARD = new KeybindAction(
-			"container_discard", KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_DELETE, 0), KeybindContext.CONTAINER_SCREEN);
-	/** Drops one item from the focused slot. Not vanilla's drop key, which is a plain letter and so is taken by first-letter navigation. */
-	public static final KeybindAction CONTAINER_DROP = new KeybindAction(
-			"container_drop", KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_BACKSPACE, 0), KeybindContext.CONTAINER_SCREEN);
-	/** Drops the focused slot's whole stack - what Ctrl+Q does in vanilla. */
-	public static final KeybindAction CONTAINER_DROP_STACK = new KeybindAction(
-			"container_drop_stack", KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_BACKSPACE, InputConstants.MOD_CONTROL), KeybindContext.CONTAINER_SCREEN);
-	/**
-	 * Page Down / Page Up inside container screens: steps to the next / previous thing of whatever kind
-	 * the current spot has - a recipe category in the Recipe Book section, a stack within a focused bundle
-	 * (the keyboard counterpart of scrolling the mouse wheel over one) in the ordinary slot sections.
-	 * One pair of actions rather than one per use, so they rebind together; the sections are mutually
-	 * exclusive, so the same key never means two things at once. Reachable from more than one place, so
-	 * unscoped - see {@link ContainerScope}.
-	 */
-	public static final KeybindAction CONTAINER_PAGE_NEXT = new KeybindAction("container_page_next",
-			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_PAGEDOWN, 0), KeybindContext.CONTAINER_SCREEN);
-	public static final KeybindAction CONTAINER_PAGE_PREV = new KeybindAction("container_page_prev",
-			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_PAGEUP, 0), KeybindContext.CONTAINER_SCREEN);
-	/** Swaps the focused slot's item with the off-hand - vanilla's F over a hovered slot, which is a plain letter here and so taken by first-letter navigation. */
-	public static final KeybindAction CONTAINER_SWAP_OFFHAND = new KeybindAction("container_swap_offhand",
-			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_F, InputConstants.MOD_CONTROL), KeybindContext.CONTAINER_SCREEN, ContainerScope.ORDINARY_SLOTS);
-	/** Drops one item from the stack on the cursor; plain {@link #CONTAINER_DISCARD} (Delete) drops the whole stack. */
-	public static final KeybindAction CONTAINER_DROP_CARRIED_ONE = new KeybindAction("container_drop_carried_one",
-			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_DELETE, InputConstants.MOD_CONTROL), KeybindContext.CONTAINER_SCREEN);
-	/**
-	 * The keyboard counterpart of double-clicking a stack: gathers every matching item from the
-	 * rest of the screen into the focused stack, up to a full stack - see {@link
-	 * MenuAccessibilityController#gatherMatching}.
-	 */
-	public static final KeybindAction CONTAINER_GATHER = new KeybindAction("container_gather",
-			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_RETURN, InputConstants.MOD_ALT), KeybindContext.CONTAINER_SCREEN, ContainerScope.ORDINARY_SLOTS);
-	/**
-	 * The keyboard counterpart of Shift+double-clicking a stack: quick-moves every stack of the
-	 * focused item out of the focused slot's whole inventory in one go - see {@link
-	 * MenuAccessibilityController#quickMoveAllMatching}.
-	 */
-	public static final KeybindAction CONTAINER_QUICK_MOVE_ALL = new KeybindAction("container_quick_move_all",
-			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_RETURN, InputConstants.MOD_ALT | InputConstants.MOD_SHIFT),
-			KeybindContext.CONTAINER_SCREEN, ContainerScope.ORDINARY_SLOTS);
-	/**
-	 * Drag modifiers: hold one while moving between slots with the arrow keys, with a stack on the
-	 * cursor, to drag across slots like holding a mouse button - left-drag (an even split) for
-	 * this one, right-drag (one item per slot) for {@link #CONTAINER_DRAG_ONE}. Releasing the key
-	 * is what drops the stack. Bare modifier keys by default; read through {@link
-	 * #isHeldNow} rather than {@link KeybindAction#isDown()} because a drag has to notice the
-	 * key the instant it's pressed alongside an arrow, not up to a tick later.
-	 */
-	public static final KeybindAction CONTAINER_DRAG_EVEN = new KeybindAction("container_drag_even",
-			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_LCONTROL, 0), KeybindContext.CONTAINER_SCREEN, ContainerScope.ORDINARY_SLOTS);
-	public static final KeybindAction CONTAINER_DRAG_ONE = new KeybindAction("container_drag_one",
-			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_LALT, 0), KeybindContext.CONTAINER_SCREEN, ContainerScope.ORDINARY_SLOTS);
-	public static final KeybindAction CONTAINER_DESCRIBE_SLOT = new KeybindAction(
-			"container_describe_slot", KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_SPACE, 0), KeybindContext.CONTAINER_SCREEN);
-
-	/**
-	 * Creative's own item-grid tabs - cycles between Creative's category tabs. Checked before the
-	 * Inventory-tab bailout in {@code CreativeInventoryController#handleKey}, so unlike {@link
-	 * #CREATIVE_PAGE_UP}/{@link #CREATIVE_PAGE_DOWN} this also fires on the Inventory tab itself;
-	 * left {@code null}-scoped (not {@link ContainerScope#CREATIVE_TABS}) accordingly.
-	 */
-	public static final KeybindAction CREATIVE_SWITCH_TAB_PREV = new KeybindAction(
-			"creative_switch_tab_prev", KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_HOME, 0), KeybindContext.CONTAINER_SCREEN);
-	public static final KeybindAction CREATIVE_SWITCH_TAB_NEXT = new KeybindAction(
-			"creative_switch_tab_next", KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_END, 0), KeybindContext.CONTAINER_SCREEN);
-	public static final KeybindAction CREATIVE_PAGE_UP = new KeybindAction("creative_page_up",
-			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_PAGEUP, 0), KeybindContext.CONTAINER_SCREEN, ContainerScope.CREATIVE_TABS);
-	public static final KeybindAction CREATIVE_PAGE_DOWN = new KeybindAction("creative_page_down",
-			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_PAGEDOWN, 0), KeybindContext.CONTAINER_SCREEN, ContainerScope.CREATIVE_TABS);
-
-	// Recipe Book only - Up/Down/Left/Right/Enter/Shift+Enter reuse the general container
-	// actions above (move focus, place a recipe / place the max amount), same as the Enchant
-	// Options and Trades sections do; only the gestures unique to the recipe book get their own
-	// actions here.
-	public static final KeybindAction RECIPE_BOOK_JUMP_TO_FIRST_GROUP = new KeybindAction("recipe_book_jump_to_first_group",
-			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_HOME, 0), KeybindContext.CONTAINER_SCREEN, ContainerScope.RECIPE_BOOK);
-	public static final KeybindAction RECIPE_BOOK_JUMP_TO_LAST_GROUP = new KeybindAction("recipe_book_jump_to_last_group",
-			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_END, 0), KeybindContext.CONTAINER_SCREEN, ContainerScope.RECIPE_BOOK);
-	public static final KeybindAction RECIPE_BOOK_SEARCH = new KeybindAction("recipe_book_search",
-			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_SPACE, 0), KeybindContext.CONTAINER_SCREEN, ContainerScope.RECIPE_BOOK);
-	/**
-	 * Was a plain F; plain letters are first-letter navigation in the Recipe Book now, so this takes
-	 * Ctrl+F instead. That chord is also {@link #CONTAINER_SWAP_OFFHAND}, which can share it because
-	 * the two only ever apply in different sections.
-	 */
-	public static final KeybindAction RECIPE_BOOK_TOGGLE_CRAFTABLE_FILTER = new KeybindAction("recipe_book_toggle_craftable_filter",
-			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_F, InputConstants.MOD_CONTROL), KeybindContext.CONTAINER_SCREEN, ContainerScope.RECIPE_BOOK);
 
 	// Every KeybindAction declared above, discovered reflectively rather than hand-listed so a
 	// future action automatically gets the same tracking below without anyone needing to
