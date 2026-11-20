@@ -34,11 +34,11 @@ public final class StructureVoiceSound extends AbstractSoundInstance {
 	}
 
 	@Override
-	public WeighedSoundEvents getOrResolve(SoundManager soundManager) {
+	public boolean resolveAndSelectSound(SoundManager soundManager) {
 		this.sound = new Sound(this.identifier, ConstantFloat.of(1.0f), ConstantFloat.of(1.0f), 1,
 				Sound.Type.FILE, false, false, 16);
-		WeighedSoundEvents events = new WeighedSoundEvents(this.identifier, null);
-		events.addSound(this.sound);
-		return events;
+		this.soundEvent = new WeighedSoundEvents(null);
+		this.soundEvent.addSound(this.sound);
+		return true;
 	}
 }

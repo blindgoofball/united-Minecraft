@@ -17,7 +17,7 @@ class KeybindTest {
 	}
 
 	private static KeyEvent press(int key, int modifiers) {
-		return new KeyEvent(key, 0, modifiers);
+		return new KeyEvent(key, 0, modifiers, false);
 	}
 
 	@Test

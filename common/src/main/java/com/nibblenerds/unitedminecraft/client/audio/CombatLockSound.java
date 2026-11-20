@@ -45,14 +45,14 @@ public final class CombatLockSound extends AbstractTickableSoundInstance {
 	}
 
 	@Override
-	public WeighedSoundEvents getOrResolve(SoundManager soundManager) {
+	public boolean resolveAndSelectSound(SoundManager soundManager) {
 		if (this.soundEvent == null) {
 			this.sound = new Sound(this.identifier, ConstantFloat.of(1.0f), ConstantFloat.of(1.0f), 1,
 					Sound.Type.FILE, false, false, 16);
-			this.soundEvent = new WeighedSoundEvents(this.identifier, null);
+			this.soundEvent = new WeighedSoundEvents(null);
 			this.soundEvent.addSound(this.sound);
 		}
-		return this.soundEvent;
+		return true;
 	}
 
 	@Override

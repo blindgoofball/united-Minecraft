@@ -11,6 +11,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
@@ -175,7 +176,8 @@ public final class NavRadarController {
 			return;
 		}
 
-		SoundEvent sound = result.hitBlock().getSoundType().getPlaceSound();
+		SoundEvent sound = result.hitBlock().getSounds(player.level()).placeSound().map(Holder::value)
+				.orElseGet(() -> SoundEvents.STONE.placeSound().map(Holder::value).orElseThrow());
 		float pitch = result.state() == ObstacleState.JUMPABLE ? JUMPABLE_PITCH : BLOCKED_PITCH;
 		double distance = Math.min(result.distance(), UnitedMinecraftConfig.get().navRadarRange);
 		double x = player.getX() + dirX * distance;

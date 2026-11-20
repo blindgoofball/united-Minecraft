@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client.mixin;
 
+import com.nibblenerds.unitedminecraft.client.MathUtil;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -128,7 +129,7 @@ public abstract class ChatScreenMixin {
 		if (event.hasShiftDown()) {
 			next = older ? lastIndex : 0;
 		} else {
-			next = Mth.clamp(unitedMinecraft$historyIndex + (older ? 1 : -1), 0, lastIndex);
+			next = MathUtil.clamp(unitedMinecraft$historyIndex + (older ? 1 : -1), 0, lastIndex);
 			if (next == unitedMinecraft$historyIndex) {
 				// Already at the newest/oldest message - nothing to move to, but still swallow
 				// the key so vanilla's own whole-page scroll doesn't also fire underneath us.
@@ -188,7 +189,7 @@ public abstract class ChatScreenMixin {
 			Minecraft.getInstance().getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.chat_no_link"));
 			return;
 		}
-		int index = Mth.clamp(unitedMinecraft$linkIndex, 0, links.size() - 1);
+		int index = MathUtil.clamp(unitedMinecraft$linkIndex, 0, links.size() - 1);
 		handleComponentClicked(links.get(index).style(), false);
 	}
 
@@ -222,7 +223,7 @@ public abstract class ChatScreenMixin {
 			Minecraft.getInstance().getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.chat_history_empty"));
 			return null;
 		}
-		int index = Mth.clamp(unitedMinecraft$historyIndex, 0, messages.size() - 1);
+		int index = MathUtil.clamp(unitedMinecraft$historyIndex, 0, messages.size() - 1);
 		return unitedMinecraft$collectLinks(messages.get(index).content());
 	}
 
@@ -236,7 +237,7 @@ public abstract class ChatScreenMixin {
 	@Unique
 	private static List<ChatScreenMixin.ChatLink> unitedMinecraft$collectLinks(Component content) {
 		List<ChatScreenMixin.ChatLink> links = new ArrayList<>();
-		content.visit((style, text) -> {
+		content.visitUnbounded((style, text) -> {
 			ClickEvent click = style.getClickEvent();
 			if (click != null) {
 				if (!links.isEmpty() && click.equals(links.get(links.size() - 1).style().getClickEvent())) {

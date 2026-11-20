@@ -126,7 +126,7 @@ public final class FallWarningController {
 
 		double lookaheadSeconds = UnitedMinecraftConfig.get().fallWarningLookaheadSeconds;
 		double speed = Math.sqrt(speedSqr);
-		double lookahead = Mth.clamp(
+		double lookahead = MathUtil.clamp(
 				speed * lookaheadSeconds * TICKS_PER_SECOND, MIN_LOOKAHEAD, MAX_LOOKAHEAD_PER_SECOND * lookaheadSeconds);
 		double dirX = vx / speed;
 		double dirZ = vz / speed;

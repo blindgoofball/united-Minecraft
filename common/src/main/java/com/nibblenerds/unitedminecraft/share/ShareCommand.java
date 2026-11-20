@@ -5,12 +5,12 @@ import java.util.List;
 import java.util.UUID;
 
 import com.mojang.brigadier.CommandDispatcher;
-import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.commands.arguments.StringArgument;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -49,7 +49,7 @@ public final class ShareCommand {
 	private static com.mojang.brigadier.builder.RequiredArgumentBuilder<CommandSourceStack, ?> positionAndName(
 			com.mojang.brigadier.Command<CommandSourceStack> command) {
 		return Commands.argument("pos", BlockPosArgument.blockPos())
-				.then(Commands.argument("name", StringArgumentType.greedyString()).executes(command));
+				.then(Commands.argument("name", StringArgument.greedyString()).executes(command));
 	}
 
 	private static int run(CommandContext<CommandSourceStack> context, ShareRelay.Network network, boolean toAll)
@@ -57,7 +57,7 @@ public final class ShareCommand {
 		CommandSourceStack source = context.getSource();
 		ServerPlayer sender = source.getPlayer();
 		BlockPos pos = BlockPosArgument.getBlockPos(context, "pos");
-		SharePayloads.Item item = itemFor(StringArgumentType.getString(context, "name"),
+		SharePayloads.Item item = itemFor(StringArgument.getString(context, "name"),
 				source.getLevel().dimension().identifier().toString(), pos);
 		if (item == null) {
 			source.sendFailure(Component.literal("Can't share that: it needs a name, and a position inside the world."));

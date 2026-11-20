@@ -1,7 +1,7 @@
 package com.nibblenerds.unitedminecraft.client.access;
 
 import net.minecraft.world.inventory.ContainerInput;
-import net.minecraft.world.inventory.Slot;
+import net.minecraft.client.gui.components.inventory.SlotWidget;
 
 /**
  * Duck interface implemented by {@link com.nibblenerds.unitedminecraft.client.mixin.AbstractContainerScreenAccessorMixin}
@@ -10,5 +10,5 @@ import net.minecraft.world.inventory.Slot;
  * only goes to the menu and the server never reaches them.
  */
 public interface SlotClickAccess {
-	void unitedMinecraft$slotClicked(Slot slot, int slotId, int button, ContainerInput input);
+	void unitedMinecraft$slotClicked(SlotWidget slot, int slotId, int button, ContainerInput input);
 }

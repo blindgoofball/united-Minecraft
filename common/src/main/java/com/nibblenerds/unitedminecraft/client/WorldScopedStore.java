@@ -32,7 +32,7 @@ import org.slf4j.Logger;
  * and the subdirectory name.
  *
  * <p>A world is identified by its singleplayer save folder name, or on a server by its address
- * plus the world seed the server sent (see {@link ServerWorldSeed}), so two worlds behind one
+ * plus a fingerprint of the world spawn the server sent (see {@link ServerWorldFingerprint}), so two worlds behind one
  * address keep separate data. A server with no ServerData at all - a launch straight into a
  * server, say - falls back to a shared bucket. {@link #tick} reloads automatically whenever the
  * detected world changes, including switching worlds without restarting the game.
@@ -130,7 +130,7 @@ public final class WorldScopedStore<T> {
 
 	private WorldKey worldKey(Minecraft client) {
 		Object source = client.isLocalServer() ? client.getSingleplayerServer() : client.getCurrentServer();
-		OptionalLong seed = ServerWorldSeed.current();
+		OptionalLong seed = ServerWorldFingerprint.current();
 		if (cachedWorldKey != null && source == lastWorldIdSource && seed.equals(lastWorldIdSeed)) {
 			return cachedWorldKey;
 		}

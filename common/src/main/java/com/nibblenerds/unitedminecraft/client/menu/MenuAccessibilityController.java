@@ -29,6 +29,8 @@ import com.nibblenerds.unitedminecraft.client.access.SlotWrapperAccess;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.components.inventory.SlotWidget;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.AnvilScreen;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
@@ -1218,8 +1220,12 @@ public final class MenuAccessibilityController {
 		// reaches the menu, so a click sent straight to the menu would never toggle it. Go through
 		// the screen for it, as a mouse click does; it still sends the click on afterward.
 		if (screen instanceof CrafterScreen && slot instanceof CrafterSlot && screen instanceof SlotClickAccess access) {
-			access.unitedMinecraft$slotClicked(slot, slot.index, button, input);
-			return true;
+			for (GuiEventListener child : screen.children()) {
+				if (child instanceof SlotWidget widget && widget.slot() == slot) {
+					access.unitedMinecraft$slotClicked(widget, slot.index, button, input);
+					return true;
+				}
+			}
 		}
 
 		// handleContainerInput already calls menu.clicked(...) internally (to diff slots for
@@ -2084,7 +2090,7 @@ public final class MenuAccessibilityController {
 
 	private static int pickerSize(AbstractContainerMenu menu) {
 		if (menu instanceof StonecutterMenu stonecutter) {
-			return stonecutter.getNumberOfVisibleRecipes();
+			return stonecutter.getVisibleRecipes().size();
 		}
 		if (menu instanceof LoomMenu loom) {
 			return loom.getSelectablePatterns().size();

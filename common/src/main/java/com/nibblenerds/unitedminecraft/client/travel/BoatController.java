@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client.travel;
 
+import com.nibblenerds.unitedminecraft.client.MathUtil;
 import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -67,7 +68,7 @@ public final class BoatController {
 		double base = hasTarget ? target : boat.getYRot();
 		// A snap turn may already have set a heading further off than that; holding a key never pulls it back.
 		double limit = Math.max(MAX_HELD_LEAD_DEGREES, Math.abs(base - boat.getYRot()));
-		setTarget(Mth.clamp(base + degrees, boat.getYRot() - limit, boat.getYRot() + limit));
+		setTarget(MathUtil.clamp(base + degrees, boat.getYRot() - limit, boat.getYRot() + limit));
 	}
 
 	/** A snap-turn asked for this exact heading. */

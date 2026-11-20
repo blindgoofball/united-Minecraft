@@ -66,7 +66,7 @@ public final class PowderSnowWarningController {
 		}
 
 		double speed = Math.sqrt(speedSqr);
-		double lookahead = Mth.clamp(speed * TICKS_PER_SECOND, MIN_LOOKAHEAD, MAX_LOOKAHEAD);
+		double lookahead = MathUtil.clamp(speed * TICKS_PER_SECOND, MIN_LOOKAHEAD, MAX_LOOKAHEAD);
 		boolean canWalkOnTop = PowderSnowBlock.canEntityWalkOnPowderSnow(player);
 		int feetY = Mth.floor(player.getY());
 

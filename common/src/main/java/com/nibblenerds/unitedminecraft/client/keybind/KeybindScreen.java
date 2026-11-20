@@ -366,7 +366,7 @@ public final class KeybindScreen extends Screen {
 			}
 
 			@Override
-			public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean hovering, float partialTick) {
+			public void extractContent(GuiGraphicsExtractor guiGraphics, boolean hovering) {
 				int textX = getContentX() + (action == null ? 0 : 2);
 				int textY = getContentY() + (getContentHeight() - font.lineHeight) / 2;
 				String text = label().getString();

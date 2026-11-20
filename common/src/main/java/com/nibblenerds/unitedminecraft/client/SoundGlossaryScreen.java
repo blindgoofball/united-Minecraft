@@ -136,7 +136,7 @@ public final class SoundGlossaryScreen extends Screen {
 			}
 
 			@Override
-			public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean hovering, float partialTick) {
+			public void extractContent(GuiGraphicsExtractor guiGraphics, boolean hovering) {
 				int textX = getContentX() + 2;
 				int textY = getContentY() + (getContentHeight() - font.lineHeight) / 2;
 				String text = Component.translatable(entry.descriptionKey()).getString();

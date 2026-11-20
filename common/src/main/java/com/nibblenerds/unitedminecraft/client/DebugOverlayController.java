@@ -18,7 +18,7 @@ import net.minecraft.util.Util;
  * Nothing is narrated on its own - only in response to a key.
  */
 final class DebugOverlayController {
-	private static Identifier cursorSection;
+	private static Object cursorSection;
 	private static int cursorLine;
 	// Whether the overlay was showing as of the last tick; null until a first tick in a world, so
 	// joining one never announces a change that was not made by the player.
@@ -57,10 +57,10 @@ final class DebugOverlayController {
 			return;
 		}
 		DebugOverlayModel.Section first = sections.get(0);
-		cursorSection = first.id();
+		cursorSection = first.key();
 		cursorLine = 0;
 		say(client, Component.translatable("united_minecraft.narrate.debug_opened_with_line",
-				sectionName(first.id()), cleanLine(first.lines().get(0))));
+				first.name(), cleanLine(first.lines().get(0))));
 	}
 
 	static void handleKeys(Minecraft client) {
@@ -92,7 +92,7 @@ final class DebugOverlayController {
 					: "united_minecraft.narrate.debug_first_section"));
 			return;
 		}
-		cursorSection = sections.get(target).id();
+		cursorSection = sections.get(target).key();
 		cursorLine = 0;
 		narrateCursor(client, sections.get(target), true);
 	}
@@ -106,7 +106,7 @@ final class DebugOverlayController {
 		int current = indexOfCursor(sections);
 		if (current < 0) {
 			// No cursor yet, or its section is gone: start at the first section.
-			cursorSection = sections.get(0).id();
+			cursorSection = sections.get(0).key();
 			cursorLine = 0;
 			narrateCursor(client, sections.get(0), true);
 			return;
@@ -128,7 +128,7 @@ final class DebugOverlayController {
 			return -1;
 		}
 		for (int i = 0; i < sections.size(); i++) {
-			if (sections.get(i).id().equals(cursorSection)) {
+			if (sections.get(i).key().equals(cursorSection)) {
 				return i;
 			}
 		}
@@ -138,7 +138,7 @@ final class DebugOverlayController {
 	private static void narrateCursor(Minecraft client, DebugOverlayModel.Section section, boolean withSectionName) {
 		String line = cleanLine(section.lines().get(Math.min(cursorLine, section.lines().size() - 1)));
 		say(client, withSectionName
-				? Component.translatable("united_minecraft.narrate.debug_section", sectionName(section.id()), line)
+				? Component.translatable("united_minecraft.narrate.debug_section", section.name(), line)
 				: Component.literal(line));
 	}
 

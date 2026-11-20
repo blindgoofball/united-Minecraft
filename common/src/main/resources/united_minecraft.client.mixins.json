@@ -18,6 +18,7 @@
 		"RecipeBookComponentAccessorMixin",
 		"EditBoxMixin",
 		"ChatScreenMixin",
+		"ClientPacketListenerMixin",
 		"ChatComponentAccessorMixin",
 		"BossHealthOverlayAccessorMixin",
 		"HudTitleAccessorMixin",
@@ -26,8 +27,6 @@
 		"MultilineTextFieldMixin",
 		"MultiLineEditBoxMixin",
 		"BookEditScreenMixin",
-		"TextFieldHelperMixin",
-		"AbstractSignEditScreenMixin",
 		"MinecraftContinueAttackMixin",
 		"KeyboardHandlerTapMixin",
 		"SystemToastMixin",
@@ -41,7 +40,6 @@
 		"SoundBufferLibraryMixin",
 		"StructureVoiceChannelMixin",
 		"DebugScreenOverlayAccessorMixin",
-		"ClientPacketListenerMixin",
 		"LevelStorageAccessMixin"
 	],
 	"injectors": {

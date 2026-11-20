@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client.settings;
 
+import com.nibblenerds.unitedminecraft.client.MathUtil;
 import com.nibblenerds.unitedminecraft.client.scanner.MarkerNameScreen;
 import com.nibblenerds.unitedminecraft.client.scanner.MarkerNameScreen;
 import java.util.ArrayList;
@@ -173,7 +174,7 @@ abstract class SettingsListScreen extends Screen {
 			AbstractWidget widget = rows.get(i);
 			int top = rowBaseY.get(i) - scrollOffset;
 			widget.setY(top);
-			widget.visible = top >= 0 && top + widget.getHeight() <= this.height;
+			widget.setVisible(top >= 0 && top + widget.getHeight() <= this.height);
 		}
 	}
 
@@ -197,7 +198,7 @@ abstract class SettingsListScreen extends Screen {
 	@Override
 	public boolean keyPressed(KeyEvent event) {
 		for (AbstractWidget row : rows) {
-			row.visible = true;
+			row.setVisible(true);
 		}
 		boolean handled = super.keyPressed(event);
 		GuiEventListener focused = getFocused();
@@ -211,7 +212,7 @@ abstract class SettingsListScreen extends Screen {
 			} else if (bottom > this.height) {
 				scrollOffset += bottom - this.height;
 			}
-			scrollOffset = Mth.clamp(scrollOffset, 0, maxScrollOffset);
+			scrollOffset = MathUtil.clamp(scrollOffset, 0, maxScrollOffset);
 		}
 		applyScroll();
 		return handled;
@@ -222,7 +223,7 @@ abstract class SettingsListScreen extends Screen {
 		if (maxScrollOffset <= 0) {
 			return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
 		}
-		scrollOffset = Mth.clamp(scrollOffset - (int) Math.round(scrollY * SCROLL_STEP), 0, maxScrollOffset);
+		scrollOffset = MathUtil.clamp(scrollOffset - (int) Math.round(scrollY * SCROLL_STEP), 0, maxScrollOffset);
 		applyScroll();
 		return true;
 	}
@@ -261,14 +262,14 @@ abstract class SettingsListScreen extends Screen {
 			if (step > 0) {
 				raw = min + Math.round((raw - min) / step) * step;
 			}
-			return Mth.clamp(raw, min, max);
+			return MathUtil.clamp(raw, min, max);
 		}
 
 		@Override
 		public boolean keyPressed(KeyEvent event) {
 			if (event.key() == InputConstants.KEY_LEFT || event.key() == InputConstants.KEY_RIGHT) {
 				double direction = event.key() == InputConstants.KEY_RIGHT ? 1.0 : -1.0;
-				double next = Mth.clamp(currentValue() + direction * step, min, max);
+				double next = MathUtil.clamp(currentValue() + direction * step, min, max);
 				this.value = (next - min) / (max - min);
 				updateMessage();
 				applyValue();
@@ -295,7 +296,7 @@ abstract class SettingsListScreen extends Screen {
 			if (max <= min) {
 				return 0.0;
 			}
-			return Mth.clamp((initial - min) / (max - min), 0.0, 1.0);
+			return MathUtil.clamp((initial - min) / (max - min), 0.0, 1.0);
 		}
 	}
 }

@@ -149,7 +149,7 @@ public final class MarkerNameScreen extends Screen {
 					.selected(toggleBox != null ? toggleBox.selected() : toggleInitial)
 					.onValueChange((box, selected) -> {
 						if (secondToggleBox != null) {
-							secondToggleBox.visible = selected;
+							secondToggleBox.setVisible(selected);
 							secondToggleBox.active = selected;
 						}
 					})
@@ -165,7 +165,7 @@ public final class MarkerNameScreen extends Screen {
 						.pos(this.width / 2 - 100, this.height / 2 + 44)
 						.selected(secondToggleBox != null ? secondToggleBox.selected() : secondToggleInitial)
 						.build();
-				secondToggleBox.visible = toggleBox.selected();
+				secondToggleBox.setVisible(toggleBox.selected());
 				secondToggleBox.active = toggleBox.selected();
 				addRenderableWidget(secondToggleBox);
 				buttonY += 24;

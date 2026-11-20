@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client.audio;
 
+import com.nibblenerds.unitedminecraft.client.MathUtil;
 import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig.BuildCursorFeedback;
 import net.minecraft.client.Minecraft;
@@ -7,6 +8,7 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.resources.sounds.SoundInstance;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Direction;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
@@ -15,7 +17,8 @@ import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.block.sounds.BlockSoundSet;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
@@ -54,6 +57,11 @@ public final class BuildCursorSound {
 	public record Cue(SoundEvent sound, boolean isAir, float baseVolume, float basePitch) {
 	}
 
+	/** Step sound used when a block carries none of its own, and for the Sound Glossary's block preview. */
+	private static SoundEvent stoneStep() {
+		return SoundEvents.STONE.stepSound().map(Holder::value).orElseThrow();
+	}
+
 	private BuildCursorSound() {
 	}
 
@@ -80,10 +88,10 @@ public final class BuildCursorSound {
 	/**
 	 * Selects the sound, volume, and pitch multiplier for the block, fluid, or air at the cursor.
 	 */
-	public static Cue chooseCue(BlockState state, boolean isBehind) {
+	public static Cue chooseCue(LevelReader level, BlockState state, boolean isBehind) {
 		FluidState fluid = state.getFluidState();
 		if (!fluid.isEmpty()) {
-			boolean isLava = fluid.is(FluidTags.LAVA) || fluid.getType() == Fluids.LAVA || fluid.getType() == Fluids.FLOWING_LAVA;
+			boolean isLava = fluid.is(FluidTags.LAVA) || fluid.getType() == Fluids.LAVA;
 			SoundEvent sound = isLava
 					? SoundEvents.LAVA_POP
 					: SoundEvents.POINTED_DRIPSTONE_DRIP_WATER_INTO_CAULDRON;
@@ -91,9 +99,9 @@ public final class BuildCursorSound {
 		} else if (state.isAir()) {
 			return new Cue(AIR_SOUND, true, BASE_CUE_VOLUME, airPitch(isBehind));
 		} else {
-			SoundType soundType = state.getSoundType();
-			return new Cue(soundType.getStepSound(), false, blockVolume(soundType.getVolume()),
-					blockPitch(soundType.getPitch(), isBehind));
+			BlockSoundSet sounds = state.getSounds(level);
+			return new Cue(sounds.stepSound().map(Holder::value).orElseGet(BuildCursorSound::stoneStep), false, blockVolume(sounds.volume()),
+					blockPitch(sounds.pitch(), isBehind));
 		}
 	}
 
@@ -120,7 +128,7 @@ public final class BuildCursorSound {
 		boolean isBehind = isBehind(eye, yaw, cursor);
 		float behindGain = calculateBehindGain(eye, yaw, audioPos);
 
-		Cue cue = chooseCue(state, isBehind);
+		Cue cue = chooseCue(level, state, isBehind);
 
 		float finalVolume = CueVolume.scale(cue.baseVolume()) * distanceGain * behindGain;
 		float finalPitch = cue.basePitch() * elevationPitch;
@@ -199,7 +207,7 @@ public final class BuildCursorSound {
 			return 1.0f;
 		}
 		double dy = targetPos.y() - eye.y();
-		double upRatio = Mth.clamp(dy / distance, -1.0, 1.0);
+		double upRatio = MathUtil.clamp(dy / distance, -1.0, 1.0);
 		double semitones = 4.0 * upRatio;
 		return (float) Math.pow(2.0, semitones / 12.0);
 	}
@@ -218,7 +226,7 @@ public final class BuildCursorSound {
 		double fwdZ = Math.cos(yawRad);
 		double ahead = delta.x() * fwdX + delta.z() * fwdZ;
 		double aheadRatio = ahead / distance;
-		double behind = Mth.clamp((-aheadRatio - 0.15) / 0.85, 0.0, 1.0);
+		double behind = MathUtil.clamp((-aheadRatio - 0.15) / 0.85, 0.0, 1.0);
 		return (float) (1.0 - 0.3 * behind);
 	}
 
@@ -247,7 +255,7 @@ public final class BuildCursorSound {
 
 	/** Plays the block step sound cue for preview in {@link com.nibblenerds.unitedminecraft.client.SoundGlossaryScreen}. */
 	public static void previewBlock(Minecraft client, LocalPlayer player) {
-		playCueInstance(client, SoundEvents.STONE_STEP, false, player.getEyePosition(), CueVolume.scale(BASE_CUE_VOLUME), 1.0f, player.getRandom());
+		playCueInstance(client, stoneStep(), false, player.getEyePosition(), CueVolume.scale(BASE_CUE_VOLUME), 1.0f, player.getRandom());
 	}
 
 	/** Plays the air cue for preview in {@link com.nibblenerds.unitedminecraft.client.SoundGlossaryScreen}. */

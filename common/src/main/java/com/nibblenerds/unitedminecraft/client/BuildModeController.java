@@ -60,7 +60,6 @@ import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.level.block.state.properties.RedstoneSide;
 import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.block.state.properties.StairsShape;
-import net.minecraft.world.level.material.FlowingFluid;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.AABB;
@@ -1120,7 +1119,7 @@ public final class BuildModeController {
 		// itself - so aim at the cursor's own shape instead of at a neighbor to fill the cell from.
 		BlockState cursorState = level.getBlockState(cursor);
 		if (bucketItem.getContent() == Fluids.WATER && cursorState.getBlock() instanceof LiquidBlockContainer container
-				&& container.canPlaceLiquid(player, level, cursor, cursorState, Fluids.WATER)) {
+				&& container.canPlaceLiquid(player, level, cursor, cursorState, Fluids.WATER.defaultFluidState())) {
 			Vec3 point = pointOnShape(level, player, cursor, cursorState);
 			return hasClearLineOfSight(level, player, cursor, point) ? point : null;
 		}
@@ -1767,7 +1766,7 @@ public final class BuildModeController {
 		if (flow.x * flow.x + flow.z * flow.z > 1.0E-4) {
 			return Direction.getApproximateNearest(flow.x, 0.0, flow.z);
 		}
-		return fluid.hasProperty(FlowingFluid.FALLING) && fluid.getValue(FlowingFluid.FALLING) ? Direction.DOWN : null;
+		return fluid.isFalling() ? Direction.DOWN : null;
 	}
 
 	// The four diagonal compass directions a stair's corner can land on, ordered by bearing

@@ -93,7 +93,7 @@ public final class PickList<T> extends ObjectSelectionList<PickList.Row<T>> {
 		}
 		replaceEntries(rows);
 		if (!values.isEmpty()) {
-			int index = Mth.clamp(target, 0, values.size() - 1);
+			int index = MathUtil.clamp(target, 0, values.size() - 1);
 			setSelected(rows.get(index));
 			onIndexChanged.accept(index);
 		}
@@ -129,7 +129,7 @@ public final class PickList<T> extends ObjectSelectionList<PickList.Row<T>> {
 		}
 
 		@Override
-		public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean hovering, float partialTick) {
+		public void extractContent(GuiGraphicsExtractor guiGraphics, boolean hovering) {
 			int textX = getContentX() + 2;
 			int textY = getContentY() + (getContentHeight() - font.lineHeight) / 2;
 			guiGraphics.text(font, font.plainSubstrByWidth(label.getString(), getContentWidth() - 4), textX, textY, -1);

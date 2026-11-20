@@ -94,8 +94,8 @@ Each of these has its own key (see [Key bindings](keybindings.md)).
 
 - Signs are read when you look at them, in surrounding scans, and by the Scanner,
   which reads the side you are facing.
-- The sign editor announces opening and closing, narrates the line you move to,
-  and narrates typing, deleting, cutting and cursor movement.
+- Each line in the sign editor is a text field of its own, narrated like any other: the
+  line you move to, and typing, deleting, cutting and cursor movement.
 
 ## Chat
 

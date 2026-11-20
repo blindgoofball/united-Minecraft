@@ -23,10 +23,10 @@ import net.minecraft.client.gui.screens.advancements.AdvancementsScreen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.input.KeyEvent;
-import net.minecraft.network.protocol.game.CommonPlayerSpawnInfo;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.level.Level;
 
 /**
@@ -188,11 +188,11 @@ public final class ClientHooks {
 	}
 
 	/**
-	 * The server told the client which world it is in, by login or respawn packet. Called from a
-	 * mixin rather than a loader bridge, since both packets are vanilla's own.
+	 * The server told the client where the world spawn is, on joining and on a change of world.
+	 * Called from a mixin rather than a loader bridge, since the packet is vanilla's own.
 	 */
-	public static void onWorldSpawnInfo(CommonPlayerSpawnInfo info) {
-		ServerWorldSeed.onSpawnInfo(info);
+	public static void onWorldSpawn(LevelData.RespawnData spawn) {
+		ServerWorldFingerprint.onSpawn(spawn);
 	}
 
 	/**
