@@ -1,9 +1,12 @@
 package com.nibblenerds.unitedminecraft.client.mixin;
 
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import com.nibblenerds.unitedminecraft.client.speech.NarrationRepeat;
 
 import net.minecraft.client.gui.components.AbstractSelectionList;
 import net.minecraft.client.gui.components.events.ContainerEventHandler;
@@ -43,6 +46,10 @@ import net.minecraft.network.chat.Component;
  */
 @Mixin(Screen.class)
 public abstract class ScreenNarratedWidgetMixin {
+	/** The widget narrated last, so a move onto a different one can be told from a change in the same one. */
+	@Unique
+	private GuiEventListener unitedMinecraft$lastNarratedWidget;
+
 	@Inject(method = "updateNarratedWidget", at = @At("HEAD"), cancellable = true)
 	private void unitedMinecraft$describeFocusedWidgetDirectly(NarrationElementOutput output, CallbackInfo ci) {
 		GuiEventListener current = (GuiEventListener) (Object) this;
@@ -65,7 +72,17 @@ public abstract class ScreenNarratedWidgetMixin {
 				widgetOutput.add(NarratedElementType.TITLE, listName);
 				widgetOutput = widgetOutput.nest();
 			}
-			narratable.updateNarration(widgetOutput);
+			// Vanilla stays silent when the text matches what it last said, which stepping between
+			// two identical widgets (two empty slots) does. A different widget is always worth
+			// saying, so the player knows they moved; the same widget changing is left alone.
+			boolean moved = current != unitedMinecraft$lastNarratedWidget;
+			unitedMinecraft$lastNarratedWidget = current;
+			NarrationRepeat.force(moved);
+			try {
+				narratable.updateNarration(widgetOutput);
+			} finally {
+				NarrationRepeat.force(false);
+			}
 		} else {
 			// Matches vanilla's own fallback for "nothing focused yet" (e.g. right after a
 			// screen opens via mouse, before Tab has been pressed at all).
