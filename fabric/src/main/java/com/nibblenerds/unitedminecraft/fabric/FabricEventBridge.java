@@ -3,6 +3,7 @@ package com.nibblenerds.unitedminecraft.fabric;
 import com.nibblenerds.unitedminecraft.client.ClientHooks;
 import com.nibblenerds.unitedminecraft.share.SharePayloads;
 import com.nibblenerds.unitedminecraft.structure.StructuresNearbyPayload;
+import com.nibblenerds.unitedminecraft.world.WorldIdPayload;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -63,5 +64,7 @@ public final class FabricEventBridge {
 				(payload, context) -> ClientHooks.onShareTargets(payload));
 		ClientPlayNetworking.registerGlobalReceiver(SharePayloads.Offer.TYPE,
 				(payload, context) -> ClientHooks.onShareOffer(payload));
+		ClientPlayNetworking.registerGlobalReceiver(WorldIdPayload.TYPE,
+				(payload, context) -> ClientHooks.onWorldId(payload));
 	}
 }

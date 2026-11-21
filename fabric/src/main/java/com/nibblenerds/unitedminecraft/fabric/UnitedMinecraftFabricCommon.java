@@ -5,11 +5,14 @@ import com.nibblenerds.unitedminecraft.share.ShareRelay;
 import com.nibblenerds.unitedminecraft.share.SharePayloads;
 import com.nibblenerds.unitedminecraft.structure.StructureScanner;
 import com.nibblenerds.unitedminecraft.structure.StructuresNearbyPayload;
+import com.nibblenerds.unitedminecraft.world.WorldIdPayload;
+import com.nibblenerds.unitedminecraft.world.WorldIdRelay;
 
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.level.ServerPlayer;
@@ -51,13 +54,29 @@ public class UnitedMinecraftFabricCommon implements ModInitializer {
 		}
 	};
 
+	private static final WorldIdRelay.Network WORLD_ID_NETWORK = new WorldIdRelay.Network() {
+		@Override
+		public boolean canReceive(ServerPlayer player) {
+			return ServerPlayNetworking.canSend(player, WorldIdPayload.TYPE);
+		}
+
+		@Override
+		public void send(ServerPlayer player, WorldIdPayload payload) {
+			ServerPlayNetworking.send(player, payload);
+		}
+	};
+
 	@Override
 	public void onInitialize() {
 		PayloadTypeRegistry.clientboundPlay().register(StructuresNearbyPayload.TYPE, StructuresNearbyPayload.STREAM_CODEC);
 		ServerTickEvents.END_SERVER_TICK.register(server -> StructureScanner.tick(server, NETWORK));
+		PayloadTypeRegistry.clientboundPlay().register(WorldIdPayload.TYPE, WorldIdPayload.STREAM_CODEC);
+		ServerPlayConnectionEvents.JOIN.register(
+				(handler, sender, server) -> WorldIdRelay.onJoin(handler.getPlayer(), WORLD_ID_NETWORK));
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
 			StructureScanner.clear();
 			ShareRelay.clear();
+			WorldIdRelay.clear();
 		});
 
 		PayloadTypeRegistry.serverboundPlay().register(SharePayloads.TargetsRequest.TYPE, SharePayloads.TargetsRequest.STREAM_CODEC);

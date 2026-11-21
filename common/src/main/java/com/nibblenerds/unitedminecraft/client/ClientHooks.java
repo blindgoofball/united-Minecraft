@@ -15,6 +15,7 @@ import com.nibblenerds.unitedminecraft.client.keybind.KeybindConfig;
 import com.nibblenerds.unitedminecraft.client.speech.PrismController;
 import com.nibblenerds.unitedminecraft.share.SharePayloads;
 import com.nibblenerds.unitedminecraft.structure.StructuresNearbyPayload;
+import com.nibblenerds.unitedminecraft.world.WorldIdPayload;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.NarratorStatus;
@@ -165,6 +166,11 @@ public final class ClientHooks {
 	 */
 	public static void onWorldSpawn(LevelData.RespawnData spawn) {
 		ServerWorldFingerprint.onSpawn(spawn);
+	}
+
+	/** The server gave this world an id - see {@link WorldIdPayload}. */
+	public static void onWorldId(WorldIdPayload payload) {
+		ServerWorldId.onReceived(payload.id());
 	}
 
 	/**

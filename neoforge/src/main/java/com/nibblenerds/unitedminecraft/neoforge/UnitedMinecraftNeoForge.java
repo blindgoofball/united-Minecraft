@@ -4,6 +4,7 @@ import com.nibblenerds.unitedminecraft.client.ClientHooks;
 import com.nibblenerds.unitedminecraft.platform.Platform;
 import com.nibblenerds.unitedminecraft.share.SharePayloads;
 import com.nibblenerds.unitedminecraft.structure.StructuresNearbyPayload;
+import com.nibblenerds.unitedminecraft.world.WorldIdPayload;
 
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
@@ -31,6 +32,8 @@ public class UnitedMinecraftNeoForge {
 					(payload, context) -> ClientHooks.onShareTargets(payload));
 			event.register(SharePayloads.Offer.TYPE, HandlerThread.MAIN,
 					(payload, context) -> ClientHooks.onShareOffer(payload));
+			event.register(WorldIdPayload.TYPE, HandlerThread.MAIN,
+					(payload, context) -> ClientHooks.onWorldId(payload));
 		});
 	}
 }

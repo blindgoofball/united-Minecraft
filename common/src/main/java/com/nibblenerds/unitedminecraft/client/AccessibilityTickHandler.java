@@ -160,6 +160,7 @@ public final class AccessibilityTickHandler {
 			ScannerFilterController.reset();
 			SavedSearchController.reset();
 			ServerWorldFingerprint.reset();
+			ServerWorldId.reset();
 			ScannerController.reset();
 			AutoWalkController.reset();
 			WaterExitController.reset();

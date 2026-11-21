@@ -11,7 +11,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.UUID;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -62,6 +64,7 @@ public final class WorldScopedStore<T> {
 	// ServerData lookup) 20 times a second for an answer that hasn't changed is pure waste.
 	private Object lastWorldIdSource;
 	private OptionalLong lastWorldIdSeed = OptionalLong.empty();
+	private Optional<UUID> lastServerWorldId = Optional.empty();
 	private WorldKey cachedWorldKey;
 
 	public WorldScopedStore(String subdirectory, Type listType, Logger logger) {
@@ -90,6 +93,7 @@ public final class WorldScopedStore<T> {
 		loadedWorldId = null;
 		lastWorldIdSource = null;
 		lastWorldIdSeed = OptionalLong.empty();
+		lastServerWorldId = Optional.empty();
 		cachedWorldKey = null;
 	}
 
@@ -131,12 +135,15 @@ public final class WorldScopedStore<T> {
 	private WorldKey worldKey(Minecraft client) {
 		Object source = client.isLocalServer() ? client.getSingleplayerServer() : client.getCurrentServer();
 		OptionalLong seed = ServerWorldFingerprint.current();
-		if (cachedWorldKey != null && source == lastWorldIdSource && seed.equals(lastWorldIdSeed)) {
+		Optional<UUID> serverId = ServerWorldId.current();
+		if (cachedWorldKey != null && source == lastWorldIdSource && seed.equals(lastWorldIdSeed)
+				&& serverId.equals(lastServerWorldId)) {
 			return cachedWorldKey;
 		}
 		lastWorldIdSource = source;
 		lastWorldIdSeed = seed;
-		cachedWorldKey = computeWorldKey(client, seed);
+		lastServerWorldId = serverId;
+		cachedWorldKey = computeWorldKey(client, seed, serverId);
 		return cachedWorldKey;
 	}
 
@@ -149,7 +156,12 @@ public final class WorldScopedStore<T> {
 		return seed.isPresent() ? base + "_" + Long.toHexString(seed.getAsLong()) : base;
 	}
 
-	private static WorldKey computeWorldKey(Minecraft client, OptionalLong seed) {
+	/** A world the server itself named: exact, and the same whichever address it is reached by. */
+	static String serverWorldId(UUID worldId) {
+		return "mp_world_" + worldId;
+	}
+
+	private static WorldKey computeWorldKey(Minecraft client, OptionalLong seed, Optional<UUID> serverId) {
 		if (client.isLocalServer() && client.getSingleplayerServer() != null) {
 			// LevelResource.ROOT's id is literally "." - getWorldPath resolves to
 			// ".../saves/<world>/.", and Path#resolve doesn't normalize away that trailing
@@ -160,7 +172,12 @@ public final class WorldScopedStore<T> {
 		}
 		ServerData server = client.getCurrentServer();
 		String address = server != null ? server.ip : "direct_connect";
-		return new WorldKey(serverWorldId(address, seed), serverWorldId(address, OptionalLong.empty()));
+		String addressOnly = serverWorldId(address, OptionalLong.empty());
+		if (serverId.isPresent()) {
+			// What was kept for this address before a world id existed moves in, as it does for the guess.
+			return new WorldKey(serverWorldId(serverId.get()), addressOnly);
+		}
+		return new WorldKey(serverWorldId(address, seed), addressOnly);
 	}
 
 	private Path directory() {

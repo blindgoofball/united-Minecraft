@@ -8,13 +8,15 @@ United Minecraft is a Minecraft Java Edition mod, built for both the Fabric and 
 loaders, that adds accessibility features for blind and low-vision players — narration, a
 "Scanner" for locating and targeting things without seeing them, auto-walk, audio radars,
 build/combat modes, and full keyboard navigation of menus. Almost everything is
-client-side and works against any vanilla server. The two exceptions need a server half:
+client-side and works against any vanilla server. The exceptions need a server half:
 Structure Voices (the `structure` package: `StructureScanner`, sending
 `StructuresNearbyPayload`) and marker sharing (the `share` package: `ShareRelay` and
 `SharePayloads`, which only relays offers between players and stores nothing, and
 `ShareCommand`, the `/umshare` command that lets a player without the mod send one; its
 replies are plain text rather than translation keys, since such a client has no copy of the
-language file). Both run on
+language file). World identity (the `world` package: `WorldIdRelay` gives a world a random id, kept in a
+file in its folder, and sends it as `WorldIdPayload` to each joining player who has the mod,
+so markers on a server follow the world rather than a guess). All three run on
 the integrated server in single player, and on a dedicated server only when the mod is
 installed there too. Each loader module has a common entrypoint (`UnitedMinecraftFabricCommon`,
 `UnitedMinecraftNeoForgeCommon`) for them, and the payloads are optional in both directions. See [README.md](README.md) and the feature pages in [docs/](docs/) for the full feature list
