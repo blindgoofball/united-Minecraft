@@ -64,6 +64,7 @@ public final class ClientHooks {
 		TitleNarrationController.tick(client);
 		RecommendedKeysPrompt.tick(client);
 		SlotChangeNarration.tick(client);
+		WorldMigration.tick(client);
 	}
 
 	/**

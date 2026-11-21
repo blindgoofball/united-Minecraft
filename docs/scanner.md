@@ -166,7 +166,14 @@ address together with the world's spawn point, so two worlds on one address keep
 markers. Two worlds that spawn at the same spot cannot be told apart, and moving a world's spawn
 makes it look like a new world. On a server that has United Minecraft installed, the world gives
 itself an id the first time anyone joins, and that id is used instead, so the markers follow the
-world whichever address you reach it by. Named blocks are kept the same way. Deleting a singleplayer world from the world
+world whichever address you reach it by.
+
+Markers and block names saved by Minecraft 26.3 on a server are found again when you join. If
+the address has one saved set, it moves into the world you joined. If it has several, a list
+asks which one this is, showing how many markers each has, a few of their names and when it
+was last used; choosing one moves it in, and "This Is a New World" leaves them for another
+world. The question comes back for each different world you join on that address until the
+sets are all placed, and Ask Me Later (or Escape) asks again next time. Named blocks are kept the same way. Deleting a singleplayer world from the world
 list also deletes its markers and block names.
 
 - Shift+Enter on a marker walks you to its exact coordinates.

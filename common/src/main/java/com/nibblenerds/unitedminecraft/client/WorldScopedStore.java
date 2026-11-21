@@ -67,10 +67,42 @@ public final class WorldScopedStore<T> {
 	private Optional<UUID> lastServerWorldId = Optional.empty();
 	private WorldKey cachedWorldKey;
 
+	/** Every store made, so a world's data can be reloaded in all of them at once - see {@link #reloadAll}. */
+	private static final List<WorldScopedStore<?>> LIVE = new ArrayList<>();
+
 	public WorldScopedStore(String subdirectory, Type listType, Logger logger) {
 		this.subdirectory = subdirectory;
 		this.listType = listType;
 		this.logger = logger;
+		synchronized (LIVE) {
+			LIVE.add(this);
+		}
+	}
+
+	/** Makes every store read its world's file again, after files were moved in underneath them. */
+	static void reloadAll() {
+		synchronized (LIVE) {
+			for (WorldScopedStore<?> store : LIVE) {
+				store.reset();
+			}
+		}
+	}
+
+	/**
+	 * The id of the multiplayer world the player is in, or null in singleplayer or when it is not
+	 * yet known - before the server has said where the world's spawn is, the id would only be the
+	 * bare address.
+	 */
+	static String currentMultiplayerId(Minecraft client) {
+		if (client.isLocalServer() || client.getCurrentServer() == null) {
+			return null;
+		}
+		Optional<UUID> serverId = ServerWorldId.current();
+		OptionalLong seed = ServerWorldFingerprint.current();
+		if (serverId.isEmpty() && seed.isEmpty()) {
+			return null;
+		}
+		return computeWorldKey(client, seed, serverId).id();
 	}
 
 	/**
@@ -197,7 +229,12 @@ public final class WorldScopedStore<T> {
 	 * Java versions.
 	 */
 	private Path fileFor(String worldId) {
-		return directory().resolve(sanitize(worldId) + "-" + Integer.toUnsignedString(worldId.hashCode(), 16) + ".json");
+		return directory().resolve(fileNameFor(worldId));
+	}
+
+	/** The name of the file {@link #fileFor} puts {@code worldId} in, in whichever store. */
+	static String fileNameFor(String worldId) {
+		return sanitize(worldId) + "-" + Integer.toUnsignedString(worldId.hashCode(), 16) + ".json";
 	}
 
 	/** Where {@code worldId}'s data lived before {@link #fileFor} started disambiguating by hash - see {@link #load}. */
@@ -205,7 +242,7 @@ public final class WorldScopedStore<T> {
 		return directory().resolve(sanitize(worldId) + ".json");
 	}
 
-	private static String sanitize(String worldId) {
+	static String sanitize(String worldId) {
 		return worldId.replaceAll("[^a-zA-Z0-9_-]", "_");
 	}
 
