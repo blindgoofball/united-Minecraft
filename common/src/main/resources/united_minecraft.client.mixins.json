@@ -6,6 +6,7 @@
 		"GameNarratorMixin",
 		"ScreenNarratedWidgetMixin",
 		"NarrationEntryMixin",
+		"NarrationOutputMixin",
 		"ScreenNarrationDelayMixin",
 		"AdvancementsScreenAccessorMixin",
 		"AdvancementTabMixin",

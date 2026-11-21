@@ -11,6 +11,7 @@ import com.nibblenerds.unitedminecraft.client.speech.NarrationRepeat;
 import net.minecraft.client.gui.components.AbstractSelectionList;
 import net.minecraft.client.gui.components.events.ContainerEventHandler;
 import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.components.inventory.SlotGroup;
 import net.minecraft.client.gui.narration.NarratedElementType;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.narration.NarrationSupplier;
@@ -55,11 +56,22 @@ public abstract class ScreenNarratedWidgetMixin {
 		GuiEventListener current = (GuiEventListener) (Object) this;
 		GuiEventListener next;
 		Component listName = null;
+		// A slot group composes its focused slot with the group's own name (Inventory, Hotbar...) and
+		// the slot's position in it, which the slot alone cannot say - so it, not the slot, is what
+		// gets narrated. The slot is still the widget focus is on, for telling a move from a change.
+		GuiEventListener narrated = null;
 		while (current instanceof ContainerEventHandler handler && (next = handler.getFocused()) != null) {
 			current = next;
+			if (narrated == null && current instanceof SlotGroup) {
+				narrated = current;
+			}
 			if (current instanceof AbstractSelectionList<?> list && !list.getMessage().getString().isEmpty()) {
 				listName = list.getMessage();
 			}
+		}
+		GuiEventListener focusedWidget = current;
+		if (narrated != null) {
+			current = narrated;
 		}
 
 		if (current instanceof NarrationSupplier narratable) {
@@ -75,8 +87,8 @@ public abstract class ScreenNarratedWidgetMixin {
 			// Vanilla stays silent when the text matches what it last said, which stepping between
 			// two identical widgets (two empty slots) does. A different widget is always worth
 			// saying, so the player knows they moved; the same widget changing is left alone.
-			boolean moved = current != unitedMinecraft$lastNarratedWidget;
-			unitedMinecraft$lastNarratedWidget = current;
+			boolean moved = focusedWidget != unitedMinecraft$lastNarratedWidget;
+			unitedMinecraft$lastNarratedWidget = focusedWidget;
 			NarrationRepeat.force(moved);
 			try {
 				narratable.updateNarration(widgetOutput);
