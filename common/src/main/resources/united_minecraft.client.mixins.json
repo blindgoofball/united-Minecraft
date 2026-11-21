@@ -8,6 +8,7 @@
 		"NarrationEntryMixin",
 		"NarrationOutputMixin",
 		"ScreenNarrationAccessorMixin",
+		"ScrollableLayoutContainerMixin",
 		"ScreenNarrationDelayMixin",
 		"AdvancementsScreenAccessorMixin",
 		"AdvancementTabMixin",

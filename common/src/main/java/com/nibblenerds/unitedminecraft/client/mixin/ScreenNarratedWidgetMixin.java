@@ -6,6 +6,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import com.nibblenerds.unitedminecraft.client.access.ComposesOwnNarration;
 import com.nibblenerds.unitedminecraft.client.speech.NarrationRepeat;
 
 import net.minecraft.client.gui.components.AbstractSelectionList;
@@ -56,13 +57,14 @@ public abstract class ScreenNarratedWidgetMixin {
 		GuiEventListener current = (GuiEventListener) (Object) this;
 		GuiEventListener next;
 		Component listName = null;
-		// A slot group composes its focused slot with the group's own name (Inventory, Hotbar...) and
-		// the slot's position in it, which the slot alone cannot say - so it, not the slot, is what
-		// gets narrated. The slot is still the widget focus is on, for telling a move from a change.
+		// Some containers compose their focused child with what only they know - a slot group's name
+		// and the slot's position in it, a recipe grid's column and row - so they, not the child, are
+		// what gets narrated. The child is still the widget focus is on, for telling a move from a
+		// change.
 		GuiEventListener narrated = null;
 		while (current instanceof ContainerEventHandler handler && (next = handler.getFocused()) != null) {
 			current = next;
-			if (narrated == null && current instanceof SlotGroup) {
+			if (narrated == null && unitedMinecraft$composesItsOwnNarration(current)) {
 				narrated = current;
 			}
 			if (current instanceof AbstractSelectionList<?> list && !list.getMessage().getString().isEmpty()) {
@@ -101,5 +103,16 @@ public abstract class ScreenNarratedWidgetMixin {
 			output.add(NarratedElementType.USAGE, Component.translatable("narration.component_list.usage"));
 		}
 		ci.cancel();
+	}
+
+	/**
+	 * Whether a widget narrates its focused child itself, with a name or position the child cannot
+	 * give: a slot group, and the scrollable layout the Recipe Book's grid and the enchanting,
+	 * loom, stonecutter and trading screens put their choices in. A selection list is deliberately
+	 * not one - the direct read exists because its rows come out as a bare position.
+	 */
+	@Unique
+	private static boolean unitedMinecraft$composesItsOwnNarration(GuiEventListener widget) {
+		return widget instanceof SlotGroup || widget instanceof ComposesOwnNarration;
 	}
 }
