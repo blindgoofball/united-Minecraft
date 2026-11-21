@@ -1,5 +1,7 @@
 package com.nibblenerds.unitedminecraft.client.menu;
 
+import com.nibblenerds.unitedminecraft.client.speech.KeyboardNarration;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.events.ContainerEventHandler;
 import net.minecraft.client.gui.components.events.GuiEventListener;
@@ -13,7 +15,7 @@ import net.minecraft.world.item.ItemStack;
  * moves onto it but nothing prompts it to speak again when something else (a click, a quick-move,
  * the server) changes the stack under the player's focus.
  *
- * <p>This only asks vanilla to narrate; it goes through {@link Screen#scheduleNarration()}, the
+ * <p>This only asks vanilla to narrate; it goes through {@link KeyboardNarration#schedule}, the
  * same single path every other narration uses, and the collector speaks it because the slot's
  * text now differs.
  */
@@ -34,7 +36,7 @@ public final class SlotChangeNarration {
 		}
 		ItemStack now = slot.slot().getItem();
 		if (screen == lastScreen && slot == lastSlot && !ItemStack.matches(now, lastStack)) {
-			screen.scheduleNarration();
+			KeyboardNarration.schedule(screen);
 		}
 		lastScreen = screen;
 		lastSlot = slot;

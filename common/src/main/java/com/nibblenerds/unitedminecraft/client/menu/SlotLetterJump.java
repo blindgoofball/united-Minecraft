@@ -6,6 +6,7 @@ import java.util.Locale;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import com.nibblenerds.unitedminecraft.client.keybind.Keybind;
+import com.nibblenerds.unitedminecraft.client.speech.KeyboardNarration;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.events.ContainerEventHandler;
@@ -66,7 +67,7 @@ public final class SlotLetterJump {
 			SlotWidget candidate = section.get(Math.floorMod(start + offset, section.size()));
 			if (startsWithLetter(candidate.slot().getItem(), letter)) {
 				parent.setFocused(candidate);
-				screen.scheduleNarration();
+				KeyboardNarration.schedule(screen);
 				return false;
 			}
 		}

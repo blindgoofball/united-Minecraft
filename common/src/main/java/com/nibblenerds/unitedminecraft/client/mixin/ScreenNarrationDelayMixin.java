@@ -28,10 +28,16 @@ public abstract class ScreenNarrationDelayMixin {
 	private long nextNarrationTime;
 	@Shadow
 	private long narrationSuppressTime;
+	@Shadow
+	private NarrationTrigger nextNarrationTriggeredBy;
 
 	@Inject(method = "scheduleNarration", at = @At("HEAD"), cancellable = true)
 	private void unitedMinecraft$removeNarrationDelay(long delay, boolean ignoreSuppression, NarrationTrigger trigger, CallbackInfo ci) {
 		this.nextNarrationTime = Util.getMillis();
+		// Vanilla records what started the narration here, and cancelling it must not lose that: it
+		// decides whether a slot group reads the focused slot (keyboard) or the one under the mouse
+		// pointer (anything else), and so whether the hint says "Press Enter" or "Left-click".
+		this.nextNarrationTriggeredBy = trigger;
 		if (ignoreSuppression) {
 			this.narrationSuppressTime = Long.MIN_VALUE;
 		}
