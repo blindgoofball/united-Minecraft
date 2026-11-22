@@ -267,6 +267,7 @@
 	"united_minecraft.narrate.sign_side_front": "Mặt trước",
 	"united_minecraft.narrate.sign_side_back": "Mặt sau",
 	"united_minecraft.narrate.menu_no_item_with_letter": "Không có vật phẩm nào bắt đầu bằng %s",
+	"united_minecraft.narrate.menu_item_dropped": "Đã thả %s",
 	"united_minecraft.narrate.bundle_selected": "Đã chọn %1$s, %2$s trên %3$s",
 	"united_minecraft.narrate.bundle_not_a_bundle": "Không phải là túi đồ",
 	"united_minecraft.narrate.bundle_empty_short": "Túi đồ trống",

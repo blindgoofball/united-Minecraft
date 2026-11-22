@@ -76,6 +76,7 @@ in settings or list screens. See
 | Tab / Shift+Tab | Next / previous section or tab |
 | Arrow keys | Move within the screen |
 | Page Down / Page Up | Select the next / previous item in the bundle on the focused slot |
+| Backspace / Ctrl+Backspace | Drop the stack on the cursor / one item from it |
 | Ctrl+D | Describe what the block in the focused slot is made of |
 
 The Keybindings screen lists the current default of every screen-specific action.

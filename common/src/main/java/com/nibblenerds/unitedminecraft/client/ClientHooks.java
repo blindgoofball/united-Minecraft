@@ -2,6 +2,7 @@ package com.nibblenerds.unitedminecraft.client;
 
 import com.nibblenerds.unitedminecraft.client.menu.AdvancementsController;
 import com.nibblenerds.unitedminecraft.client.menu.BundleSelection;
+import com.nibblenerds.unitedminecraft.client.menu.DropCarried;
 import com.nibblenerds.unitedminecraft.client.menu.SlotChangeNarration;
 import com.nibblenerds.unitedminecraft.client.menu.SlotDescription;
 import com.nibblenerds.unitedminecraft.client.menu.SlotLetterJump;
@@ -129,7 +130,7 @@ public final class ClientHooks {
 	public static boolean onScreenKeyPressed(Screen screen, KeyEvent event) {
 		if (screen instanceof AbstractContainerScreen<?> container
 				&& (!SlotDescription.handleKey(container, event) || !BundleSelection.handleKey(container, event)
-						|| !SlotLetterJump.handleKey(container, event))) {
+						|| !DropCarried.handleKey(container, event) || !SlotLetterJump.handleKey(container, event))) {
 			return false;
 		}
 		if (screen instanceof AdvancementsScreen advancements

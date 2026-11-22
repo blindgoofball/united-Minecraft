@@ -21,6 +21,9 @@ navigation and narration, with a few additions:
   wrapping, and say which is now selected and how many there are. The selected item is the one
   Ctrl+Enter takes out. Both keys are rebindable in the Keybindings screen. The Creative
   inventory has no bundle selection.
+- **Backspace** drops the stack on your cursor into the world, and **Ctrl+Backspace** drops one
+  item from it, the way clicking outside the window does with the left and right button. Both
+  are rebindable in the Keybindings screen.
 - **Ctrl+D** on a slot holding a block says what it is made of: its grain, color and texture,
   which the game never says. It is rebindable in the Keybindings screen.
 - A bundle's slot also says how full it is and what is in it, the selected item first.

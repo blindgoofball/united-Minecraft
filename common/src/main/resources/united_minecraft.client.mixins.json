@@ -6,6 +6,7 @@
 		"GameNarratorMixin",
 		"ScreenNarratedWidgetMixin",
 		"ScreenNarrationAccessorMixin",
+		"AbstractContainerScreenAccessorMixin",
 		"RecipeBookPageAccessorMixin",
 		"SlotWidgetMixin",
 		"ScreenNarrationDelayMixin",

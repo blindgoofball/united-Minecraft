@@ -291,6 +291,15 @@ public final class ClientKeyBindings {
 
 
 	/**
+	 * Drops what is on the cursor into the world, all of it or one item - the click outside the
+	 * window a mouse makes, which the game has no key for. See {@link com.nibblenerds.unitedminecraft.client.menu.DropCarried}.
+	 */
+	public static final KeybindAction CONTAINER_DROP_CARRIED = new KeybindAction("container_drop_carried",
+			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_BACKSPACE, 0), KeybindContext.CONTAINER_SCREEN);
+	public static final KeybindAction CONTAINER_DROP_CARRIED_ONE = new KeybindAction("container_drop_carried_one",
+			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_BACKSPACE, InputConstants.MOD_CONTROL), KeybindContext.CONTAINER_SCREEN);
+
+	/**
 	 * Steps the selected item of the bundle in the focused slot - the keyboard counterpart of the
 	 * mouse wheel, which the game has no key for. See {@link com.nibblenerds.unitedminecraft.client.menu.BundleSelection}.
 	 */
