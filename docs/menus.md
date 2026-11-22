@@ -14,6 +14,9 @@ navigation and narration, with a few additions:
   letter, wrapping around, so repeating it cycles through every match. A letter with
   Ctrl or Alt held is left to the game, so Alt+Q (drop one item), Ctrl+Q (drop the
   stack) and Ctrl+F (swap with the off-hand) still work. E does not close these screens; Escape does.
+- In the Recipe Book, a letter jumps to the next recipe group whose item name starts with it,
+  on this page or another, wrapping around. Ctrl+T (the game's chat key with Ctrl held) moves to
+  the Recipe Book's search box; a plain T is a letter.
 - **Page Down / Page Up** on a slot holding a bundle step its selected item forward or back,
   wrapping, and say which is now selected and how many there are. The selected item is the one
   Ctrl+Enter takes out. Both keys are rebindable in the Keybindings screen. The Creative

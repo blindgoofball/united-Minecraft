@@ -6,6 +6,7 @@
 		"GameNarratorMixin",
 		"ScreenNarratedWidgetMixin",
 		"ScreenNarrationAccessorMixin",
+		"RecipeBookPageAccessorMixin",
 		"ScreenNarrationDelayMixin",
 		"AdvancementsScreenAccessorMixin",
 		"AdvancementTabMixin",

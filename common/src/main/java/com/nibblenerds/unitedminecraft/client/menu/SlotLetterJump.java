@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Locale;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import com.nibblenerds.unitedminecraft.client.access.RecipeBookPageAccess;
 import com.nibblenerds.unitedminecraft.client.keybind.Keybind;
 import com.nibblenerds.unitedminecraft.client.speech.KeyboardNarration;
 
@@ -13,9 +14,16 @@ import net.minecraft.client.gui.components.events.ContainerEventHandler;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.components.inventory.SlotWidget;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.recipebook.RecipeBookPage;
+import net.minecraft.client.gui.screens.recipebook.RecipeButton;
+import net.minecraft.client.gui.screens.recipebook.RecipeCollection;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.context.ContextMap;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.display.RecipeDisplayEntry;
+import net.minecraft.world.item.crafting.display.SlotDisplayContext;
 import net.minecraft.world.item.ItemStack;
 
 /**
@@ -42,6 +50,7 @@ public final class SlotLetterJump {
 			return true;
 		}
 		ContainerEventHandler parent = null;
+		RecipeBookPage recipePage = null;
 		GuiEventListener current = screen;
 		while (current instanceof ContainerEventHandler handler) {
 			GuiEventListener next = handler.getFocused();
@@ -50,6 +59,12 @@ public final class SlotLetterJump {
 			}
 			parent = handler;
 			current = next;
+			if (current instanceof RecipeBookPage page) {
+				recipePage = page;
+			}
+		}
+		if (current instanceof RecipeButton button && recipePage != null) {
+			return jumpToRecipe(screen, recipePage, button, typed);
 		}
 		if (!(current instanceof SlotWidget focused) || parent == null) {
 			return true;
@@ -73,6 +88,54 @@ public final class SlotLetterJump {
 		}
 		Minecraft.getInstance().getNarrator().saySystemNow(Component.translatable(
 				"united_minecraft.narrate.menu_no_item_with_letter", String.valueOf(letter).toUpperCase(Locale.ROOT)));
+		return false;
+	}
+
+	/**
+	 * First-letter navigation in the Recipe Book: jumps to the next recipe group, on this page or
+	 * another, that has a recipe whose item name starts with the letter, wrapping around, so
+	 * repeating the letter cycles through them. Moving to another page is done the way the page
+	 * arrows do it.
+	 *
+	 * @return {@code false}: the key is always consumed here, even when nothing matches
+	 */
+	private static boolean jumpToRecipe(AbstractContainerScreen<?> screen, RecipeBookPage page, RecipeButton button, char letter) {
+		Minecraft client = Minecraft.getInstance();
+		RecipeBookPageAccess access = (RecipeBookPageAccess) page;
+		List<RecipeCollection> collections = access.unitedMinecraft$collections();
+		List<RecipeButton> buttons = access.unitedMinecraft$buttons();
+		int perPage = buttons.size();
+		int here = buttons.indexOf(button);
+		if (perPage == 0 || here < 0 || client.level == null) {
+			return true;
+		}
+
+		ContextMap context = SlotDisplayContext.fromLevel(client.level);
+		List<List<String>> names = new ArrayList<>();
+		for (RecipeCollection collection : collections) {
+			List<String> inGroup = new ArrayList<>();
+			for (RecipeDisplayEntry entry : collection.getRecipes()) {
+				List<ItemStack> results = entry.resultItems(context);
+				if (!results.isEmpty()) {
+					inGroup.add(results.get(0).getHoverName().getString());
+				}
+			}
+			names.add(inGroup);
+		}
+
+		int target = RecipeLetterJump.next(names, access.unitedMinecraft$currentPage() * perPage + here, letter);
+		if (target < 0) {
+			client.getNarrator().saySystemNow(Component.translatable(
+					"united_minecraft.narrate.menu_no_item_with_letter", String.valueOf(letter).toUpperCase(Locale.ROOT)));
+			return false;
+		}
+		int targetPage = target / perPage;
+		if (targetPage != access.unitedMinecraft$currentPage()) {
+			access.unitedMinecraft$setCurrentPage(targetPage);
+			access.unitedMinecraft$updateButtonsForPage();
+		}
+		page.focusRecipeButton(buttons.get(target % perPage));
+		KeyboardNarration.schedule(screen);
 		return false;
 	}
 
