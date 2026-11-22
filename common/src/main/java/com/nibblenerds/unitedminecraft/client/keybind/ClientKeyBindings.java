@@ -290,6 +290,14 @@ public final class ClientKeyBindings {
 			"container_nav_down", KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_DOWN, 0), KeybindContext.CONTAINER_SCREEN);
 
 
+	/**
+	 * Says what the block in the focused slot is made of - its grain, color and texture - which
+	 * the game never says. Ctrl rather than a plain letter or Space: letters jump to an item by
+	 * name and Space selects. See {@link com.nibblenerds.unitedminecraft.client.BlockDescriptions}.
+	 */
+	public static final KeybindAction CONTAINER_DESCRIBE_SLOT = new KeybindAction("container_describe_slot",
+			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_D, InputConstants.MOD_CONTROL), KeybindContext.CONTAINER_SCREEN);
+
 	// Every KeybindAction declared above, discovered reflectively rather than hand-listed so a
 	// future action automatically gets the same tracking below without anyone needing to
 	// remember to register it separately - see ClientKeyBindings' historical doc for why that

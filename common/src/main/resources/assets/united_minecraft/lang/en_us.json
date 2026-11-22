@@ -76,6 +76,7 @@
 	"united_minecraft.keybind.container_nav_right": "Inventory Screens: Move Focus Right",
 	"united_minecraft.keybind.container_nav_up": "Inventory Screens: Move Focus Up",
 	"united_minecraft.keybind.container_nav_down": "Inventory Screens: Move Focus Down",
+	"united_minecraft.keybind.container_describe_slot": "Inventory Screens: Describe Focused Slot",
 
 	"united_minecraft.narrate.coordinates": "%s, %s, %s",
 	"united_minecraft.narrate.coordinate_axis": "%s %s",

@@ -50,7 +50,7 @@ public final class SlotChangeNarration {
 	}
 
 	/** The slot widget at the end of the screen's focus path, if the path ends in one. */
-	private static SlotWidget focusedSlot(Screen screen) {
+	static SlotWidget focusedSlot(Screen screen) {
 		GuiEventListener current = screen;
 		while (current instanceof ContainerEventHandler handler) {
 			GuiEventListener next = handler.getFocused();

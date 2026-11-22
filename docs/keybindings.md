@@ -67,12 +67,14 @@ key or modifier combination in United Minecraft's own Keybindings screen
 
 ## Inside menus
 
-These apply on the advancements screen and in settings or list screens. See
+These apply on the advancements screen, in container screens such as inventories and chests, and
+in settings or list screens. See
 [Menus and advancements](menus.md) for what each does.
 
 | Key | Action |
 | --- | --- |
 | Tab / Shift+Tab | Next / previous section or tab |
 | Arrow keys | Move within the screen |
+| Ctrl+D | Describe what the block in the focused slot is made of |
 
 The Keybindings screen lists the current default of every screen-specific action.

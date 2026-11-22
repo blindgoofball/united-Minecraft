@@ -70,6 +70,7 @@
 	"united_minecraft.keybind.container_nav_right": "Giao diện Thùng đồ: Di chuyển vùng chọn sang phải",
 	"united_minecraft.keybind.container_nav_up": "Giao diện Thùng đồ: Di chuyển vùng chọn lên",
 	"united_minecraft.keybind.container_nav_down": "Giao diện Thùng đồ: Di chuyển vùng chọn xuống",
+	"united_minecraft.keybind.container_describe_slot": "Giao diện Thùng đồ: Đọc mô tả ô đang chọn",
 	"united_minecraft.narrate.coordinates": "%s, %s, %s",
 	"united_minecraft.narrate.coordinate_axis": "%s %s",
 	"united_minecraft.narrate.axis_x": "X",
