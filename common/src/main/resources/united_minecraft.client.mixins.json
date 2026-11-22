@@ -5,8 +5,6 @@
 	"client": [
 		"GameNarratorMixin",
 		"ScreenNarratedWidgetMixin",
-		"NarrationEntryMixin",
-		"NarrationOutputMixin",
 		"ScreenNarrationAccessorMixin",
 		"ScreenNarrationDelayMixin",
 		"AdvancementsScreenAccessorMixin",

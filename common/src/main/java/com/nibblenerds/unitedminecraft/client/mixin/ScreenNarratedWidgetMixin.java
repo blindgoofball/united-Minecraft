@@ -1,12 +1,9 @@
 package com.nibblenerds.unitedminecraft.client.mixin;
 
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-
-import com.nibblenerds.unitedminecraft.client.speech.NarrationRepeat;
 
 import net.minecraft.client.gui.components.AbstractSelectionList;
 import net.minecraft.client.gui.components.events.ContainerEventHandler;
@@ -34,17 +31,12 @@ import net.minecraft.network.chat.Component;
  * level further down, so the name is spoken ahead of it, once on entering the list.
  *
  * <p>Everywhere else - inventories, the Recipe Book, tabs, plain screens - vanilla composes the
- * narration itself, with the names, positions and hints it adds, and only the repeat described
- * on {@link NarrationRepeat} is added around it.
+ * narration itself, with the names, positions and hints it adds.
  */
 @Mixin(Screen.class)
 public abstract class ScreenNarratedWidgetMixin {
-	/** The widget narrated last, so a move onto a different one can be told from a change in the same one. */
-	@Unique
-	private GuiEventListener unitedMinecraft$lastNarratedWidget;
-
 	@Inject(method = "updateNarratedWidget", at = @At("HEAD"), cancellable = true)
-	private void unitedMinecraft$describeFocusedWidget(NarrationElementOutput output, CallbackInfo ci) {
+	private void unitedMinecraft$describeFocusedListRow(NarrationElementOutput output, CallbackInfo ci) {
 		GuiEventListener current = (GuiEventListener) (Object) this;
 		GuiEventListener next;
 		Component listName = null;
@@ -58,16 +50,7 @@ public abstract class ScreenNarratedWidgetMixin {
 				}
 			}
 		}
-
-		// A different widget is always worth saying, so the player knows they moved; the same
-		// widget changing is left alone. Vanilla stays silent when the text matches what it last
-		// said, which stepping between two identical widgets (two empty slots) does.
-		boolean moved = current != unitedMinecraft$lastNarratedWidget;
-		unitedMinecraft$lastNarratedWidget = current;
-
 		if (!inList) {
-			// Vanilla composes this one; only the repeat is ours, until the method returns.
-			NarrationRepeat.force(moved);
 			return;
 		}
 
@@ -77,23 +60,12 @@ public abstract class ScreenNarratedWidgetMixin {
 				widgetOutput.add(NarratedElementType.TITLE, listName);
 				widgetOutput = widgetOutput.nest();
 			}
-			NarrationRepeat.force(moved);
-			try {
-				narratable.updateNarration(widgetOutput);
-			} finally {
-				NarrationRepeat.force(false);
-			}
+			narratable.updateNarration(widgetOutput);
 		} else {
 			// Matches vanilla's own fallback for "nothing focused yet" (e.g. right after a
 			// screen opens via mouse, before Tab has been pressed at all).
 			output.add(NarratedElementType.USAGE, Component.translatable("narration.component_list.usage"));
 		}
 		ci.cancel();
-	}
-
-	/** Ends the repeat started at the head when vanilla did the composing. */
-	@Inject(method = "updateNarratedWidget", at = @At("RETURN"))
-	private void unitedMinecraft$endRepeat(NarrationElementOutput output, CallbackInfo ci) {
-		NarrationRepeat.force(false);
 	}
 }
