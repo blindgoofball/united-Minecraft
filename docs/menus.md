@@ -23,6 +23,7 @@ navigation and narration, with a few additions:
   inventory has no bundle selection.
 - **Ctrl+D** on a slot holding a block says what it is made of: its grain, color and texture,
   which the game never says. It is rebindable in the Keybindings screen.
+- A bundle's slot also says how full it is and what is in it, the selected item first.
 - A slot is said again when what is in it changes while you are on it.
 
 ## Advancements

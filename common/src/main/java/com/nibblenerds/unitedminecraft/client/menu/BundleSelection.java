@@ -69,6 +69,7 @@ public final class BundleSelection {
 			BundleItem.toggleSelectedItem(stack, next);
 			client.getConnection().send(new ServerboundSelectBundleItemPacket(slot.index, next));
 		}
+		SlotChangeNarration.acknowledge(screen);
 		ItemStackTemplate selected = BundleItem.getSelectedItem(stack);
 		if (selected != null) {
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.bundle_selected",

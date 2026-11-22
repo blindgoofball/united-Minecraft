@@ -43,6 +43,18 @@ public final class SlotChangeNarration {
 		lastStack = now.copy();
 	}
 
+	/**
+	 * Takes the focused slot as it is now as the one nothing has changed from, for a change the
+	 * player made and has already heard about - stepping a bundle's selection, which changes the
+	 * stack but is announced on its own.
+	 */
+	public static void acknowledge(Screen screen) {
+		SlotWidget slot = focusedSlot(screen);
+		if (slot != null && screen == lastScreen && slot == lastSlot) {
+			lastStack = slot.slot().getItem().copy();
+		}
+	}
+
 	public static void reset() {
 		lastScreen = null;
 		lastSlot = null;

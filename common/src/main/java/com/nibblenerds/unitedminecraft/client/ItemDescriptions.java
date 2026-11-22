@@ -87,7 +87,7 @@ public final class ItemDescriptions {
 	 * Stacks inside are described by name and count only, so a bundle inside a bundle doesn't
 	 * recurse into its own contents.
 	 */
-	private static MutableComponent describeBundle(BundleContents bundle, Player player) {
+	public static MutableComponent describeBundle(BundleContents bundle, Player player) {
 		if (bundle.isEmpty()) {
 			return Component.translatable("united_minecraft.narrate.bundle_empty");
 		}
