@@ -14,6 +14,10 @@ navigation and narration, with a few additions:
   letter, wrapping around, so repeating it cycles through every match. A letter with
   Ctrl or Alt held is left to the game, so Alt+Q (drop one item), Ctrl+Q (drop the
   stack) and Ctrl+F (swap with the off-hand) still work. E does not close these screens; Escape does.
+- **Page Down / Page Up** on a slot holding a bundle step its selected item forward or back,
+  wrapping, and say which is now selected and how many there are. The selected item is the one
+  Ctrl+Enter takes out. Both keys are rebindable in the Keybindings screen. The Creative
+  inventory has no bundle selection.
 - **Ctrl+D** on a slot holding a block says what it is made of: its grain, color and texture,
   which the game never says. It is rebindable in the Keybindings screen.
 - A slot is said again when what is in it changes while you are on it.

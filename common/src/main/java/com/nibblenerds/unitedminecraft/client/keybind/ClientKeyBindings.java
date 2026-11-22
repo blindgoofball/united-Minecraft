@@ -291,6 +291,15 @@ public final class ClientKeyBindings {
 
 
 	/**
+	 * Steps the selected item of the bundle in the focused slot - the keyboard counterpart of the
+	 * mouse wheel, which the game has no key for. See {@link com.nibblenerds.unitedminecraft.client.menu.BundleSelection}.
+	 */
+	public static final KeybindAction CONTAINER_PAGE_NEXT = new KeybindAction("container_page_next",
+			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_PAGEDOWN, 0), KeybindContext.CONTAINER_SCREEN);
+	public static final KeybindAction CONTAINER_PAGE_PREV = new KeybindAction("container_page_prev",
+			KeybindCategory.INVENTORY, new Keybind(InputConstants.KEY_PAGEUP, 0), KeybindContext.CONTAINER_SCREEN);
+
+	/**
 	 * Says what the block in the focused slot is made of - its grain, color and texture - which
 	 * the game never says. Ctrl rather than a plain letter or Space: letters jump to an item by
 	 * name and Space selects. See {@link com.nibblenerds.unitedminecraft.client.BlockDescriptions}.
