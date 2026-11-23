@@ -14,6 +14,10 @@ Shift with the target key). It works on any server with no special permissions.
 - It climbs and descends ladders and vines, and swims across water when it can
   reach the target (Auto-Walk Swim in Settings, on by default). It will not leave
   you stranded in water.
+- It rides upward bubble columns (the ones over soul sand) from their foot to their
+  head, preferring them to a ladder where both go the same way, since they are
+  much quicker. It never goes into a column partway up or leaves one before the
+  top, and it avoids the downward ones over magma.
 - It will not walk you onto an open trapdoor and drop you through it.
 - It goes through closed doors and fence gates the way a villager does (Auto-Walk Opens Doors in
   Settings > Modes & Movement, on by default): it stops a couple of blocks short,

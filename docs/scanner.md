@@ -37,7 +37,7 @@ Markers and Search.
 | --- | --- |
 | Storage | Chests, barrels, shulker boxes, hoppers, droppers, dispensers, decorated pots, vaults, shelves |
 | Workstations | Everything else that opens a menu (crafting tables, furnaces, anvils...), plus beds and command, structure, jigsaw and test blocks |
-| Mechanisms | Doors, levers, buttons, pressure plates, repeaters, comparators, note blocks, bells, daylight sensors, jukeboxes, composters, signs, and nether and end portals (one entry per portal), monster spawners and trial spawners (with the mob they spawn) |
+| Mechanisms | Doors, levers, buttons, pressure plates, repeaters, comparators, note blocks, bells, daylight sensors, jukeboxes, composters, cauldrons, signs, and nether and end portals (one entry per portal), monster spawners and trial spawners (with the mob they spawn) |
 | Hostile Mobs, Passive Mobs | Mobs, narrated with their name; sheep include their wool color, sheared ones included; animals with variants include them (tabby cat, chestnut horse with white dots, snowy wolf, and likewise rabbits, foxes, llamas, axolotls, frogs, pigs, cows, chickens, mooshrooms, pandas, parrots, tropical fish); copper golems say how weathered they are (exposed, weathered, oxidized; a new one is just a copper golem); a mob in a boat, minecart or on another mob says what it is riding, and the boat, minecart or mount says who it is carrying; a shoulder parrot is narrated by color and shoulder; a tamed wolf also reports its health in hearts, the equivalent of reading its tail |
 | Entities | Minecarts, boats, armor stands, item frames (with what they hold), paintings by name, end crystals, leash knots |
 | Items | Dropped items |

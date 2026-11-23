@@ -113,6 +113,7 @@ import net.minecraft.world.level.block.CactusBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ButtonBlock;
+import net.minecraft.world.level.block.AbstractCauldronBlock;
 import net.minecraft.world.level.block.ComposterBlock;
 import net.minecraft.world.level.block.CaveVines;
 import net.minecraft.world.level.block.CaveVinesBlock;
@@ -1872,6 +1873,8 @@ public final class ScannerController {
 				|| block instanceof TrialSpawnerBlock
 				// Filled by hand a few scraps at a time, then emptied for bone meal.
 				|| block instanceof ComposterBlock
+				// Every kind (empty, water, lava, powder snow): filled and emptied with buckets and bottles.
+				|| block instanceof AbstractCauldronBlock
 				|| block instanceof DiodeBlock
 				|| block instanceof NoteBlock
 				|| block instanceof BellBlock
