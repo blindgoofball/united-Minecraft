@@ -6,6 +6,7 @@ import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.FenceGateBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.pathfinder.Node;
@@ -48,7 +49,7 @@ import net.minecraft.world.level.pathfinder.WalkNodeEvaluator;
  * without leather boots walks straight through and sinks. So unless the player can walk on powder
  * snow, those cells are treated as powder snow itself, which vanilla already refuses to route through.
  *
- * <p><b>Doors.</b> With {@code openDoors}, a closed door that opens by hand, or an iron door with a
+ * <p><b>Doors.</b> With {@code openDoors}, a closed fence gate or a closed door that opens by hand, or an iron door with a
  * button that powers it ({@link ButtonDoors}), is routed through, as a villager's is; the walker ({@link AutoWalkDoors}) is what opens and closes it. Without it, a closed
  * door is a wall, exactly as vanilla's land pathfinding treats one for a mob that cannot open doors.
  */
@@ -153,6 +154,13 @@ final class AutoWalkNodeEvaluator extends WalkNodeEvaluator {
 				&& getPathTypeFromState(context.level(), pos) == PathType.OPEN
 				&& isOpenTrapdoor(context.getBlockState(new BlockPos(x, y - 1, z)))) {
 			return PathType.OPEN;
+		}
+		if (this.canOpenDoors()) {
+			BlockState here = context.getBlockState(pos);
+			if (here.getBlock() instanceof FenceGateBlock && !here.getValue(FenceGateBlock.OPEN)) {
+				// Vanilla treats a closed fence gate as a wall; a player opens it by hand like a door.
+				return PathType.DOOR_WOOD_CLOSED;
+			}
 		}
 		PathType type = super.getPathType(context, x, y, z);
 		if (type == PathType.DOOR_IRON_CLOSED && this.canOpenDoors()) {

@@ -16,6 +16,7 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.FenceGateBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.level.pathfinder.Path;
@@ -23,7 +24,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * The doors of an {@link AutoWalkController} walk, when {@link UnitedMinecraftConfig#autoWalkOpenDoors}
+ * The doors and fence gates of an {@link AutoWalkController} walk, when {@link UnitedMinecraftConfig#autoWalkOpenDoors}
  * lets the route go through them (see {@link AutoWalkNodeEvaluator}): what a villager does, since the
  * pathfinder only plans a route through a closed door and leaves opening it to the walker.
  *
@@ -133,7 +134,7 @@ public final class AutoWalkDoors {
 		while (doors.hasNext()) {
 			Opened opened = doors.next();
 			BlockState state = level.getBlockState(opened.pos());
-			if (!(state.getBlock() instanceof DoorBlock) || !state.getValue(DoorBlock.OPEN)) {
+			if (!isOpenDoorOrGate(state)) {
 				// Gone, or somebody else already shut it.
 				doors.remove();
 				continue;
@@ -160,9 +161,19 @@ public final class AutoWalkDoors {
 		return (x - (door.getX() + 0.5)) * dirX + (z - (door.getZ() + 0.5)) * dirZ;
 	}
 
+	/** Whether the state is a door or fence gate that is currently open. */
+	private static boolean isOpenDoorOrGate(BlockState state) {
+		return state.getBlock() instanceof DoorBlock && state.getValue(DoorBlock.OPEN)
+				|| state.getBlock() instanceof FenceGateBlock && state.getValue(FenceGateBlock.OPEN);
+	}
+
 	/** The lower half of the closed door at {@code pos} that a hand or a button can open, or null if it is anything else. */
 	private static BlockPos closedDoorAt(Level level, BlockPos pos) {
 		BlockState state = level.getBlockState(pos);
+		if (state.getBlock() instanceof FenceGateBlock) {
+			// A fence gate opens by hand like a wooden door, and is a single block.
+			return state.getValue(FenceGateBlock.OPEN) ? null : pos;
+		}
 		if (!(state.getBlock() instanceof DoorBlock door) || state.getValue(DoorBlock.OPEN)) {
 			return null;
 		}

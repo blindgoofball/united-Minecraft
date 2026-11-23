@@ -106,6 +106,12 @@ abstract class SettingsListScreen extends Screen {
 		maxScrollOffset = rowBaseY.isEmpty() ? 0
 				: Math.max(0, (rowBaseY.get(rowBaseY.size() - 1) + ROW_HEIGHT) - this.height);
 		applyScroll();
+
+		// Keyboard focus always starts on the first row, at the top of the list, rather than
+		// wherever vanilla's focus handling happens to leave it.
+		if (!rows.isEmpty()) {
+			setInitialFocus(rows.get(0));
+		}
 	}
 
 	/** Records a row's widget and its unscrolled Y position so scrolling can find it later. */
