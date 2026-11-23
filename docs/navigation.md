@@ -15,10 +15,10 @@ Shift with the target key). It works on any server with no special permissions.
   reach the target (Auto-Walk Swim in Settings, on by default). It will not leave
   you stranded in water.
 - It will not walk you onto an open trapdoor and drop you through it.
-- It goes through closed doors the way a villager does (Auto-Walk Opens Doors in
+- It goes through closed doors and fence gates the way a villager does (Auto-Walk Opens Doors in
   Settings > Modes & Movement, on by default): it stops a couple of blocks short,
   opens the door, waits for it to swing open, and closes it again once you are
-  through. A door that was already open is left open. An iron door is routed through
+  through. A door or gate that was already open is left open. An iron door is routed through
   only from a side where a button that would power it can be pressed (one beside or
   above the door, or on the block next to it or over it): the walk presses the button from beside the door, waits
   for it to open and walks through, and the door shuts itself. An iron door with no
