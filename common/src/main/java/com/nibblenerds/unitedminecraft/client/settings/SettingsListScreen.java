@@ -85,7 +85,10 @@ abstract class SettingsListScreen extends Screen {
 		// go stale the moment a row is added or removed without updating it.
 		if (!rowBaseY.isEmpty()) {
 			int contentHeight = rowBaseY.get(rowBaseY.size() - 1) + ROW_HEIGHT;
-			int shift = (this.height - contentHeight) / 2;
+			// Never negative: a list taller than the screen starts at its top and is scrolled
+			// down from there. Centering it would push the first rows above the screen and open
+			// the screen scrolled to the middle of the list.
+			int shift = Math.max(0, (this.height - contentHeight) / 2);
 			if (shift != 0) {
 				for (int i = 0; i < rows.size(); i++) {
 					int shiftedY = rowBaseY.get(i) + shift;
