@@ -5,6 +5,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.BubbleColumnBlock;
 import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.FenceGateBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -69,11 +70,24 @@ final class AutoWalkNodeEvaluator extends WalkNodeEvaluator {
 		this.walkOnPowderSnow = walkOnPowderSnow;
 	}
 
-	/** Whether a block state is something Auto-Walk can climb. Scaffolding is left out: it's solid from the side and is climbed differently. */
+	// Extra cost of a ladder or vine cell, so that a route that can ride a bubble column (far quicker)
+	// prefers it when both reach the same place.
+	private static final float LADDER_PENALTY = 0.5F;
+
+	/** Whether a block state is something Auto-Walk can climb or ride up. Scaffolding is left out: it's solid from the side and is climbed differently. */
 	static boolean isClimbable(BlockState state) {
+		return isLadder(state) || isUpwardBubbleColumn(state);
+	}
+
+	private static boolean isLadder(BlockState state) {
 		return state.is(BlockTags.CLIMBABLE)
 				&& !state.is(Blocks.SCAFFOLDING)
 				&& !state.getFluidState().is(FluidTags.LAVA);
+	}
+
+	/** A bubble column that lifts whoever is in it (soul sand), as opposed to the one that drags down (magma). */
+	static boolean isUpwardBubbleColumn(BlockState state) {
+		return state.is(Blocks.BUBBLE_COLUMN) && !state.getValue(BubbleColumnBlock.DRAG_DOWN);
 	}
 
 	@Override
@@ -90,12 +104,34 @@ final class AutoWalkNodeEvaluator extends WalkNodeEvaluator {
 	@Override
 	public int getNeighbors(Node[] neighbors, Node pos) {
 		int count = climbingNeighbors(neighbors, pos);
+		BlockPos here = new BlockPos(pos.x, pos.y, pos.z);
+		boolean inColumn = isUpwardBubbleColumn(this.currentContext.getBlockState(here));
+		boolean columnContinues = inColumn && isUpwardBubbleColumn(this.currentContext.getBlockState(here.above()));
 		// An iron door is only a way through from a side its button can be pressed from.
 		int kept = 0;
 		for (int i = 0; i < count; i++) {
-			if (!isButtonDoorWithoutButton(neighbors[i], pos)) {
-				neighbors[kept++] = neighbors[i];
+			Node to = neighbors[i];
+			if (isButtonDoorWithoutButton(to, pos)) {
+				continue;
 			}
+			BlockPos toPos = new BlockPos(to.x, to.y, to.z);
+			boolean vertical = to.x == pos.x && to.z == pos.z;
+			// A bubble column carries you from its foot to its head and cannot be left or joined partway
+			// up: from inside it the only way on is up (until its head), and it is entered from its foot.
+			if (columnContinues && !(vertical && to.y == pos.y + 1)) {
+				continue;
+			}
+			if (inColumn && vertical && to.y < pos.y) {
+				continue;
+			}
+			if (isUpwardBubbleColumn(this.currentContext.getBlockState(toPos))
+					&& isUpwardBubbleColumn(this.currentContext.getBlockState(toPos.below())) && !(vertical && inColumn)) {
+				continue;
+			}
+			if (isLadder(this.currentContext.getBlockState(toPos))) {
+				to.costMalus = Math.max(to.costMalus, LADDER_PENALTY);
+			}
+			neighbors[kept++] = to;
 		}
 		return kept;
 	}
