@@ -113,6 +113,7 @@ import net.minecraft.world.level.block.CactusBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ButtonBlock;
+import net.minecraft.world.level.block.ComposterBlock;
 import net.minecraft.world.level.block.CaveVines;
 import net.minecraft.world.level.block.CaveVinesBlock;
 import net.minecraft.world.level.block.CaveVinesPlantBlock;
@@ -1869,6 +1870,8 @@ public final class ScannerController {
 				// out, or avoid them), so they are found the same way, with the mob they spawn.
 				|| block instanceof SpawnerBlock
 				|| block instanceof TrialSpawnerBlock
+				// Filled by hand a few scraps at a time, then emptied for bone meal.
+				|| block instanceof ComposterBlock
 				|| block instanceof DiodeBlock
 				|| block instanceof NoteBlock
 				|| block instanceof BellBlock
