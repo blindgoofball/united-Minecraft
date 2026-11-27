@@ -1,5 +1,13 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.autowalk.AutoWalkController;
+import com.nibblenerds.unitedminecraft.client.scanner.OreDetection;
+import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
+import com.nibblenerds.unitedminecraft.client.audio.BuildCursorSound;
+import com.nibblenerds.unitedminecraft.client.audio.ModeToggleSound;
+import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
+import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
+import com.nibblenerds.unitedminecraft.client.keybind.KeybindContext;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
@@ -12,11 +20,13 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.BoatItem;
 import net.minecraft.world.item.BucketItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -29,16 +39,17 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.ComparatorBlock;
 import net.minecraft.world.level.block.DaylightDetectorBlock;
 import net.minecraft.world.level.block.EndPortalFrameBlock;
+import net.minecraft.world.level.block.FarmlandBlock;
 import net.minecraft.world.level.block.HopperBlock;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.ObserverBlock;
+import net.minecraft.world.level.block.PoweredRailBlock;
+import net.minecraft.world.level.block.LiquidBlockContainer;
 import net.minecraft.world.level.block.RedstoneWireBlock;
 import net.minecraft.world.level.block.RepeaterBlock;
 import net.minecraft.world.level.block.SlabBlock;
+import net.minecraft.world.level.block.SnowLayerBlock;
 import net.minecraft.world.level.block.StairBlock;
-import net.minecraft.world.level.block.entity.SpawnerBlockEntity;
-import net.minecraft.world.level.block.entity.TrialSpawnerBlockEntity;
-import net.minecraft.world.level.block.entity.trialspawner.TrialSpawner;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -57,6 +68,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
  * "Build mode": a virtual cursor for exploring and targeting blocks without
@@ -122,7 +134,9 @@ import net.minecraft.world.phys.shapes.CollisionContext;
  * rather than special-casing block types - see {@link #directionPropertyOf}.
  * Redstone power is checked generically too, via {@link Level#hasNeighborSignal}
  * rather than a block-specific "powered" property (plenty of blocks respond to
- * power without exposing one), and only narrated when actually powered - silence
+ * power without exposing one), plus a powered/activator rail's own stored state
+ * (power travels along a line of rails without a signal reaching each one), and
+ * only narrated when actually powered - silence
  * otherwise, since knowing a block isn't powered is rarely as actionable as
  * knowing it is. A few redstone components carry state that generic property
  * scanning can't surface (a repeater's delay and a comparator's mode are both
@@ -202,6 +216,10 @@ public final class BuildModeController {
 	private static BlockPos cursor;
 	private static int anchorX;
 	private static int anchorZ;
+	// The corner markers placed with BUILD_AREA_MARKER. Once both are set the cursor is locked to the
+	// box between them instead of the GRID_RADIUS area around the anchor - see areaLock().
+	private static BlockPos areaCornerA;
+	private static BlockPos areaCornerB;
 	private static Direction selectedFacing;
 	// Nudges stairs/slabs/trapdoors to place their upper half instead of the lower - see
 	// #attemptPlacementSequence's hitLocation construction and #faceTryOrder for how this
@@ -250,6 +268,8 @@ public final class BuildModeController {
 	public static void reset() {
 		active = false;
 		cursor = null;
+		areaCornerA = null;
+		areaCornerB = null;
 		selectedFacing = null;
 		placeUpperHalf = false;
 		facing = Direction.NORTH;
@@ -264,16 +284,25 @@ public final class BuildModeController {
 			breakHeld = ClientKeyBindings.BUILD_BREAK.isDown();
 			selectedFacing = null;
 			placeUpperHalf = false;
+			areaCornerA = null;
+			areaCornerB = null;
 			cursor = player.blockPosition();
 			anchorX = cursor.getX();
 			anchorZ = cursor.getZ();
 			facing = nearestCardinal(player.getYRot());
 			snapYawTo(player, facing);
-			Component message = Component.translatable("united_minecraft.narrate.build_mode_on")
+			UnitedMinecraftConfig.BuildCursorFeedback feedback = UnitedMinecraftConfig.get().buildCursorFeedback;
+			if (feedback.playsSound()) {
+				BuildCursorSound.playCursorCue(client, player, cursor, null, facing);
+			}
+			// Activation message always announces entry and facing direction across all feedback modes (including Sound Only)
+			MutableComponent message = Component.translatable("united_minecraft.narrate.build_mode_on")
 					.append(Component.literal(" "))
-					.append(Component.translatable("united_minecraft.narrate.build_facing", directionName(facing)))
-					.append(Component.literal(" "))
-					.append(describeCursor(player));
+					.append(Component.translatable("united_minecraft.narrate.build_facing", directionName(facing)));
+			if (feedback.speaks()) {
+				message = message.append(Component.literal(" "))
+						.append(describeCursor(player));
+			}
 			client.getNarrator().saySystemNow(message);
 			AngleAssistController.disable(client);
 		} else {
@@ -294,6 +323,8 @@ public final class BuildModeController {
 				player.setYHeadRot(pendingSavedYaw);
 			}
 			cursor = null;
+			areaCornerA = null;
+			areaCornerB = null;
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_mode_off"));
 		}
 	}
@@ -309,10 +340,83 @@ public final class BuildModeController {
 	 * direction the way {@link #toggle} does.
 	 */
 	public static void recenterCursor(Minecraft client, LocalPlayer player) {
+		BuildArea locked = areaLock();
+		if (locked != null) {
+			// A locked area stays where it was placed; recentering only moves the cursor to you, and
+			// only when you are inside it - the cursor can never leave the box.
+			if (!locked.contains(player.blockPosition(), UnitedMinecraftConfig.get().buildModeAreaLockHeight)) {
+				client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_area_outside"));
+				return;
+			}
+			cursor = player.blockPosition();
+			notifyCursorFeedback(client, player, null);
+			return;
+		}
 		cursor = player.blockPosition();
 		anchorX = cursor.getX();
 		anchorZ = cursor.getZ();
-		client.getNarrator().saySystemNow(describeCursor(player));
+		notifyCursorFeedback(client, player, null);
+	}
+
+	/**
+	 * Delivers audio cue and/or spoken narration for the cursor according to
+	 * {@link UnitedMinecraftConfig#buildCursorFeedback}.
+	 */
+	private static void notifyCursorFeedback(Minecraft client, LocalPlayer player, Direction stepDirection) {
+		UnitedMinecraftConfig.BuildCursorFeedback feedback = UnitedMinecraftConfig.get().buildCursorFeedback;
+		if (feedback.playsSound()) {
+			BuildCursorSound.playCursorCue(client, player, cursor, stepDirection, facing);
+		}
+		if (feedback.speaks()) {
+			client.getNarrator().saySystemNow(describeCursor(player));
+		}
+	}
+
+	/** The box the cursor is locked to, or null until both corner markers are placed. */
+	private static BuildArea areaLock() {
+		return areaCornerA != null && areaCornerB != null ? new BuildArea(areaCornerA, areaCornerB) : null;
+	}
+
+	/**
+	 * {@link ClientKeyBindings#BUILD_AREA_MARKER} (M): the first press marks one corner at the cursor,
+	 * the second marks the opposite corner and locks the cursor to the box between them, and a third
+	 * starts over with a new first corner. The cursor is already on the corner just placed, so it
+	 * never needs moving. The lock lasts until {@link #clearAreaMarkers} or Build Mode turns off.
+	 */
+	public static void placeAreaMarker(Minecraft client, LocalPlayer player) {
+		BlockPos at = cursor;
+		if (at == null) {
+			return;
+		}
+		if (areaCornerA == null || areaCornerB != null) {
+			boolean startedOver = areaCornerB != null;
+			areaCornerA = at;
+			areaCornerB = null;
+			Component first = Component.translatable("united_minecraft.narrate.build_area_first",
+					at.getX(), at.getY(), at.getZ());
+			client.getNarrator().saySystemNow(startedOver
+					? Component.translatable("united_minecraft.narrate.build_area_restarted").append(Component.literal(" ")).append(first)
+					: first);
+			return;
+		}
+		areaCornerB = at;
+		BuildArea area = areaLock();
+		boolean lockHeight = UnitedMinecraftConfig.get().buildModeAreaLockHeight;
+		client.getNarrator().saySystemNow(lockHeight
+				? Component.translatable("united_minecraft.narrate.build_area_locked_height",
+						area.width(), area.depth(), area.height())
+				: Component.translatable("united_minecraft.narrate.build_area_locked", area.width(), area.depth()));
+	}
+
+	/** {@link ClientKeyBindings#BUILD_AREA_CLEAR} (Alt+M): drops both corners, so the cursor roams the usual area again. */
+	public static void clearAreaMarkers(Minecraft client) {
+		if (areaCornerA == null) {
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_area_none"));
+			return;
+		}
+		areaCornerA = null;
+		areaCornerB = null;
+		client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_area_cleared"));
 	}
 
 	public static void tick(Minecraft client, LocalPlayer player) {
@@ -347,6 +451,7 @@ public final class BuildModeController {
 		boolean reorientRightPressed = ClientKeyBindings.pressed(ClientKeyBindings.BUILD_REORIENT_RIGHT);
 
 		boolean moved = false;
+		Direction stepDirection = null;
 		if (reorientLeftPressed || reorientRightPressed) {
 			// BUILD_REORIENT_LEFT/RIGHT reorients instead of moving - see cycleOrientation. Their
 			// own KeybindContext.BUILD_MODE plus ClientKeyBindings.updateAll()'s specificity
@@ -359,28 +464,35 @@ public final class BuildModeController {
 				cycleOrientation(client, player, 1);
 			}
 		} else {
-			if (leftPressed) {
-				moved |= tryMove(client, player, cursor.relative(facing.getCounterClockWise()));
+			// Mutually exclusive so pressing both lateral keys in the same tick does not double-step
+			// or conflict on the movement direction.
+			if (leftPressed && tryMove(client, player, cursor.relative(facing.getCounterClockWise()))) {
+				moved = true;
+				stepDirection = facing.getCounterClockWise();
+			} else if (rightPressed && tryMove(client, player, cursor.relative(facing.getClockWise()))) {
+				moved = true;
+				stepDirection = facing.getClockWise();
 			}
-			if (rightPressed) {
-				moved |= tryMove(client, player, cursor.relative(facing.getClockWise()));
-			}
 		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_UP)) {
-			moved |= tryMove(client, player, cursor.relative(facing));
+		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_UP) && tryMove(client, player, cursor.relative(facing))) {
+			moved = true;
+			stepDirection = facing;
 		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_DOWN)) {
-			moved |= tryMove(client, player, cursor.relative(facing.getOpposite()));
+		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_DOWN) && tryMove(client, player, cursor.relative(facing.getOpposite()))) {
+			moved = true;
+			stepDirection = facing.getOpposite();
 		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_ASCEND)) {
-			moved |= tryMove(client, player, cursor.above());
+		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_ASCEND) && tryMove(client, player, cursor.above())) {
+			moved = true;
+			stepDirection = Direction.UP;
 		}
-		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_DESCEND)) {
-			moved |= tryMove(client, player, cursor.below());
+		if (ClientKeyBindings.pressed(ClientKeyBindings.BUILD_CURSOR_DESCEND) && tryMove(client, player, cursor.below())) {
+			moved = true;
+			stepDirection = Direction.DOWN;
 		}
 
 		if (moved) {
-			client.getNarrator().saySystemNow(describeCursor(player));
+			notifyCursorFeedback(client, player, stepDirection);
 		}
 
 		tickPendingPlacement(client, player);
@@ -659,11 +771,25 @@ public final class BuildModeController {
 			// interact with anything whose bucket behavior lives in its own useItemOn rather than
 			// vanilla's generic LiquidBlockContainer/BucketPickup placement rules - a cauldron
 			// being the main one, since it's neither.
-			if (!player.level().getBlockState(cursor).canBeReplaced() && interactWithCursor(client, player)) {
+			if (!player.level().getBlockState(cursor).canBeReplaced() && isInSight(player.level(), player, cursor)
+					&& interactWithCursor(client, player)) {
 				narrateAfterAction(client, player);
 				return;
 			}
 			startBucketUse(client, player, bucketHand);
+			return;
+		}
+
+		InteractionHand boatHand = boatHand(player);
+		if (boatHand != null) {
+			// Like a bucket, a boat has no block-targeted useOn - only the aim-based use() - so it
+			// takes the same fake-the-rotation route, aimed at the water or ground in the cursor cell.
+			if (!player.level().getBlockState(cursor).canBeReplaced() && player.level().getFluidState(cursor).isEmpty()
+					&& !isShortBlock(player.level(), cursor)) {
+				client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_occupied"));
+				return;
+			}
+			startBucketUse(client, player, boatHand);
 			return;
 		}
 
@@ -690,7 +816,12 @@ public final class BuildModeController {
 			// so it still narrates "Can't place there" instead of silently interacting/placing on
 			// top via the item's own single-guess logic, short-circuiting attemptPlacementSequence's
 			// dedicated face search below.
-			if ((isInteractable(cursorState.getBlock()) || placingBlock(player) == null) && interactWithCursor(client, player)) {
+			boolean wantsInteract = isInteractable(cursorState.getBlock()) || placingBlock(player) == null;
+			if (wantsInteract && !isInSight(level, player, cursor)) {
+				// Interacting reaches the block by a click on it, not by a ray from the player, so it would
+				// otherwise work straight through a wall - which a real right-click never could.
+				client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_not_visible"));
+			} else if (wantsInteract && interactWithCursor(client, player)) {
 				narrateAfterAction(client, player);
 			} else if (cursorState.getBlock() instanceof EndPortalFrameBlock && cursorState.getValue(EndPortalFrameBlock.HAS_EYE)) {
 				// An Eye of Ender can only go into an empty frame, so a filled one refuses it - say
@@ -725,6 +856,30 @@ public final class BuildModeController {
 		// replaceable cursor cell (usually plain air) just has no block of its own to target,
 		// so the candidate has to be a neighbor instead.
 		attemptPlacementSequence(client, player);
+	}
+
+	/**
+	 * Whether the player could see the block at {@code pos} from where they stand - the sighted
+	 * player's requirement for right-clicking it, which a click sent straight to the block does
+	 * not otherwise have. True if a ray from the eye reaches any of the block's centre or six face
+	 * centres without another block in the way, so a block that is only partly in view (round a
+	 * corner, through a gap) still counts; glass and the like block it, as they do a real
+	 * right-click. Only the interact path asks this - placing a block deliberately does not.
+	 */
+	private static boolean isInSight(Level level, LocalPlayer player, BlockPos pos) {
+		BlockState state = level.getBlockState(pos);
+		if (state.getShape(level, pos, CollisionContext.of(player)).isEmpty()) {
+			return hasClearLineOfSight(level, player, pos, Vec3.atCenterOf(pos));
+		}
+		if (hasClearLineOfSight(level, player, pos, pointOnShape(level, player, pos, state))) {
+			return true;
+		}
+		for (Direction face : Direction.values()) {
+			if (hasClearLineOfSight(level, player, pos, pointOnFace(level, player, pos, state, face))) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -953,13 +1108,25 @@ public final class BuildModeController {
 	 */
 	private static Vec3 bucketAimTarget(LocalPlayer player, InteractionHand hand) {
 		Level level = player.level();
+		if (player.getItemInHand(hand).getItem() instanceof BoatItem) {
+			return boatAimTarget(player);
+		}
 		if (!(player.getItemInHand(hand).getItem() instanceof BucketItem bucketItem) || bucketItem.getContent() == Fluids.EMPTY) {
 			Vec3 point = pointOnShape(level, player, cursor, level.getBlockState(cursor));
 			return hasClearLineOfSight(level, player, cursor, point) ? point : null;
 		}
-		for (Direction face : faceTryOrder(null)) {
-			BlockPos neighborPos = cursor.relative(face);
-			BlockState neighborState = level.getBlockState(neighborPos);
+		// Water poured onto a waterloggable block (a slab, stairs, fence, trapdoor...) waterlogs it
+		// rather than going into the cell beside it, but only when the ray lands on that block
+		// itself - so aim at the cursor's own shape instead of at a neighbor to fill the cell from.
+		BlockState cursorState = level.getBlockState(cursor);
+		if (bucketItem.getContent() == Fluids.WATER && cursorState.getBlock() instanceof LiquidBlockContainer container
+				&& container.canPlaceLiquid(player, level, cursor, cursorState, Fluids.WATER)) {
+			Vec3 point = pointOnShape(level, player, cursor, cursorState);
+			return hasClearLineOfSight(level, player, cursor, point) ? point : null;
+		}
+		for (Direction face : faceTryOrder(null)) {
+			BlockPos neighborPos = cursor.relative(face);
+			BlockState neighborState = level.getBlockState(neighborPos);
 			if (neighborState.canBeReplaced()) {
 				continue;
 			}
@@ -1066,8 +1233,93 @@ public final class BuildModeController {
 			}
 			narrateAfterAction(client, player);
 		} else {
-			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_cannot_place"));
+			String reason = "build_cannot_place";
+			if (player.getItemInHand(pendingBucketHand).getItem() instanceof BoatItem && pendingAimTarget != null) {
+				reason = boatRefusalKey(player.level(), pendingAimTarget);
+			}
+			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate." + reason));
 		}
+	}
+
+	/**
+	 * Why vanilla refused a boat at {@code at}. Its check is a plain collision test of the
+	 * boat's 1.375 by 0.5625 box against blocks <em>and</em> any pushable entity - the player
+	 * included - so a boat in the cell beside you is refused whenever you are not standing
+	 * dead centre in yours. Neither the client nor a vanilla server can be talked out of that;
+	 * all that can be done is to say which of the two it was.
+	 */
+	private static String boatRefusalKey(Level level, Vec3 at) {
+		AABB box = new AABB(at.x - 0.6875, at.y + FACE_EPSILON, at.z - 0.6875, at.x + 0.6875, at.y + FACE_EPSILON + 0.5625, at.z + 0.6875)
+				.deflate(1.0E-7);
+		if (level.getBlockCollisions(null, box).iterator().hasNext()) {
+			return "build_boat_no_room";
+		}
+		if (!level.getEntities((Entity) null, box, e -> e.isPushable() && !e.isSpectator()).isEmpty()) {
+			return "build_boat_creature_in_way";
+		}
+		return "build_cannot_place";
+	}
+
+	/**
+	 * Where to aim for a boat: the surface of the water in the cursor cell, or in the cell just
+	 * under it, or the top of the block under it when there is no water. A boat is put exactly where the real raycast lands,
+	 * facing the way the player looks, so the aim has to be confirmed to land in the cursor cell
+	 * (water is hit through {@link ClipContext.Fluid#ANY}, the same as vanilla's boat does) -
+	 * otherwise it would be launched into the next cell of water along the line, or into a wall.
+	 * Null if the cursor has neither water nor ground under it, or the line to it is blocked.
+	 */
+	private static Vec3 boatAimTarget(LocalPlayer player) {
+		Level level = player.level();
+		FluidState fluid = level.getFluidState(cursor);
+		if (fluid.is(FluidTags.WATER)) {
+			Vec3 point = new Vec3(cursor.getX() + 0.5, cursor.getY() + fluid.getHeight(level, cursor) - FACE_EPSILON, cursor.getZ() + 0.5);
+			return boatRayLandsOn(level, player, point, cursor, null) ? point : null;
+		}
+		if (isShortBlock(level, cursor)) {
+			// The cursor cell holds a block that does not fill it (a path, farmland, soul sand):
+			// the boat rests on that block's own top, still inside this cell.
+			BlockState state = level.getBlockState(cursor);
+			Vec3 point = pointOnFace(level, player, cursor, state, Direction.UP);
+			return boatRayLandsOn(level, player, point, cursor, Direction.UP) ? point : null;
+		}
+		BlockPos below = cursor.below();
+		FluidState belowFluid = level.getFluidState(below);
+		if (belowFluid.is(FluidTags.WATER)) {
+			// A dry cell just above the water: the boat rests on the surface, a hair below the cell.
+			Vec3 point = new Vec3(below.getX() + 0.5, below.getY() + belowFluid.getHeight(level, below) - FACE_EPSILON, below.getZ() + 0.5);
+			return boatRayLandsOn(level, player, point, below, null) ? point : null;
+		}
+		BlockState belowState = level.getBlockState(below);
+		if (belowState.getCollisionShape(level, below).isEmpty()) {
+			return null;
+		}
+		Vec3 point = pointOnFace(level, player, below, belowState, Direction.UP);
+		return boatRayLandsOn(level, player, point, below, Direction.UP) ? point : null;
+	}
+
+	/** Whether {@code pos} holds a solid block shorter than a full cell, with the cell above it free. */
+	private static boolean isShortBlock(Level level, BlockPos pos) {
+		BlockState state = level.getBlockState(pos);
+		VoxelShape shape = state.getCollisionShape(level, pos);
+		return !state.canBeReplaced() && level.getFluidState(pos).isEmpty() && !shape.isEmpty()
+				&& shape.max(Direction.Axis.Y) < 1.0 && level.getBlockState(pos.above()).canBeReplaced();
+	}
+
+	/** Whether the ray vanilla's boat casts, aimed at {@code point}, first hits {@code block} (on {@code face}, if given). */
+	private static boolean boatRayLandsOn(Level level, LocalPlayer player, Vec3 point, BlockPos block, Direction face) {
+		BlockHitResult hit = level.clip(new ClipContext(
+				player.getEyePosition(), point, ClipContext.Block.OUTLINE, ClipContext.Fluid.ANY, player));
+		return hit.getType() == HitResult.Type.BLOCK && hit.getBlockPos().equals(block) && (face == null || hit.getDirection() == face);
+	}
+
+	/** Whichever hand holds a boat or raft of any kind, main hand first - null if neither does. */
+	private static InteractionHand boatHand(LocalPlayer player) {
+		for (InteractionHand hand : InteractionHand.values()) {
+			if (player.getItemInHand(hand).getItem() instanceof BoatItem) {
+				return hand;
+			}
+		}
+		return null;
 	}
 
 	/** Whichever hand holds a bucket (filling or emptying alike), main hand first - null if neither does. */
@@ -1325,7 +1577,14 @@ public final class BuildModeController {
 		// The cursor is free to roam the whole grid regardless of reach - place()/breakBlock()
 		// check reach for themselves at the point it actually matters. Only the grid's own
 		// horizontal bounds and the world's real height limits stop movement outright.
-		if (Math.abs(candidate.getX() - anchorX) > GRID_RADIUS || Math.abs(candidate.getZ() - anchorZ) > GRID_RADIUS) {
+		BuildArea locked = areaLock();
+		if (locked != null) {
+			// Two corner markers replace the grid around the anchor with the box between them.
+			if (!locked.contains(candidate, UnitedMinecraftConfig.get().buildModeAreaLockHeight)) {
+				client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_edge_of_area"));
+				return false;
+			}
+		} else if (Math.abs(candidate.getX() - anchorX) > GRID_RADIUS || Math.abs(candidate.getZ() - anchorZ) > GRID_RADIUS) {
 			client.getNarrator().saySystemNow(Component.translatable("united_minecraft.narrate.build_edge_of_area"));
 			return false;
 		}
@@ -1384,7 +1643,11 @@ public final class BuildModeController {
 				message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_upside_down"));
 			}
 		}
-		if (level.hasNeighborSignal(cursor)) {
+		// A powered/activator rail passes power along up to eight rails, which is a state it stores
+		// itself rather than a signal hasNeighborSignal can see from the rails in between.
+		boolean railPowered = state.getBlock() instanceof PoweredRailBlock
+				&& state.getValue(PoweredRailBlock.POWERED);
+		if (railPowered || level.hasNeighborSignal(cursor)) {
 			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_powered"));
 		}
 		if (state.getBlock() instanceof SlabBlock) {
@@ -1393,6 +1656,18 @@ public final class BuildModeController {
 			} else if (state.getValue(SlabBlock.TYPE) == SlabType.TOP) {
 				message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_top_slab"));
 			}
+		}
+		if (state.getBlock() instanceof FarmlandBlock) {
+			// Water within four blocks (or rain) holds it at 7; without, it loses one every so often
+			// until it is dry, and a dry one with no crop turns back to dirt. Anything above 0 is the
+			// dark, wet farmland a sighted player sees, and what crops grow fastest on.
+			message = message.append(Component.literal(" ")).append(Component.translatable(state.getValue(FarmlandBlock.MOISTURE) > 0
+					? "united_minecraft.narrate.build_farmland_hydrated" : "united_minecraft.narrate.build_farmland_dry"));
+		}
+		if (state.getBlock() instanceof SnowLayerBlock) {
+			// Each layer is an eighth of a block, and nothing else shows how tall the snow is.
+			int layers = state.getValue(SnowLayerBlock.LAYERS);
+			message = message.append(Component.literal(" ")).append(Component.translatable("united_minecraft.narrate.build_snow_height", layers));
 		}
 		// Generic on purpose: stairs, slabs, fences, trapdoors, chests, signs, and every other
 		// waterloggable block share this one property.
@@ -1437,15 +1712,7 @@ public final class BuildModeController {
 						.append(Component.translatable("united_minecraft.narrate.build_liquid_flowing", directionName(flow)));
 			}
 		}
-		// The mob type isn't in the block state; the client gets it from the block entity, which is
-		// how vanilla draws the spinning mob in the cage.
-		Entity spawnerMob = null;
-		if (level.getBlockEntity(cursor) instanceof SpawnerBlockEntity spawner) {
-			spawnerMob = spawner.getSpawner().getOrCreateDisplayEntity(level, cursor);
-		} else if (level.getBlockEntity(cursor) instanceof TrialSpawnerBlockEntity trialBlock) {
-			TrialSpawner trial = trialBlock.getTrialSpawner();
-			spawnerMob = trial.getStateData().getOrCreateDisplayEntity(trial, level, trial.getState());
-		}
+		Entity spawnerMob = ScannerController.spawnerMob(level, cursor);
 		if (spawnerMob != null) {
 			message = message.append(Component.literal(" ")).append(Component.translatable(
 					"united_minecraft.narrate.build_spawner_mob", spawnerMob.getType().getDescription()));
@@ -1573,6 +1840,11 @@ public final class BuildModeController {
 
 	/** The block's own {@code FACING}/{@code HORIZONTAL_FACING} value, whichever it has - null if neither. */
 	private static Direction directionPropertyOf(BlockState state) {
+		// The Crafter (and Jigsaw) store a front-and-top pair, not a plain Direction; the front is
+		// the side the Crafter drops its items out of.
+		if (state.hasProperty(BlockStateProperties.ORIENTATION)) {
+			return state.getValue(BlockStateProperties.ORIENTATION).front();
+		}
 		for (Property<?> property : state.getProperties()) {
 			if (property.getValueClass() == Direction.class) {
 				return (Direction) getValue(state, property);

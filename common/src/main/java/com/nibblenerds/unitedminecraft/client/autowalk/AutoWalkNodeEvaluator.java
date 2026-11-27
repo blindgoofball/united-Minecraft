@@ -1,0 +1,222 @@
+package com.nibblenerds.unitedminecraft.client.autowalk;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.FluidTags;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.BubbleColumnBlock;
+import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.FenceGateBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.pathfinder.Node;
+import net.minecraft.world.level.pathfinder.PathType;
+import net.minecraft.world.level.pathfinder.PathfindingContext;
+import net.minecraft.world.level.pathfinder.WalkNodeEvaluator;
+
+/**
+ * The node evaluator behind {@link ClientPathfinding}: vanilla's {@link WalkNodeEvaluator} with
+ * two corrections for client-side Auto-Walk.
+ *
+ * <p><b>Open trapdoors.</b> {@code WalkNodeEvaluator#getPathTypeFromState} classifies any
+ * trapdoor as {@link PathType#TRAPDOOR} purely from its block tag, without ever checking whether
+ * it's actually open. So the cell directly above an <em>open</em> trapdoor - which is really just
+ * a hole, exactly like standing over any other missing floor block - gets classified {@link
+ * PathType#ON_TOP_OF_TRAPDOOR} at zero movement cost, indistinguishable from solid ground. Every
+ * vanilla mob shares this same blind spot (it's baked into the node evaluator, not a per-species
+ * trait), so it isn't fixed by swapping which mob type backs the pathfinding ghost {@link
+ * ClientPathfinding} builds - only fixing the node evaluator itself does.
+ *
+ * <p>Reclassifies only that one specific case - an open trapdoor immediately below an
+ * otherwise-open cell - as {@link PathType#OPEN}, the exact same result vanilla's own logic
+ * already produces whenever it finds a below-cell that's genuinely empty (see the {@code
+ * case OPEN, WATER, LAVA, WALKABLE -> PathType.OPEN} branch of {@code getPathTypeStatic}). The
+ * pathfinder then treats an open trapdoor as the hole it actually is. A closed trapdoor is
+ * untouched and still classifies (and walks) exactly as vanilla always has.
+ *
+ * <p><b>Ladders and vines.</b> Vanilla mobs never climb: a ladder has no collision, so to
+ * {@code WalkNodeEvaluator} a ladder shaft is an empty drop, and the cells in it are
+ * {@link PathType#OPEN} that the pathfinder falls straight through. Here a climbable cell (see
+ * {@link #isClimbable}) is instead standable ground ({@link PathType#WALKABLE}) whose floor is
+ * its own feet level, and a node in one gets an extra edge to the climbable cell directly above
+ * and below it. Everything else falls out of vanilla's existing logic: a ladder cell is entered
+ * from an adjacent floor like any other cell, stepped off onto a ledge with the ordinary
+ * one-block step-up, and entered from the top by the ordinary short fall onto the first
+ * non-open cell below. {@link AutoWalkController} is what actually drives the climb.
+ *
+ * <p><b>Powder snow.</b> The cell above powder snow is classified {@link PathType#ON_TOP_OF_POWDER_SNOW}
+ * at no cost, which suits a mob that can stand on it but not a player: with no collision, a player
+ * without leather boots walks straight through and sinks. So unless the player can walk on powder
+ * snow, those cells are treated as powder snow itself, which vanilla already refuses to route through.
+ *
+ * <p><b>Doors.</b> With {@code openDoors}, a closed fence gate or a closed door that opens by hand, or an iron door with a
+ * button that powers it ({@link ButtonDoors}), is routed through, as a villager's is; the walker ({@link AutoWalkDoors}) is what opens and closes it. Without it, a closed
+ * door is a wall, exactly as vanilla's land pathfinding treats one for a mob that cannot open doors.
+ */
+final class AutoWalkNodeEvaluator extends WalkNodeEvaluator {
+	/**
+	 * With {@code swim}, water is crossed at the surface (vanilla's "can float" mode, the one boats'
+	 * passengers and swimming mobs use) instead of by walking along the bottom, which is what
+	 * vanilla's land pathfinding does by default and which is no use to a player who can't
+	 * actually walk the bed of deep water. {@link ClientPathfinding} only uses such a route when it
+	 * reaches the target, so the player never swims somewhere they can't get out of.
+	 */
+	private final boolean walkOnPowderSnow;
+
+	AutoWalkNodeEvaluator(boolean swim, boolean walkOnPowderSnow, boolean openDoors) {
+		setCanFloat(swim);
+		setCanOpenDoors(openDoors);
+		this.walkOnPowderSnow = walkOnPowderSnow;
+	}
+
+	// Extra cost of a ladder or vine cell, so that a route that can ride a bubble column (far quicker)
+	// prefers it when both reach the same place.
+	private static final float LADDER_PENALTY = 0.5F;
+
+	/** Whether a block state is something Auto-Walk can climb or ride up. Scaffolding is left out: it's solid from the side and is climbed differently. */
+	static boolean isClimbable(BlockState state) {
+		return isLadder(state) || isUpwardBubbleColumn(state);
+	}
+
+	private static boolean isLadder(BlockState state) {
+		return state.is(BlockTags.CLIMBABLE)
+				&& !state.is(Blocks.SCAFFOLDING)
+				&& !state.getFluidState().is(FluidTags.LAVA);
+	}
+
+	/** A bubble column that lifts whoever is in it (soul sand), as opposed to the one that drags down (magma). */
+	static boolean isUpwardBubbleColumn(BlockState state) {
+		return state.is(Blocks.BUBBLE_COLUMN) && !state.getValue(BubbleColumnBlock.DRAG_DOWN);
+	}
+
+	@Override
+	public Node getStart() {
+		// Standing in a ladder, vanilla's start-finding assumes a mob that isn't on the ground is
+		// falling and walks down to whatever solid block is below - the foot of the shaft, not here.
+		BlockPos feet = this.mob.blockPosition();
+		if (isClimbable(this.currentContext.getBlockState(feet))) {
+			return this.getStartNode(feet);
+		}
+		return super.getStart();
+	}
+
+	@Override
+	public int getNeighbors(Node[] neighbors, Node pos) {
+		int count = climbingNeighbors(neighbors, pos);
+		BlockPos here = new BlockPos(pos.x, pos.y, pos.z);
+		boolean inColumn = isUpwardBubbleColumn(this.currentContext.getBlockState(here));
+		boolean columnContinues = inColumn && isUpwardBubbleColumn(this.currentContext.getBlockState(here.above()));
+		// An iron door is only a way through from a side its button can be pressed from.
+		int kept = 0;
+		for (int i = 0; i < count; i++) {
+			Node to = neighbors[i];
+			if (isButtonDoorWithoutButton(to, pos)) {
+				continue;
+			}
+			BlockPos toPos = new BlockPos(to.x, to.y, to.z);
+			boolean vertical = to.x == pos.x && to.z == pos.z;
+			// A bubble column carries you from its foot to its head and cannot be left or joined partway
+			// up: from inside it the only way on is up (until its head), and it is entered from its foot.
+			if (columnContinues && !(vertical && to.y == pos.y + 1)) {
+				continue;
+			}
+			if (inColumn && vertical && to.y < pos.y) {
+				continue;
+			}
+			if (isUpwardBubbleColumn(this.currentContext.getBlockState(toPos))
+					&& isUpwardBubbleColumn(this.currentContext.getBlockState(toPos.below())) && !(vertical && inColumn)) {
+				continue;
+			}
+			if (isLadder(this.currentContext.getBlockState(toPos))) {
+				to.costMalus = Math.max(to.costMalus, LADDER_PENALTY);
+			}
+			neighbors[kept++] = to;
+		}
+		return kept;
+	}
+
+	private boolean isButtonDoorWithoutButton(Node to, Node from) {
+		BlockPos doorPos = new BlockPos(to.x, to.y, to.z);
+		BlockState state = this.currentContext.getBlockState(doorPos);
+		if (!ButtonDoors.isHandlessDoor(state) || state.getValue(DoorBlock.OPEN)) {
+			return false;
+		}
+		BlockPos lower = ButtonDoors.lowerHalf(state, doorPos);
+		Direction side = ButtonDoors.sideOf(state, lower, from.x + 0.5, from.z + 0.5);
+		return side == null || ButtonDoors.buttonFor(this.currentContext.level(), lower, side) == null;
+	}
+
+	private int climbingNeighbors(Node[] neighbors, Node pos) {
+		int count = super.getNeighbors(neighbors, pos);
+		if (!isClimbable(this.currentContext.getBlockState(new BlockPos(pos.x, pos.y, pos.z)))) {
+			return count;
+		}
+		for (int dy = -1; dy <= 1; dy += 2) {
+			int y = pos.y + dy;
+			if (!isClimbable(this.currentContext.getBlockState(new BlockPos(pos.x, y, pos.z)))) {
+				continue;
+			}
+			// The player's whole body has to fit, not just the feet cell (e.g. a block above the
+			// next ladder cell).
+			PathType type = this.getCachedPathType(pos.x, y, pos.z);
+			if (this.mob.getPathfindingMalus(type) < 0.0F) {
+				continue;
+			}
+			Node node = this.getNode(pos.x, y, pos.z);
+			if (!node.closed) {
+				node.type = type;
+				neighbors[count++] = node;
+			}
+		}
+		return count;
+	}
+
+	@Override
+	protected double getFloorLevel(BlockPos pos) {
+		if (isClimbable(this.currentContext.getBlockState(pos))) {
+			return pos.getY();
+		}
+		return super.getFloorLevel(pos);
+	}
+
+	@Override
+	public PathType getPathType(PathfindingContext context, int x, int y, int z) {
+		BlockPos pos = new BlockPos(x, y, z);
+		if (isClimbable(context.getBlockState(pos))) {
+			return PathType.WALKABLE;
+		}
+		if (y >= context.level().getMinY() + 1
+				&& getPathTypeFromState(context.level(), pos) == PathType.OPEN
+				&& isOpenTrapdoor(context.getBlockState(new BlockPos(x, y - 1, z)))) {
+			return PathType.OPEN;
+		}
+		if (this.canOpenDoors()) {
+			BlockState here = context.getBlockState(pos);
+			if (here.getBlock() instanceof FenceGateBlock && !here.getValue(FenceGateBlock.OPEN)) {
+				// Vanilla treats a closed fence gate as a wall; a player opens it by hand like a door.
+				return PathType.DOOR_WOOD_CLOSED;
+			}
+		}
+		PathType type = super.getPathType(context, x, y, z);
+		if (type == PathType.DOOR_IRON_CLOSED && this.canOpenDoors()) {
+			// An iron door with a button that powers it is as good as a wooden one: the walker presses
+			// the button (see AutoWalkDoors) where a villager would pull the door open.
+			BlockPos doorPos = new BlockPos(x, y, z);
+			BlockPos lower = ButtonDoors.lowerHalf(context.getBlockState(doorPos), doorPos);
+			if (ButtonDoors.buttonFor(context.level(), lower, null) != null) {
+				return PathType.DOOR_WOOD_CLOSED;
+			}
+		}
+		if (type == PathType.ON_TOP_OF_POWDER_SNOW && !walkOnPowderSnow) {
+			return PathType.POWDER_SNOW;
+		}
+		return type;
+	}
+
+	private static boolean isOpenTrapdoor(BlockState state) {
+		return state.is(BlockTags.TRAPDOORS)
+				&& state.hasProperty(BlockStateProperties.OPEN)
+				&& state.getValue(BlockStateProperties.OPEN);
+	}
+}

@@ -1,0 +1,245 @@
+package com.nibblenerds.unitedminecraft.client.travel;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Stream;
+
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+
+/**
+ * Flies the elytra landing autopilot against the copy of vanilla's flight physics it predicts
+ * with ({@link ElytraFlight}), from starts the landing controller would actually accept.
+ *
+ * <p>Two standards, both from the game rather than chosen here:
+ * <ul>
+ * <li><b>Gentle:</b> vanilla caps fall distance at 1 block while the player sinks slower than
+ * 0.5 blocks/tick ({@code Entity#checkFallDistanceAccumulation}), well under the 3-block safe fall
+ * distance - so a touchdown slower than that does no damage at all.</li>
+ * <li><b>On the spot:</b> within {@link ElytraAutopilot#COMMIT_MISS}, the miss the autopilot itself
+ * counts as a landing on the target.</li>
+ * </ul>
+ *
+ * <p>The target is the centre of block (0, 64, 0) on flat ground; each start is {@code distance}
+ * blocks due north of it and {@code height} above, heading along {@code yaw} (0 faces the target,
+ * 180 faces away) at {@code speed} blocks/tick.
+ */
+class ElytraAutopilotTest {
+	/** Vanilla stops capping fall distance once sinking this fast or faster - see the class doc. */
+	private static final double DAMAGING_SINK = 0.5;
+	private static final double TX = 0.5;
+	private static final double TY = 64.0;
+	private static final double TZ = 0.5;
+	private static final ElytraAutopilot.GroundProbe FLAT = (x, z) -> TY;
+
+	private static ElytraAutopilot.State start(double distance, double height, float yaw, double speed) {
+		return ElytraFlight.gliding(TX, TY + height, TZ - distance, yaw, speed);
+	}
+
+	/** The same two checks ElytraLandingController makes before it takes over. */
+	private static boolean controllerWouldStart(double distance, double height, float yaw, double speed) {
+		if (!ElytraLandingController.inGlideRange(height, distance)) {
+			return false;
+		}
+		ElytraAutopilot.Command first = new ElytraAutopilot(TX, TY, TZ).step(start(distance, height, yaw, speed));
+		return first.phase() == ElytraAutopilot.Phase.APPROACH || height >= ElytraLandingController.MIN_START_HEIGHT_TO_CIRCLE;
+	}
+
+	private static void assertLandsOnTheSpotGently(double distance, double height, float yaw, double speed) {
+		ElytraFlight.Landing landing = ElytraFlight.fly(new ElytraAutopilot(TX, TY, TZ), start(distance, height, yaw, speed), FLAT);
+		String flight = String.format("from %.0f out, %.0f up, yaw %.0f, speed %.1f: %s", distance, height, yaw, speed, landing);
+		assertFalse(landing.handedBack(), "gave up over open, flat ground " + flight);
+		assertTrue(landing.sink() < DAMAGING_SINK, "landed hard enough to hurt " + flight);
+		assertTrue(landing.missFrom(TX, TZ) <= ElytraAutopilot.COMMIT_MISS, "missed the spot " + flight);
+	}
+
+	/** A spread of what the controller takes on: straight in, side-on and turning back; low, high and very high; slow and fast. */
+	static Stream<Arguments> representativeStarts() {
+		return Stream.of(
+				Arguments.of(0, 30, 0f, 1.2),
+				Arguments.of(0, 100, 90f, 1.2),
+				Arguments.of(10, 10, 90f, 1.2),
+				Arguments.of(30, 15, 45f, 1.2),
+				Arguments.of(30, 30, 180f, 2.5),
+				Arguments.of(60, 20, 0f, 1.2),
+				// Once handed back after 1.5 seconds: the circle's look-ahead took levelling out
+				// onto open, flat ground for a collision.
+				Arguments.of(60, 30, 180f, 1.2),
+				Arguments.of(60, 60, 90f, 0.4),
+				Arguments.of(60, 100, 180f, 2.5),
+				Arguments.of(90, 20, 315f, 2.5),
+				Arguments.of(90, 30, 0f, 1.2),
+				Arguments.of(90, 45, 180f, 1.2),
+				Arguments.of(120, 30, 90f, 1.2),
+				Arguments.of(120, 60, 180f, 0.4),
+				Arguments.of(120, 150, 270f, 2.5));
+	}
+
+	@ParameterizedTest(name = "{0} out, {1} up, yaw {2}, speed {3}")
+	@MethodSource("representativeStarts")
+	void landsOnTheSpotGently(double distance, double height, float yaw, double speed) {
+		assertTrue(controllerWouldStart(distance, height, yaw, speed), "not a start the controller would take on");
+		assertLandsOnTheSpotGently(distance, height, yaw, speed);
+	}
+
+	@Test
+	void givesControlBackRatherThanCirclingIntoAWall() {
+		// A wall 40-45 blocks around the spot, taller than the start: the circle the autopilot flies
+		// to lose height (50 blocks out) runs straight through it.
+		ElytraAutopilot.GroundProbe walled = (x, z) -> {
+			double r = Math.hypot(x - TX, z - TZ);
+			return r >= 40 && r <= 45 ? TY + 80 : TY;
+		};
+		ElytraFlight.Landing landing = ElytraFlight.fly(new ElytraAutopilot(TX, TY, TZ, walled), start(20, 40, 180f, 1.2), walled);
+		assertTrue(landing.handedBack(), "flew on toward the wall: " + landing);
+	}
+
+	@Test
+	void landsBesideABuildingRatherThanFlyingIntoIt() {
+		// The spot is a few blocks in front of a wide wall, and the player comes in from the wall's
+		// side: gliding straight at the spot meets the wall, very gently, a couple of blocks from the
+		// target - which used to count as a landing on it. It has to come round to the open side.
+		ElytraAutopilot.GroundProbe building = (x, z) -> z >= -1.9 && z <= -1.0 && Math.abs(x) < 30 ? TY + 12 : TY;
+		for (float yaw : new float[] {0f, 90f, 180f}) {
+			ElytraFlight.Landing landing = ElytraFlight.fly(new ElytraAutopilot(TX, TY, TZ, building), start(40, 40, yaw, 1.2), building);
+			String flight = "yaw " + yaw + ": " + landing;
+			assertFalse(landing.handedBack(), "gave up " + flight);
+			assertTrue(building.height(landing.x(), landing.z()) <= TY + 1, "flew into the building " + flight);
+			assertTrue(landing.sink() < DAMAGING_SINK, "landed hard enough to hurt " + flight);
+			assertTrue(landing.missFrom(TX, TZ) <= ElytraAutopilot.COMMIT_MISS, "missed the spot " + flight);
+		}
+	}
+
+	@Test
+	void landsOnARoofWithoutClippingItsEdgeOrSlidingOffIt() {
+		// A flat roof six blocks above the ground whose edge is two blocks from the spot, which is
+		// all the roof's edge is to a flight coming in from that side: gliding in low it meets the
+		// edge from below, at the spot's own height, and that used to count as the landing. Coming in
+		// from the far side it would land and then slide on off the edge. It has to come in along it.
+		ElytraAutopilot.GroundProbe roof = (x, z) -> Math.abs(x) <= 60 && z >= -1.5 && z <= 60 ? TY : TY - 6;
+		for (float yaw : new float[] {0f, 90f, 180f, 270f}) {
+			ElytraFlight.Landing landing = ElytraFlight.fly(new ElytraAutopilot(TX, TY, TZ, roof), ElytraFlight.gliding(TX + 5, TY + 30, TZ + 45, yaw, 1.2), roof);
+			String flight = "yaw " + yaw + ": " + landing;
+			assertFalse(landing.handedBack(), "gave up " + flight);
+			assertTrue(roof.height(landing.x(), landing.z()) == TY, "did not land on the roof " + flight);
+			assertTrue(landing.sink() < DAMAGING_SINK, "landed hard enough to hurt " + flight);
+			assertTrue(landing.missFrom(TX, TZ) <= ElytraAutopilot.COMMIT_MISS, "missed the spot " + flight);
+			// And the slide on from touching down, a few blocks along the way it was going, stays on the roof.
+			double speed = Math.hypot(landing.vx(), landing.vz());
+			for (int k = 1; k <= Math.ceil(speed * 1.5); k++) {
+				double ahead = roof.height(landing.x() + landing.vx() / speed * k, landing.z() + landing.vz() / speed * k);
+				assertTrue(ahead >= TY - 1, "slid off the edge " + flight);
+			}
+		}
+	}
+
+	/** A thin, square slab {@code half} blocks either side of {@code (cx, cz)} at {@code top}; void elsewhere. */
+	private static boolean onSlab(double x, double z, double cx, double cz, double half) {
+		return Math.abs(x - cx) <= half && Math.abs(z - cz) <= half;
+	}
+
+	@Test
+	void landsOnASmallPlatformInTheVoidRatherThanClippingItsSide() {
+		// The End's spawn platform: five blocks square, nothing around it.
+		ElytraAutopilot.GroundProbe platform = (x, z) -> onSlab(x, z, TX, TZ, 2.5) ? TY : TY - 60;
+		for (float yaw : new float[] {0f, 90f, 180f, 270f}) {
+			for (double distance : new double[] {20, 60}) {
+				ElytraFlight.Landing landing = ElytraFlight.fly(new ElytraAutopilot(TX, TY, TZ, platform), start(distance, 40, yaw, 1.2), platform);
+				String flight = "yaw " + yaw + ", " + distance + " out: " + landing;
+				assertFalse(landing.handedBack(), "gave up " + flight);
+				assertTrue(platform.height(landing.x(), landing.z()) == TY, "missed the platform " + flight);
+				assertTrue(landing.sink() < DAMAGING_SINK, "landed hard enough to hurt " + flight);
+			}
+		}
+	}
+
+	@Test
+	void landsOnAPlatformBeneathAnother() {
+		// An enderman farm: the platform to land on, and another 40 blocks over it, wider, which a
+		// flight that treats each column's highest block as its ground takes for the only ground there is.
+		double upperBottom = TY + 39;
+		ElytraAutopilot.GroundProbe stacked = new ElytraAutopilot.GroundProbe() {
+			@Override
+			public double height(double x, double z) {
+				return onSlab(x, z, TX, TZ, 14) ? TY + 40 : onSlab(x, z, TX, TZ, 8) ? TY : TY - 60;
+			}
+
+			@Override
+			public double heightBelow(double x, double y, double z) {
+				if (onSlab(x, z, TX, TZ, 14) && y >= upperBottom) {
+					return TY + 40;
+				}
+				return onSlab(x, z, TX, TZ, 8) ? TY : TY - 60;
+			}
+		};
+		for (float yaw : new float[] {0f, 90f, 180f, 270f}) {
+			ElytraFlight.Landing landing = ElytraFlight.fly(new ElytraAutopilot(TX, TY, TZ, stacked),
+					ElytraFlight.gliding(TX, TY + 90, TZ - 60, yaw, 1.2), stacked);
+			String flight = "yaw " + yaw + ": " + landing;
+			assertFalse(landing.handedBack(), "gave up " + flight);
+			assertTrue(onSlab(landing.x(), landing.z(), TX, TZ, 8) && landing.missFrom(TX, TZ) <= ElytraAutopilot.COMMIT_MISS,
+					"did not land on the lower platform " + flight);
+			assertTrue(landing.sink() < DAMAGING_SINK, "landed hard enough to hurt " + flight);
+		}
+	}
+
+	@Test
+	void landsOnTheSpotOverRollingGround() {
+		// Natural ground: bumps of a couple of blocks all round a flat patch. Neighbouring ground a block or
+		// two higher than the path is not a wall to keep clear of, and must not turn every landing into a crash.
+		ElytraAutopilot.GroundProbe rolling = (x, z) -> Math.hypot(x - TX, z - TZ) <= 2.5 ? TY
+				: TY + Math.round(1.5 * Math.sin(Math.floor(x) / 3.0) * Math.cos(Math.floor(z) / 3.0) + 1.0);
+		for (float yaw : new float[] {0f, 90f, 180f, 270f}) {
+			for (double distance : new double[] {30, 80}) {
+				ElytraFlight.Landing landing = ElytraFlight.fly(new ElytraAutopilot(TX, TY, TZ, rolling), start(distance, 40, yaw, 1.2), rolling);
+				String flight = "yaw " + yaw + ", " + distance + " out: " + landing;
+				assertFalse(landing.handedBack(), "gave up " + flight);
+				assertTrue(landing.sink() < DAMAGING_SINK, "landed hard enough to hurt " + flight);
+				assertTrue(landing.missFrom(TX, TZ) <= ElytraAutopilot.COMMIT_MISS, "missed the spot " + flight);
+			}
+		}
+	}
+
+	@Test
+	void doesNotCommitToAnApproachThatSkimsAWall() {
+		// A wall running along the way in, a few tenths of a block off the line to the spot: the
+		// centre of the flight clears it, a wingtip does not, so the way in down that line is no good.
+		ElytraAutopilot.GroundProbe skim = (x, z) -> x >= 0.9 && z <= 0 && z >= -60 ? TY + 12 : TY;
+		ElytraAutopilot.Command first = new ElytraAutopilot(TX, TY, TZ, skim).step(start(40, 30, 0f, 1.2));
+		assertTrue(first.phase() == ElytraAutopilot.Phase.ORBIT, "committed to flying along the wall: " + first);
+	}
+
+	/**
+	 * Every combination of distance, height, heading and speed the controller would take on - over
+	 * 900 flights, a couple of minutes. Not part of the normal build; run it with {@code ./gradlew
+	 * :fabric:elytraSweep} after changing the autopilot or {@link ElytraPhysics}.
+	 */
+	@Test
+	@Tag("sweep")
+	void sweep() {
+		List<String> failures = new ArrayList<>();
+		for (double distance : new double[] {0, 10, 30, 60, 90, 120}) {
+			for (double height : new double[] {6, 10, 15, 20, 30, 45, 60, 100, 150}) {
+				for (float yaw = 0; yaw < 360; yaw += 45) {
+					for (double speed : new double[] {0.4, 1.2, 2.5}) {
+						if (!controllerWouldStart(distance, height, yaw, speed)) {
+							continue;
+						}
+						try {
+							assertLandsOnTheSpotGently(distance, height, yaw, speed);
+						} catch (AssertionError e) {
+							failures.add(e.getMessage());
+						}
+					}
+				}
+			}
+		}
+		assertTrue(failures.isEmpty(), failures.size() + " flights failed:\n" + String.join("\n", failures));
+	}
+}

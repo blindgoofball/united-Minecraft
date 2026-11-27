@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client.mixin;
 
+import com.nibblenerds.unitedminecraft.client.menu.AdvancementsController;
 import java.util.Collection;
 import java.util.Map;
 
@@ -9,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.nibblenerds.unitedminecraft.client.AdvancementsController;
+import com.nibblenerds.unitedminecraft.client.menu.AdvancementsController;
 import com.nibblenerds.unitedminecraft.client.access.AdvancementTabAccess;
 
 import net.minecraft.advancements.AdvancementHolder;

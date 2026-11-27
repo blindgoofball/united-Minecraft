@@ -1,5 +1,8 @@
 package com.nibblenerds.unitedminecraft.neoforge;
 
+import com.nibblenerds.unitedminecraft.share.ShareCommand;
+import com.nibblenerds.unitedminecraft.share.ShareRelay;
+import com.nibblenerds.unitedminecraft.share.SharePayloads;
 import com.nibblenerds.unitedminecraft.structure.StructureScanner;
 import com.nibblenerds.unitedminecraft.structure.StructuresNearbyPayload;
 
@@ -7,6 +10,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -34,10 +38,38 @@ public class UnitedMinecraftNeoForgeCommon {
 		}
 	};
 
+	private static final ShareRelay.Network SHARE_NETWORK = new ShareRelay.Network() {
+		@Override
+		public boolean canReceive(ServerPlayer player) {
+			return player.connection.hasChannel(SharePayloads.Offer.TYPE);
+		}
+
+		@Override
+		public void sendTargets(ServerPlayer player, SharePayloads.Targets payload) {
+			PacketDistributor.sendToPlayer(player, payload);
+		}
+
+		@Override
+		public void sendOffer(ServerPlayer player, SharePayloads.Offer payload) {
+			PacketDistributor.sendToPlayer(player, payload);
+		}
+	};
+
 	public UnitedMinecraftNeoForgeCommon(IEventBus modBus) {
 		modBus.addListener(RegisterPayloadHandlersEvent.class, event -> event.registrar("1").optional()
-				.playToClient(StructuresNearbyPayload.TYPE, StructuresNearbyPayload.STREAM_CODEC));
+				.playToClient(StructuresNearbyPayload.TYPE, StructuresNearbyPayload.STREAM_CODEC)
+				.playToServer(SharePayloads.TargetsRequest.TYPE, SharePayloads.TargetsRequest.STREAM_CODEC,
+						(payload, context) -> ShareRelay.onTargetsRequest((ServerPlayer) context.player(), SHARE_NETWORK))
+				.playToClient(SharePayloads.Targets.TYPE, SharePayloads.Targets.STREAM_CODEC)
+				.playToServer(SharePayloads.Send.TYPE, SharePayloads.Send.STREAM_CODEC,
+						(payload, context) -> ShareRelay.onSend((ServerPlayer) context.player(), payload, SHARE_NETWORK))
+				.playToClient(SharePayloads.Offer.TYPE, SharePayloads.Offer.STREAM_CODEC));
 		NeoForge.EVENT_BUS.addListener(ServerTickEvent.Post.class, event -> StructureScanner.tick(event.getServer(), NETWORK));
-		NeoForge.EVENT_BUS.addListener(ServerStoppedEvent.class, event -> StructureScanner.clear());
+		NeoForge.EVENT_BUS.addListener(RegisterCommandsEvent.class,
+				event -> ShareCommand.register(event.getDispatcher(), SHARE_NETWORK));
+		NeoForge.EVENT_BUS.addListener(ServerStoppedEvent.class, event -> {
+			StructureScanner.clear();
+			ShareRelay.clear();
+		});
 	}
 }

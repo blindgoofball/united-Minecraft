@@ -12,6 +12,16 @@ never hear about a harmless step. An anvil-landing sound with narration means it
 will hurt; a lighter chime with narration means it is safe (a cave lake below,
 say). Settings controls the threshold and how many seconds ahead it looks.
 
+## Powder Snow Warning
+
+On by default (Settings > Detection & Alerts). Powder snow has no collision, so
+you walk straight into it, sink and start to freeze. When it comes into your path
+a few blocks ahead, a low tone and "Powder snow ahead, 3 blocks" warn you once,
+and it stays quiet until you have stopped or got clear. Wearing leather boots lets
+you walk across the top of powder snow, so powder snow underfoot is not a warning
+for you, but a block of it at body height still is. Auto-Walk also routes around
+powder snow, and only crosses the top of it if you are wearing leather boots.
+
 ## Durability and Tool Harvest Awareness
 
 Always on, and toggleable independently in Settings.
@@ -56,6 +66,11 @@ adapted for a 3D first-person world.
   out as you walk is a doorway or side passage. A room plays all four, loudest
   toward the nearest wall. A corner is ahead plus one side; a dead end is ahead
   plus both sides. Outdoors is mostly silence, with pulses on hilly ground.
+- **Sound on Open Space:** an option in the Wall Tones settings that flips the
+  wall and ceiling sounds around. Each direction is then loudest when it is open
+  for the full range and falls silent against a wall, so a corridor plays ahead
+  and behind while the walls on either side are quiet. The pulsing step sound is
+  not flipped.
 - **Not included:** drops and holes (Fall Warning covers those), water, lava, tall
   grass, flowers and mobs. Each direction checks one straight line from your
   center, so turning slowly in place sweeps the room.
@@ -68,6 +83,6 @@ from open sky. Every sound can be previewed from the Sound Glossary.
 
 ## Mining Radar
 
-M toggles a passive alert for valuable ore exposed nearby: a positional chime and
+A switch in Settings > Detection & Alerts turns on a passive alert for valuable ore exposed nearby: a positional chime and
 narration (name, distance, direction) the moment ore becomes visible. It only
 flags ore you could actually see, not ore sealed behind unmined blocks.

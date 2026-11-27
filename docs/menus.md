@@ -57,7 +57,10 @@ Wherever a crafting grid and Recipe Book are both present:
   vanilla's recipe book never says aloud.
 - **Home/End** jump to the first or last group; **Page Up/Down** cycle vanilla's
   recipe-book category tabs.
-- **F** shows only recipes you can craft now.
+- **Letters** jump to the next recipe, across groups and variants, whose result's name
+  starts with that letter, wrapping around, so repeating it cycles through every match.
+  E does not close the screen here either.
+- **Ctrl+F** shows only recipes you can craft now.
 - **Space** opens a search prompt. The term also filters vanilla's own search box
   if it is open, so a sighted player sees the same results.
 - **Enter** places the focused recipe; **Shift+Enter** fills the grid to the max
@@ -76,6 +79,9 @@ These controls are not slots, so each gets its own section.
   one, and the result waits in the output slot, one Shift+Tab back.
 - **Anvil:** a Rename section ahead of its slots. Tab reaches it and leaves it like
   any section, and every other key reaches the text field normally.
+- **Crafter:** Enter on an empty grid slot locks or unlocks it, as a mouse click does,
+  and a locked slot is narrated as "Locked". In Build Mode the Crafter's narration
+  includes the side it faces, which is where it ejects the result.
 
 ## Creative inventory
 

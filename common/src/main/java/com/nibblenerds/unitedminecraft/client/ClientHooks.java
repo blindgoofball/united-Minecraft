@@ -1,6 +1,19 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.menu.AdvancementsController;
+import com.nibblenerds.unitedminecraft.client.menu.CreativeInventoryController;
+import com.nibblenerds.unitedminecraft.client.menu.MenuAccessibilityController;
+import com.nibblenerds.unitedminecraft.client.scanner.MapMarkerController;
+import com.nibblenerds.unitedminecraft.client.scanner.MarkerShareController;
+import com.nibblenerds.unitedminecraft.client.scanner.NamedBlockController;
+import com.nibblenerds.unitedminecraft.client.scanner.SavedSearchController;
+import com.nibblenerds.unitedminecraft.client.scanner.ScannerFilterController;
+import com.nibblenerds.unitedminecraft.client.settings.RecommendedKeysPrompt;
+import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
+import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
+import com.nibblenerds.unitedminecraft.client.keybind.KeybindConfig;
 import com.nibblenerds.unitedminecraft.client.speech.PrismController;
+import com.nibblenerds.unitedminecraft.share.SharePayloads;
 import com.nibblenerds.unitedminecraft.structure.StructuresNearbyPayload;
 
 import net.minecraft.client.Minecraft;
@@ -33,6 +46,7 @@ public final class ClientHooks {
 	/** One-time setup. The loader module installs a {@code Platform} before calling this. */
 	public static void init() {
 		UnitedMinecraftConfig.load();
+		AiConfig.load();
 		PrismController.init();
 		ClientKeyBindings.register();
 		KeybindConfig.load();
@@ -163,6 +177,16 @@ public final class ClientHooks {
 		StructureVoiceController.onStructuresNearby(payload);
 	}
 
+	/** The server listed the other players who can be shared with - see {@link MarkerShareController}. */
+	public static void onShareTargets(SharePayloads.Targets payload) {
+		MarkerShareController.onTargets(payload);
+	}
+
+	/** Another player shared a marker with this one - see {@link MarkerShareController}. */
+	public static void onShareOffer(SharePayloads.Offer payload) {
+		MarkerShareController.onOffer(payload);
+	}
+
 	/**
 	 * The server told the client which world it is in, by login or respawn packet. Called from a
 	 * mixin rather than a loader bridge, since both packets are vanilla's own.
@@ -178,6 +202,8 @@ public final class ClientHooks {
 	public static void onSingleplayerWorldDeleted(String levelId) {
 		MapMarkerController.onWorldDeleted(levelId);
 		NamedBlockController.onWorldDeleted(levelId);
+		ScannerFilterController.onWorldDeleted(levelId);
+		SavedSearchController.onWorldDeleted(levelId);
 	}
 
 	/** The client is shutting down. */

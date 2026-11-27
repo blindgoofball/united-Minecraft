@@ -1,5 +1,8 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.scanner.OreDetection;
+import com.nibblenerds.unitedminecraft.client.audio.CueVolume;
+import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Iterator;
@@ -59,20 +62,13 @@ public final class MiningRadarController {
 		return UnitedMinecraftConfig.get().miningRadarEnabled;
 	}
 
-	public static void toggle(Minecraft client) {
-		UnitedMinecraftConfig config = UnitedMinecraftConfig.get();
-		config.miningRadarEnabled = !config.miningRadarEnabled;
-		UnitedMinecraftConfig.save();
-		ticksUntilScan = 0;
-		ticksUntilNextAlert = 0;
-		pending.clear();
+	/** Called by the settings toggle, which narrates its own new state. */
+	public static void setEnabled(boolean enabled) {
+		UnitedMinecraftConfig.get().miningRadarEnabled = enabled;
 		// Turning the radar back on is a request to hear what's around right now, so forget
 		// what was already announced rather than staying silent about ore still sitting in
 		// plain sight from before it was switched off.
-		alerted.clear();
-		client.getNarrator().saySystemNow(Component.translatable(config.miningRadarEnabled
-				? "united_minecraft.narrate.mining_radar_on"
-				: "united_minecraft.narrate.mining_radar_off"));
+		reset();
 	}
 
 	/** Clears per-session scan state only - {@link #isEnabled()} is a persistent preference, not session state. */

@@ -1,5 +1,9 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.audio.WallToneSound;
+import com.nibblenerds.unitedminecraft.client.audio.WallToneSynth;
+import com.nibblenerds.unitedminecraft.client.audio.WallToneVoice;
+import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.Map;
@@ -152,7 +156,7 @@ public final class WallToneController {
 			if (obstacle < wall && !config.wallToneObstaclesEnabled) {
 				wall = obstacle;
 			}
-			targets[WallToneVoice.of(WallToneVoice.Kind.WALL, direction).ordinal()] = loudness(wall, range) * gain;
+			targets[WallToneVoice.of(WallToneVoice.Kind.WALL, direction).ordinal()] = level(wall, range, config.wallToneInverted) * gain;
 			if (obstacle < wall) {
 				targets[WallToneVoice.of(WallToneVoice.Kind.OBSTACLE, direction).ordinal()] = loudness(obstacle, range) * gain;
 			}
@@ -161,7 +165,7 @@ public final class WallToneController {
 		if (config.wallToneCeilingEnabled) {
 			Vec3 top = new Vec3(player.getX(), player.getY() + player.getBbHeight(), player.getZ());
 			double distance = cast(level, player, top, top.add(0, range, 0));
-			targets[WallToneVoice.CEILING.ordinal()] = loudness(distance, range) * gain * CEILING_GAIN;
+			targets[WallToneVoice.CEILING.ordinal()] = level(distance, range, config.wallToneInverted) * gain * CEILING_GAIN;
 		}
 	}
 
@@ -237,6 +241,16 @@ public final class WallToneController {
 		double x = to.x() - from.x();
 		double z = to.z() - from.z();
 		return Math.sqrt(x * x + z * z);
+	}
+
+	/**
+	 * {@link #loudness}, or its mirror image when inverted: full volume with nothing in range,
+	 * falling to silence against a wall. The obstacle pulses are not inverted - they stay a
+	 * "something close" warning either way.
+	 */
+	static float level(double distance, double range, boolean inverted) {
+		float loud = loudness(distance, range);
+		return inverted ? 1.0f - loud : loud;
 	}
 
 	/** 0 at or beyond range, rising to 1 against the wall - squared so it bites close in (same curve Wrath Access uses). */

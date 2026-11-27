@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client.mixin;
 
+import com.nibblenerds.unitedminecraft.client.audio.StructureVoiceAudio;
 import org.lwjgl.openal.AL;
 import org.lwjgl.openal.AL10;
 import org.lwjgl.openal.SOFTDirectChannels;
@@ -12,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.mojang.blaze3d.audio.Channel;
 import com.mojang.blaze3d.audio.SoundBuffer;
-import com.nibblenerds.unitedminecraft.client.StructureVoiceAudio;
+import com.nibblenerds.unitedminecraft.client.audio.StructureVoiceAudio;
 
 /**
  * Plays structure voices' stereo buffers straight to the left and right outputs. By default

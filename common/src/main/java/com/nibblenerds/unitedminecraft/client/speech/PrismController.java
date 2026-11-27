@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client.speech;
 
+import com.nibblenerds.unitedminecraft.client.audio.StructureVoiceAudio;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;

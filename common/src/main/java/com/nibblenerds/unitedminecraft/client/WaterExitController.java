@@ -1,5 +1,11 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.autowalk.AutoWalkController;
+import com.nibblenerds.unitedminecraft.client.autowalk.ClientPathfinding;
+import com.nibblenerds.unitedminecraft.client.autowalk.RouteInput;
+import com.nibblenerds.unitedminecraft.client.autowalk.StuckDetector;
+import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
+import com.nibblenerds.unitedminecraft.client.keybind.ClientKeyBindings;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -151,7 +157,7 @@ public final class WaterExitController {
 			return;
 		}
 
-		// Same "no real progress despite actively swimming" guard Auto-Walk and Trail already
+		// Same "no real progress despite actively swimming" guard Auto-Walk already
 		// use - a current pushing the player back, or the route being invalidated mid-swim,
 		// would otherwise hold forward and jump forever with no way out but the cancel key.
 		// Reported as "no way out": from the player's position in the water that's what a route

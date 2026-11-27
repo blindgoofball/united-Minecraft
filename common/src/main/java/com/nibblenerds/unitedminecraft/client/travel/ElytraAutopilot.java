@@ -1,0 +1,407 @@
+package com.nibblenerds.unitedminecraft.client.travel;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * The flight law for {@link ElytraLandingController}'s automatic landing: given where the player is
+ * and how it is moving, says which way to look next. Deliberately free of any Minecraft types, so
+ * it can be run against vanilla's elytra physics without launching the game.
+ *
+ * <p>Elytra flight is fully determined by the player's velocity and look direction ({@code
+ * LivingEntity#updateFallFlyingMovement}, mirrored in {@link ElytraPhysics}), so rather than chasing
+ * a glide slope, this <em>predicts</em>: every tick it simulates the rest of the flight - turning
+ * toward the target and easing to each of a range of candidate pitches, some of which dive and then
+ * level off a set height above the ground - and picks the quickest candidate predicted to land on the
+ * target, among those that touch down gently (quickest, because the one that lands nearest is a
+ * slow drift over the spot that takes a minute to get down from a great height). Gentle
+ * matters because touching down while sinking slower than {@link #MAX_TOUCHDOWN_SINK} blocks/tick
+ * does no fall damage at all (vanilla caps the accumulated fall distance at 1 in that case), and
+ * level flight is the best glide there is (about 10 blocks forward per block lost), so no dramatic
+ * flare is ever needed - only never arriving on a steep, fast dive.
+ *
+ * <p>Two phases:
+ * <ul>
+ * <li>{@link Phase#ORBIT}: no landing on the target is possible from here (even the steepest
+ * allowed dive overshoots it, or the turn onto it can't be made in time). Fly a wide circle around
+ * it, sinking at a moderate rate, until a landing on it becomes possible.</li>
+ * <li>{@link Phase#APPROACH}: a landing on the target is predicted possible; fly the pitch that
+ * lands on it, re-predicting every tick so any drift is corrected.</li>
+ * </ul>
+ */
+final class ElytraAutopilot {
+	enum Phase {
+		ORBIT, APPROACH
+	}
+
+	/** Position, velocity (blocks per tick) and look angles in degrees (Minecraft convention: yaw 0 faces +Z, pitch positive looks down). */
+	record State(double x, double y, double z, double vx, double vy, double vz, float yaw, float pitch) {
+	}
+
+	/** The surface height at a column - what the predicted flight must stay above, and where it ends. */
+	interface GroundProbe {
+		double height(double x, double z);
+
+		/**
+		 * The surface a flight at height {@code y} in this column would meet: the top of the highest ground
+		 * at or below {@code y}, so a platform higher up, which the flight is below and passes under, is not
+		 * mistaken for the ground. Ground that reaches above {@code y} is what it is in, so is met at its top.
+		 * Defaults to the column's surface, for ground with nothing over it.
+		 */
+		default double heightBelow(double x, double y, double z) {
+			return height(x, z);
+		}
+	}
+
+	/**
+	 * The look to adopt next tick, which phase it came from, how far the predicted touchdown is from
+	 * the target, the predicted flight path (x, y, z, every few ticks), and whether the circling
+	 * path is predicted to run into terrain away from the target ({@code hazard}).
+	 */
+	record Command(float yaw, float pitch, Phase phase, double predictedMiss, List<double[]> path, boolean hazard) {
+	}
+
+	/**
+	 * One simulated flight. {@code pitch} is what to look at right now to fly it (the dive pitch, or
+	 * level once inside the level-off height), and {@code ticks} how long it takes to touch down.
+	 */
+	private record Prediction(double miss, double touchdownSink, double pitch, boolean landed, List<double[]> path, int ticks) {
+	}
+
+	static final double ORBIT_RADIUS = 50.0;
+	// Fall damage becomes possible once the touchdown sink rate (blocks/tick) reaches 0.5; keep clear of it.
+	static final double MAX_TOUCHDOWN_SINK = 0.40;
+	// A predicted landing this close to the target (blocks) is good enough to commit to the approach.
+	static final double COMMIT_MISS = 2.5;
+	// If a committed approach's best prediction drifts this far off, go back to circling.
+	static final double ABANDON_MISS = 20.0;
+	private static final double MAX_PITCH = 60.0;
+	private static final double PITCH_STEP = 2.5;
+	// Dive-then-level-off candidates: dive at one of these pitches until within one of these heights
+	// of the ground, then fly level to shed the speed. A candidate that holds one pitch all the way
+	// down can only reach the target by drifting over it slowly (about three blocks a second of
+	// descent however high you are), so these are what lets a high start come down quickly.
+	private static final double[] DIVE_PITCHES = {30.0, 40.0, 50.0, 55.0, 60.0, 65.0, 70.0, 75.0, 80.0, 85.0, 90.0};
+	private static final double[] LEVEL_OFF_HEIGHTS = {10.0, 15.0, 20.0, 25.0, 30.0, 35.0, 40.0, 45.0, 50.0, 60.0, 75.0, 90.0, 110.0};
+	private static final float MAX_YAW_STEP = 5.0f;
+	private static final float MAX_PITCH_STEP = 5.0f;
+	private static final double ORBIT_SINK_PITCH = 30.0;
+	private static final double LEAD_ANGLE = Math.toRadians(40.0);
+	private static final int PATH_SAMPLE_TICKS = 4;
+	private static final int MAX_PREDICT_TICKS = 1500;
+
+	// Ticks of circling flown ahead to check for terrain, and how close to the target a ground contact still counts as the landing.
+	private static final int ORBIT_LOOKAHEAD_TICKS = 80;
+	private static final double LANDING_ZONE = 10.0;
+	// How far above the spot's own ground a contact has to be to count as terrain in the way.
+	private static final double TERRAIN_RISE = 1.0;
+	// Within this height of the ground, flight is checked against the ground half a block either side
+	// of it too (the player is 0.6 wide, and the flight is never quite as predicted), so a path that
+	// skims a wall or a corner is not taken for a clear one.
+	private static final double MARGIN_ZONE = 20.0;
+	private static final double WING = 0.5;
+	private static final double[][] MARGIN_OFFSETS = {
+			{WING, 0}, {-WING, 0}, {0, WING}, {0, -WING}, {WING, WING}, {WING, -WING}, {-WING, WING}, {-WING, -WING}};
+	// Ground beside the path only counts when it stands this much higher than the ground under it - a
+	// wall, a building, the edge of a platform, not the bumps of natural ground - and then the path has
+	// to stay this far above it: on a platform only a few blocks across the edge is all there is to
+	// hit, and coming in a little low clips it, and the glide on from there is down into the void.
+	private static final double WALL_RISE = 3.0;
+	private static final double EDGE_CLEARANCE = 0.5;
+	// Sink rate (blocks/tick) an unsafe landing - into a wall, or on to an edge - is scored as, well past what a landing allows.
+	private static final double UNSAFE_LANDING_SINK = 2.0;
+	// A path that meets ground more than this far below its top has gone in the side of it.
+	private static final double SIDE_HIT_DEPTH = 0.5;
+	// How far the slide after touching down is checked, per block/tick of speed: ground friction (0.6 x
+	// 0.91 a tick) carries the player about 1.2 blocks per block/tick, so this leaves some margin without
+	// ruling out a landing on anything much smaller than the slide itself. And the drop that counts as an edge.
+	private static final double SLIDE_BLOCKS_PER_SPEED = 1.0;
+	private static final double MAX_SLIDE_DROP = 1.0;
+	// Ground this far to each side of a touchdown has to be there too: see slideStaysOnGround.
+	private static final double LIP = 1.5;
+	private static final double[][] LIP_OFFSETS = {{LIP, 0}, {-LIP, 0}, {0, LIP}, {0, -LIP}};
+
+	private final double tx;
+	private final double ty;
+	private final double tz;
+	private final GroundProbe ground;
+	private Phase phase = Phase.ORBIT;
+	private boolean started;
+
+	/** Flat ground at the target's own height everywhere - what a test flight over an open plain sees. */
+	ElytraAutopilot(double targetX, double targetGroundY, double targetZ) {
+		this(targetX, targetGroundY, targetZ, (x, z) -> targetGroundY);
+	}
+
+	ElytraAutopilot(double targetX, double targetGroundY, double targetZ, GroundProbe ground) {
+		this.tx = targetX;
+		this.ty = targetGroundY;
+		this.tz = targetZ;
+		this.ground = ground;
+	}
+
+	Phase phase() {
+		return phase;
+	}
+
+	Command step(State s) {
+		Prediction best = bestApproach(s);
+		boolean workable = best.landed() && best.touchdownSink() <= MAX_TOUCHDOWN_SINK;
+		if (!started) {
+			started = true;
+			phase = workable && best.miss() <= COMMIT_MISS ? Phase.APPROACH : Phase.ORBIT;
+		} else if (phase == Phase.ORBIT && workable && best.miss() <= COMMIT_MISS) {
+			phase = Phase.APPROACH;
+		} else if (phase == Phase.APPROACH && (!workable || best.miss() > ABANDON_MISS) && s.y() - ty > 8.0) {
+			phase = Phase.ORBIT;
+		}
+
+		if (phase == Phase.APPROACH) {
+			float yaw = steerYaw(s.yaw(), bearingTo(s.x(), s.z(), tx, tz));
+			float pitch = s.pitch() + clamp((float) (best.pitch() - s.pitch()), MAX_PITCH_STEP);
+			return new Command(yaw, pitch, phase, best.miss(), best.path(), false);
+		}
+		return orbit(s, best);
+	}
+
+	private Command orbit(State s, Prediction best) {
+		double dx = tx - s.x();
+		double dz = tz - s.z();
+		double distance = Math.hypot(dx, dz);
+		// A point on the circle a little ahead of where the player is on it - which also draws the
+		// player out onto the circle from wherever it starts, inside or outside.
+		double theta = distance < 1.0 ? Math.atan2(-s.vx(), s.vz()) + Math.PI : Math.atan2(-dx, dz) + Math.PI;
+		double ahead = theta + LEAD_ANGLE;
+		double aimX = tx - Math.sin(ahead) * ORBIT_RADIUS;
+		double aimZ = tz + Math.cos(ahead) * ORBIT_RADIUS;
+		float yaw = steerYaw(s.yaw(), bearingTo(s.x(), s.z(), aimX, aimZ));
+
+		// Close to the ground with no way to reach the target: stop sinking steeply and just level
+		// out into the best glide - landing nearby is better than diving into the ground.
+		double pitchWanted = s.y() - ty < 6.0 ? 0.0 : ORBIT_SINK_PITCH;
+		float pitch = s.pitch() + clamp((float) (pitchWanted - s.pitch()), MAX_PITCH_STEP);
+		return new Command(yaw, pitch, phase, best.miss(), best.path(), orbitHazard(s));
+	}
+
+	/**
+	 * Whether circling on from {@code s} is predicted to hit terrain somewhere other than the landing
+	 * zone. Only ground standing higher than the spot counts: over ground no higher than the spot, a
+	 * circle that runs low just levels out (see {@link #orbit}) into a gentle landing short of it,
+	 * which is no reason to hand control back.
+	 */
+	private boolean orbitHazard(State s) {
+		double x = s.x();
+		double y = s.y();
+		double z = s.z();
+		double vx = s.vx();
+		double vy = s.vy();
+		double vz = s.vz();
+		float yaw = s.yaw();
+		float pitch = s.pitch();
+		for (int t = 0; t < ORBIT_LOOKAHEAD_TICKS; t++) {
+			double prevX = x;
+			double prevY = y;
+			double prevZ = z;
+			double dx = tx - x;
+			double dz = tz - z;
+			double distance = Math.hypot(dx, dz);
+			double theta = distance < 1.0 ? Math.atan2(-vx, vz) + Math.PI : Math.atan2(-dx, dz) + Math.PI;
+			double ahead = theta + LEAD_ANGLE;
+			yaw = steerYaw(yaw, bearingTo(x, z, tx - Math.sin(ahead) * ORBIT_RADIUS, tz + Math.cos(ahead) * ORBIT_RADIUS));
+			double pitchWanted = y - ty < 6.0 ? 0.0 : ORBIT_SINK_PITCH;
+			pitch += clamp((float) (pitchWanted - pitch), MAX_PITCH_STEP);
+			double[] v = ElytraPhysics.step(vx, vy, vz, yaw, pitch);
+			vx = v[0];
+			vy = v[1];
+			vz = v[2];
+			x += vx;
+			y += vy;
+			z += vz;
+			double[] touch = contact(prevX, prevY, prevZ, x, y, z);
+			if (touch != null) {
+				return touch[2] > ty + TERRAIN_RISE && Math.hypot(touch[0] - tx, touch[1] - tz) > LANDING_ZONE;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Whether the slide after touching down at {@code (x, z)} on ground {@code surface} high, still going
+	 * {@code (vx, vz)}, stays on ground that is no more than a block lower, over the next few blocks - far
+	 * enough for the speed carried in. Touching down is not the end of the movement: the player keeps
+	 * going, and over the edge of a roof or a ledge that is a fall.
+	 */
+	private boolean slideStaysOnGround(double x, double surface, double z, double vx, double vz) {
+		// Touching down right on the lip of a platform is no landing on it: the flight is never quite as
+		// predicted, and a touchdown a little further out is a miss and a glide on into the void.
+		double look = surface + 1.5;
+		for (double[] side : LIP_OFFSETS) {
+			if (ground.heightBelow(x + side[0], look, z + side[1]) < surface - MAX_SLIDE_DROP) {
+				return false;
+			}
+		}
+		double speed = Math.hypot(vx, vz);
+		if (speed < 1e-6) {
+			return true;
+		}
+		int blocks = (int) Math.ceil(speed * SLIDE_BLOCKS_PER_SPEED);
+		for (int k = 1; k <= blocks; k++) {
+			if (ground.heightBelow(x + vx / speed * k, surface + 1.5, z + vz / speed * k) < surface - MAX_SLIDE_DROP) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * Where the move from one position to the next first meets the ground, as {@code {x, z, surface,
+	 * side}}, or null if it doesn't. Checked every block or so along the way rather than only at the end: a
+	 * fast glide covers several blocks a tick, enough to step clean through a wall one block thick.
+	 */
+	private double[] contact(double x0, double y0, double z0, double x1, double y1, double z1) {
+		int samples = Math.max(1, (int) Math.ceil(Math.hypot(x1 - x0, z1 - z0)));
+		double prevX = x0;
+		double prevY = y0;
+		double prevZ = z0;
+		for (int i = 1; i <= samples; i++) {
+			double f = (double) i / samples;
+			double x = x0 + (x1 - x0) * f;
+			double y = y0 + (y1 - y0) * f;
+			double z = z0 + (z1 - z0) * f;
+			double surface = ground.heightBelow(x, y, z);
+			if (y > surface && y - surface < MARGIN_ZONE) {
+				double wall = surface;
+				for (double[] offset : MARGIN_OFFSETS) {
+					wall = Math.max(wall, ground.heightBelow(x + offset[0], y, z + offset[1]));
+				}
+				if (wall >= surface + WALL_RISE && y <= wall + EDGE_CLEARANCE) {
+					// A wingtip in a wall, or in the edge of a platform, before the ground under the path is reached.
+					return new double[] {x, z, wall, 1.0};
+				}
+			}
+			if (y <= surface) {
+				double fraction = prevY <= surface || prevY == y ? 1.0 : (prevY - surface) / (prevY - y);
+				// The last entry is 1 when the path ran into the side of the ground rather than coming down onto it.
+				return new double[] {prevX + (x - prevX) * fraction, prevZ + (z - prevZ) * fraction, surface,
+						prevY < surface - SIDE_HIT_DEPTH ? 1.0 : 0.0};
+			}
+			prevX = x;
+			prevY = y;
+			prevZ = z;
+		}
+		return null;
+	}
+
+	/**
+	 * The candidate flight to fly. Of those predicted to land on the target gently, the quickest -
+	 * not the one that happens to land nearest, which is a slow drift over the spot. If none will,
+	 * the one that comes nearest, with a heavy penalty for a hard landing.
+	 */
+	private Prediction bestApproach(State s) {
+		Prediction nearest = null;
+		double nearestCost = Double.MAX_VALUE;
+		Prediction quickest = null;
+		for (double pitch = 0.0; pitch <= MAX_PITCH + 1e-9; pitch += PITCH_STEP) {
+			Prediction p = predict(s, pitch, 0.0);
+			if (p.landed() && p.touchdownSink() <= MAX_TOUCHDOWN_SINK && p.miss() <= COMMIT_MISS
+					&& (quickest == null || p.ticks() < quickest.ticks())) {
+				quickest = p;
+			}
+			double cost = p.landed() ? p.miss() + Math.max(0.0, p.touchdownSink() - MAX_TOUCHDOWN_SINK) * 400.0 : 1e6;
+			if (cost < nearestCost) {
+				nearestCost = cost;
+				nearest = p;
+			}
+		}
+		for (double pitch : DIVE_PITCHES) {
+			for (double levelOff : LEVEL_OFF_HEIGHTS) {
+				Prediction p = predict(s, pitch, levelOff);
+				if (p.landed() && p.touchdownSink() <= MAX_TOUCHDOWN_SINK && p.miss() <= COMMIT_MISS
+						&& (quickest == null || p.ticks() < quickest.ticks())) {
+					quickest = p;
+				}
+			}
+		}
+		return quickest != null ? quickest : nearest;
+	}
+
+	/**
+	 * Simulates the flight from {@code s}, steering toward the target and easing to {@code pitchTarget}
+	 * (or to level once within {@code levelOffHeight} of the ground, if that is above zero), until the
+	 * ground is reached.
+	 */
+	private Prediction predict(State s, double pitchTarget, double levelOffHeight) {
+		double x = s.x();
+		double y = s.y();
+		double z = s.z();
+		double vx = s.vx();
+		double vy = s.vy();
+		double vz = s.vz();
+		float yaw = s.yaw();
+		float pitch = s.pitch();
+		List<double[]> path = new ArrayList<>();
+		double pitchNow = pitchTarget;
+		for (int t = 0; t < MAX_PREDICT_TICKS; t++) {
+			yaw = steerYaw(yaw, bearingTo(x, z, tx, tz));
+			double wanted = levelOffHeight > 0.0 && y - ground.heightBelow(x, y, z) <= levelOffHeight ? 0.0 : pitchTarget;
+			if (t == 0) {
+				pitchNow = wanted;
+			}
+			pitch += clamp((float) (wanted - pitch), MAX_PITCH_STEP);
+			double[] v = ElytraPhysics.step(vx, vy, vz, yaw, pitch);
+			vx = v[0];
+			vy = v[1];
+			vz = v[2];
+			double prevX = x;
+			double prevY = y;
+			double prevZ = z;
+			x += vx;
+			y += vy;
+			z += vz;
+			if (t % PATH_SAMPLE_TICKS == 0) {
+				path.add(new double[] {x, y, z});
+			}
+			double[] touch = contact(prevX, prevY, prevZ, x, y, z);
+			if (touch != null) {
+				path.add(new double[] {touch[0], touch[2], touch[1]});
+				// Ground standing well above the spot is a wall or a hillside met head-on, not the
+				// landing - and so is a roof's edge reached below the roof, which the roof being at the
+				// spot's own height doesn't change: a landing comes down onto the ground from above.
+				// However slowly either is met, that is a crash, so it counts as a hard landing; so
+				// does one that would slide on off an edge.
+				boolean crash = touch[2] > ty + TERRAIN_RISE || touch[3] > 0.0
+						|| ground.heightBelow(x, touch[2] + 1.5, z) > touch[2] + TERRAIN_RISE
+						|| !slideStaysOnGround(x, touch[2], z, vx, vz);
+				double sink = crash ? Math.max(-vy, UNSAFE_LANDING_SINK) : -vy;
+				// Where the player ends the tick it lands in: the whole of that tick's move is made, only its
+				// fall is stopped, and the landing assist stops the glide there. (A wall is hit where it is.)
+				double landedX = crash ? touch[0] : x;
+				double landedZ = crash ? touch[1] : z;
+				return new Prediction(Math.hypot(landedX - tx, landedZ - tz), sink, pitchNow, true, path, t + 1);
+			}
+		}
+		return new Prediction(Double.MAX_VALUE, 0.0, pitchNow, false, path, MAX_PREDICT_TICKS);
+	}
+
+	private static float steerYaw(float yaw, float wanted) {
+		return yaw + clamp(wrap(wanted - yaw), MAX_YAW_STEP);
+	}
+
+	private static float bearingTo(double fromX, double fromZ, double toX, double toZ) {
+		return (float) Math.toDegrees(Math.atan2(-(toX - fromX), toZ - fromZ));
+	}
+
+	private static float wrap(float degrees) {
+		float wrapped = degrees % 360.0f;
+		if (wrapped >= 180.0f) {
+			wrapped -= 360.0f;
+		} else if (wrapped < -180.0f) {
+			wrapped += 360.0f;
+		}
+		return wrapped;
+	}
+
+	private static float clamp(float value, float limit) {
+		return Math.max(-limit, Math.min(limit, value));
+	}
+}

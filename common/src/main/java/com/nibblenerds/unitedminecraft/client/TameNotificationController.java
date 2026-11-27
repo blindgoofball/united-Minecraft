@@ -1,5 +1,6 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.scanner.ScannerController;
 import java.util.WeakHashMap;
 
 import net.minecraft.client.Minecraft;

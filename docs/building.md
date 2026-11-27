@@ -9,8 +9,22 @@ face them. Turning it on snaps your camera to the nearest cardinal direction,
 narrates it, and locks the cursor's movement to that orientation.
 
 - **Moving the cursor:** Up/Down step forward and back, Left/Right strafe, Page
-  Up/Down move vertically. Each step narrates the block, coordinates and whether
-  it is placeable. The cursor roams a 65x65 area centered where you turned it on.
+  Up/Down move vertically. Each step plays an immediate 3D stereo sound cue
+  representing the block at the cursor (the block's material step sound, water/lava
+  sounds, or a soft tone for air / empty space) and narrates the block,
+  coordinates and whether it is placeable. The sound originates from the cursor's location
+  in 3D stereo space (left/right/elevation, with a pitch drop when behind you), allowing rapid
+  auditory surveying of structures.
+  In Settings (`F6`), the "Build Mode: Cursor Feedback" setting lets you choose between
+  **Speech and Sound**, **Sound Only** (for fast surveying and building without narration clutter),
+  or **Speech Only**. The cursor roams a 65x65 area centered where you turned it on.
+- **Locking the area:** M places a marker at the cursor, and a second M places the
+  opposite corner. The cursor is then locked to the rectangle between the two
+  corners, and stepping past an edge says "edge of area". Alt+M clears both markers
+  and the usual 65x65 area applies again, as does turning Build Mode off. A third M
+  starts over with a new first corner. Alt+I then only moves the cursor to you, and
+  says so if you are outside the area. "Build Mode: Area Markers Also Limit Height"
+  in Settings makes the corners limit how high and low the cursor can go too.
 - **Turning:** Alt+Left/Right turns both the camera and the cursor's orientation a
   quarter turn, the same snap-turn used outside Build Mode.
 - **Recentering:** Alt+I snaps the cursor to where you are standing and recenters
@@ -18,16 +32,28 @@ narrates it, and locks the cursor's movement to that orientation.
 - **Reach:** if the cursor wanders out of reach, G walks you to it. When it is
   already in reach, G walks you up to it anyway.
 - **Placing and breaking** (Right Control and hold Right Shift) work no matter
-  which way you are actually facing. Build Mode also works with hoes, axes and
+  which way you are actually facing. Interacting with a block (opening a chest or
+  door, pressing a button) needs a clear line of sight to it, as a real click
+  does: through a wall, it says "Can't see it". Placing a block has no such
+  limit. Build Mode also works with hoes, axes and
   shovels on blocks, and with water and lava buckets, including pouring into a
-  spot with no clickable face, such as a narrow hole.
+  spot with no clickable face, such as a narrow hole. A water bucket used with the
+  cursor on a waterloggable block (a slab, stairs, a fence, a trapdoor) waterlogs
+  it. Boats and rafts are placed
+  on the water at the cursor, or on the ground when the cursor is on dry land
+  (including on a block shorter than a full one, like a dirt path); the
+  boat faces away from you. A boat needs a space about a block and a half wide
+  and clear of creatures, you included, so one beside your feet is usually
+  refused; Build Mode says whether it was the room or a creature. Minecarts are placed with the cursor on a rail.
 - **Narration at the cursor:** the block you are standing on, and any entity
   sharing the cell (a mob, dropped item, minecart), named as the Scanner would.
   Blocks with a meaningful facing (repeaters, comparators, dispensers, pistons)
   narrate it. Blocks receiving redstone power say so, and are silent otherwise.
   Stairs narrate a corner as a compass direction ("Northwest corner") and "Upside
   down" when on the underside of a block, both silent for a plain stair.
-  Waterlogged blocks are reported. Monster spawners and trial spawners say which mob
+  Snow layers say how tall they are, from 1 to 8 ("Snow height 3"). Farmland says
+  whether it is hydrated or dry. Waterlogged blocks are reported.
+  Monster spawners and trial spawners say which mob
   they spawn ("Spawns Zombie").
   Flowing water and lava say which way they are heading ("Flowing North", or
   "Flowing Down" for a waterfall); source blocks say "Source".

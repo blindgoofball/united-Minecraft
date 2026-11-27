@@ -1,5 +1,7 @@
 package com.nibblenerds.unitedminecraft.client;
 
+import com.nibblenerds.unitedminecraft.client.settings.RecommendedKeysPrompt;
+import com.nibblenerds.unitedminecraft.client.settings.UnitedMinecraftConfig;
 import com.mojang.blaze3d.platform.InputConstants;
 
 import net.minecraft.client.KeyMapping;
@@ -17,7 +19,7 @@ import net.minecraft.network.chat.Component;
  * next swap with no extra step. Pressing it while on the mouse restores the remembered set, or the
  * recommended comma and period if there is none yet.
  */
-final class AttackUseKeySwap {
+public final class AttackUseKeySwap {
 	/** What a swap should do: the keys to switch to, and whether the keys being left should be remembered first. */
 	record Plan(InputConstants.Key attack, InputConstants.Key use, boolean rememberCurrent) {
 	}
@@ -25,7 +27,21 @@ final class AttackUseKeySwap {
 	private AttackUseKeySwap() {
 	}
 
-	static void toggle(Minecraft client) {
+	/** The current setup, as the settings button's value: the mouse buttons, or which keys attack and use are on. */
+	public static Component describe(Minecraft client) {
+		Options options = client.options;
+		return isMouse(options)
+				? Component.translatable("united_minecraft.narrate.keys_mouse")
+				: Component.translatable("united_minecraft.narrate.keys_custom",
+						options.keyAttack.getTranslatedKeyMessage(), options.keyUse.getTranslatedKeyMessage());
+	}
+
+	private static boolean isMouse(Options options) {
+		return RecommendedKeysPrompt.currentKey(options.keyAttack).equals(options.keyAttack.getDefaultKey())
+				&& RecommendedKeysPrompt.currentKey(options.keyUse).equals(options.keyUse.getDefaultKey());
+	}
+
+	public static void toggle(Minecraft client) {
 		Options options = client.options;
 		UnitedMinecraftConfig config = UnitedMinecraftConfig.get();
 		InputConstants.Key attack = RecommendedKeysPrompt.currentKey(options.keyAttack);
@@ -45,12 +61,7 @@ final class AttackUseKeySwap {
 		KeyMapping.resetMapping();
 		options.save();
 
-		boolean mouse = plan.attack().equals(options.keyAttack.getDefaultKey())
-				&& plan.use().equals(options.keyUse.getDefaultKey());
-		client.getNarrator().saySystemNow(mouse
-				? Component.translatable("united_minecraft.narrate.keys_mouse")
-				: Component.translatable("united_minecraft.narrate.keys_custom",
-						options.keyAttack.getTranslatedKeyMessage(), options.keyUse.getTranslatedKeyMessage()));
+		client.getNarrator().saySystemNow(describe(client));
 	}
 
 	/**

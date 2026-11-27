@@ -24,7 +24,12 @@ public class SystemToastMixin {
 	@Inject(method = "update(Lnet/minecraft/network/chat/Component;Lnet/minecraft/network/chat/Component;)V",
 			at = @At("TAIL"))
 	private void unitedMinecraft$narrate(Component title, Component description, CallbackInfo ci) {
-		Component message = description.getString().isBlank() ? title : title.copy().append(". ").append(description);
+		// Some toasts have a title and no description at all (the resource pack download progress
+		// toast, for one) - vanilla passes null for it, so that has to read as "no description".
+		if (title == null) {
+			return;
+		}
+		Component message = description == null || description.getString().isBlank() ? title : title.copy().append(". ").append(description);
 		ToastNarrationController.narrate(message);
 	}
 }

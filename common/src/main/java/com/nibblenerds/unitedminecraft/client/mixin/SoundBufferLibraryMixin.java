@@ -1,5 +1,8 @@
 package com.nibblenerds.unitedminecraft.client.mixin;
 
+import com.nibblenerds.unitedminecraft.client.audio.CombatLockSynth;
+import com.nibblenerds.unitedminecraft.client.audio.StructureVoiceAudio;
+import com.nibblenerds.unitedminecraft.client.audio.WallToneSynth;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -11,9 +14,10 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.mojang.blaze3d.audio.SoundBuffer;
-import com.nibblenerds.unitedminecraft.client.CombatLockSynth;
-import com.nibblenerds.unitedminecraft.client.StructureVoiceAudio;
-import com.nibblenerds.unitedminecraft.client.WallToneSynth;
+import com.nibblenerds.unitedminecraft.client.audio.BuildCursorAirSynth;
+import com.nibblenerds.unitedminecraft.client.audio.CombatLockSynth;
+import com.nibblenerds.unitedminecraft.client.audio.StructureVoiceAudio;
+import com.nibblenerds.unitedminecraft.client.audio.WallToneSynth;
 
 import net.minecraft.client.sounds.SoundBufferLibrary;
 import net.minecraft.resources.Identifier;
@@ -37,6 +41,8 @@ public abstract class SoundBufferLibraryMixin {
 			cir.setReturnValue(cache.computeIfAbsent(path, key -> CompletableFuture.completedFuture(WallToneSynth.create(key))));
 		} else if (CombatLockSynth.handles(path)) {
 			cir.setReturnValue(cache.computeIfAbsent(path, key -> CompletableFuture.completedFuture(CombatLockSynth.create(key))));
+		} else if (BuildCursorAirSynth.handles(path)) {
+			cir.setReturnValue(cache.computeIfAbsent(path, key -> CompletableFuture.completedFuture(BuildCursorAirSynth.create(key))));
 		} else if (StructureVoiceAudio.handles(path)) {
 			// Spoken structure names - only ever played once their audio has been rendered.
 			cir.setReturnValue(cache.computeIfAbsent(path, key -> CompletableFuture.completedFuture(StructureVoiceAudio.create(key))));
